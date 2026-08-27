@@ -189,20 +189,7 @@ async function callClaude(messages, opts = {}) {
     window.location.href = "/login?reason=expired";
     throw new Error("Redirecting to sign in…");
   }
-  if (!res.ok) {
-    // Temporary: surface the real cause right in the visible error message
-    // instead of only server logs, which have been hard to relay correctly
-    // over chat. Safe to revert to the plain message once things work.
-    let debugInfo = null;
-    try {
-      debugInfo = (await res.json())?.debugInfo;
-    } catch (_) {}
-    throw new Error(
-      debugInfo
-        ? `Couldn't reach the kitchen. DEBUG: ${debugInfo}`
-        : "Couldn't reach the kitchen just now. Give it another go in a moment."
-    );
-  }
+  if (!res.ok) throw new Error("Couldn't reach the kitchen just now. Give it another go in a moment.");
 
   const data = await res.json();
   return data.text || "";
@@ -824,6 +811,24 @@ function Working({ label }) {
 
 /* Shown while a list is being built. An empty state during loading reads as a
    failure, which is the bug this fixes — nothing was ever wrong, it just looked wrong. */
+function DishSkeleton({ count = 4 }) {
+  return (
+    <div className="dcards" aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="dcard">
+          <span className="ph dcard__title" />
+          <span className="ph dcard__line" />
+          <span className="ph dcard__line--short" />
+          <div className="dcard__acts">
+            <span className="ph dcard__pill dcard__pill--a" />
+            <span className="ph dcard__pill dcard__pill--b" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Skeleton({ title, note, rows = 6 }) {
   return (
     <section className="card" aria-busy="true">
@@ -832,7 +837,7 @@ function Skeleton({ title, note, rows = 6 }) {
       <Working label="Working on it" />
       <ul className="skel" aria-hidden="true">
         {Array.from({ length: rows }).map((_, i) => (
-          <li key={i}><span style={{ width: `${88 - (i % 4) * 14}%` }} /></li>
+          <li key={i}><span className="ph" style={{ width: `${88 - (i % 4) * 14}%` }} /></li>
         ))}
       </ul>
     </section>
@@ -1132,37 +1137,48 @@ export default function App() {
     setErr("");
 
     const nights = orderDays(profile.nights);
+    /* Numbered lists instead of asking the model to echo back exact day codes
+       and dish titles as free text. The old version told it the nights as
+       full names ("Tuesday") but expected short codes ("Tue") back — a
+       mapping only ever implied by one example, never actually stated — and
+       matched dishes by exact re-typed title, which silently failed the
+       moment a response paraphrased even slightly. Neither failure showed up
+       as an error; the chat reply still looked normal while the days quietly
+       never got set. Indices sidestep both: nothing to get letter-perfect.
+    */
     const prompt = `They want to know what order to cook these in this week.
 
-DISHES THEY PICKED:
-${chosen.map((c) => `- ${c.title} — ${c.blurb}`).join("\n")}
+DISHES THEY PICKED (numbered):
+${chosen.map((c, i) => `${i + 1}. ${c.title} — ${c.blurb}`).join("\n")}
 
-NIGHTS AVAILABLE: ${nights.map((d) => DAY_FULL[d]).join(", ")}
+NIGHTS AVAILABLE (numbered):
+${nights.map((d, i) => `${i + 1}. ${DAY_FULL[d]}`).join("\n")}
 
 Assign each dish to a night. Reason about what actually spoils first (fish and delicate herbs
 early, hardy roots and cabbage late), which dish makes leftovers a later night can use, and
-which night has least time. Only use nights from the list. If there are more dishes than
-nights, leave the extras unassigned and say so.
+which night has least time. If there are more dishes than nights, leave the extras unassigned
+and say so.
 
-Give ONE short line per night — the day, the dish, and the reason in a few words. Keep "say" to
-those lines only, one per line, no preamble.
+Give ONE short line per night — the day, the dish, and the reason in a few words, using the real
+day and dish names so it reads naturally. Keep "say" to those lines only, one per line, no preamble.
 
-Respond with ONLY this JSON:
+Respond with ONLY this JSON. "night" and "dish" are the NUMBERS from the numbered lists above,
+not the names:
 {"say":"Tuesday — Fish tacos, the fish won't keep\nThursday — ...",
-"order":[{"day":"Tue","title":"exact title from the list above"}]}`;
+"order":[{"night":1,"dish":2}]}`;
 
     try {
       const raw = await callClaude([{ role: "user", content: prompt }]);
       const out = parseJSON(raw);
 
-      /* Apply it. Titles are matched back to real candidate ids — anything that
-         doesn't match is skipped rather than silently clearing a night. */
+      /* Bounds-checked index lookups, not string matching — a malformed or
+         out-of-range entry is skipped rather than crashing or clearing a
+         night, same principle as before, just applied to numbers now. */
       const next = {};
-      (out.order || []).forEach((o) => {
-        const dish = chosen.find(
-          (c) => (c.title || "").toLowerCase() === (o.title || "").toLowerCase()
-        );
-        if (dish && nights.includes(o.day)) next[o.day] = dish.id;
+      (Array.isArray(out.order) ? out.order : []).forEach((o) => {
+        const day = nights[Number(o.night) - 1];
+        const dish = chosen[Number(o.dish) - 1];
+        if (day && dish) next[day] = dish.id;
       });
       if (Object.keys(next).length) setWeek((w) => ({ ...w, ...next }));
 
@@ -2375,7 +2391,19 @@ Respond with ONLY this JSON:
     return (
       <div className="app">
         <style>{CSS}</style>
-        <div className="main"><Working label="Opening your kitchen" /></div>
+        {/* Echoes the shape of the hero card about to appear, rather than a bare
+           spinner floating with nothing around it — consistent with the rest of
+           the loading system instead of a one-off exception to it. */}
+        <main className="main"><div className="stack">
+          <section className="card card--big">
+            <div className="hero">
+              <div className="hero__mark"><span className="ph" style={{ width: 104, height: 104, borderRadius: "50%", margin: "0 auto" }} /></div>
+              <span className="ph" style={{ width: "80%", height: "1.7em", margin: "0 auto .9rem", display: "block" }} />
+              <span className="ph" style={{ width: "90%", height: ".9em", margin: "0 auto .4rem", display: "block" }} />
+              <span className="ph" style={{ width: "60%", height: ".9em", margin: "0 auto", display: "block" }} />
+            </div>
+          </section>
+        </div></main>
       </div>
     );
 
@@ -2995,6 +3023,22 @@ function Ideas({ thread, candidates, ecosystem, busy, setCandidates, onSend, onS
         <p>Tell me about your week and I'll suggest a few dishes to pick from.</p>
         <Btn onClick={onStart}>Start this week</Btn>
       </Empty>
+    );
+
+  /* The gap this closes: candidates.length is 0 right up until the moment the
+     first batch lands, so without this the whole screen sat blank — no
+     ecosystem card, no dishes, nothing — behind the generic bottom spinner
+     for however long that first call takes. This is the first real AI-wait
+     moment in the entire app; it's the one most worth not leaving empty. */
+  if (!candidates.length && busy)
+    return (
+      <div className="stack">
+        <section className="card">
+          <h2>Thinking through your week</h2>
+          <p className="lead">Working out a spine for the week and a few dishes to react to.</p>
+          <DishSkeleton count={5} />
+        </section>
+      </div>
     );
 
   return (
@@ -5524,7 +5568,31 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .left__warn{color:var(--hot);font-weight:600;font-size:.95em}
 .skel{list-style:none;padding:0;margin:1rem 0 0}
 .skel li{padding:.3rem 0}
-.skel li span{display:block;height:1.1em;background:var(--sunk);border-radius:999px}
+@keyframes shimmer{0%{background-position:-320px 0}100%{background-position:320px 0}}
+/* Standalone placeholder utility — deliberately NOT scoped to a parent
+   container. Coupling the shimmer to a ".dcard *" descendant selector was the
+   actual bug: any placeholder used outside a literal .dcard silently got no
+   display:block and no animation, rendering as an invisible zero-size <span>.
+   Every skeleton in the app composes from this one rule now, nested or not. */
+.ph{display:block;border-radius:999px;
+  background:linear-gradient(90deg,var(--sunk) 25%,rgba(255,255,255,.85) 50%,var(--sunk) 75%);
+  background-size:640px 100%;animation:shimmer 1.6s ease-in-out infinite}
+.skel li span{height:1.1em}
+@media(prefers-reduced-motion:reduce){.ph{animation:none}}
+
+/* Dish-card-shaped skeleton for Ideas — the first, most important AI-wait moment
+   in the app previously had no skeleton at all, just the generic bottom spinner
+   over an empty screen. Mimics the real .dish card's proportions. */
+.dcards{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-top:1rem}
+.dcard{background:var(--surface);border:1px solid var(--rule);border-radius:20px;
+  padding:1.4rem 1.3rem;box-shadow:var(--shadow)}
+.dcard__title{height:1.24em;width:72%;margin-bottom:.7rem}
+.dcard__line{height:.9em;width:100%;margin-bottom:.4rem}
+.dcard__line--short{height:.9em;width:58%;margin-bottom:.9rem}
+.dcard__acts{display:flex;gap:.4rem;margin-top:.9rem}
+.dcard__pill{height:2.4em;border-radius:999px;flex:0 0 auto}
+.dcard__pill--a{width:5.5rem}
+.dcard__pill--b{width:7.5rem}
 .left__rec{margin-top:1.1rem;border-top:1px solid var(--rule);padding-top:.9rem}
 .fav{display:flex;justify-content:space-between;gap:1rem;padding:1.1rem 0;
   border-bottom:1px solid var(--rule);flex-wrap:wrap}
