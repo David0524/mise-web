@@ -1,0 +1,13 @@
+{
+  "appId": "com.mise.app",
+  "appName": "Mise",
+  "webDir": "public",
+  "server": {
+    "url": "https://REPLACE-WITH-YOUR-REAL-DOMAIN.com",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "backgroundColor": "#FAF5F4"
+  }
+}
