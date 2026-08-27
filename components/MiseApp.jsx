@@ -189,7 +189,20 @@ async function callClaude(messages, opts = {}) {
     window.location.href = "/login?reason=expired";
     throw new Error("Redirecting to sign in…");
   }
-  if (!res.ok) throw new Error("Couldn't reach the kitchen just now. Give it another go in a moment.");
+  if (!res.ok) {
+    // Temporary: surface the real cause right in the visible error message
+    // instead of only server logs, which have been hard to relay correctly
+    // over chat. Safe to revert to the plain message once things work.
+    let debugInfo = null;
+    try {
+      debugInfo = (await res.json())?.debugInfo;
+    } catch (_) {}
+    throw new Error(
+      debugInfo
+        ? `Couldn't reach the kitchen. DEBUG: ${debugInfo}`
+        : "Couldn't reach the kitchen just now. Give it another go in a moment."
+    );
+  }
 
   const data = await res.json();
   return data.text || "";

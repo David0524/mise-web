@@ -56,6 +56,7 @@ export async function POST(req) {
     return NextResponse.json({ text });
   } catch (e) {
     console.error("chat route failure", e);
-    return NextResponse.json({ error: "network" }, { status: 502 });
+    // debugInfo is temporary — see the comment in lib/providers/gemini.js.
+    return NextResponse.json({ error: "network", debugInfo: e.debugInfo || null }, { status: 502 });
   }
 }
