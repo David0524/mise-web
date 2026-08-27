@@ -31,10 +31,18 @@ export async function POST(req) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const { messages, tier, maxTokens } = body || {};
+  const { messages, tier, maxTokens, sessionContext } = body || {};
   if (!Array.isArray(messages) || !messages.length) {
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
+
+  // Restrictions, allergies, equipment, spice ceiling — this is what makes a
+  // response actually about the person asking rather than a generic answer.
+  // It travels with the request because the server has no session-level
+  // memory of who's calling beyond the auth cookie already checked above.
+  const systemText = sessionContext
+    ? `${DOCTRINE_ALL}\n\n---\n\n${sessionContext}`
+    : DOCTRINE_ALL;
 
   // Recipe-writing calls need real headroom — a full recipe with 12 steps, prep
   // state on every ingredient, and doneness/seasoning notes runs to roughly 1,200
@@ -44,7 +52,7 @@ export async function POST(req) {
   const tokenCap = Math.min(Math.max(Number(maxTokens) || 1000, 1), 2200);
 
   try {
-    const text = await provider.callModel(messages, DOCTRINE_ALL, { tier, maxTokens: tokenCap });
+    const text = await provider.callModel(messages, systemText, { tier, maxTokens: tokenCap });
     return NextResponse.json({ text });
   } catch (e) {
     console.error("chat route failure", e);
