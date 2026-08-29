@@ -18,6 +18,18 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      {/* Loaded here rather than per-page: the standalone auth and pricing
+          pages render before MiseApp mounts, so they can't rely on the
+          stylesheet inside it and would otherwise silently fall back to a
+          system font while the app itself renders in Nunito. */}
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600;1,700&display=swap"
+        />
+      </head>
       <body
         style={{
           margin: 0,

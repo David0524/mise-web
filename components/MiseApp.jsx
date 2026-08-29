@@ -12,6 +12,12 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
    ========================================================================== */
 
 
+/* Caching inverts the old design. Loading only the slices a call needs sent fewer
+   tokens, but a prompt cache only hits on a byte-identical prefix — so varying the
+   prefix per call meant never hitting it. One uniform block is now cheaper: a cached
+   read costs a tenth of fresh input, so ~4.4k cached beats ~3.3k fresh every time
+   after the first call. Sent as a cached system block, identical on every request. */
+
 /* One shared voice rule for every conversational reply, so "sounds like chat" can't
    drift call by call the way the old scattered per-prompt limits did. JSON field
    caps (blurb/why word counts on dish cards) are separate — those are UI copy, not
@@ -154,17 +160,9 @@ const HISTORY_KEY = "mise:history-v1";
 /* Two tiers. Most work needs Sonnet; a few calls are short, low-stakes and
    summarising, where Haiku costs a third as much for input and reads the same. */
 /* Doctrine and the model call both live server-side in /api/chat now — the
-   browser can't hold the Anthropic key the way the artifact runtime could, and
-   the fallback ladder that lived here in the artifact version doesn't apply:
-   that existed because the artifact proxy's capabilities couldn't be verified.
-   This backend calls the real, documented Anthropic API directly, so caching,
-   system blocks and model selection are all known to work. Thin client. */
-/* Doctrine lives server-side in /api/chat now, and so does the system prompt
-   it's part of — but the person's actual profile (restrictions, allergies,
-   equipment, spice ceiling) still needs to reach it, and that has to travel
-   with the request since the server has no other way to know who's asking.
-   This mirrors the artifact's SESSION_CONTEXT mechanism, just relocated: the
-   client tracks it, the server folds it into the system prompt it builds. */
+   browser can't hold the API key the way the artifact runtime could, and the
+   fallback ladder that lived here doesn't apply: that existed because the
+   artifact proxy's capabilities couldn't be verified. Thin client. */
 let SESSION_CONTEXT = "";
 
 async function callClaude(messages, opts = {}) {
@@ -179,8 +177,6 @@ async function callClaude(messages, opts = {}) {
     }),
   });
 
-  // A subscription lapsing mid-session or a session expiring are both
-  // "leave this screen," not "show an error and let them retry."
   if (res.status === 402) {
     window.location.href = "/pricing?reason=expired";
     throw new Error("Redirecting to plans…");
@@ -429,10 +425,10 @@ function shareBackground(ctx) {
 function shareFooter(ctx) {
   drawMark(ctx, 80, SHARE_H - 132, 1.05, "#B44722");
   ctx.fillStyle = "#B44722";
-  ctx.font = "600 30px Archivo, system-ui, sans-serif";
+  ctx.font = "600 30px Nunito, system-ui, sans-serif";
   ctx.fillText("Made with Mise", 168, SHARE_H - 96);
   ctx.fillStyle = "#8A7B86";
-  ctx.font = "400 26px Newsreader, Georgia, serif";
+  ctx.font = "400 26px Nunito, system-ui, sans-serif";
   ctx.fillText("a weekly cooking collaborator", 168, SHARE_H - 60);
 }
 
@@ -451,17 +447,17 @@ async function renderDishCard(dish, recipe, photo) {
   /* Measure first, then place. The old version started at a fixed y and hoped —
      which left a photoless card two-thirds empty and pushed long titles into the
      footer. Now the block is measured and centred in whatever space is free. */
-  ctx.font = "700 78px Archivo, system-ui, sans-serif";
+  ctx.font = "700 78px Nunito, system-ui, sans-serif";
   let titleSize = 78;
   let titleLines = wrapText(ctx, dish.title, maxW);
   // Long titles step down a size rather than overflowing or being truncated.
   while (titleLines.length > (img ? 2 : 3) && titleSize > 46) {
     titleSize -= 8;
-    ctx.font = `700 ${titleSize}px Archivo, system-ui, sans-serif`;
+    ctx.font = `700 ${titleSize}px Nunito, system-ui, sans-serif`;
     titleLines = wrapText(ctx, dish.title, maxW);
   }
 
-  ctx.font = "400 38px Newsreader, Georgia, serif";
+  ctx.font = "400 38px Nunito, system-ui, sans-serif";
   const blurbLines = wrapText(ctx, dish.blurb || "", maxW).slice(0, img ? 2 : 3);
   const meta = [recipe?.servings, recipe?.time].filter(Boolean).join("  ·  ");
 
@@ -494,12 +490,12 @@ async function renderDishCard(dish, recipe, photo) {
   let y = spaceTop + Math.max(0, (spaceH - blockH) / 2) + 46;
 
   ctx.fillStyle = "#B44722";
-  ctx.font = "700 30px Archivo, system-ui, sans-serif";
+  ctx.font = "700 30px Nunito, system-ui, sans-serif";
   ctx.fillText("I COOKED THIS", M, y);
   y += 74;
 
   ctx.fillStyle = "#12141C";
-  ctx.font = `700 ${titleSize}px Archivo, system-ui, sans-serif`;
+  ctx.font = `700 ${titleSize}px Nunito, system-ui, sans-serif`;
   for (const line of titleLines) {
     ctx.fillText(line, M, y);
     y += titleSize + 10;
@@ -508,7 +504,7 @@ async function renderDishCard(dish, recipe, photo) {
   if (blurbLines.length) {
     y += 14;
     ctx.fillStyle = "#4A4453";
-    ctx.font = "400 38px Newsreader, Georgia, serif";
+    ctx.font = "400 38px Nunito, system-ui, sans-serif";
     for (const line of blurbLines) {
       ctx.fillText(line, M, y);
       y += 52;
@@ -518,7 +514,7 @@ async function renderDishCard(dish, recipe, photo) {
   if (meta) {
     y += 34;
     ctx.fillStyle = "#8A7B86";
-    ctx.font = "600 30px Archivo, system-ui, sans-serif";
+    ctx.font = "600 30px Nunito, system-ui, sans-serif";
     ctx.fillText(meta, M, y);
   }
 
@@ -539,7 +535,7 @@ async function renderWeekCard(dishes, ecosystem) {
   const footerTop = SHARE_H - 190;
 
   ctx.fillStyle = "#B44722";
-  ctx.font = "700 30px Archivo, system-ui, sans-serif";
+  ctx.font = "700 30px Nunito, system-ui, sans-serif";
   ctx.fillText("THIS WEEK I'M COOKING", M, 150);
 
   /* Fit the list to the space rather than trusting a fixed size — five long
@@ -554,7 +550,7 @@ async function renderWeekCard(dishes, ecosystem) {
   let layout = null;
 
   const measure = () => {
-    ctx.font = `700 ${size}px Archivo, system-ui, sans-serif`;
+    ctx.font = `700 ${size}px Nunito, system-ui, sans-serif`;
     const rows = shown.map((d) => ({
       title: wrapText(ctx, d.title, maxW).slice(0, 2),
       blurb: d.blurb || "",
@@ -581,7 +577,7 @@ async function renderWeekCard(dishes, ecosystem) {
     ctx.fill();
 
     ctx.fillStyle = "#12141C";
-    ctx.font = `700 ${size}px Archivo, system-ui, sans-serif`;
+    ctx.font = `700 ${size}px Nunito, system-ui, sans-serif`;
     r.title.forEach((line) => {
       ctx.fillText(line, listX, y);
       y += size + 10;
@@ -589,7 +585,7 @@ async function renderWeekCard(dishes, ecosystem) {
 
     if (r.blurb) {
       ctx.fillStyle = "#6E6472";
-      ctx.font = "400 32px Newsreader, Georgia, serif";
+      ctx.font = "400 32px Nunito, system-ui, sans-serif";
       const b = wrapText(ctx, r.blurb, maxW).slice(0, 1);
       b.forEach((line) => {
         ctx.fillText(line, listX, y);
@@ -602,14 +598,14 @@ async function renderWeekCard(dishes, ecosystem) {
   const hidden = dishes.length - shown.length;
   if (hidden > 0) {
     ctx.fillStyle = "#8A7B86";
-    ctx.font = "600 30px Archivo, system-ui, sans-serif";
+    ctx.font = "600 30px Nunito, system-ui, sans-serif";
     ctx.fillText(`+ ${hidden} more`, listX, y);
     y += 50;
   }
 
   if (spine) {
     ctx.fillStyle = "#8A7B86";
-    ctx.font = "400 28px Newsreader, Georgia, serif";
+    ctx.font = "400 28px Nunito, system-ui, sans-serif";
     wrapText(ctx, spine, SHARE_W - M * 2).slice(0, 2).forEach((line) => {
       y += 40;
       ctx.fillText(line, M, y);
@@ -811,6 +807,9 @@ function Working({ label }) {
 
 /* Shown while a list is being built. An empty state during loading reads as a
    failure, which is the bug this fixes — nothing was ever wrong, it just looked wrong. */
+/* Card count scales with how many are actually coming — echoes what
+   startIdeas asks for, so the placeholder count doesn't overshoot or fall
+   short of what actually lands a moment later. */
 function DishSkeleton({ count = 4 }) {
   return (
     <div className="dcards" aria-hidden="true">
@@ -895,8 +894,8 @@ function Scale({ options, value, onChange, name }) {
 
 /* =========================================================================== */
 
-/* Matches window.storage's {value} shape so the calling code — written against
-   that API originally — needed no changes beyond swapping the call itself. */
+/* Matches window.storage's {value} shape so the calling code — written
+   against that API originally — needed no changes beyond the call itself. */
 async function apiStorageGet(key) {
   const res = await fetch(`/api/storage?key=${encodeURIComponent(key)}`);
   if (!res.ok) throw new Error("storage unavailable");
@@ -1137,48 +1136,37 @@ export default function App() {
     setErr("");
 
     const nights = orderDays(profile.nights);
-    /* Numbered lists instead of asking the model to echo back exact day codes
-       and dish titles as free text. The old version told it the nights as
-       full names ("Tuesday") but expected short codes ("Tue") back — a
-       mapping only ever implied by one example, never actually stated — and
-       matched dishes by exact re-typed title, which silently failed the
-       moment a response paraphrased even slightly. Neither failure showed up
-       as an error; the chat reply still looked normal while the days quietly
-       never got set. Indices sidestep both: nothing to get letter-perfect.
-    */
     const prompt = `They want to know what order to cook these in this week.
 
-DISHES THEY PICKED (numbered):
-${chosen.map((c, i) => `${i + 1}. ${c.title} — ${c.blurb}`).join("\n")}
+DISHES THEY PICKED:
+${chosen.map((c) => `- ${c.title} — ${c.blurb}`).join("\n")}
 
-NIGHTS AVAILABLE (numbered):
-${nights.map((d, i) => `${i + 1}. ${DAY_FULL[d]}`).join("\n")}
+NIGHTS AVAILABLE: ${nights.map((d) => DAY_FULL[d]).join(", ")}
 
 Assign each dish to a night. Reason about what actually spoils first (fish and delicate herbs
 early, hardy roots and cabbage late), which dish makes leftovers a later night can use, and
-which night has least time. If there are more dishes than nights, leave the extras unassigned
-and say so.
+which night has least time. Only use nights from the list. If there are more dishes than
+nights, leave the extras unassigned and say so.
 
-Give ONE short line per night — the day, the dish, and the reason in a few words, using the real
-day and dish names so it reads naturally. Keep "say" to those lines only, one per line, no preamble.
+Give ONE short line per night — the day, the dish, and the reason in a few words. Keep "say" to
+those lines only, one per line, no preamble.
 
-Respond with ONLY this JSON. "night" and "dish" are the NUMBERS from the numbered lists above,
-not the names:
+Respond with ONLY this JSON:
 {"say":"Tuesday — Fish tacos, the fish won't keep\nThursday — ...",
-"order":[{"night":1,"dish":2}]}`;
+"order":[{"day":"Tue","title":"exact title from the list above"}]}`;
 
     try {
       const raw = await callClaude([{ role: "user", content: prompt }]);
       const out = parseJSON(raw);
 
-      /* Bounds-checked index lookups, not string matching — a malformed or
-         out-of-range entry is skipped rather than crashing or clearing a
-         night, same principle as before, just applied to numbers now. */
+      /* Apply it. Titles are matched back to real candidate ids — anything that
+         doesn't match is skipped rather than silently clearing a night. */
       const next = {};
-      (Array.isArray(out.order) ? out.order : []).forEach((o) => {
-        const day = nights[Number(o.night) - 1];
-        const dish = chosen[Number(o.dish) - 1];
-        if (day && dish) next[day] = dish.id;
+      (out.order || []).forEach((o) => {
+        const dish = chosen.find(
+          (c) => (c.title || "").toLowerCase() === (o.title || "").toLowerCase()
+        );
+        if (dish && nights.includes(o.day)) next[o.day] = dish.id;
       });
       if (Object.keys(next).length) setWeek((w) => ({ ...w, ...next }));
 
@@ -1597,9 +1585,8 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
     }
   };
 
-  /* Keep the profile snapshot current whenever it changes — restrictions,
-     equipment, spice ceiling, headcount. Sent with every request below so the
-     server can build a system prompt that actually knows who's asking. */
+  /* Refresh the cached context whenever the profile actually changes. A change
+     costs one cache write; leaving it in the message cost full price on every call. */
   useEffect(() => {
     SESSION_CONTEXT = profileBlock();
     // eslint-disable-next-line
@@ -2431,13 +2418,21 @@ Respond with ONLY this JSON:
 
       <header className="hdr no-print">
         <div className="hdr__row">
-          <div className="hdr__mark">
+          {/* A real <button>, not a div with a click handler — this way it's
+              reachable by keyboard, announced properly, and behaves like the
+              control it looks like. */}
+          <button
+            className="hdr__mark"
+            onClick={() => setView("start")}
+            aria-label="Mise en place — back to the start"
+            title="Back to the start"
+          >
             <MiseMark size={42} />
             <div className="hdr__word">
               <span className="hdr__logo">Mise</span>
               <span className="hdr__tag">en place</span>
             </div>
-          </div>
+          </button>
           <button
             className={`profile${view === "me" ? " profile--on" : ""}`}
             onClick={() => setView(view === "me" ? "ideas" : "me")}
@@ -2740,16 +2735,78 @@ Respond with ONLY this JSON:
 
 /* ------------------------------------------------------------------- START */
 
+/* What a brand-new person sees before a single question gets asked. The value
+   here can't be demonstrated with real output — every dish depends on knowing
+   their kitchen — so this sells what Mise actually is in her own voice rather
+   than faking a sample week. Three screens, one idea each, then straight into
+   setup. The button sits in the same fixed spot as the wizard's, so the tap
+   target never moves across the whole of onboarding. */
+function Intro({ onDone }) {
+  const [i, setI] = useState(0);
+  const lastScreen = 2;
+
+  const screens = [
+    {
+      art: <MiseAvatar mood="happy" size={104} />,
+      h: "Nobody needs a whole bunch of dill for one dish.",
+      p: "I'm Mise. I help you figure out what to cook this week — and I plan it so the things you buy actually get used up, instead of half a bunch wilting in the drawer.",
+    },
+    {
+      art: <MiseAvatar mood="thinking" size={104} />,
+      h: "I'm not a recipe search box.",
+      p: "We talk it through. I'll suggest a few dishes worth cooking, you tell me what you think, and I'll change them — swap an ingredient, make one milder, drop the one that doesn't appeal. Nothing is locked in until you say so.",
+    },
+    {
+      art: <MiseAvatar mood="happy" size={104} />,
+      h: "First, tell me about your kitchen.",
+      p: "A few quick questions — who's eating, what you can't stand, what you actually own to cook with. Every answer changes what I suggest, and I'll show you exactly how before we start.",
+    },
+  ];
+
+  const s = screens[i];
+  const next = () => (i === lastScreen ? onDone() : setI(i + 1));
+
+  return (
+    <div className="stack wiz-pad">
+      <section className="card card--big stepin" key={i}>
+        <div className="hero">
+          <div className="hero__mark">{s.art}</div>
+          <h1 className="hero__h">{s.h}</h1>
+          <p className="hero__sub">{s.p}</p>
+        </div>
+      </section>
+
+      {/* Dots rather than "step 1 of 3" — this part isn't work to get through,
+          so counting it like a form would set the wrong expectation. */}
+      <div className="dots" role="group" aria-label={`Screen ${i + 1} of ${screens.length}`}>
+        {screens.map((_, n) => (
+          <span key={n} className={`dots__d${n === i ? " dots__d--on" : ""}`} aria-hidden="true" />
+        ))}
+      </div>
+
+      <div className="wizbar">
+        <div className="wizbar__in">
+          {i > 0 && <Btn variant="ghost" onClick={() => setI(i - 1)}>Back</Btn>}
+          <Btn onClick={next} wide={i === 0}>
+            {i === lastScreen ? "Set up my kitchen" : "Next"}
+          </Btn>
+        </div>
+        {/* Empty, but it holds the same height as the wizard's caption so the
+            button above it doesn't jump when the two phases meet. */}
+        <p className="wizbar__cap" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
+
 function Start({ savedAt, profile, onSetup, onWeek }) {
+  if (!savedAt) return <Intro onDone={onSetup} />;
+
   return (
     <div className="stack">
       <section className="card card--big">
         <h2>What are we cooking this week?</h2>
-        <p className="lead">
-          We'll talk it through: a few dishes worth cooking, a shopping list that doesn't leave
-          you with half a bunch of dill, and someone to ask when you're standing at the stove.
-        </p>
-        {savedAt ? (
+        {(
           <>
             <div className="recap">
               <p><strong>Your saved setup</strong></p>
@@ -2766,10 +2823,6 @@ function Start({ savedAt, profile, onSetup, onWeek }) {
               <Btn variant="ghost" onClick={onSetup}>Change my setup</Btn>
             </div>
           </>
-        ) : (
-          <div className="row">
-            <Btn onClick={onSetup} wide>Set up my kitchen</Btn>
-          </div>
         )}
       </section>
     </div>
@@ -2778,24 +2831,92 @@ function Start({ savedAt, profile, onSetup, onWeek }) {
 
 /* ------------------------------------------------------------------- SETUP */
 
-const STEPS = ["Who's eating", "When you cook", "How spicy", "How adventurous", "What to avoid", "Your kitchen"];
+const STEPS = ["Who's eating", "When you cook", "How spicy", "How adventurous", "What to avoid", "Your kitchen", "Your kitchen, set up"];
+
+/* Reads their answers back as a few specific observations rather than a generic
+   "you're all set". The point is that every line here is only true because of
+   what they actually chose — a recap that would read identically for anyone
+   isn't worth a screen. */
+function recapLines(profile) {
+  const lines = [];
+  const nights = orderDays(profile.nights);
+
+  if (nights.length) {
+    const counts = nights.map((d) => (profile.consistent ? profile.people : profile.headcount?.[d] || profile.people));
+    const varies = new Set(counts).size > 1;
+    lines.push(
+      varies
+        ? `Cooking ${nights.length} ${nights.length === 1 ? "night" : "nights"} a week, for a different number of people depending on the night — so I'll scale each one on its own instead of averaging.`
+        : `Cooking ${nights.length} ${nights.length === 1 ? "night" : "nights"} a week for ${profile.people} ${profile.people === 1 ? "person" : "people"}.`
+    );
+  }
+
+  if (profile.people === 1) {
+    lines.push("Cooking for one means package sizes are the real problem, not portions — I'll plan so a bunch of herbs gets used up rather than half-thrown-away.");
+  }
+
+  const r = [...(profile.restrictions || []), profile.restrictionsNote].filter(Boolean);
+  if (r.length) lines.push(`${r.join(", ")} — treated as absolute, never "mostly".`);
+  if (profile.dislikes) lines.push(`No ${profile.dislikes}. I won't sneak it in as "you won't taste it".`);
+
+  const eq = profile.equipment || [];
+  const noStove = eq.length && !eq.some((e) => /stove|hob|cooktop/i.test(e));
+  if (noStove) {
+    lines.push("No stovetop, so every step has to work in what you actually own — no recipe that quietly assumes a pan on a burner.");
+  } else if (eq.length) {
+    lines.push(`Cooking with ${eq.slice(0, 3).join(", ").toLowerCase()}${eq.length > 3 ? " and a few more" : ""} — I'll stay inside that.`);
+  }
+
+  lines.push(
+    profile.spice === 0
+      ? "No chili heat at all — that's a ceiling, not a preference I'll drift past."
+      : `Heat up to ${SPICE[profile.spice].label.toLowerCase()}, and no further.`
+  );
+
+  const adv = profile.adventure;
+  lines.push(
+    adv <= 2
+      ? "Familiar food, done properly — which still means a different cuisine every night, not the same five dishes."
+      : adv >= 4
+      ? "You want to be pushed, so expect at least one dish a week you haven't made before."
+      : "New but recognizable — things you know the shape of, cooked a way you might not have tried."
+  );
+
+  if (profile.healthConscious) lines.push("Leaning a little lighter, without it turning into a diet.");
+  if (profile.smokeAlarm) lines.push("Keeping the smoke down — no ripping-hot sears when another route gets there.");
+
+  return lines;
+}
 
 function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
   const last = STEPS.length - 1;
   const next = () => (step === last ? onDone() : setStep(step + 1));
 
   return (
-    <div className="stack">
+    <div className="stack wiz-pad">
+      {/* One segment per step rather than a single filled track — you can see
+          at a glance how many are left, not just a proportion, and it matches
+          the dot language the intro already uses. The heavy card around it is
+          gone too; progress is a quiet status line, not a headline. */}
       <div className="progress" role="group" aria-label={`Step ${step + 1} of ${STEPS.length}`}>
-        <p className="progress__t">
-          Step {step + 1} of {STEPS.length} — {STEPS[step]}
-        </p>
-        <div className="progress__bar">
-          <span style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+        <div className="progress__segs" aria-hidden="true">
+          {STEPS.map((_, n) => (
+            <span
+              key={n}
+              className={`progress__seg${n < step ? " progress__seg--done" : ""}${n === step ? " progress__seg--now" : ""}`}
+            />
+          ))}
         </div>
+        <p className="progress__t">
+          <span className="progress__n">Step {step + 1} of {STEPS.length}</span>
+          <span className="progress__label">{STEPS[step]}</span>
+        </p>
       </div>
 
-      <section className="card card--big">
+      {/* key={step} remounts on every step change, which is what actually
+          retriggers the entrance animation — without it CSS sees the same
+          element and plays nothing. */}
+      <section className="card card--big stepin" key={step}>
         {step === 0 && (
           <>
             <h2>How many people are you cooking for?</h2>
@@ -2943,14 +3064,39 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
           </>
         )}
 
-        <div className="wiz">
-          {step > 0 && <Btn variant="ghost" onClick={() => setStep(step - 1)}>Back</Btn>}
+        {step === last && (
+          <>
+            <h2>Here&apos;s your kitchen</h2>
+            <p className="lead">
+              Everything below is true because of what you just told me. It shapes every
+              suggestion from here.
+            </p>
+            <ul className="kitrecap">
+              {recapLines(profile).map((line, i) => (
+                <li key={i} className="kitrecap__i" style={{ animationDelay: `${i * 90}ms` }}>
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+
+      {/* Pinned rather than sitting under the content. Each step is a different
+          height — a short scale, a tall equipment grid — so a button placed
+          after the content jumped around the screen between steps. Fixed
+          position means it's in the same place every time. */}
+      <div className="wizbar">
+        <div className="wizbar__in">
+          {step > 0 && (
+            <Btn variant="ghost" onClick={() => setStep(step - 1)}>Back</Btn>
+          )}
           <Btn onClick={next} wide={step === 0}>
-            {step === last ? "Save and continue" : "Next"}
+            {step === last ? "Show me this week" : "Next"}
           </Btn>
         </div>
         <p className="hint hint--save">Your answers are saved for next week.</p>
-      </section>
+      </div>
     </div>
   );
 }
@@ -5057,7 +5203,7 @@ function MisePanel({ thread, busy, onClose, onAsk, dish, asks = QUICK_ASKS.defau
 /* ---------------------------------------------------------------------- CSS */
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600;1,700&display=swap');
 
 .app{
   /* Palette: rose, brick, ink-navy, indigo, plum — weighted toward paper white.
@@ -5078,14 +5224,48 @@ const CSS = `
   --tape:#F0D9D5; --tape-ink:#57303A;
   --warn:#7A4630; --warn-bg:#FBEDE9;
   --bw:1px;
+  /* Bottom-edge tones for the 3D press effect. Derived directly from the
+     palette above (same hue, ~72% lightness) — no new colors, just shadowed
+     faces of the ones already here. */
+  --brick-edge:#813318; --good-edge:#214D3C; --rose-edge:#AB6948;
+  --plum-edge:#3E2B3D; --surface-edge:#E4D7D3;
+  /* Glass: translucent fill + saturation boost so colour bleeds through from
+     behind, a hairline rim, and a specular top highlight. The highlight is
+     what sells it as a lit pane rather than just something transparent. */
+  --glass:rgba(255,255,255,.58);
+  --glass-strong:rgba(255,255,255,.70);
+  --glass-rim:rgba(255,255,255,.75);
+  --glass-blur:saturate(180%) blur(22px);
+  --spec:inset 0 1px 0 rgba(255,255,255,.9);
+  --lift-1:0 1px 2px rgba(87,60,86,.06), 0 8px 24px -10px rgba(87,60,86,.22);
+  --lift-2:0 2px 6px rgba(87,60,86,.07), 0 18px 44px -16px rgba(87,60,86,.28);
   --shadow:0 1px 2px rgba(30,20,30,.04), 0 6px 18px -8px rgba(87,60,86,.16);
   --shadow-lift:0 2px 4px rgba(30,20,30,.05), 0 18px 40px -14px rgba(87,60,86,.24);
 
   background:var(--paper); color:var(--ink);
-  font-family:'Newsreader',Georgia,serif; line-height:1.6;
+  font-family:'Nunito',system-ui,sans-serif; line-height:1.55; font-weight:600;
   min-height:100vh; padding-bottom:7rem;
-  /* a whisper of warmth at the top, so the page isn't a flat field */
-  background-image:radial-gradient(120% 60% at 50% -10%, rgba(216,126,121,.16), transparent 60%);
+  /* Translucent surfaces need something behind them worth refracting — over a
+     flat field they just read as slightly grey white. These soft colour pools,
+     drawn from the existing palette, are what the glass actually picks up. */
+  /* A room in daylight, not a wash of colour. The earlier versions kept adding
+     pigment — apricot, blush, lavender — which reads spa or nursery, never
+     kitchen. A real kitchen in natural light is mostly NEUTRAL: the colour
+     comes from the temperature of the light, not from paint. So this is warm
+     where the sun lands and cool in the shade, and it has a direction —
+     light entering high on the left, shadow settling low and right, the way
+     a window actually behaves. Saturation stays very low throughout; it's
+     light falling on pale surfaces, not colour applied to them. */
+  background-image:
+    /* sunlight through a window, high left — pale butter, almost white */
+    radial-gradient(58% 46% at 4% -4%, rgba(255,247,228,.95), transparent 62%),
+    /* the cool daylight it sits in — pale sky, barely there */
+    radial-gradient(70% 40% at 62% -6%, rgba(233,241,247,.85), transparent 64%),
+    /* warm bounce off wood or stone, mid-right */
+    radial-gradient(46% 34% at 100% 42%, rgba(246,232,213,.70), transparent 62%),
+    /* cool shadow pooling low and right, where the light doesn't reach */
+    radial-gradient(76% 46% at 78% 106%, rgba(205,214,224,.62), transparent 66%);
+  background-attachment:fixed;
   background-repeat:no-repeat;
 }
 /* keep legacy names working so nothing goes unstyled mid-refactor */
@@ -5105,8 +5285,8 @@ const CSS = `
 /* every string here is model-generated and can be any length */
 .app p,.app li,.app strong,.app span{overflow-wrap:anywhere}
 .app input[type=text],.app textarea,.app select{max-width:100%}
-.app h1,.app h2,.app h3,.app h4{font-family:'Archivo',system-ui,sans-serif;font-weight:700;
-  letter-spacing:-.025em;margin:0;line-height:1.16;color:var(--navy)}
+.app h1,.app h2,.app h3,.app h4{font-family:'Nunito',system-ui,sans-serif;font-weight:800;
+  letter-spacing:-.025em;margin:0;line-height:1.18;color:var(--navy)}
 .app h2{font-size:1.48em}
 .app h3{font-size:1.1em;letter-spacing:-.015em}
 .app h4{font-size:.96em;font-weight:650;color:var(--plum)}
@@ -5141,7 +5321,7 @@ const CSS = `
 .sr,.sr-focus{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .tape{display:inline-block;background:var(--tape);color:var(--tape-ink);
-  font-family:'Archivo',sans-serif;font-weight:700;font-size:.78em;letter-spacing:.1em;
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:.78em;letter-spacing:.1em;
   text-transform:uppercase;padding:.3rem .75rem;
   clip-path:polygon(2% 0,98% 3%,100% 96%,3% 100%)}
 .tape--hot{background:var(--hot);color:#fff}
@@ -5149,7 +5329,11 @@ const CSS = `
 /* header */
 .hdr{max-width:960px;margin:0 auto;padding:1.4rem 1.15rem .6rem}
 .hdr__row{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
-.hdr__mark{display:flex;align-items:center;gap:.7rem}
+.hdr__mark{display:flex;align-items:center;gap:.7rem;background:none;border:none;padding:.2rem;
+  margin:-.2rem;cursor:pointer;border-radius:14px;font:inherit;color:inherit;text-align:left;
+  transition:opacity .16s ease, transform .12s ease}
+.hdr__mark:hover{opacity:.75}
+.hdr__mark:active{transform:scale(.97)}
 .profile{width:52px;height:52px;flex:0 0 auto;border-radius:50%;background:var(--surface);
   border:1px solid var(--rule-2);color:var(--plum);cursor:pointer;display:flex;
   align-items:center;justify-content:center;box-shadow:var(--shadow)}
@@ -5157,32 +5341,45 @@ const CSS = `
 .profile--on{background:var(--brick);border-color:var(--brick);color:#fff}
 .mise-mark{color:var(--brick);flex:0 0 auto}
 .hdr__word{display:flex;flex-direction:column;line-height:1;gap:.28rem}
-.hdr__logo{font-family:'Newsreader',serif;font-weight:600;font-size:1.85em;
+.hdr__logo{font-family:'Nunito',sans-serif;font-weight:600;font-size:1.85em;
   letter-spacing:-.015em;color:var(--navy);font-style:italic}
-.hdr__tag{font-family:'Archivo',sans-serif;font-weight:600;font-size:.62em;
+.hdr__tag{font-family:'Nunito',sans-serif;font-weight:600;font-size:.62em;
   letter-spacing:.24em;text-transform:uppercase;color:var(--plum)}
 
 /* nav */
-.nav{display:flex;gap:.25rem;overflow-x:auto;max-width:960px;margin:0 auto;padding:.55rem 1.15rem;
+.nav{display:flex;gap:.3rem;overflow-x:auto;max-width:960px;margin:0 auto;padding:.6rem 1.15rem;
   border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:5;
-  background:rgba(250,245,244,.92);backdrop-filter:blur(10px)}
-.nav__b{flex:0 0 auto;min-height:46px;padding:0 1rem;background:none;border:none;
-  font-family:'Archivo',sans-serif;font-weight:550;font-size:.94em;color:var(--muted);
-  cursor:pointer;border-radius:999px;position:relative}
+  background:rgba(250,245,244,.62);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+.nav__b{flex:0 0 auto;min-height:44px;padding:0 1.05rem;background:none;border:none;
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:.92em;color:var(--muted);
+  letter-spacing:-.005em;cursor:pointer;border-radius:16px;position:relative;
+  transition:background .16s ease, color .16s ease}
 .nav__b:hover{color:var(--ink)}
 .nav__dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--brick);
   margin-left:.35rem;vertical-align:middle}
-.nav__b--on{background:var(--surface);color:var(--brick);font-weight:650;
-  box-shadow:0 1px 2px rgba(30,20,30,.05), 0 4px 12px -6px rgba(87,60,86,.2)}
+.nav__b--on{background:var(--brick);color:#fff;font-weight:800;
+  box-shadow:var(--spec), 0 4px 14px -6px rgba(180,71,34,.65)}
 
 .main{max-width:960px;margin:0 auto;padding:1.15rem}
 .stack{display:flex;flex-direction:column;gap:1.1rem}
 .sec-h{margin-top:.4rem}
 
 /* cards */
-.card{background:var(--surface);border:none;border-radius:20px;padding:1.5rem 1.35rem;
-  box-shadow:var(--shadow)}
-.card--big{padding:2rem 1.6rem;border-radius:26px;box-shadow:var(--shadow-lift)}
+.card{background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);
+  backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-rim);border-radius:26px;
+  padding:1.5rem 1.35rem;box-shadow:var(--spec), var(--lift-1)}
+/* Larger surfaces get a larger radius so corners stay visually concentric
+   with the elements nested inside them rather than fighting them. */
+.card--big{padding:2rem 1.6rem;border-radius:32px;box-shadow:var(--spec), var(--lift-2)}
+.hero{text-align:center;padding:.6rem 0 .4rem;max-width:34rem;margin:0 auto}
+.hero__mark{display:flex;justify-content:center;margin-bottom:1rem}
+.hero__mark .mise-av{filter:drop-shadow(0 10px 20px rgba(180,71,34,.28))}
+.hero__h{font-size:1.7em;line-height:1.22;letter-spacing:-.02em;margin:0}
+.hero__sub{margin-top:.9rem;font-size:1.06em;color:var(--ink-2);line-height:1.55}
+.row--center{justify-content:center}
+@media(min-width:640px){.hero__h{font-size:2.1em}}
 /* Not everything needs to be a box. Some sections sit straight on the paper. */
 .card--flat{background:none;box-shadow:none;padding:0}
 .card--flat > h2{margin-bottom:.2rem}
@@ -5199,33 +5396,56 @@ const CSS = `
 .hint--center{text-align:center;margin-top:1.1rem;max-width:none}
 .row{display:flex;gap:.65rem;flex-wrap:wrap;margin-top:1rem;align-items:center}
 
-/* buttons */
-.btn{font-family:'Archivo',sans-serif;font-weight:650;font-size:1em;letter-spacing:-.005em;
-  border-radius:999px;padding:.8rem 1.4rem;min-height:52px;cursor:pointer;
-  border:1.5px solid var(--brick);background:var(--brick);color:#fff;
-  box-shadow:0 1px 2px rgba(30,20,30,.06);transition:transform .12s ease, box-shadow .12s ease}
-.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 16px -6px rgba(180,71,34,.5)}
-.btn:active:not(:disabled){transform:scale(.97);box-shadow:0 1px 2px rgba(30,20,30,.06)}
-.btn--ghost{background:transparent;color:var(--plum);border-color:var(--rule-2);box-shadow:none}
-.btn--ghost:hover:not(:disabled){background:var(--sunk);box-shadow:none;transform:none}
-.btn--hot{background:var(--hot);border-color:var(--hot);color:#fff}
-.btn--good{background:var(--good);border-color:var(--good);color:#fff}
+/* buttons — a solid top face sitting on a darker edge, so pressing physically
+   pushes the face down onto it. Everything else in this redesign follows from
+   the same idea: objects with thickness, not flat rectangles with soft shadows.
+   The 4px offset is the whole effect; keeping it in the layout (rather than as
+   an outer shadow) is what makes the press feel like real displacement. */
+.btn{font-family:'Nunito',system-ui,sans-serif;font-weight:700;font-size:1em;
+  letter-spacing:-.005em;
+  border-radius:18px;padding:.75rem 1.5rem;min-height:52px;cursor:pointer;
+  border:none;background:var(--brick);color:#fff;
+  box-shadow:0 2px 0 var(--brick-edge), var(--spec), var(--lift-1);
+  transition:transform .14s cubic-bezier(.3,.8,.4,1), box-shadow .14s ease, filter .16s ease}
+.btn:hover:not(:disabled){filter:brightness(1.05)}
+.btn:active:not(:disabled){transform:translateY(2px);
+  box-shadow:0 0 0 var(--brick-edge), var(--spec)}
+.btn--ghost{background:var(--glass-strong);color:var(--plum);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border:1px solid var(--rule-2);
+  box-shadow:0 2px 0 var(--surface-edge), var(--spec), var(--lift-1)}
+.btn--ghost:active:not(:disabled){transform:translateY(2px);
+  box-shadow:0 0 0 var(--surface-edge), var(--spec)}
+.btn--hot{background:var(--hot);box-shadow:0 2px 0 var(--brick-edge), var(--spec), var(--lift-1)}
+.btn--good{background:var(--good);box-shadow:0 2px 0 var(--good-edge), var(--spec), var(--lift-1)}
+.btn--good:active:not(:disabled){transform:translateY(2px);
+  box-shadow:0 0 0 var(--good-edge), var(--spec)}
 .btn--wide{width:100%}
-.btn--sm{min-height:46px;padding:.6rem .85rem;font-size:.92em}
+.btn--sm{min-height:46px;padding:.55rem .95rem;font-size:.86em;border-radius:14px}
+/* The press animation is displacement, not decoration — but honor the setting. */
+@media(prefers-reduced-motion:reduce){.btn{transition:none}}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .linkish{background:none;border:none;color:var(--ink);text-decoration:underline;cursor:pointer;
-  font-family:'Archivo',sans-serif;font-size:.9em;padding:.6rem 0;min-height:44px;text-align:left}
+  font-family:'Nunito',sans-serif;font-size:.9em;padding:.6rem 0;min-height:44px;text-align:left}
 
 /* chips */
-.chip{display:flex;flex-direction:column;gap:.15rem;text-align:left;background:var(--surface);
-  border:1px solid var(--rule);border-radius:16px;padding:.75rem .95rem;min-height:52px;
-  font-family:'Archivo',sans-serif;font-weight:500;font-size:.95em;color:var(--ink-2);
-  cursor:pointer;width:100%;transition:background .12s ease, border-color .12s ease, transform .12s ease}
-.chip:hover{border-color:var(--rule-2)}
-.chip:active{transform:scale(.97)}
+.chip{display:flex;flex-direction:column;gap:.15rem;text-align:left;
+  background:var(--glass-strong);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
+  border:1px solid var(--rule-2);border-radius:18px;padding:.8rem 1rem;min-height:56px;
+  font-family:'Nunito',system-ui,sans-serif;font-weight:700;font-size:.95em;color:var(--ink-2);
+  cursor:pointer;width:100%;box-shadow:0 2px 0 var(--surface-edge), var(--spec), var(--lift-1);
+  transition:transform .14s cubic-bezier(.3,.8,.4,1), box-shadow .14s ease,
+    background .16s ease, border-color .16s ease}
+.chip:hover{border-color:var(--rose)}
+.chip:active{transform:translateY(2px);box-shadow:0 0 0 var(--surface-edge), var(--spec)}
 /* active is a warm tint with a brick edge, not a slab of black */
-.chip--on{background:#FBEAE8;color:var(--brick);border-color:var(--brick);font-weight:650}
-.chip__main{font-weight:600}
+/* Selected state tints the glass rather than replacing it with a flat fill —
+   the material stays visible, it just takes on the accent colour. */
+.chip--on{background:rgba(238,146,101,.20);color:var(--brick);border-color:var(--brick);
+  font-weight:800;box-shadow:0 2px 0 var(--rose), var(--spec), var(--lift-1)}
+.chip--on:active{box-shadow:0 0 0 var(--rose), var(--spec)}
+.chip__main{font-weight:800}
 .chip__sub{font-size:.82em;opacity:.75}
 .grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.55rem;margin-top:1rem}
 /* a heading following a group of controls needs air */
@@ -5240,7 +5460,7 @@ const CSS = `
 .scale__o:active{transform:scale(.98)}
 /* warm tint + brick edge, matching .chip--on — not an inverted black block */
 .scale__o--on{background:#FBEAE8;color:var(--brick);border-color:var(--brick);font-weight:650}
-.scale__label{font-family:'Archivo',sans-serif;font-weight:700;font-size:1.02em}
+.scale__label{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.02em}
 .scale__note{font-size:.9em;opacity:.8}
 
 /* fields */
@@ -5264,10 +5484,10 @@ const CSS = `
 .card > .btn:last-child{margin-top:1rem}
 h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .field--hi{border-left:4px solid var(--hot);padding-left:.85rem}
-.field label{font-family:'Archivo',sans-serif;font-weight:600;font-size:.87em;color:var(--muted)}
+.field label{font-family:'Nunito',sans-serif;font-weight:600;font-size:.87em;color:var(--muted)}
 .app input[type=text],.app textarea,.app select{width:100%;background:var(--surface);color:var(--ink);
   border:1px solid var(--rule-2);border-radius:14px;padding:.75rem .95rem;
-  font-family:'Newsreader',serif;font-size:1em;min-height:52px;
+  font-family:'Nunito',sans-serif;font-size:1em;min-height:52px;
   transition:border-color .12s ease, box-shadow .12s ease}
 .app input[type=text]:focus,.app textarea:focus,.app select:focus{border-color:var(--brick);
   box-shadow:0 0 0 4px rgba(180,71,34,.12);outline:none}
@@ -5278,26 +5498,73 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   border:1px solid var(--rule);border-radius:18px;width:fit-content;background:var(--surface)}
 .stepper button{width:60px;height:60px;background:none;border:none;font-size:1.7em;cursor:pointer;color:var(--ink)}
 .stepper span{min-width:3rem;text-align:center;font-size:1.5em;font-weight:600;
-  font-family:'Archivo',sans-serif}
+  font-family:'Nunito',sans-serif}
 /* per-night headcounts */
 .counts{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.5rem;margin-top:.9rem}
 .count{display:flex;align-items:center;justify-content:space-between;gap:.6rem;
   background:var(--sunk);border-radius:16px;padding:.5rem .6rem .5rem 1rem}
-.count__day{font-family:'Archivo',sans-serif;font-weight:600;font-size:.95em}
+.count__day{font-family:'Nunito',sans-serif;font-weight:600;font-size:.95em}
 .count__ctl{display:flex;align-items:center;background:var(--surface);border-radius:999px;
   border:1px solid var(--rule)}
 .count__ctl button{width:44px;height:44px;background:none;border:none;font-size:1.3em;
   cursor:pointer;color:var(--plum);border-radius:999px}
-.count__ctl span{min-width:1.9rem;text-align:center;font-family:'Archivo',sans-serif;
+.count__ctl span{min-width:1.9rem;text-align:center;font-family:'Nunito',sans-serif;
   font-weight:700;font-size:1.05em}
 
 /* wizard */
-.progress{background:var(--surface);padding:.9rem 1.1rem;border-radius:20px;box-shadow:var(--shadow)}
-.progress__t{font-family:'Archivo',sans-serif;font-weight:700;margin:0}
-.progress__bar{height:10px;background:var(--sunk);margin-top:.6rem;border-radius:999px;overflow:hidden}
-.progress__bar span{display:block;height:100%;border-radius:999px;background:var(--hot);
-  transition:width .2s ease-out}
+.progress{background:none;padding:.2rem .3rem;border-radius:0;box-shadow:none}
+.progress__segs{display:flex;gap:.3rem;align-items:center}
+.progress__seg{flex:1;height:5px;border-radius:999px;background:rgba(87,60,86,.16);
+  transition:background .3s ease, box-shadow .3s ease}
+.progress__seg--done{background:var(--rose)}
+.progress__seg--now{background:var(--brick);box-shadow:0 0 0 3px rgba(180,71,34,.14)}
+.progress__t{font-family:'Nunito',sans-serif;margin:.65rem 0 0;display:flex;gap:.5rem;
+  align-items:baseline;flex-wrap:wrap}
+.progress__n{font-weight:800;font-size:.82em;color:var(--brick);letter-spacing:.02em;
+  text-transform:uppercase}
+.progress__label{font-weight:700;font-size:.95em;color:var(--ink-2)}
+.progress__bar span::after{content:"";position:absolute;left:6px;right:6px;top:2px;height:3px;
+  border-radius:999px;background:rgba(255,255,255,.35)}
 .wiz{display:flex;gap:.65rem;margin-top:1.6rem;flex-wrap:wrap;align-items:center}
+
+/* Onboarding motion. Everything here respects prefers-reduced-motion at the
+   bottom of this block — motion should help people understand where they are,
+   not be imposed on someone who's asked their device not to. */
+@keyframes stepIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.stepin{animation:stepIn .32s cubic-bezier(.22,.9,.3,1) both}
+
+@keyframes recapIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.kitrecap{list-style:none;padding:0;margin:1.2rem 0 0;display:flex;flex-direction:column;gap:.7rem;
+  background:none;border:none}
+.kitrecap__i{background:var(--sunk);border-left:3px solid var(--brick);border-radius:4px 14px 14px 4px;
+  padding:.85rem 1rem;line-height:1.5;animation:recapIn .4s cubic-bezier(.22,.9,.3,1) both}
+
+/* Pinned so the tap target is in the same place on every step, regardless of
+   how tall that step's content happens to be. */
+.wizbar{position:fixed;left:0;right:0;bottom:0;z-index:26;padding:.7rem .9rem .85rem;
+  height:104px;display:flex;flex-direction:column;justify-content:flex-start;
+  background:linear-gradient(180deg,rgba(255,249,247,0),rgba(255,249,247,.97) 34%);
+  backdrop-filter:blur(6px);box-sizing:border-box}
+.wizbar__in{width:100%;max-width:720px;margin:0 auto;display:flex;gap:.65rem;align-items:center;
+  box-sizing:border-box}
+.wizbar__in .btn{flex:1}
+.wizbar__in .btn--ghost{flex:0 0 auto}
+.wizbar .hint--save{max-width:720px;margin:.45rem auto 0;text-align:center}
+.wizbar__cap{margin:.45rem auto 0}
+.dots{display:flex;gap:.45rem;justify-content:center;margin-top:1.1rem}
+.dots__d{width:7px;height:7px;border-radius:999px;background:var(--rule);transition:all .3s ease}
+.dots__d--on{background:var(--brick);width:22px}
+
+/* The pinned bar floats over content, so the last step needs room to clear it
+   or its final lines sit underneath and can't be read. */
+.wiz-pad{padding-bottom:8.5rem}
+
+.progress__bar span{transition:width .45s cubic-bezier(.22,.9,.3,1)}
+
+@media(prefers-reduced-motion:reduce){
+  .stepin,.recap__i{animation:none}
+  .progress__bar span{transition:none}
+}
 
 /* recap */
 .recap{background:var(--sunk);border:1px solid var(--rule);padding:1.15rem;margin-top:1.2rem;border-radius:18px}
@@ -5306,19 +5573,19 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .recap__list{list-style:none;padding:0;margin:.8rem 0 0}
 .recap__list li{display:flex;justify-content:space-between;gap:1rem;padding:.6rem 0;
   border-bottom:1px solid var(--rule);flex-wrap:wrap}
-.recap__list span{color:var(--muted);font-family:'Archivo',sans-serif;font-size:.9em}
+.recap__list span{color:var(--muted);font-family:'Nunito',sans-serif;font-size:.9em}
 .recap__list strong{text-align:right}
 
 /* ecosystem */
 .eco__toggle{display:flex;align-items:center;justify-content:space-between;gap:1rem;width:100%;
   background:none;border:none;color:inherit;cursor:pointer;padding:0;min-height:48px;
-  font-family:'Archivo',sans-serif;font-weight:700;font-size:1.28em;letter-spacing:-.02em;text-align:left}
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:1.28em;letter-spacing:-.02em;text-align:left}
 .eco__toggle .fold__chev{color:inherit}
 .card--dark-shut{padding-bottom:1.1rem}
 .eco{list-style:none;margin:.9rem 0 0;padding:0}
 .eco li{display:flex;justify-content:space-between;gap:1rem;padding:.55rem 0;
   border-bottom:1px solid rgba(255,255,255,.18)}
-.eco span{font-family:'Archivo',sans-serif;font-size:.9em;opacity:.75;flex:0 0 auto}
+.eco span{font-family:'Nunito',sans-serif;font-size:.9em;opacity:.75;flex:0 0 auto}
 .eco strong{min-width:0;text-align:right;overflow-wrap:anywhere}
 .eco__why{font-style:italic;margin-top:.9rem}
 
@@ -5329,23 +5596,27 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .bub--mise{background:var(--surface);border:1px solid var(--rule);
   border-top-left-radius:7px;box-shadow:inset 3px 0 0 var(--rose), var(--shadow)}
 .bub--me{background:var(--indigo);color:#F4F1F8;align-self:flex-end;border-bottom-right-radius:7px}
-.bub__who{font-family:'Archivo',sans-serif;font-weight:650;font-size:.8em;color:var(--brick);
+.bub__who{font-family:'Nunito',sans-serif;font-weight:650;font-size:.8em;color:var(--brick);
   letter-spacing:.02em}
 .bub__can{font-size:.92em;color:var(--muted);font-style:italic}
 .bub--me .bub__who{color:#B9C9C1}
 
 /* dish cards */
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.9rem}
-.dish{background:var(--surface);border:1px solid var(--rule);border-radius:20px;padding:1.4rem 1.3rem;
-  box-shadow:var(--shadow);transition:box-shadow .16s ease, transform .16s ease}
-.dish:hover{box-shadow:var(--shadow-lift);transform:translateY(-2px)}
-.dish:active{transform:scale(.99)}
+.dish{background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);
+  backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-rim);border-radius:24px;
+  padding:1.4rem 1.3rem;box-shadow:var(--spec), var(--lift-1);
+  transition:transform .16s cubic-bezier(.3,.8,.4,1), box-shadow .16s ease, border-color .16s ease}
+.dish:hover{border-color:rgba(238,146,101,.7);box-shadow:var(--spec), var(--lift-2);
+  transform:translateY(-2px)}
 .dish h3{font-size:1.24em}
-.dish--yes{border-color:rgba(47,107,84,.45);background:linear-gradient(180deg,#F3FAF6,#fff 46%)}
+.dish--yes{border-color:rgba(47,107,84,.65);background:rgba(214,240,227,.55);
+  box-shadow:var(--spec), 0 2px 8px rgba(47,107,84,.14), 0 16px 40px -18px rgba(47,107,84,.5)}
 .dish--no{opacity:.5}
 .dish__b{font-size:1em}
 .dish__why{color:var(--ink-2);font-style:italic}
-.dish__meta{font-family:'Archivo',sans-serif;font-size:.86em;color:var(--blade)}
+.dish__meta{font-family:'Nunito',sans-serif;font-size:.86em;color:var(--blade)}
 .dish__acts{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.9rem}
 .dish__note{margin-top:.5rem}
 .dish__more{display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
@@ -5360,7 +5631,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .opt:hover{border-color:var(--brick);transform:translateY(-1px)}
 .opt:active{transform:scale(.98)}
 .opt--best{border-color:rgba(47,107,84,.5);background:linear-gradient(180deg,#F3FAF6,#fff 60%)}
-.opt__lab{font-family:'Archivo',sans-serif;font-weight:700;font-size:1.02em}
+.opt__lab{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.02em}
 .opt__lab em{color:var(--good);font-style:normal;font-weight:600;font-size:.86em}
 .opt__what{font-size:.97em}
 .opt__cost{font-size:.9em;color:var(--blade)}
@@ -5376,7 +5647,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .swapbox__hd > div{flex:1;min-width:0}
 .swapbox__hd h2{font-size:1.25em}
 .swap{flex:0 0 auto;min-height:36px;padding:0 .8rem;background:var(--sunk);border:1px solid transparent;
-  border-radius:999px;font-family:'Archivo',sans-serif;font-size:.8em;color:var(--plum);cursor:pointer}
+  border-radius:999px;font-family:'Nunito',sans-serif;font-size:.8em;color:var(--plum);cursor:pointer}
 .swap:hover{border-color:var(--brick);color:var(--brick)}
 
 /* week */
@@ -5405,12 +5676,12 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .row2__face{display:flex;align-items:center;gap:.5rem;min-height:52px;padding:.55rem .5rem .55rem 0;
   background:none;border:none;text-align:left;cursor:pointer;color:inherit;width:100%;min-width:0}
 .row2__text{flex:1;min-width:0;line-height:1.35;overflow-wrap:anywhere}
-.row2__qty{font-family:'Archivo',sans-serif;font-weight:700;font-size:.92em;color:var(--plum);
+.row2__qty{font-family:'Nunito',sans-serif;font-weight:700;font-size:.92em;color:var(--plum);
   margin-right:.45rem;white-space:nowrap}
 .row2__name{font-size:1em}
-.row2__soon{flex:0 0 auto;font-family:'Archivo',sans-serif;font-size:.76em;font-weight:700;
+.row2__soon{flex:0 0 auto;font-family:'Nunito',sans-serif;font-size:.76em;font-weight:700;
   color:var(--warn);background:var(--warn-bg);padding:.2rem .5rem;border-radius:999px}
-.row2__got{flex:0 0 auto;font-family:'Archivo',sans-serif;font-size:.76em;font-weight:700;
+.row2__got{flex:0 0 auto;font-family:'Nunito',sans-serif;font-size:.76em;font-weight:700;
   color:var(--good)}
 .row2__edit{grid-column:1/3;padding:.2rem .7rem .9rem}
 .row2__fields{display:flex;gap:.45rem;align-items:flex-start}
@@ -5438,15 +5709,15 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .line input[type=text]{min-width:0;max-width:100%}
 /* Only rendered when the item is actually near its limit — a shelf life on every
    row was the main thing making the list feel crowded. */
-.line__days--soon{font-family:'Archivo',sans-serif;font-size:.8em;font-weight:650;
+.line__days--soon{font-family:'Nunito',sans-serif;font-size:.8em;font-weight:650;
   color:var(--warn);background:var(--warn-bg);padding:.25rem .6rem;border-radius:999px;
   white-space:nowrap}
 .line__have,.line__x{min-height:40px;padding:0 .8rem;background:var(--surface);
-  border:1px solid var(--rule-2);font-family:'Archivo',sans-serif;font-size:.84em;
+  border:1px solid var(--rule-2);font-family:'Nunito',sans-serif;font-size:.84em;
   cursor:pointer;color:var(--muted);border-radius:999px;white-space:nowrap}
 .line__have--on{background:var(--good);color:#fff;border-color:var(--good)}
 .line__swap{min-height:40px;padding:0 .8rem;background:var(--sunk);border:1px solid transparent;
-  border-radius:999px;font-family:'Archivo',sans-serif;font-size:.84em;color:var(--plum);
+  border-radius:999px;font-family:'Nunito',sans-serif;font-size:.84em;color:var(--plum);
   cursor:pointer;white-space:nowrap}
 .line__swap:hover{border-color:var(--brick);color:var(--brick)}
 .line__jobs{grid-row:4;grid-column:2;color:var(--muted);font-size:.86em;margin:.1rem 0 0;
@@ -5463,14 +5734,14 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* A visible seam: everything below this is for after dinner, not before. */
 .later{margin:2.6rem 0 -.4rem;border-top:2px dashed var(--rule-2);position:relative;height:0}
 .later__tab{position:absolute;top:-.85rem;left:50%;transform:translateX(-50%);
-  background:var(--paper);padding:0 .9rem;font-family:'Archivo',sans-serif;font-weight:600;
+  background:var(--paper);padding:0 .9rem;font-family:'Nunito',sans-serif;font-weight:600;
   font-size:.86em;color:var(--muted);white-space:nowrap}
 .card--later{background:var(--sunk);box-shadow:none;border:1px solid var(--rule)}
 .fold{padding:0;overflow:hidden}
 .fold__hd{display:flex;align-items:center;justify-content:space-between;gap:1rem;width:100%;
   background:none;border:none;cursor:pointer;padding:1.25rem 1.35rem;text-align:left;min-height:68px}
 .fold__t{display:flex;flex-direction:column;gap:.15rem;min-width:0}
-.fold__h2{font-family:'Archivo',sans-serif;font-weight:700;font-size:1.28em;color:var(--navy);
+.fold__h2{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.28em;color:var(--navy);
   letter-spacing:-.02em}
 .fold__note{font-size:.92em;color:var(--muted);font-style:italic}
 .fold__chev{font-size:1.1em;color:var(--plum);flex:0 0 auto;transition:transform .16s ease}
@@ -5490,10 +5761,10 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   display:flex;flex-direction:column;gap:.5rem;box-shadow:var(--shadow)}
 .hstep--done{background:linear-gradient(180deg,#F3FAF6,#fff 50%);border-color:rgba(47,107,84,.4)}
 .hstep__top{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
-.hstep__n{font-family:'Archivo',sans-serif;font-weight:700;font-size:1.5em;color:var(--rose)}
+.hstep__n{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.5em;color:var(--rose)}
 .hstep--done .hstep__n{color:var(--good)}
 .hstep__tick{min-height:38px;padding:0 .8rem;background:none;border:1px solid var(--rule-2);
-  border-radius:999px;font-family:'Archivo',sans-serif;font-size:.82em;color:var(--plum);cursor:pointer}
+  border-radius:999px;font-family:'Nunito',sans-serif;font-size:.82em;color:var(--plum);cursor:pointer}
 .hstep--done .hstep__tick{background:var(--good);border-color:var(--good);color:#fff}
 .hstep__do{margin:0;font-size:1.06em;line-height:1.5}
 .hstep__why{margin:0;font-style:italic;color:var(--ink-2);font-size:.95em;
@@ -5505,7 +5776,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .step p{margin:0}
 .step--done{opacity:.5}
 .step__tick{flex:0 0 auto;width:46px;height:46px;border:1.5px solid var(--rule-2);background:var(--surface);
-  font-family:'Archivo',sans-serif;font-weight:650;font-size:1em;cursor:pointer;border-radius:50%;
+  font-family:'Nunito',sans-serif;font-weight:650;font-size:1em;cursor:pointer;border-radius:50%;
   color:var(--plum)}
 .step--done .step__tick{background:var(--good);border-color:var(--good);color:#fff}
 .step__why{font-style:italic;color:var(--ink-2);font-size:.94em;margin-top:.35rem!important}
@@ -5523,7 +5794,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .shotbtn{display:flex;flex-direction:column;gap:.15rem;align-items:flex-start;cursor:pointer;
   background:var(--surface);border:1px dashed var(--rule-2);border-radius:16px;
   padding:.85rem 1.1rem;min-height:60px;justify-content:center;
-  font-family:'Archivo',sans-serif;font-weight:650;color:var(--plum);text-transform:none;
+  font-family:'Nunito',sans-serif;font-weight:650;color:var(--plum);text-transform:none;
   letter-spacing:0;font-size:1em}
 .shotbtn:hover{border-color:var(--brick);color:var(--brick)}
 .shotbtn__sub{font-weight:400;font-size:.82em;color:var(--muted)}
@@ -5553,16 +5824,16 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .hist__blurb{color:var(--muted);font-weight:400}
 .hist__rating{margin-top:.25rem;font-size:1.05em;letter-spacing:.1em;color:var(--brick)}
 .hist__dim{color:var(--rule-2)}
-.hist__when{margin-left:.5rem;font-family:'Archivo',sans-serif;font-size:.8em;color:var(--muted)}
+.hist__when{margin-left:.5rem;font-family:'Nunito',sans-serif;font-size:.8em;color:var(--muted)}
 .hist__tag{display:inline-block;margin-left:.5rem;background:var(--sunk);color:var(--plum);
-  font-family:'Archivo',sans-serif;font-size:.72em;font-weight:650;letter-spacing:.04em;
+  font-family:'Nunito',sans-serif;font-size:.72em;font-weight:650;letter-spacing:.04em;
   text-transform:uppercase;padding:.18rem .5rem;border-radius:999px;vertical-align:middle}
-.hist__unrated{font-family:'Archivo',sans-serif;font-size:.82em;color:var(--muted);
+.hist__unrated{font-family:'Nunito',sans-serif;font-size:.82em;color:var(--muted);
   letter-spacing:.04em;text-transform:uppercase}
 .hist__note{color:var(--plum);font-style:italic;font-size:.94em;margin-top:.3rem}
 
 /* leftovers + favourites */
-.left__meta{font-family:'Archivo',sans-serif;font-size:.88em;color:var(--blade)}
+.left__meta{font-family:'Nunito',sans-serif;font-size:.88em;color:var(--blade)}
 .left__need{color:var(--warn);font-size:.95em}
 .left__uses{font-size:.95em}
 .left__warn{color:var(--hot);font-weight:600;font-size:.95em}
@@ -5620,11 +5891,11 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   position:sticky;top:0;z-index:3;background:rgba(255,249,247,.86);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--rule)}
 .cook__title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
-.cook__title strong{font-family:'Archivo',sans-serif;font-size:1.02em;color:var(--navy);
+.cook__title strong{font-family:'Nunito',sans-serif;font-size:1.02em;color:var(--navy);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cook__title span{font-size:.85em;color:var(--muted)}
 .cook__exit,.cook__vox{min-height:46px;padding:0 1rem;background:var(--surface);
-  border:1px solid var(--rule-2);color:var(--plum);font-family:'Archivo',sans-serif;
+  border:1px solid var(--rule-2);color:var(--plum);font-family:'Nunito',sans-serif;
   font-weight:650;font-size:.9em;cursor:pointer;border-radius:999px;flex:0 0 auto}
 .cook__vox--on{background:var(--brick);border-color:var(--brick);color:#fff}
 .cook__vox--na{border-style:dashed;color:var(--muted);display:flex;align-items:center}
@@ -5633,7 +5904,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .cook__body--mid{display:flex;flex-direction:column;align-items:center;text-align:center;
   justify-content:center;gap:.6rem}
 
-.cook__kicker{font-family:'Archivo',sans-serif;font-weight:700;font-size:.92em;color:var(--brick);
+.cook__kicker{font-family:'Nunito',sans-serif;font-weight:700;font-size:.92em;color:var(--brick);
   text-transform:uppercase;letter-spacing:.1em;margin:0}
 .cook__h{font-size:2.1em;margin-top:.35rem;color:var(--navy);letter-spacing:-.03em}
 .cook__lead{color:var(--ink-2);max-width:46ch;font-size:1.05em}
@@ -5652,7 +5923,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 
 .cook__acts{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.7rem}
 .cbtn{min-height:52px;padding:0 1.2rem;background:var(--surface);border:1px solid var(--rule-2);
-  color:var(--plum);font-family:'Archivo',sans-serif;font-weight:650;font-size:.95em;
+  color:var(--plum);font-family:'Nunito',sans-serif;font-weight:650;font-size:.95em;
   cursor:pointer;border-radius:999px;transition:transform .12s ease}
 .cbtn:hover{transform:translateY(-1px);border-color:var(--brick);color:var(--brick)}
 .cbtn:active{transform:scale(.96)}
@@ -5676,10 +5947,10 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .cook__all{margin:1rem 0 0;padding:0;list-style:none;border-top:1px solid var(--rule)}
 .cook__all li{border-bottom:1px solid var(--rule)}
 .cook__all button{display:flex;gap:.8rem;width:100%;text-align:left;background:none;border:none;
-  color:var(--ink-2);padding:1rem .2rem;font-family:'Newsreader',serif;font-size:1em;
+  color:var(--ink-2);padding:1rem .2rem;font-family:'Nunito',sans-serif;font-size:1em;
   cursor:pointer;min-height:54px}
 .cook__all li.on button{color:var(--navy);font-weight:600}
-.cook__all button span{font-family:'Archivo',sans-serif;font-weight:700;color:var(--brick);flex:0 0 1.6rem}
+.cook__all button span{font-family:'Nunito',sans-serif;font-weight:700;color:var(--brick);flex:0 0 1.6rem}
 
 /* prep checklist */
 .prepbar{position:fixed;left:0;right:0;bottom:0;z-index:26;padding:.7rem .9rem 1rem;
@@ -5688,13 +5959,13 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .prepbar__in{max-width:720px;margin:0 auto;display:flex;align-items:center;gap:.9rem;
   background:var(--surface);border:1px solid var(--rule);border-radius:999px;
   padding:.45rem .5rem .45rem 1.3rem;box-shadow:0 10px 30px -12px rgba(87,60,86,.45)}
-.prepbar__count{flex:1;min-width:0;font-family:'Archivo',sans-serif;font-weight:600;
+.prepbar__count{flex:1;min-width:0;font-family:'Nunito',sans-serif;font-weight:600;
   font-size:.94em;color:var(--muted)}
 .prepbar .btn{flex:0 0 auto}
 .prep{list-style:none;margin:1.4rem 0 0;padding:0;display:flex;flex-direction:column;gap:.55rem}
 .prep__b{display:flex;align-items:center;gap:.9rem;width:100%;text-align:left;min-height:64px;
   padding:.85rem 1.1rem;background:var(--surface);border:1px solid var(--rule);border-radius:18px;
-  color:var(--ink);font-family:'Newsreader',serif;font-size:1.08em;cursor:pointer;
+  color:var(--ink);font-family:'Nunito',sans-serif;font-size:1.08em;cursor:pointer;
   box-shadow:var(--shadow);transition:transform .12s ease}
 .prep__b:hover{transform:translateX(2px)}
 .prep__b:active{transform:scale(.98)}
@@ -5702,7 +5973,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   color:var(--good)}
 .prep__b em{color:var(--muted);font-size:.86em;font-style:normal}
 .prep__tick{flex:0 0 32px;height:32px;border:2px solid var(--rule-2);border-radius:50%;
-  display:flex;align-items:center;justify-content:center;font-family:'Archivo',sans-serif;font-weight:800}
+  display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:800}
 .prep__b--on .prep__tick{background:var(--good);border-color:var(--good);color:#fff}
 
 /* timers */
@@ -5726,31 +5997,31 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .ctimer__ctl{display:flex;gap:.3rem;padding:.15rem .45rem .5rem;flex-wrap:wrap}
 .ctimer__ctl button{min-height:42px;padding:0 .8rem;border-radius:999px;cursor:pointer;
   background:var(--sunk);border:1px solid var(--rule);color:var(--plum);
-  font-family:'Archivo',sans-serif;font-weight:650;font-size:.85em;white-space:nowrap}
+  font-family:'Nunito',sans-serif;font-weight:650;font-size:.85em;white-space:nowrap}
 .ctimer__ctl button:hover{border-color:var(--brick);color:var(--brick)}
 .ctimer__del{color:var(--brick)!important}
-.ctimer__clock{font-family:'Archivo',sans-serif;font-weight:800;font-size:1.25em;
+.ctimer__clock{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.25em;
   font-variant-numeric:tabular-nums;color:var(--navy)}
 .ctimer--done .ctimer__clock{color:var(--brick)}
 .ctimer__lab{font-size:.86em;color:var(--muted)}
 
 .ctimer__clear{flex:0 0 auto;min-height:46px;padding:0 1rem;background:none;
   border:1px dashed var(--rule-2);color:var(--plum);border-radius:999px;
-  font-family:'Archivo',sans-serif;cursor:pointer}
+  font-family:'Nunito',sans-serif;cursor:pointer}
 .cook__ding{flex:0 0 auto;margin:1rem;padding:1.15rem 1.3rem;background:var(--brick);color:#fff;
   border-radius:20px;display:flex;justify-content:space-between;align-items:center;gap:1rem;
   flex-wrap:wrap;box-shadow:0 14px 34px -14px rgba(180,71,34,.8)}
 .cook__ding p{margin:0}
 .cook__ding-acts{display:flex;gap:.5rem;flex-wrap:wrap}
 .cook__ding button{min-height:48px;padding:0 1.1rem;background:rgba(255,255,255,.16);
-  border:1px solid rgba(255,255,255,.5);color:#fff;font-family:'Archivo',sans-serif;
+  border:1px solid rgba(255,255,255,.5);color:#fff;font-family:'Nunito',sans-serif;
   font-weight:650;cursor:pointer;border-radius:999px}
 
 /* Mise, hovering */
 .cbubble{position:fixed;right:1rem;bottom:1.1rem;z-index:28;display:flex;align-items:center;
   gap:.6rem;padding:.45rem 1.25rem .45rem .5rem;border:none;border-radius:999px;cursor:pointer;
   background:linear-gradient(140deg,var(--brick),#8E3417);color:#fff;min-height:62px;
-  font-family:'Archivo',sans-serif;font-weight:700;font-size:1em;
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:1em;
   box-shadow:0 14px 34px -10px rgba(180,71,34,.75);transition:transform .12s ease}
 .cbubble:hover{transform:translateY(-2px)}
 .cbubble:active{transform:scale(.95)}
@@ -5762,13 +6033,13 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   box-shadow:0 -8px 50px rgba(87,60,86,.28)}
 @media(min-width:720px){.cask{left:auto;width:450px}}
 .cask__hd{display:flex;align-items:center;gap:.75rem}
-.cask__hd strong{display:block;font-family:'Archivo',sans-serif;font-size:1.08em;color:var(--navy)}
+.cask__hd strong{display:block;font-family:'Nunito',sans-serif;font-size:1.08em;color:var(--navy)}
 .cask__hd span{font-size:.86em;color:var(--muted)}
 .cask__hd > div{flex:1;min-width:0}
 .cask__plate{display:flex;background:var(--sunk);border-radius:50%;padding:4px;flex:0 0 auto}
 .cask__plate .mise-av{color:var(--navy)}
 .cask__x{min-height:44px;padding:0 1rem;background:var(--sunk);border:1px solid var(--rule);
-  color:var(--plum);border-radius:999px;cursor:pointer;font-family:'Archivo',sans-serif;font-size:.88em}
+  color:var(--plum);border-radius:999px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:.88em}
 .cask__say{background:var(--sunk);padding:.9rem 1.05rem;margin:.95rem 0 0;border-radius:20px;
   border-top-left-radius:7px;box-shadow:inset 3px 0 0 var(--rose);font-size:1em}
 .cask__qs{display:flex;gap:.45rem;overflow-x:auto;padding:.95rem 0 .2rem}
@@ -5784,8 +6055,8 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .cook__stats{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:1.1rem}
 .cook__stat{background:var(--surface);border:1px solid var(--rule);border-radius:16px;
   padding:.7rem 1.1rem;min-width:96px}
-.cook__stat b{display:block;font-family:'Archivo',sans-serif;font-size:1.5em;color:var(--brick)}
-.cook__stat span{font-size:.85em;color:var(--muted);font-family:'Archivo',sans-serif}
+.cook__stat b{display:block;font-family:'Nunito',sans-serif;font-size:1.5em;color:var(--brick)}
+.cook__stat span{font-size:.85em;color:var(--muted);font-family:'Nunito',sans-serif}
 
 @media print{.cook{display:none!important}}
 @media(max-width:560px){
@@ -5819,7 +6090,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .fab{position:fixed;right:1rem;bottom:1rem;z-index:20;
   background:linear-gradient(140deg,var(--brick),#8E3417);color:#fff;
   border:none;border-radius:999px;padding:.5rem 1.35rem .5rem .5rem;min-height:64px;
-  cursor:pointer;font-family:'Archivo',sans-serif;font-weight:700;font-size:1em;
+  cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;font-size:1em;
   box-shadow:0 10px 30px -8px rgba(180,71,34,.65);transition:transform .12s ease}
 .fab:hover{transform:translateY(-2px)}
 .fab:active{transform:scale(.95)}
@@ -5832,16 +6103,16 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   padding:.9rem 1.1rem;background:var(--indigo);color:#F4F1F8;
   border-radius:24px 24px 0 0}
 @media(min-width:760px){.sheet__hdr{border-radius:22px 22px 0 0}}
-.sheet__name{font-family:'Archivo',sans-serif;font-weight:800;font-size:1.2em}
-.sheet__role{font-family:'Archivo',sans-serif;font-size:.85em;opacity:.8;margin-left:.6rem}
+.sheet__name{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.2em}
+.sheet__role{font-family:'Nunito',sans-serif;font-size:.85em;opacity:.8;margin-left:.6rem}
 .sheet__x{min-height:46px;padding:0 1rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);
-  color:#F4F1F8;font-family:'Archivo',sans-serif;font-weight:600;font-size:.92em;cursor:pointer;
+  color:#F4F1F8;font-family:'Nunito',sans-serif;font-weight:600;font-size:.92em;cursor:pointer;
   border-radius:999px}
 .sheet__body{overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.7rem;flex:1}
 .sheet__hint{color:var(--muted);margin:0}
 .sheet__quick{display:flex;gap:.4rem;overflow-x:auto;padding:.6rem 1rem;border-top:1px solid var(--rule)}
 .quick{flex:0 0 auto;min-height:46px;padding:0 .95rem;background:var(--sunk);
-  border:1px solid transparent;font-family:'Archivo',sans-serif;font-size:.92em;
+  border:1px solid transparent;font-family:'Nunito',sans-serif;font-size:.92em;
   cursor:pointer;color:var(--plum);border-radius:999px}
 .quick:hover{border-color:var(--rule-2)}
 .sheet__foot{display:flex;gap:.5rem;padding:.8rem 1rem 1.1rem;border-top:1px solid var(--rule);align-items:center}
@@ -5863,7 +6134,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   border-radius:16px;box-shadow:var(--shadow-lift);animation:surfaceDown .22s ease-out}
 .alert p{margin:0}
 .alert .btn--ghost{background:transparent;color:#fff;border-color:#fff}
-.working{display:flex;align-items:center;gap:.6rem;font-family:'Archivo',sans-serif;
+.working{display:flex;align-items:center;gap:.6rem;font-family:'Nunito',sans-serif;
   font-weight:600;color:var(--ink-2);margin:0}
 .working__dots{display:inline-flex;gap:4px}
 .working__dots i{width:7px;height:7px;background:var(--rose);border-radius:50%;animation:p 1.1s infinite}
