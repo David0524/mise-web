@@ -159,10 +159,6 @@ const HISTORY_KEY = "mise:history-v1";
 
 /* Two tiers. Most work needs Sonnet; a few calls are short, low-stakes and
    summarising, where Haiku costs a third as much for input and reads the same. */
-/* Doctrine and the model call both live server-side in /api/chat now — the
-   browser can't hold the API key the way the artifact runtime could, and the
-   fallback ladder that lived here doesn't apply: that existed because the
-   artifact proxy's capabilities couldn't be verified. Thin client. */
 let SESSION_CONTEXT = "";
 
 async function callClaude(messages, opts = {}) {
@@ -170,23 +166,13 @@ async function callClaude(messages, opts = {}) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      messages,
-      tier: opts.tier || "main",
-      maxTokens: opts.maxTokens || 1000,
-      sessionContext: SESSION_CONTEXT,
+      messages, tier: opts.tier || "main",
+      maxTokens: opts.maxTokens || 1000, sessionContext: SESSION_CONTEXT,
     }),
   });
-
-  if (res.status === 402) {
-    window.location.href = "/pricing?reason=expired";
-    throw new Error("Redirecting to plans…");
-  }
-  if (res.status === 401) {
-    window.location.href = "/login?reason=expired";
-    throw new Error("Redirecting to sign in…");
-  }
+  if (res.status === 402) { window.location.href = "/pricing?reason=expired"; throw new Error("Redirecting to plans…"); }
+  if (res.status === 401) { window.location.href = "/login?reason=expired"; throw new Error("Redirecting to sign in…"); }
   if (!res.ok) throw new Error("Couldn't reach the kitchen just now. Give it another go in a moment.");
-
   const data = await res.json();
   return data.text || "";
 }
@@ -408,28 +394,96 @@ function drawCover(ctx, img, x, y, w, h, radius) {
   ctx.restore();
 }
 
+/* The same directional daylight the app sits in, rebuilt in canvas: warm high
+   left, cool low right, very low saturation. A shared card is the thing people
+   see before they ever open the app, so it shouldn't look like a different
+   product than the one it's advertising. */
 function shareBackground(ctx) {
-  const g = ctx.createLinearGradient(0, 0, SHARE_W, SHARE_H);
-  g.addColorStop(0, "#FFF9F7");
-  g.addColorStop(1, "#F7E6DF");
-  ctx.fillStyle = g;
+  ctx.fillStyle = "#FAF5F4";
   ctx.fillRect(0, 0, SHARE_W, SHARE_H);
 
-  const glow = ctx.createRadialGradient(SHARE_W * 0.1, -80, 40, SHARE_W * 0.1, -80, 900);
-  glow.addColorStop(0, "rgba(238,146,101,.34)");
-  glow.addColorStop(1, "rgba(238,146,101,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, SHARE_W, SHARE_H);
+  const pools = [
+    // sunlight through a window, high left — pale butter, almost white
+    [0.04, -0.04, 0.62, "rgba(255,247,228,.95)"],
+    // the cool daylight it sits in
+    [0.62, -0.06, 0.70, "rgba(233,241,247,.85)"],
+    // warm bounce off wood or stone, mid right
+    [1.00, 0.42, 0.46, "rgba(246,232,213,.75)"],
+    // cool shadow pooling low and right
+    [0.78, 1.06, 0.76, "rgba(205,214,224,.65)"],
+  ];
+  pools.forEach(([x, y, r, color]) => {
+    const cx = SHARE_W * x;
+    const cy = SHARE_H * y;
+    const rad = SHARE_W * r;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+    g.addColorStop(0, color);
+    g.addColorStop(1, color.replace(/[\d.]+\)$/, "0)"));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, SHARE_W, SHARE_H);
+  });
+}
+
+/* A glass pane: translucent fill, hairline rim, and the specular highlight
+   along the top that makes it read as lit material rather than a flat box.
+   Canvas has no backdrop blur, so the translucency does the work instead —
+   the daylight behind genuinely shows through. */
+function glassPanel(ctx, x, y, w, h, r) {
+  ctx.save();
+  roundRect(ctx, x, y + 6, w, h, r);
+  ctx.fillStyle = "rgba(87,60,86,.10)";
+  ctx.filter = "blur(12px)";
+  ctx.fill();
+  ctx.filter = "none";
+  ctx.restore();
+
+  roundRect(ctx, x, y, w, h, r);
+  ctx.fillStyle = "rgba(255,255,255,.62)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.85)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // specular top edge
+  ctx.save();
+  roundRect(ctx, x, y, w, h, r);
+  ctx.clip();
+  const spec = ctx.createLinearGradient(0, y, 0, y + 3);
+  spec.addColorStop(0, "rgba(255,255,255,.95)");
+  spec.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = spec;
+  ctx.fillRect(x, y, w, 3);
+  ctx.restore();
 }
 
 function shareFooter(ctx) {
-  drawMark(ctx, 80, SHARE_H - 132, 1.05, "#B44722");
+  drawMark(ctx, 96, SHARE_H - 134, 1.05, "#B44722");
   ctx.fillStyle = "#B44722";
-  ctx.font = "600 30px Nunito, system-ui, sans-serif";
-  ctx.fillText("Made with Mise", 168, SHARE_H - 96);
-  ctx.fillStyle = "#8A7B86";
-  ctx.font = "400 26px Nunito, system-ui, sans-serif";
-  ctx.fillText("a weekly cooking collaborator", 168, SHARE_H - 60);
+  ctx.font = "800 30px Nunito, system-ui, sans-serif";
+  ctx.fillText("Made with Mise", 184, SHARE_H - 98);
+  ctx.fillStyle = "#6E6472";
+  ctx.font = "600 26px Nunito, system-ui, sans-serif";
+  ctx.fillText("a weekly cooking collaborator", 184, SHARE_H - 62);
+}
+
+/* A small filled badge rather than bare coloured text. Returns its height so
+   the caller can space from its visual bottom edge — canvas draws text from the
+   BASELINE, which is what made the old spacing unpredictable: a fixed "y += 74"
+   after the eyebrow left a gap that silently changed with the title's font
+   size, since the title was shrunk for longer names. */
+function drawBadge(ctx, text, x, y, bg = "#B44722", fg = "#fff") {
+  ctx.font = "800 26px Nunito, system-ui, sans-serif";
+  const padX = 22;
+  const h = 48;
+  const w = ctx.measureText(text).width + padX * 2;
+  roundRect(ctx, x, y, w, h, h / 2);
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.fillStyle = fg;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x + padX, y + h / 2 + 1);
+  ctx.textBaseline = "alphabetic";
+  return h;
 }
 
 async function renderDishCard(dish, recipe, photo) {
@@ -440,82 +494,92 @@ async function renderDishCard(dish, recipe, photo) {
   shareBackground(ctx);
 
   const img = await loadImage(photo);
-  const M = 96;                    // margin
+  const M = 96;
   const maxW = SHARE_W - M * 2;
-  const footerTop = SHARE_H - 190; // everything must finish above the footer
+  const footerTop = SHARE_H - 200;
 
-  /* Measure first, then place. The old version started at a fixed y and hoped —
-     which left a photoless card two-thirds empty and pushed long titles into the
-     footer. Now the block is measured and centred in whatever space is free. */
-  ctx.font = "700 78px Nunito, system-ui, sans-serif";
+  /* Measure everything first, then place — so the block can be positioned as a
+     whole rather than accumulating drift down the card. */
+  ctx.font = "800 78px Nunito, system-ui, sans-serif";
   let titleSize = 78;
   let titleLines = wrapText(ctx, dish.title, maxW);
-  // Long titles step down a size rather than overflowing or being truncated.
   while (titleLines.length > (img ? 2 : 3) && titleSize > 46) {
     titleSize -= 8;
-    ctx.font = `700 ${titleSize}px Nunito, system-ui, sans-serif`;
+    ctx.font = `800 ${titleSize}px Nunito, system-ui, sans-serif`;
     titleLines = wrapText(ctx, dish.title, maxW);
   }
+  const titleLead = titleSize * 1.16;
 
-  ctx.font = "400 38px Nunito, system-ui, sans-serif";
+  ctx.font = "600 38px Nunito, system-ui, sans-serif";
   const blurbLines = wrapText(ctx, dish.blurb || "", maxW).slice(0, img ? 2 : 3);
-  const meta = [recipe?.servings, recipe?.time].filter(Boolean).join("  ·  ");
+  const blurbLead = 52;
+  const meta = [recipe?.servings, recipe?.time].filter(Boolean).join("   ·   ");
 
-  const titleH = titleLines.length * (titleSize + 10);
-  const blurbH = blurbLines.length * 52;
-  const blockH = 46 + titleH + (blurbH ? blurbH + 20 : 0) + (meta ? 60 : 0);
+  const BADGE_H = 48;
+  const GAP_BADGE_TITLE = 34;   // visual gaps, measured edge to edge
+  const GAP_TITLE_BLURB = 26;
+  const GAP_BLURB_META = 34;
+
+  const blockH =
+    BADGE_H + GAP_BADGE_TITLE +
+    titleLines.length * titleLead +
+    (blurbLines.length ? GAP_TITLE_BLURB + blurbLines.length * blurbLead : 0) +
+    (meta ? GAP_BLURB_META + 34 : 0);
 
   let photoBottom = 0;
   if (img) {
-    const ph = 620;
-    drawCover(ctx, img, M, 110, maxW, ph, 44);
-    photoBottom = 110 + ph;
+    /* The photo takes whatever height is left after the text, rather than a
+       fixed 604px. With a fixed height a two-line title pushed the metadata
+       line straight through the footer — the text always has to fit, so the
+       image is what gives. Clamped so it never gets so short it stops
+       reading as a photo. */
+    const TOP = 110;
+    const GAP_PHOTO_TEXT = 74;
+    const available = footerTop - TOP - GAP_PHOTO_TEXT - blockH;
+    const ph = Math.max(360, Math.min(620, available));
+    glassPanel(ctx, M - 18, TOP - 18, maxW + 36, ph + 36, 40);
+    drawCover(ctx, img, M, TOP, maxW, ph, 30);
+    photoBottom = TOP + ph;
   } else {
-    /* No photo: the dish name becomes the visual. A big soft panel behind the
-       text stops the card reading as an empty page with a caption on it. */
-    const panelTop = 150;
-    const panelH = footerTop - panelTop - 40;
-    ctx.fillStyle = "rgba(255,255,255,.55)";
-    roundRect(ctx, M - 24, panelTop, maxW + 48, panelH, 48);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(180,71,34,.16)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    drawMark(ctx, M + 4, panelTop + 62, 1.5, "rgba(180,71,34,.5)");
+    const panelTop = 132;
+    const panelH = footerTop - panelTop - 36;
+    glassPanel(ctx, M - 28, panelTop, maxW + 56, panelH, 44);
+    drawMark(ctx, M + 2, panelTop + 58, 1.6, "rgba(180,71,34,.5)");
   }
 
-  const spaceTop = img ? photoBottom + 56 : 150;
+  const spaceTop = img ? photoBottom + 74 : 132 + 150;
+  // With the photo sized to fit, the text block starts right below it rather
+  // than being centred in space that may not exist.
   const spaceH = footerTop - spaceTop;
-  let y = spaceTop + Math.max(0, (spaceH - blockH) / 2) + 46;
+  let y = spaceTop + Math.max(0, (spaceH - blockH) / 2);
 
-  ctx.fillStyle = "#B44722";
-  ctx.font = "700 30px Nunito, system-ui, sans-serif";
-  ctx.fillText("I COOKED THIS", M, y);
-  y += 74;
+  // Badge sits at y; everything after spaces from its visual bottom edge.
+  drawBadge(ctx, "I COOKED THIS", M, y);
+  y += BADGE_H + GAP_BADGE_TITLE;
 
   ctx.fillStyle = "#12141C";
-  ctx.font = `700 ${titleSize}px Nunito, system-ui, sans-serif`;
-  for (const line of titleLines) {
-    ctx.fillText(line, M, y);
-    y += titleSize + 10;
-  }
+  ctx.font = `800 ${titleSize}px Nunito, system-ui, sans-serif`;
+  titleLines.forEach((line, i) => {
+    // First line drawn at its own baseline, which sits titleSize below the top.
+    ctx.fillText(line, M, y + titleSize * 0.82 + i * titleLead);
+  });
+  y += titleLines.length * titleLead;
 
   if (blurbLines.length) {
-    y += 14;
+    y += GAP_TITLE_BLURB;
     ctx.fillStyle = "#4A4453";
-    ctx.font = "400 38px Nunito, system-ui, sans-serif";
-    for (const line of blurbLines) {
-      ctx.fillText(line, M, y);
-      y += 52;
-    }
+    ctx.font = "600 38px Nunito, system-ui, sans-serif";
+    blurbLines.forEach((line, i) => {
+      ctx.fillText(line, M, y + 30 + i * blurbLead);
+    });
+    y += blurbLines.length * blurbLead;
   }
 
   if (meta) {
-    y += 34;
-    ctx.fillStyle = "#8A7B86";
-    ctx.font = "600 30px Nunito, system-ui, sans-serif";
-    ctx.fillText(meta, M, y);
+    y += GAP_BLURB_META;
+    ctx.fillStyle = "#6E6472";
+    ctx.font = "700 30px Nunito, system-ui, sans-serif";
+    ctx.fillText(meta, M, y + 24);
   }
 
   shareFooter(ctx);
@@ -534,9 +598,12 @@ async function renderWeekCard(dishes, ecosystem) {
   const maxW = SHARE_W - listX - M;
   const footerTop = SHARE_H - 190;
 
-  ctx.fillStyle = "#B44722";
-  ctx.font = "700 30px Nunito, system-ui, sans-serif";
-  ctx.fillText("THIS WEEK I'M COOKING", M, 150);
+  // The list sits on a glass pane so the daylight behind it stays visible
+  // rather than the whole card reading as flat paper.
+  glassPanel(ctx, M - 28, 96, SHARE_W - (M - 28) * 2, SHARE_H - 96 - 210, 44);
+
+  // Same badge treatment as the dish card, so the two read as a set.
+  drawBadge(ctx, "THIS WEEK I'M COOKING", M, 142);
 
   /* Fit the list to the space rather than trusting a fixed size — five long
      titles used to run straight through the footer. Step the type down until it
@@ -569,7 +636,7 @@ async function renderWeekCard(dishes, ecosystem) {
     layout = measure();
   }
 
-  let y = 240;
+  let y = 268;
   layout.rows.forEach((r) => {
     ctx.fillStyle = "#EE9265";
     ctx.beginPath();
@@ -577,7 +644,7 @@ async function renderWeekCard(dishes, ecosystem) {
     ctx.fill();
 
     ctx.fillStyle = "#12141C";
-    ctx.font = `700 ${size}px Nunito, system-ui, sans-serif`;
+    ctx.font = `800 ${size}px Nunito, system-ui, sans-serif`;
     r.title.forEach((line) => {
       ctx.fillText(line, listX, y);
       y += size + 10;
@@ -894,8 +961,6 @@ function Scale({ options, value, onChange, name }) {
 
 /* =========================================================================== */
 
-/* Matches window.storage's {value} shape so the calling code — written
-   against that API originally — needed no changes beyond the call itself. */
 async function apiStorageGet(key) {
   const res = await fetch(`/api/storage?key=${encodeURIComponent(key)}`);
   if (!res.ok) throw new Error("storage unavailable");
@@ -903,8 +968,7 @@ async function apiStorageGet(key) {
 }
 async function apiStorageSet(key, value) {
   const res = await fetch("/api/storage", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ key, value }),
   });
   if (!res.ok) return null;
@@ -944,6 +1008,14 @@ export default function App() {
   });
   const [favorites, setFavorites] = useState([]);
   const [savedAt, setSavedAt] = useState(null);
+  /* Separate from savedAt on purpose. savedAt only means "something has been
+     written to storage" — and the autosave effect below writes 700ms after
+     load, before a new person has answered anything. Using savedAt to decide
+     whether onboarding is done meant the intro appeared for exactly that long
+     and then vanished, replaced by a "your saved setup" screen summarising a
+     profile they never filled in. This flag only becomes true when setup is
+     actually completed. */
+  const [setupDone, setSetupDone] = useState(false);
 
   const [thisWeek, setThisWeek] = useState({ fridge: "", cravings: "", request: "" });
   const [convo, setConvo] = useState([]);
@@ -1007,6 +1079,9 @@ export default function App() {
           if (d.profile) setProfile((p) => ({ ...p, ...d.profile, nights: orderDays(d.profile.nights ?? p.nights) }));
           if (d.favorites) setFavorites(d.favorites);
           if (d.profile) setSavedAt(d.savedAt || null);
+          // Older saves predate this flag; a stored profile with real cooking
+          // nights means they got through setup, so don't re-onboard them.
+          if (d.setupDone || (d.profile?.nights?.length && d.savedAt)) setSetupDone(true);
         }
       } catch (_) {
         /* first run, or storage unavailable — defaults are fine */
@@ -1292,6 +1367,7 @@ Respond with ONLY this JSON:
         profile: next.profile ?? profile,
         favorites: next.favorites ?? favorites,
         savedAt: new Date().toISOString(),
+        setupDone: next.setupDone ?? setupDone,
       };
       await apiStorageSet(STORE_KEY, JSON.stringify(payload));
       setSavedAt(payload.savedAt);
@@ -1299,7 +1375,7 @@ Respond with ONLY this JSON:
     } catch (_) {
       setStorageOk(false);
     }
-  }, [profile, favorites]);
+  }, [profile, favorites, setupDone]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -2481,6 +2557,7 @@ Respond with ONLY this JSON:
         {view === "start" && (
           <Start
             savedAt={savedAt}
+            setupDone={setupDone}
             profile={profile}
             onSetup={() => { setView("setup"); setStep(0); }}
             onWeek={() => setView("thisweek")}
@@ -2494,7 +2571,13 @@ Respond with ONLY this JSON:
             toggleIn={toggleIn}
             step={step}
             setStep={setStep}
-            onDone={() => setView("thisweek")}
+            onDone={() => {
+              // Reaching the end of setup is what actually completes onboarding —
+              // not the autosave timer having fired at some point.
+              setSetupDone(true);
+              persist({ setupDone: true });
+              setView("thisweek");
+            }}
           />
         )}
 
@@ -2799,8 +2882,8 @@ function Intro({ onDone }) {
   );
 }
 
-function Start({ savedAt, profile, onSetup, onWeek }) {
-  if (!savedAt) return <Intro onDone={onSetup} />;
+function Start({ savedAt, setupDone, profile, onSetup, onWeek }) {
+  if (!setupDone) return <Intro onDone={onSetup} />;
 
   return (
     <div className="stack">
