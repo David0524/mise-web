@@ -163,12 +163,9 @@ let SESSION_CONTEXT = "";
 
 async function callClaude(messages, opts = {}) {
   const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      messages, tier: opts.tier || "main",
-      maxTokens: opts.maxTokens || 1000, sessionContext: SESSION_CONTEXT,
-    }),
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, tier: opts.tier || "main",
+      maxTokens: opts.maxTokens || 1000, sessionContext: SESSION_CONTEXT }),
   });
   if (res.status === 402) { window.location.href = "/pricing?reason=expired"; throw new Error("Redirecting to plans…"); }
   if (res.status === 401) { window.location.href = "/login?reason=expired"; throw new Error("Redirecting to sign in…"); }
@@ -843,7 +840,7 @@ function GrowInput({ value, onChange, className = "", ...rest }) {
   };
   useEffect(fit, [value]);
   return (
-    <textarea
+    <textarea autoCapitalize="sentences" autoCorrect="on" spellCheck="true"
       ref={ref}
       rows={1}
       className={`grow ${className}`}
@@ -1143,105 +1140,47 @@ export default function App() {
 
   useEffect(() => { historyRef.current = history; }, [history]);
 
-  /* Export everything worth keeping as pasteable text. Photos are deliberately
-     stripped — they're data URLs running to hundreds of kilobytes each and would
-     make the text unusable to copy. Everything else (setup, favourites, every
-     rated week) is small enough to paste comfortably. */
-  function exportData() {
-    return JSON.stringify(
-      {
-        mise: 1,
-        exported: new Date().toISOString(),
-        profile,
-        favorites: favorites.map(({ photos, ...f }) => f),
-        history: history.map((w) => ({
-          ...w,
-          dishes: (w.dishes || []).map(({ photos, ...d }) => d),
-        })),
-      },
-      null,
-      0
-    );
-  }
-
-  /* Merge rather than replace: weeks are keyed by id, and anything already here
-     wins over the imported copy, so restoring an old backup can't wipe out weeks
-     you've cooked since. */
-  function importData(text) {
-    let data;
-    try {
-      data = JSON.parse(text.trim());
-    } catch (_) {
-      return { ok: false, message: "That doesn't look like a Mise backup — paste the whole block." };
-    }
-    if (!data || data.mise !== 1) {
-      return { ok: false, message: "That isn't a Mise backup. Copy the block from another session and paste all of it." };
-    }
-
-    const seen = new Set(history.map((w) => w.id));
-    const mergedHistory = [...history, ...(data.history || []).filter((w) => w?.id && !seen.has(w.id))]
-      .sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0));
-
-    const favSeen = new Set(favorites.map((f) => `${f.title}|${f.date}`));
-    const mergedFavs = [...favorites, ...(data.favorites || []).filter((f) => f && !favSeen.has(`${f.title}|${f.date}`))];
-
-    if (data.profile) setProfile((pr) => ({ ...pr, ...data.profile, nights: orderDays(data.profile.nights ?? pr.nights) }));
-    setFavorites(mergedFavs);
-    setHistory(mergedHistory);
-    historyRef.current = mergedHistory;
-
-    try {
-      apiStorageSet(HISTORY_KEY, JSON.stringify(mergedHistory));
-    } catch (_) {}
-    persist({ favorites: mergedFavs, profile: data.profile ? { ...profile, ...data.profile } : profile });
-
-    const added = mergedHistory.length - history.length;
-    return {
-      ok: true,
-      message: `Restored. ${added} new ${added === 1 ? "week" : "weeks"} added, ${mergedHistory.length} in total.`,
-    };
-  }
-
-  /* Ask for a cooking order and actually apply it. Previously this only produced
-     a paragraph of advice that the person then had to hand-copy into the dropdowns,
-     which is exactly the kind of busywork the app should absorb. */
+  /* Ask for a cooking order and actually apply it, rather than producing advice
+     the person then has to hand-copy into the day dropdowns. */
   async function suggestOrder() {
     if (chosen.length < 2) return;
     setBusy("Working out the best order");
     setErr("");
 
     const nights = orderDays(profile.nights);
+    /* Numbered lists rather than asking the model to echo back exact day codes
+       and dish titles as free text — indices can't be paraphrased, so nothing
+       silently fails to match. */
     const prompt = `They want to know what order to cook these in this week.
 
-DISHES THEY PICKED:
-${chosen.map((c) => `- ${c.title} — ${c.blurb}`).join("\n")}
+DISHES THEY PICKED (numbered):
+${chosen.map((c, i) => `${i + 1}. ${c.title} — ${c.blurb}`).join("\n")}
 
-NIGHTS AVAILABLE: ${nights.map((d) => DAY_FULL[d]).join(", ")}
+NIGHTS AVAILABLE (numbered):
+${nights.map((d, i) => `${i + 1}. ${DAY_FULL[d]}`).join("\n")}
 
 Assign each dish to a night. Reason about what actually spoils first (fish and delicate herbs
 early, hardy roots and cabbage late), which dish makes leftovers a later night can use, and
-which night has least time. Only use nights from the list. If there are more dishes than
-nights, leave the extras unassigned and say so.
+which night has least time. If there are more dishes than nights, leave the extras unassigned
+and say so.
 
-Give ONE short line per night — the day, the dish, and the reason in a few words. Keep "say" to
-those lines only, one per line, no preamble.
+Give ONE short line per night — the day, the dish, and the reason in a few words, using the real
+day and dish names so it reads naturally. Keep "say" to those lines only, one per line, no preamble.
 
-Respond with ONLY this JSON:
+Respond with ONLY this JSON. "night" and "dish" are the NUMBERS from the numbered lists above,
+not the names:
 {"say":"Tuesday — Fish tacos, the fish won't keep\nThursday — ...",
-"order":[{"day":"Tue","title":"exact title from the list above"}]}`;
+"order":[{"night":1,"dish":2}]}`;
 
     try {
       const raw = await callClaude([{ role: "user", content: prompt }]);
       const out = parseJSON(raw);
 
-      /* Apply it. Titles are matched back to real candidate ids — anything that
-         doesn't match is skipped rather than silently clearing a night. */
       const next = {};
-      (out.order || []).forEach((o) => {
-        const dish = chosen.find(
-          (c) => (c.title || "").toLowerCase() === (o.title || "").toLowerCase()
-        );
-        if (dish && nights.includes(o.day)) next[o.day] = dish.id;
+      (Array.isArray(out.order) ? out.order : []).forEach((o) => {
+        const day = nights[Number(o.night) - 1];
+        const dish = chosen[Number(o.dish) - 1];
+        if (day && dish) next[day] = dish.id;
       });
       if (Object.keys(next).length) setWeek((w) => ({ ...w, ...next }));
 
@@ -1256,6 +1195,70 @@ Respond with ONLY this JSON:
     } finally {
       setBusy("");
     }
+  }
+
+  /* Write a rating back into an already-archived week. Ratings could previously
+     only be captured live on the Cook page, so anything cooked away from the app
+     — or rated a day later — had no way in at all. */
+  function rateHistoryDish(weekId, dishIndex, patch) {
+    setHistory((hs) => {
+      const next = hs.map((w) =>
+        w.id !== weekId
+          ? w
+          : {
+              ...w,
+              dishes: (w.dishes || []).map((d, i) =>
+                i !== dishIndex
+                  ? d
+                  : {
+                      ...d,
+                      rating: patch.rating,
+                      missing: patch.missing,
+                      note: patch.note,
+                      photos: (patch.photos || []).slice(0, 3),
+                    }
+              ),
+            }
+      );
+      historyRef.current = next;
+      // Matches how archiveWeek persists — same key, same shape, so the port
+      // to mise-web rewrites this line along with the others.
+      try {
+        apiStorageSet(HISTORY_KEY, JSON.stringify(next));
+      } catch (_) {}
+      return next;
+    });
+  }
+
+  /* Write a recipe into whichever archived dish it belongs to. Matches on title
+     because history entries have their own ids — and only fills a gap, never
+     overwrites a recipe already stored, so a rewrite from a later week can't
+     clobber what was actually cooked. */
+  function stashRecipeInHistory(dishId, recipe, replace = false) {
+    const dish = candidates.find((c) => c.id === dishId);
+    if (!dish || !recipe) return;
+    const title = (dish.title || "").toLowerCase();
+
+    setHistory((hs) => {
+      let touched = false;
+      const next = hs.map((w) => {
+        if (w.id !== weekId) return w;
+        const dishes = (w.dishes || []).map((d) => {
+          // Only fill a gap by default; `replace` is for a negotiated rewrite,
+          // which genuinely supersedes what was stored.
+          if ((d.recipe && !replace) || (d.title || "").toLowerCase() !== title) return d;
+          touched = true;
+          return { ...d, recipe };
+        });
+        return touched ? { ...w, dishes } : w;
+      });
+      if (!touched) return hs;
+      historyRef.current = next;
+      try {
+        apiStorageSet(HISTORY_KEY, JSON.stringify(next));
+      } catch (_) {}
+      return next;
+    });
   }
 
   /* Cook something from History again. It becomes a dish in the current week, so
@@ -1986,7 +1989,14 @@ Respond with ONLY this JSON:
 {"title":"","servings":"","time":"","technique":"the one technique worth learning here, or empty","seasoning":"what to taste for at the end and how to correct it — flat, thin, harsh, dull","doneness":"the sensory cue and the temperature, or empty if nothing needs judging","assembly":"one sentence","missing":["anything needed that is not on their shopping list, or empty"],"components":[{"name":"","items":["quantity + ingredient WITH its prep state"]}],"steps":[{"do":"","why":""}]}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900 });
-      setRecipes((r) => ({ ...r, [dishId]: { ...parseJSON(raw), basis: shoppingSignature } }));
+      const built = { ...parseJSON(raw), basis: shoppingSignature };
+      setRecipes((r) => ({ ...r, [dishId]: built }));
+      /* Bake it into the archived week straight away, rather than waiting for a
+         rating. Previously the recipe only reached history via saveRating — so
+         a dish you cooked but never rated had nothing stored, and "Cook this
+         again" silently regenerated a brand new recipe instead of reopening
+         the one you actually made. */
+      stashRecipeInHistory(dishId, built);
     } catch (e) {
       if (!opts.quiet) setErr(e.message);   // a failed prefetch retries on demand
       throw e;
@@ -2112,7 +2122,14 @@ Respond with ONLY this JSON:
         setShopping(merged);
       }
 
-      if (out.recipe) setRecipes((r) => ({ ...r, [cookingId]: { ...out.recipe, basis: nextSignature } }));
+      if (out.recipe) {
+        const revised = { ...out.recipe, basis: nextSignature };
+        setRecipes((r) => ({ ...r, [cookingId]: revised }));
+        // A negotiated rewrite ("make it milder") is the version they actually
+        // cooked, so it should replace what's stored — otherwise Cook Again
+        // would hand back the pre-negotiation recipe.
+        stashRecipeInHistory(cookingId, revised, true);
+      }
       if (out.say) setRecipeChat((c) => [...c, { who: "mise", text: out.say }]);
       if (adds.length || removes.length) {
         setRecipeChat((c) => [
@@ -2711,9 +2728,8 @@ Respond with ONLY this JSON:
             storageOk={storageOk}
             onOpenWeek={() => setView("week")}
             onNewWeek={startNewWeek}
-            onExport={exportData}
-            onImport={importData}
             onCookAgain={cookAgain}
+            onRateHistory={rateHistoryDish}
             onShareDish={async (d) => {
               setBusy("Making your card");
               try {
@@ -2891,15 +2907,42 @@ function Start({ savedAt, setupDone, profile, onSetup, onWeek }) {
         <h2>What are we cooking this week?</h2>
         {(
           <>
-            <div className="recap">
-              <p><strong>Your saved setup</strong></p>
-              <ul>
-                <li>Cooking for {profile.people}</li>
-                <li>{orderDays(profile.nights).map((d) => DAY_FULL[d]).join(", ") || "No nights set"}</li>
-                <li>Heat: {SPICE[profile.spice].label}</li>
-                {profile.healthConscious && <li>Leaning a bit healthier</li>}
-                <li>{profile.restrictions.length ? profile.restrictions.join(", ") : "No restrictions saved"}</li>
-              </ul>
+            {/* A tile grid rather than a bulleted list — same information in
+                roughly half the vertical space, and the numbers read at a
+                glance instead of needing to be parsed out of sentences.
+                Tiles span different widths so the grid packs tightly rather
+                than leaving a ragged column of half-empty rows. */}
+            <div className="setg">
+              <div className="setg__t">
+                <span className="setg__k">Cooking for</span>
+                <span className="setg__v">{profile.people}</span>
+              </div>
+              <div className="setg__t">
+                <span className="setg__k">Nights</span>
+                <span className="setg__v">{orderDays(profile.nights).length || "—"}</span>
+              </div>
+              <div className="setg__t setg__t--wide">
+                <span className="setg__k">Heat</span>
+                <span className="setg__v setg__v--sm">{SPICE[profile.spice].label}</span>
+              </div>
+              <div className="setg__t setg__t--full">
+                <span className="setg__k">Your nights</span>
+                <span className="setg__v setg__v--sm">
+                  {orderDays(profile.nights).map((d) => DAY_FULL[d]).join(", ") || "None set"}
+                </span>
+              </div>
+              <div className={`setg__t${profile.healthConscious ? "" : " setg__t--full"}`}>
+                <span className="setg__k">Avoiding</span>
+                <span className="setg__v setg__v--sm">
+                  {profile.restrictions.length ? profile.restrictions.join(", ") : "Nothing saved"}
+                </span>
+              </div>
+              {profile.healthConscious && (
+                <div className="setg__t">
+                  <span className="setg__k">Leaning</span>
+                  <span className="setg__v setg__v--sm">A bit healthier</span>
+                </div>
+              )}
             </div>
             <div className="row">
               <Btn onClick={onWeek}>Start this week</Btn>
@@ -3111,13 +3154,13 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
             </div>
             <div className="field">
               <label htmlFor="rn">Allergies or anything else I must avoid</label>
-              <input id="rn" type="text" value={profile.restrictionsNote}
+              <input id="rn" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={profile.restrictionsNote}
                 onChange={(e) => set("restrictionsNote", e.target.value)}
                 placeholder="For example: no sesame, no alcohol" />
             </div>
             <div className="field">
               <label htmlFor="dl">Foods you just don't like</label>
-              <input id="dl" type="text" value={profile.dislikes}
+              <input id="dl" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={profile.dislikes}
                 onChange={(e) => set("dislikes", e.target.value)}
                 placeholder="For example: olives, anything with bones" />
             </div>
@@ -3196,19 +3239,19 @@ function ThisWeek({ thisWeek, setThisWeek, profile, onEdit, onGo, busy }) {
 
         <div className="field">
           <label htmlFor="fr">What's in the kitchen that needs using up?</label>
-          <textarea id="fr" rows="2" value={thisWeek.fridge} onChange={(e) => upd("fridge", e.target.value)}
+          <textarea autoCapitalize="sentences" autoCorrect="on" spellCheck="true" id="fr" rows="2" value={thisWeek.fridge} onChange={(e) => upd("fridge", e.target.value)}
             placeholder="Half a cabbage, some scallions, a tub of gochujang" />
         </div>
 
         <div className="field">
           <label htmlFor="cr">What sounds good right now?</label>
-          <input id="cr" type="text" value={thisWeek.cravings} onChange={(e) => upd("cravings", e.target.value)}
+          <input id="cr" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={thisWeek.cravings} onChange={(e) => upd("cravings", e.target.value)}
             placeholder="Something crispy. Or noodles." />
         </div>
 
         <div className="field field--hi">
           <label htmlFor="rq">Is there a dish you already want to make?</label>
-          <input id="rq" type="text" value={thisWeek.request} onChange={(e) => upd("request", e.target.value)}
+          <input id="rq" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={thisWeek.request} onChange={(e) => upd("request", e.target.value)}
             placeholder="Chicken katsu. Beef stew. My grandmother's rice." />
           <p className="hint">I'll build the week around it, or tell you honestly if it fights the rest of the plan.</p>
         </div>
@@ -3357,7 +3400,7 @@ function Ideas({ thread, candidates, ecosystem, busy, setCandidates, onSend, onS
         <h2>Want something specific?</h2>
         <div className="field">
           <label htmlFor="rq2">A dish you'd like to make</label>
-          <input id="rq2" type="text" value={request} onChange={(e) => setRequest(e.target.value)}
+          <input id="rq2" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={request} onChange={(e) => setRequest(e.target.value)}
             placeholder="Chicken katsu" />
         </div>
         <Btn small onClick={() => onSend(`I'd like to make ${request}. Can we fit it in?`)} disabled={!request.trim() || !!busy}>
@@ -3368,7 +3411,7 @@ function Ideas({ thread, candidates, ecosystem, busy, setCandidates, onSend, onS
       <section className="card card--ask">
         <h2>Or tell me in your own words</h2>
         <p className="hint">Optional. Everything above works with buttons alone.</p>
-        <textarea rows="2" value={draft} onChange={(e) => setDraft(e.target.value)}
+        <textarea autoCapitalize="sentences" autoCorrect="on" spellCheck="true" rows="2" value={draft} onChange={(e) => setDraft(e.target.value)}
           placeholder="I like the tostadas but Thursday feels too heavy"
           aria-label="Tell Mise what you think" />
         <div className="row">
@@ -3629,7 +3672,7 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
 
         <div className="field">
           <label htmlFor="sa">Or say it in your own words</label>
-          <input id="sa" type="text" value={ask} onChange={(e) => setAsk(e.target.value)}
+          <input id="sa" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
             placeholder="I don't want a whole bunch of dill"
             onKeyDown={(e) => { if (e.key === "Enter" && ask.trim()) { onAsk(ask); setAsk(""); } }} />
         </div>
@@ -3735,8 +3778,8 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
                 <h2>{rec.title}</h2>
                 <p className="lead">{rec.servings}{rec.servings && rec.time ? " · " : ""}{rec.time}</p>
               </div>
-              <Btn small variant="ghost" onClick={onPrint}>Print this recipe</Btn>
-              <Btn small variant="ghost" onClick={onShare}>Share this dish</Btn>
+              <Btn small variant="ghost" onClick={onPrint}>Print</Btn>
+              <Btn small variant="ghost" onClick={onShare}>Share</Btn>
             </div>
 
             <div className="row">
@@ -3829,7 +3872,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
               <div className="edit">
                 <div className="field">
                   <label htmlFor="ei">Ingredients — one per line. Leave a blank line to start a new group.</label>
-                  <textarea id="ei" rows="8"
+                  <textarea autoCapitalize="sentences" autoCorrect="on" spellCheck="true" id="ei" rows="8"
                     value={(rec.components || []).map((c) => `${c.name}\n${(c.items || []).join("\n")}`).join("\n\n")}
                     onChange={(e) => editRecipe({
                       components: e.target.value.split(/\n\s*\n/).map((b) => {
@@ -3840,7 +3883,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
                 </div>
                 <div className="field">
                   <label htmlFor="es">Steps — one per line</label>
-                  <textarea id="es" rows="8" value={(rec.steps || []).map((s) => s.do).join("\n")}
+                  <textarea autoCapitalize="sentences" autoCorrect="on" spellCheck="true" id="es" rows="8" value={(rec.steps || []).map((s) => s.do).join("\n")}
                     onChange={(e) => editRecipe({
                       steps: e.target.value.split("\n").filter((l) => l.trim())
                         .map((l, i) => ({ do: l, why: (rec.steps || [])[i]?.why || "" })),
@@ -3868,7 +3911,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
 
             <div className="field">
               <label htmlFor="ra">Or say it in your own words</label>
-              <input id="ra" type="text" value={ask} onChange={(e) => setAsk(e.target.value)}
+              <input id="ra" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
                 placeholder="I don't want to buy a pack of buns for one burger"
                 onKeyDown={(e) => { if (e.key === "Enter" && ask.trim()) { onAsk(ask); setAsk(""); } }} />
             </div>
@@ -3953,7 +3996,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
 
             <div className="field">
               <label htmlFor="rn2">Anything else (optional)</label>
-              <input id="rn2" type="text" value={note} onChange={(e) => setNote(e.target.value)}
+              <input id="rn2" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={note} onChange={(e) => setNote(e.target.value)}
                 placeholder="The sauce was the best part" />
             </div>
 
@@ -4280,7 +4323,8 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
 
           <div className="cask__foot">
             <label className="sr" htmlFor="cq">Ask your own question</label>
-            <input id="cq" type="text" value={miseText} placeholder="Ask anything…"
+            <input id="cq" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on"
+              spellCheck="true" enterKeyHint="send" value={miseText} placeholder="Ask anything…"
               onChange={(e) => setMiseText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && miseText.trim()) { onAskMise(miseText); setMiseText(""); }
@@ -4361,7 +4405,7 @@ function LeftoversView({ haveOnHand, setHaveOnHand, ideas, recipes, onGet, onExp
         </p>
         <div className="field">
           <label htmlFor="lo">Leftover ingredients</label>
-          <textarea id="lo" rows="3" value={haveOnHand} onChange={(e) => setHaveOnHand(e.target.value)}
+          <textarea autoCapitalize="sentences" autoCorrect="on" spellCheck="true" id="lo" rows="3" value={haveOnHand} onChange={(e) => setHaveOnHand(e.target.value)}
             placeholder="Two cooked chicken thighs, half a cabbage, cold rice, some cilantro" />
         </div>
 
@@ -4478,65 +4522,84 @@ function LeftoversView({ haveOnHand, setHaveOnHand, ideas, recipes, onGet, onExp
 
 /* --------------------------------------------------------------- HISTORY */
 
-function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk, onExport, onImport, onCookAgain, onShareDish }) {
-  const [confirming, setConfirming] = useState(false);
-  const [backupOpen, setBackupOpen] = useState(false);
-  const [exported, setExported] = useState("");
-  const [pasted, setPasted] = useState("");
-  const [result, setResult] = useState(null);
-  const [copied, setCopied] = useState(false);
+/* Rating a dish after the fact, from History. Previously ratings could only be
+   captured in the moment on the Cook page — so anything cooked without the app
+   open, or rated later, could never be recorded at all. */
+function HistoryRate({ dish, onSave, onCancel }) {
+  const [rating, setRating] = useState(dish.rating || 0);
+  const [missing, setMissing] = useState(dish.missing || "");
+  const [note, setNote] = useState(dish.note || "");
+  const [photos, setPhotos] = useState(dish.photos || []);
+  const [err, setErr] = useState("");
 
-  const doExport = () => {
-    const text = onExport();
-    setExported(text);
-    setCopied(false);
+  const addPhoto = async (file) => {
+    if (!file) return;
     try {
-      navigator.clipboard?.writeText(text).then(() => setCopied(true)).catch(() => {});
+      const shrunk = await shrinkImage(file, 900, 0.72);
+      setPhotos((ps) => [...ps, shrunk].slice(0, 3));
+      setErr("");
     } catch (_) {
-      /* clipboard blocked — the textarea below is the fallback */
+      setErr("Couldn't read that image.");
     }
   };
 
-  const backup = (
-    <Fold
-      title="Back up or restore"
-      note="Copy your weeks as text, or paste them back in"
-      open={backupOpen}
-      onToggle={() => setBackupOpen((v) => !v)}
-    >
-      <p className="hint">
-        Saving only works once an artifact is published, and even then it&apos;s tied to
-        this one. Copying the text below gives you a backup that works anywhere — paste it
-        into a new session to bring your weeks with you. Photos aren&apos;t included; they&apos;re
-        far too large to paste.
-      </p>
-
-      <div className="row">
-        <Btn small onClick={doExport}>Copy my history</Btn>
-        {exported && <span className="hint">{copied ? "Copied to your clipboard." : "Select the text below and copy it."}</span>}
+  return (
+    <div className="histrate">
+      <div className="stars" role="radiogroup" aria-label="Rating out of five">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} role="radio" aria-checked={rating === n} aria-label={`${n} out of 5`}
+            className={`star${n <= rating ? " star--on" : ""}`} onClick={() => setRating(n)}>★</button>
+        ))}
       </div>
 
-      {exported && (
-        <div className="field">
-          <label htmlFor="exp">Your backup</label>
-          <textarea id="exp" rows="4" readOnly value={exported} onFocus={(e) => e.target.select()} />
-        </div>
-      )}
+      <div className="grid-2">
+        {MISSING.map((m) => (
+          <button key={m} className={`chip${missing === m ? " chip--on" : ""}`}
+            onClick={() => setMissing(missing === m ? "" : m)}>
+            <span className="chip__main">{m}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="field">
-        <label htmlFor="imp">Paste a backup to restore</label>
-        <textarea id="imp" rows="3" value={pasted} placeholder="Paste the whole block here"
-          onChange={(e) => setPasted(e.target.value)} />
+        <label htmlFor={`hn-${dish.title}`}>Anything else?</label>
+        <input id={`hn-${dish.title}`} type="text" autoComplete="off" autoCapitalize="sentences"
+          autoCorrect="on" spellCheck="true" value={note}
+          onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
       </div>
-      <Btn small variant="ghost" disabled={!pasted.trim()}
-        onClick={() => { setResult(onImport(pasted)); setPasted(""); }}>
-        Restore
-      </Btn>
-      {result && <p className={result.ok ? "hint" : "photo__err"}>{result.message}</p>}
-    </Fold>
+
+      {photos.length > 0 && (
+        <div className="shots shots--sm">
+          {photos.map((src, i) => (
+            <button key={i} className="shot__del" onClick={() => setPhotos((ps) => ps.filter((_, n) => n !== i))}
+              aria-label={`Remove photo ${i + 1}`}>
+              <img src={src} alt={`Photo ${i + 1}`} />
+            </button>
+          ))}
+        </div>
+      )}
+      {err && <p className="photo__err">{err}</p>}
+
+      <div className="row">
+        {photos.length < 3 && (
+          <label className="btn btn--ghost btn--sm photo__pick">
+            Add a photo
+            <input type="file" accept="image/*" className="sr"
+              onChange={(e) => { addPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+        )}
+        <Btn small onClick={() => onSave({ rating, missing, note, photos })} disabled={!rating}>
+          Save
+        </Btn>
+        <Btn small variant="ghost" onClick={onCancel}>Cancel</Btn>
+      </div>
+    </div>
   );
+}
 
-
+function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk, onCookAgain, onShareDish, onRateHistory }) {
+  const [editing, setEditing] = useState(null);
+  const [confirming, setConfirming] = useState(false);
 
   const warning = storageOk === false && (
     <section className="card card--warn">
@@ -4580,7 +4643,6 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
     return (
       <div className="stack">
         {warning}
-        {backup}
         <Empty title="Nothing saved yet">
           <p>
             Once you build a shopping list, that week gets saved here automatically —
@@ -4599,7 +4661,6 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
     <div className="stack">
       {warning}
       {newWeekBar}
-      {backup}
       {sorted.map((w) => {
         const isCurrent = w.id === currentWeekId;
         const rated = w.dishes?.filter((d) => d.rating != null) || [];
@@ -4663,7 +4724,19 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
                       <Btn small variant="ghost" onClick={() => onShareDish(d)}>
                         Share
                       </Btn>
+                      <Btn small variant="ghost"
+                        onClick={() => setEditing(editing === `${w.id}:${i}` ? null : `${w.id}:${i}`)}>
+                        {d.rating ? "Edit rating" : "Rate it"}
+                      </Btn>
                     </div>
+
+                    {editing === `${w.id}:${i}` && (
+                      <HistoryRate
+                        dish={d}
+                        onSave={(patch) => { onRateHistory(w.id, i, patch); setEditing(null); }}
+                        onCancel={() => setEditing(null)}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>
@@ -4823,11 +4896,22 @@ function useSpeech() {
     (text, force = false) => {
       if (!supported || (!on && !force) || !text) return;
       try {
+        /* cancel() is asynchronous — the engine keeps tearing down after the
+           call returns. Calling speak() immediately after starts the new
+           utterance mid-teardown, which clips the first word or two. A short
+           gap lets the queue actually drain first. */
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(String(text));
         u.rate = 0.92;
         u.pitch = 1.02;
-        window.speechSynthesis.speak(u);
+        setTimeout(() => {
+          try {
+            // Some engines suspend themselves between utterances and need a
+            // nudge, or the first speak() after idle produces nothing.
+            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+            window.speechSynthesis.speak(u);
+          } catch (_) {}
+        }, 120);
       } catch (_) {}
     },
     [supported, on]
@@ -5150,7 +5234,7 @@ function SwapDialog({ item, mode, onCancel, onSubmit, busy }) {
 
         <div className="field">
           <label htmlFor="swapnote">Anything else? (optional)</label>
-          <input id="swapnote" type="text" value={note} placeholder="It never gets used up"
+          <input id="swapnote" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={note} placeholder="It never gets used up"
             onChange={(e) => setNote(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()} />
         </div>
@@ -5274,7 +5358,7 @@ function MisePanel({ thread, busy, onClose, onAsk, dish, asks = QUICK_ASKS.defau
 
       <div className="sheet__foot">
         <label className="sr" htmlFor="mq">Ask Mise a question</label>
-        <input id="mq" type="text" value={text} onChange={(e) => setText(e.target.value)}
+        <input id="mq" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={text} onChange={(e) => setText(e.target.value)}
           placeholder="What's happening in the pan?"
           onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) send(text); }} />
         <Btn small onClick={() => text.trim() && send(text)} disabled={!text.trim() || busy}>Ask</Btn>
@@ -5340,14 +5424,19 @@ const CSS = `
      a window actually behaves. Saturation stays very low throughout; it's
      light falling on pale surfaces, not colour applied to them. */
   background-image:
-    /* sunlight through a window, high left — pale butter, almost white */
-    radial-gradient(58% 46% at 4% -4%, rgba(255,247,228,.95), transparent 62%),
-    /* the cool daylight it sits in — pale sky, barely there */
-    radial-gradient(70% 40% at 62% -6%, rgba(233,241,247,.85), transparent 64%),
-    /* warm bounce off wood or stone, mid-right */
-    radial-gradient(46% 34% at 100% 42%, rgba(246,232,213,.70), transparent 62%),
+    /* North-facing light. The previous version put pale BUTTER here, and warm
+       yellow sitting over the warm-pink --paper produced a yellow-tan cast in
+       the top-left corner that read as dingy rather than sunlit. North light —
+       the cool, even light kitchens and studios are actually prized for — is
+       just as real a lighting condition and doesn't muddy against this paper. */
+    radial-gradient(60% 48% at 4% -4%, rgba(226,238,250,.98), transparent 62%),
+    /* the open sky it sits in */
+    radial-gradient(70% 40% at 58% -6%, rgba(238,245,251,.85), transparent 64%),
+    /* a quieter warm bounce off wood or stone, mid-right — kept so the whole
+       room isn't cold, but well away from the corner that was the problem */
+    radial-gradient(44% 32% at 100% 46%, rgba(247,236,222,.55), transparent 62%),
     /* cool shadow pooling low and right, where the light doesn't reach */
-    radial-gradient(76% 46% at 78% 106%, rgba(205,214,224,.62), transparent 66%);
+    radial-gradient(76% 46% at 78% 106%, rgba(199,211,226,.66), transparent 66%);
   background-attachment:fixed;
   background-repeat:no-repeat;
 }
@@ -5431,7 +5520,7 @@ const CSS = `
 
 /* nav */
 .nav{display:flex;gap:.3rem;overflow-x:auto;max-width:960px;margin:0 auto;padding:.6rem 1.15rem;
-  border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:5;
+  border-bottom:1px solid var(--rule);position:relative;z-index:5;
   background:rgba(250,245,244,.62);
   -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
 .nav__b{flex:0 0 auto;min-height:44px;padding:0 1.05rem;background:none;border:none;
@@ -5937,6 +6026,31 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* Dish-card-shaped skeleton for Ideas — the first, most important AI-wait moment
    in the app previously had no skeleton at all, just the generic bottom spinner
    over an empty screen. Mimics the real .dish card's proportions. */
+/* Asymmetric on purpose: a two-column base with tiles that span one or both
+   columns, so short values (a number) and long ones (a list of nights) each
+   get appropriate room instead of every row being the same shape. */
+.histrate{margin-top:.9rem;padding:1rem;background:var(--sunk);border-radius:18px;
+  border:1px solid var(--rule)}
+.histrate .stars{margin-bottom:.6rem}
+.setg{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1.1rem}
+.setg__t{background:var(--glass-strong);border:1px solid var(--rule-2);border-radius:16px;
+  padding:.75rem .9rem;display:flex;flex-direction:column;gap:.15rem;min-width:0;
+  box-shadow:var(--spec)}
+.setg__t--full{grid-column:1 / -1}
+/* Fills the hole left beside a half-width tile at narrow sizes; at wider
+   sizes the three-column rule below takes over and it sits normally. */
+@media(max-width:559px){.setg__t--wide{grid-column:1 / -1}}
+.setg__k{font-family:'Nunito',sans-serif;font-weight:800;font-size:.72em;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--brick)}
+.setg__v{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.7em;line-height:1.1;
+  color:var(--navy)}
+.setg__v--sm{font-size:1em;font-weight:700;line-height:1.35;color:var(--ink-2);
+  overflow-wrap:anywhere}
+@media(min-width:560px){
+  .setg{grid-template-columns:repeat(3,1fr)}
+  .setg__t--wide{grid-column:span 1}
+}
+
 .dcards{display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-top:1rem}
 .dcard{background:var(--surface);border:1px solid var(--rule);border-radius:20px;
   padding:1.4rem 1.3rem;box-shadow:var(--shadow)}
@@ -6121,8 +6235,12 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .cask__hd > div{flex:1;min-width:0}
 .cask__plate{display:flex;background:var(--sunk);border-radius:50%;padding:4px;flex:0 0 auto}
 .cask__plate .mise-av{color:var(--navy)}
-.cask__x{min-height:44px;padding:0 1rem;background:var(--sunk);border:1px solid var(--rule);
-  color:var(--plum);border-radius:999px;cursor:pointer;font-family:'Nunito',sans-serif;font-size:.88em}
+/* A button's default vertical alignment leaves the label sitting slightly off
+   centre once a min-height is applied — flex centring puts it dead centre. */
+.cask__x{min-height:44px;padding:0 1.1rem;background:var(--sunk);border:1px solid var(--rule);
+  color:var(--plum);border-radius:999px;cursor:pointer;font-family:'Nunito',sans-serif;
+  font-size:.88em;font-weight:700;display:inline-flex;align-items:center;justify-content:center;
+  line-height:1}
 .cask__say{background:var(--sunk);padding:.9rem 1.05rem;margin:.95rem 0 0;border-radius:20px;
   border-top-left-radius:7px;box-shadow:inset 3px 0 0 var(--rose);font-size:1em}
 .cask__qs{display:flex;gap:.45rem;overflow-x:auto;padding:.95rem 0 .2rem}
