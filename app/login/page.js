@@ -1,7 +1,7 @@
 "use client";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { S } from "@/lib/authStyles";
+import { S, FilterDefs } from "@/lib/authStyles";
 
 function LoginForm() {
   const router = useRouter();
@@ -33,6 +33,7 @@ function LoginForm() {
 
   return (
     <main style={S.wrap}>
+      <FilterDefs />
       <form onSubmit={submit} style={S.card}>
         <h1 style={S.h1}>Sign in</h1>
         {params.get("reason") === "expired" && (

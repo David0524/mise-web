@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { S } from "@/lib/authStyles";
+import { S, FilterDefs } from "@/lib/authStyles";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -35,6 +35,7 @@ export default function SignupPage() {
 
   return (
     <main style={S.wrap}>
+      <FilterDefs />
       <form onSubmit={submit} style={S.card}>
         <h1 style={S.h1}>Create your account</h1>
         {err && <p style={S.error}>{err}</p>}

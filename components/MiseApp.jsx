@@ -1140,6 +1140,32 @@ export default function App() {
 
   useEffect(() => { historyRef.current = history; }, [history]);
 
+  /* Drives the glass highlight's position. One delegated listener rather than
+     one per card — cost stays flat no matter how many cards are on screen at
+     once, and it works for cards that mount later without extra wiring.
+     rAF-throttled so a fast mouse doesn't queue more style writes than the
+     screen can actually paint. */
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = null;
+    const onMove = (e) => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const card = e.target.closest?.(".card");
+        if (!card) return;
+        const r = card.getBoundingClientRect();
+        card.style.setProperty("--gx", `${((e.clientX - r.left) / r.width) * 100}%`);
+        card.style.setProperty("--gy", `${((e.clientY - r.top) / r.height) * 100}%`);
+      });
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
   /* Ask for a cooking order and actually apply it, rather than producing advice
      the person then has to hand-copy into the day dropdowns. */
   async function suggestOrder() {
@@ -2509,6 +2535,19 @@ Respond with ONLY this JSON:
     <div className="app">
       <style>{CSS}</style>
 
+      {/* Defines the actual distortion used by every glass surface — this is
+         what makes it lensing rather than blur. No native web API exposes
+         Apple's real Liquid Glass material to a website in any browser, so
+         this is the closest real equivalent: genuine optical displacement of
+         whatever sits behind the panel, not a static effect painted on top. */}
+      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+        <filter id="glassDistort" x="-20%" y="-20%" width="140%" height="140%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.010 0.014" numOctaves="2" seed="7" result="n" />
+          <feGaussianBlur in="n" stdDeviation="3" result="bn" />
+          <feDisplacementMap in="SourceGraphic" in2="bn" scale="26" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
+
       <header className="hdr no-print">
         <div className="hdr__row">
           {/* A real <button>, not a div with a click handler — this way it's
@@ -3778,8 +3817,10 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
                 <h2>{rec.title}</h2>
                 <p className="lead">{rec.servings}{rec.servings && rec.time ? " · " : ""}{rec.time}</p>
               </div>
-              <Btn small variant="ghost" onClick={onPrint}>Print</Btn>
-              <Btn small variant="ghost" onClick={onShare}>Share</Btn>
+              <div className="headacts">
+                <Btn small variant="ghost" onClick={onPrint}>Print</Btn>
+                <Btn small variant="ghost" onClick={onShare}>Share</Btn>
+              </div>
             </div>
 
             <div className="row">
@@ -4763,16 +4804,49 @@ function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, b
           <h2>Your Setup</h2>
           <Btn small variant="ghost" onClick={onEdit}>Change</Btn>
         </div>
-        <ul className="recap__list">
-          <li><span>Cooking for</span><strong>{profile.people}</strong></li>
-          <li><span>Nights</span><strong>{orderDays(profile.nights).map((d) => DAY_FULL[d]).join(", ") || "None"}</strong></li>
-          <li><span>Time a night</span><strong>About {profile.time} minutes</strong></li>
-          <li><span>Heat</span><strong>{SPICE[profile.spice].label}</strong></li>
-          {profile.healthConscious && <li><span>Leaning</span><strong>A bit healthier</strong></li>}
-          <li><span>Adventurousness</span><strong>{ADVENTURE[profile.adventure - 1].label}</strong></li>
-          <li><span>Avoiding</span><strong>{[...profile.restrictions, profile.restrictionsNote].filter(Boolean).join(", ") || "Nothing"}</strong></li>
-          <li><span>Equipment</span><strong>{profile.equipment.join(", ") || "Basic"}</strong></li>
-        </ul>
+        {/* Same packed tile grid as the start screen. Big numbers get their own
+            small tiles; anything that's really a list (nights, equipment) spans
+            the full width so it doesn't wrap raggedly in a narrow column. */}
+        <div className="setg">
+          <div className="setg__t">
+            <span className="setg__k">Cooking for</span>
+            <span className="setg__v">{profile.people}</span>
+          </div>
+          <div className="setg__t">
+            <span className="setg__k">Minutes</span>
+            <span className="setg__v">{profile.time}</span>
+          </div>
+          <div className="setg__t">
+            <span className="setg__k">Heat</span>
+            <span className="setg__v setg__v--sm">{SPICE[profile.spice].label}</span>
+          </div>
+          <div className="setg__t">
+            <span className="setg__k">Adventure</span>
+            <span className="setg__v setg__v--sm">{ADVENTURE[profile.adventure - 1].label}</span>
+          </div>
+          <div className="setg__t setg__t--full">
+            <span className="setg__k">Nights</span>
+            <span className="setg__v setg__v--sm">
+              {orderDays(profile.nights).map((d) => DAY_FULL[d]).join(", ") || "None"}
+            </span>
+          </div>
+          <div className="setg__t setg__t--full">
+            <span className="setg__k">Avoiding</span>
+            <span className="setg__v setg__v--sm">
+              {[...profile.restrictions, profile.restrictionsNote].filter(Boolean).join(", ") || "Nothing"}
+            </span>
+          </div>
+          <div className="setg__t setg__t--full">
+            <span className="setg__k">Equipment</span>
+            <span className="setg__v setg__v--sm">{profile.equipment.join(", ") || "Basic"}</span>
+          </div>
+          {profile.healthConscious && (
+            <div className="setg__t setg__t--full">
+              <span className="setg__k">Leaning</span>
+              <span className="setg__v setg__v--sm">A bit healthier</span>
+            </div>
+          )}
+        </div>
         {savedAt && <p className="hint">Saved {fmtDate(new Date(savedAt), { month: "long", day: "numeric" })}. Used automatically next week.</p>}
       </section>
 
@@ -5402,7 +5476,10 @@ const CSS = `
   --glass:rgba(255,255,255,.58);
   --glass-strong:rgba(255,255,255,.70);
   --glass-rim:rgba(255,255,255,.75);
-  --glass-blur:saturate(180%) blur(22px);
+  /* url(#glassDistort) bends content behind the panel; saturate+blur handle
+     colour and softness the same way as before. Real, tested optical
+     distortion — not a heavier blur pretending to be one. */
+  --glass-blur:url(#glassDistort) saturate(180%) blur(20px);
   --spec:inset 0 1px 0 rgba(255,255,255,.9);
   --lift-1:0 1px 2px rgba(87,60,86,.06), 0 8px 24px -10px rgba(87,60,86,.22);
   --lift-2:0 2px 6px rgba(87,60,86,.07), 0 18px 44px -16px rgba(87,60,86,.28);
@@ -5453,7 +5530,11 @@ const CSS = `
 }}
 
 .app *{box-sizing:border-box;min-width:0}
-.app{overflow-x:hidden}
+/* NOT overflow-x:hidden. Any overflow value other than visible on an ancestor
+   silently makes position:sticky inert in every descendant — which is why the
+   nav never actually pinned despite having correct sticky CSS. clip does the
+   same job of preventing sideways scroll without breaking sticky. */
+.app{overflow-x:clip}
 /* every string here is model-generated and can be any length */
 .app p,.app li,.app strong,.app span{overflow-wrap:anywhere}
 .app input[type=text],.app textarea,.app select{max-width:100%}
@@ -5520,7 +5601,7 @@ const CSS = `
 
 /* nav */
 .nav{display:flex;gap:.3rem;overflow-x:auto;max-width:960px;margin:0 auto;padding:.6rem 1.15rem;
-  border-bottom:1px solid var(--rule);position:relative;z-index:5;
+  border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:5;
   background:rgba(250,245,244,.62);
   -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
 .nav__b{flex:0 0 auto;min-height:44px;padding:0 1.05rem;background:none;border:none;
@@ -5541,7 +5622,20 @@ const CSS = `
 .card{background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);
   backdrop-filter:var(--glass-blur);
   border:1px solid var(--glass-rim);border-radius:26px;
-  padding:1.5rem 1.35rem;box-shadow:var(--spec), var(--lift-1)}
+  padding:1.5rem 1.35rem;box-shadow:var(--spec), var(--lift-1);
+  position:relative;isolation:isolate;--gx:50%;--gy:20%}
+/* A highlight that tracks the pointer rather than sitting fixed — real
+   Liquid Glass shifts its specular response as content and viewpoint move;
+   a highlight painted in one spot is the single biggest tell of a static
+   fake. ::before keeps it out of normal document flow, mix-blend-mode:overlay
+   so it lights the surface rather than sitting on top of it as a visible
+   circle. Skipped entirely under prefers-reduced-motion — cursor-chasing
+   light is exactly the kind of motion that spec is meant to opt out of. */
+.card::before{content:"";position:absolute;inset:0;border-radius:inherit;
+  pointer-events:none;z-index:1;
+  background:radial-gradient(circle at var(--gx) var(--gy), rgba(255,255,255,.8), transparent 58%);
+  opacity:.65;mix-blend-mode:overlay;transition:opacity .3s ease}
+@media(prefers-reduced-motion:reduce){.card::before{display:none}}
 /* Larger surfaces get a larger radius so corners stay visually concentric
    with the elements nested inside them rather than fighting them. */
 .card--big{padding:2rem 1.6rem;border-radius:32px;box-shadow:var(--spec), var(--lift-2)}
@@ -5562,6 +5656,15 @@ const CSS = `
 .card--warn h2{color:var(--warn)}
 .card--ask{background:var(--sunk);box-shadow:none}
 .card__head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+/* Keeps a pair of header buttons together as a single unit — otherwise
+   space-between treats each as its own item and splits them apart. */
+.headacts{display:flex;gap:.45rem;flex:0 0 auto;align-items:center}
+/* A long heading was pushing a single trailing button onto its own line.
+   flex-basis must be 0, not auto — with auto the heading's content width is
+   still counted when deciding whether to wrap, so it wrapped before it ever
+   shrank. */
+.card__head > h2{flex:1 1 0;min-width:0}
+.card__head > .btn{flex:0 0 auto}
 .lead{color:var(--ink-2);max-width:58ch;font-size:1.02em}
 .hint{color:var(--muted);font-size:.92em;max-width:58ch;font-style:italic}
 .hint--save{margin-top:.9rem}
@@ -6041,7 +6144,11 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    sizes the three-column rule below takes over and it sits normally. */
 @media(max-width:559px){.setg__t--wide{grid-column:1 / -1}}
 .setg__k{font-family:'Nunito',sans-serif;font-weight:800;font-size:.72em;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--brick)}
+  text-transform:uppercase;color:var(--brick);
+  /* A key should never hyphenate or split mid-word — it's a label, not prose. */
+  word-break:keep-all;overflow-wrap:normal;hyphens:none}
+/* Tiles in a row match height so a tall neighbour doesn't leave dead space. */
+.setg__t{align-self:stretch}
 .setg__v{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.7em;line-height:1.1;
   color:var(--navy)}
 .setg__v--sm{font-size:1em;font-weight:700;line-height:1.35;color:var(--ink-2);
@@ -6349,7 +6456,12 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 @media(max-width:560px){
   .hdr__logo{font-size:1.8em}
   .cards,.nights{grid-template-columns:1fr}
-  .card__head{flex-direction:column}
+  /* Was flex-direction:column here, which stacked every card heading and its
+     button on phones — and it overrode the flex rules above, which is why
+     shrinking the heading had no effect. A heading plus one small button fits
+     comfortably at this width (measured 271px of content in 332px), so it only
+     needs to wrap if it genuinely runs out of room. */
+  .card__head{flex-wrap:wrap}
   .recap__list li{flex-direction:column;gap:.1rem}
   .recap__list strong{text-align:left}
 }

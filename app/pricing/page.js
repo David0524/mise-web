@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { S } from "@/lib/authStyles";
+import { S, FilterDefs } from "@/lib/authStyles";
 
 export default function PricingPage() {
   const [busy, setBusy] = useState(false);
@@ -22,6 +22,7 @@ export default function PricingPage() {
 
   return (
     <main style={S.wrap}>
+      <FilterDefs />
       <div style={{ ...S.card, width: 380, textAlign: "center" }}>
         <h1 style={S.h1}>Mise</h1>
         <p style={{ fontFamily: "system-ui, sans-serif", color: "#4A4453", marginTop: -8 }}>

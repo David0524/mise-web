@@ -1,4 +1,4 @@
-import { S } from "@/lib/authStyles";
+import { S, FilterDefs } from "@/lib/authStyles";
 
 /* Mise herself, in her "happy" expression — the same artwork the app uses, not
    a redrawn approximation, so the character a visitor meets here is exactly the
@@ -32,6 +32,7 @@ function MiseHello({ size = 132 }) {
 export default function Landing() {
   return (
     <main style={S.wrap}>
+      <FilterDefs />
       <div style={{ ...S.card, maxWidth: 460, textAlign: "center", paddingTop: "2.4rem" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: ".4rem" }}>
           <MiseHello />
