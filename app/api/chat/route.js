@@ -19,6 +19,14 @@ import * as openai from "@/lib/providers/openai";
 const PROVIDERS = { anthropic, gemini, openai };
 const serverProvider = PROVIDERS[process.env.AI_PROVIDER] || PROVIDERS.anthropic;
 
+/* Must be >= the provider's own total time budget (BUDGET_MS in
+   lib/providers/gemini.js), or Vercel kills the function mid-rotation and the
+   key-retry logic never gets to finish — you'd see a platform timeout instead
+   of this route's own error handling. 60 is the ceiling on Hobby; Pro allows
+   more. Kept explicit rather than relying on the platform default, which is
+   only 10-15s and far too short for the heaviest call here. */
+export const maxDuration = 60;
+
 /* Providers a user is allowed to nominate with their own key. Deliberately a
    allowlist rather than trusting the client's string — otherwise the request
    body could name any module in PROVIDERS and route around the server config. */

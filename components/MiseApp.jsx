@@ -2221,7 +2221,12 @@ Respond with ONLY this JSON, no backticks:
 "dishes":[{"title":"","blurb":"what it is","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30}]}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
+      /* The most structured output in the app: an ecosystem block plus one
+         object per candidate dish, and the candidate count scales with their
+         nights. On the 1000 default this was the call most likely to hit the
+         cap and come back as truncated JSON for parseJSON to repair. The
+         route caps this at 2200 regardless, so it can't run away. */
+      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1800, docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
       setEcosystem(out.ecosystem || null);
       setCandidates((out.dishes || []).map((d) => ({ ...d, id: uid(), reaction: null, note: "" })));

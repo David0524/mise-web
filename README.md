@@ -39,12 +39,23 @@ lives in `ios/` for the native build.
 ## Which AI provider you're using
 
 **Gemini (the default)** is free — no credit card, via `aistudio.google.com`
-— but it's Google's free tier: Flash/Flash-Lite only, modest rate limits,
-and free-tier prompts may be used to improve Google's own products. Good
-for demo/testing; the plan is to move to Claude before a real launch.
-Model names for Gemini's free tier shift — `lib/providers/gemini.js` has
-notes on this and needs occasional verification against your own AI Studio
-console, not blind trust in whatever's documented here.
+— but it's Google's free tier: Flash/Flash-Lite only, and free-tier prompts
+may be used to improve Google's own products. Good for demo/testing; the plan
+is to move to Claude before a real launch. Two things worth knowing:
+
+- Free-tier eligibility is per model *and per endpoint*. On the Flash models
+  the Standard and Priority endpoints are free; Batch and Flex are paid-only.
+- Rate limits apply **per Google Cloud project, not per API key**. Several
+  keys from one project share one quota, so `GEMINI_API_KEYS` only helps if
+  the keys come from different Google accounts. Google no longer publishes
+  per-model free-tier RPM/RPD numbers — check your own at
+  `aistudio.google.com/rate-limit`.
+
+Model names in this tier also shift fast (three Flash releases in six weeks
+as of September 2026), so `lib/providers/gemini.js` needs occasional
+verification against your own AI Studio console rather than blind trust in
+whatever's written down. The notes in that file record which model is pinned
+and why — including one earlier diagnosis that turned out not to hold up.
 
 **Anthropic** is the real thing this is meant to run on eventually. It
 bills your key directly — see "Cost reality" below.
