@@ -398,6 +398,11 @@ async function callClaude(messages, opts = {}) {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages, tier: opts.tier || "main",
       maxTokens: opts.maxTokens || 1000, sessionContext: SESSION_CONTEXT,
+      // Which doctrine this call actually needs — see the comment on
+      // buildDoctrine in lib/doctrine.js. Unset means "everything", so a
+      // call site that forgets this degrades to the old behavior rather
+      // than running with no doctrine.
+      ...(opts.docSlices ? { docSlices: opts.docSlices } : {}),
       ...(byok ? { userProvider: byok.provider, userKey: byok.key } : {}) }),
   });
   if (res.status === 402) { window.location.href = "/pricing?reason=expired"; throw new Error("Redirecting to plans…"); }
@@ -1534,7 +1539,7 @@ not the names:
 "order":[{"night":1,"dish":2}]}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }]);
+      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
       const out = parseJSON(raw);
 
       const next = {};
@@ -2216,7 +2221,7 @@ Respond with ONLY this JSON, no backticks:
 "dishes":[{"title":"","blurb":"what it is","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30}]}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }]);
+      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
       setEcosystem(out.ecosystem || null);
       setCandidates((out.dishes || []).map((d) => ({ ...d, id: uid(), reaction: null, note: "" })));
@@ -2273,7 +2278,7 @@ Return the FULL revised list.`;
          information twice — and growing every round. */
       const recent = convo.slice(-2);
       const msgs = [...recent, { role: "user", content: prompt }];
-      const raw = await callClaude(msgs);
+      const raw = await callClaude(msgs, { docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
       const prior = new Map(candidates.map((c) => [c.title.toLowerCase(), c]));
       setCandidates(
@@ -2313,7 +2318,7 @@ ${CHAT_VOICE} "why" and "blurb" 14 words or fewer, "say" is truly one short sent
 Respond with ONLY this JSON:
 {"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30,"say":"one short sentence on why this instead"}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }]);
+      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
       setCandidates((cs) => cs.map((c) => (c.id === id ? { ...out, id: c.id, reaction: null, note: "" } : c)));
       if (out.say) setThread((t) => [...t, { who: "mise", text: out.say }]);
@@ -2362,7 +2367,7 @@ Respond with ONLY this JSON:
 "flags":["specific package-size or waste risks"],
 "items":[{"item":"","qty":"amount to buy in the units the store sells","section":"Produce|Protein|Dairy & eggs|Bakery|Pantry|Frozen|Other","jobs":"which dishes use it","days":7}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }]);
+      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
       let repaired = false;
       const out = parseJSON(raw, () => { repaired = true; });
       setShopping(
@@ -2446,7 +2451,7 @@ BE BRIEF. "say" is 2 sentences.
 Respond with ONLY this JSON:
 {"say":"","items":[{"item":"","qty":"","section":"","jobs":"","days":7}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }]);
+      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
       const out = parseJSON(raw);
       if (out.items)
         setShopping(
@@ -2519,7 +2524,7 @@ doneness cues rather than more steps. "why" on at most four steps.
 Respond with ONLY this JSON:
 {"title":"","servings":"","time":"","technique":"the one technique worth learning here, or empty","seasoning":"what to taste for at the end and how to correct it — flat, thin, harsh, dull","doneness":"the sensory cue and the temperature, or empty if nothing needs judging","assembly":"one sentence","missing":["anything needed that is not on their shopping list, or empty"],"components":[{"name":"","items":["quantity + ingredient WITH its prep state"]}],"steps":[{"do":"","why":""}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900 });
+      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900, docSlices: ["core", "flavor"] });
       const built = { ...parseJSON(raw), basis: shoppingSignature };
       setRecipes((r) => ({ ...r, [dishId]: built }));
       /* Bake it into the archived week straight away, rather than waiting for a
@@ -2574,7 +2579,7 @@ Respond with ONLY this JSON:
 "options":[{"label":"short name for this route","what":"what changes","cost":"what it costs or gives up","best":false}]}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }]);
+      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
       setRecipeChat((c) => [...c, { who: "mise", text: out.say || "" }]);
       setRecipeOptions((out.options || []).map((o) => ({ ...o, id: uid() })));
@@ -2619,7 +2624,7 @@ Respond with ONLY this JSON:
 "recipe":{"title":"","servings":"","time":"","technique":"","seasoning":"","assembly":"","missing":[],"components":[{"name":"","items":[""]}],"steps":[{"do":"","why":""}]}}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900 });
+      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900, docSlices: ["core", "groceries", "flavor"] });
       const out = parseJSON(raw);
 
       /* Apply the list changes first, then stamp the recipe against the resulting
@@ -2730,7 +2735,7 @@ Respond with ONLY this JSON:
 "ideas":[{"title":"","blurb":"what it is and why it works","usesItems":["exact text from the list"],"need":"anything to buy, or empty","minutes":15}]}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }]);
+      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries", "flavor"] });
       const out = parseJSON(raw);
       let ideas = (out.ideas || []).map((i) => ({ ...i, id: uid() }));
 
@@ -2769,7 +2774,7 @@ them how to judge by eye. 8 steps maximum, each 30 words or fewer.
 Respond with ONLY this JSON:
 {"title":"","servings":"","time":"","seasoning":"","components":[{"name":"","items":[""]}],"steps":[{"do":"","why":""}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1500 });
+      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1500, docSlices: ["core", "flavor"] });
       setLeftoverRecipes((r) => ({ ...r, [idea.id]: parseJSON(raw) }));
     } catch (e) {
       setErr(e.message);
@@ -2835,6 +2840,13 @@ Respond with ONLY this JSON:
          real cost — that stays on the stronger model. */
       const raw = await callClaude([{ role: "user", content: prompt }], {
         tier: atStove ? "main" : "fast",
+        // At the stove this is technique/doneness judgment — flavor doctrine.
+        // Away from the stove it's more likely to touch the shopping list —
+        // groceries doctrine. Either way it can trigger a recipe rewrite via
+        // recipeInstruction, but that's a short instruction handed to
+        // applyRecipeChange (which carries its own full doctrine), not a
+        // rewrite done here.
+        docSlices: atStove ? ["core", "flavor"] : ["core", "groceries"],
       });
       /* If she replies with prose instead of JSON that's still a fine answer —
          show it rather than erroring. Only the actions need structure. */
@@ -2962,7 +2974,7 @@ which — and say the one thing to change next time. Skip the recap of what they
 text, no JSON.`;
     try {
       // Short, low-stakes, summarising a verdict they already formed.
-      const raw = await callClaude([{ role: "user", content: prompt }], { tier: "fast" });
+      const raw = await callClaude([{ role: "user", content: prompt }], { tier: "fast", docSlices: ["core", "flavor"] });
       setThread((t) => [...t, { who: "me", text: `${dish.title} — ${rating}/5. ${missing || ""}` }, { who: "mise", text: raw }]);
     } catch (_) {
       /* the rating is saved regardless */
@@ -2984,7 +2996,7 @@ and "why" 14 words or fewer.
 Respond with ONLY this JSON:
 {"say":"the through-line, one short sentence","dishes":[{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }]);
+      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
       setCandidates((cs) => [...cs, ...(out.dishes || []).map((d) => ({ ...d, id: uid(), reaction: null, note: "" }))]);
       setThread((t) => [...t, { who: "mise", text: out.say || "" }]);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireEntitledUser } from "@/lib/auth";
-import { DOCTRINE_ALL } from "@/lib/doctrine";
+import { buildDoctrine } from "@/lib/doctrine";
 import * as anthropic from "@/lib/providers/anthropic";
 import * as gemini from "@/lib/providers/gemini";
 import * as openai from "@/lib/providers/openai";
@@ -37,7 +37,7 @@ export async function POST(req) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const { messages, tier, maxTokens, sessionContext, userProvider, userKey } = body || {};
+  const { messages, tier, maxTokens, sessionContext, userProvider, userKey, docSlices } = body || {};
   if (!Array.isArray(messages) || !messages.length) {
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
@@ -46,15 +46,22 @@ export async function POST(req) {
   // response actually about the person asking rather than a generic answer.
   // It travels with the request because the server has no session-level
   // memory of who's calling beyond the auth cookie already checked above.
-  /* Two blocks, NOT one concatenated string. The doctrine is ~10k tokens and
-     never changes; the profile changes whenever anything about the household
+  /* Two blocks, NOT one concatenated string. The doctrine is stable across a
+     conversation; the profile changes whenever anything about the household
      does — and it changes more often now that it carries a palate model derived
      from a growing history. Gluing them together meant one cache entry keyed on
      both, so every profile change invalidated the doctrine too: full price and
-     full latency on 10k stable tokens, over and over. That is the slowdown.
-     Split, the doctrine stays a cheap cache read and only the small profile
-     block is ever re-read at full cost. */
-  const systemBlocks = [DOCTRINE_ALL];
+     full latency on however many doctrine tokens, over and over. Split, the
+     doctrine stays a cheap cache read (Anthropic) and only the small profile
+     block is ever re-read at full cost.
+
+     Which doctrine, though, is now the caller's choice via `docSlices` — the
+     build script's own design was "the app injects only the slices a given
+     call needs," which the app never actually did. An unset/empty/unrecognized
+     list falls back to everything, so an older client or a typo degrades to
+     the previous (correct, just wasteful) behavior rather than running with no
+     doctrine at all. */
+  const systemBlocks = [buildDoctrine(docSlices)];
   if (sessionContext) systemBlocks.push(sessionContext);
 
   // Recipe-writing calls need real headroom — a full recipe with 12 steps, prep
