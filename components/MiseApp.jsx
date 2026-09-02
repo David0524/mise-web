@@ -49,7 +49,7 @@ const ADVENTURE = [
   { v: 2, label: "Familiar with a twist", note: "Dishes I know, done a bit differently." },
   { v: 3, label: "New but recognizable", note: "I haven't made it, but I know what it is." },
   { v: 4, label: "Show me something new", note: "I've never made this and it sounds interesting." },
-  { v: 5, label: "Give me a project", note: "I want to spend real time on it." },
+  { v: 5, label: "Push me", note: "Show me something I haven't cooked before." },
 ];
 
 const RESTRICTIONS = [
@@ -62,6 +62,167 @@ const EQUIPMENT = [
   "Oven", "Stovetop", "Cast iron pan", "Nonstick pan", "Big pot", "Rice cooker",
   "Sheet pans", "Blender", "Food processor", "Air fryer", "Grill", "Microwave", "Slow cooker",
 ];
+
+/* ────────────────────────────────────────────────────────────────────────────
+   THE WEEK SEED
+
+   Repetition was never a reasoning failure — it was a determinism failure. Same
+   prompt, same distribution, same handful of attractors, week after week. No
+   instruction fixes that, because the model has no source of entropy: asking it
+   to "be varied" is asking it to do the one thing a deterministic sampler can't.
+
+   So entropy comes from here instead. Before the model sees anything, the app
+   draws a tradition, a set of formats, a vegetable and a technique. The model's
+   job changes from "invent a varied week" (which it does badly) to "make THIS
+   week good" (which it does very well). The skill's own Phase 2 says constraints
+   inspire; this applies that to the generation process itself.
+
+   Two things fall out of it. The named-example attractor dies, because the entry
+   point is no longer "what comes to mind." And the repertoire becomes an
+   auditable asset — a list you can read, expand, and be held to, rather than
+   whatever happened to be salient in the weights.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Deliberately enumerated and deliberately wide. Left to its own devices the
+   model's implicit repertoire skews hard to a few cuisines; this is the fix, and
+   it's the cheapest depth signal there is — week nine proposing a Georgian
+   walnut sauce reads as range in a way no amount of prose can. */
+const TRADITIONS = [
+  "Sichuan", "Hunan", "Cantonese", "Shanghainese", "Japanese", "Korean",
+  "Vietnamese", "Thai", "Malaysian", "Filipino", "Bengali", "Gujarati",
+  "South Indian", "Punjabi", "Sri Lankan", "Persian", "Lebanese", "Turkish",
+  "Georgian", "Armenian", "Egyptian", "Moroccan", "Tunisian", "Senegalese",
+  "Nigerian", "Ethiopian", "South African", "Oaxacan", "Yucatecan",
+  "Northern Mexican", "Peruvian", "Brazilian", "Argentine", "Cuban",
+  "Puerto Rican", "Jamaican", "Southern Italian", "Northern Italian",
+  "Basque", "Catalan", "Provençal", "Lyonnaise", "Greek", "Portuguese",
+  "Polish", "Hungarian", "Georgian Black Sea", "Levantine", "Cajun",
+  "Lowcountry", "Appalachian", "Pacific Northwest", "New Mexican",
+];
+
+/* Each format carries what it actually requires, so the list can be filtered
+   against the person's kitchen IN CODE rather than asking the model to remember
+   to adapt. A format that needs a tool they don't own is never put in front of
+   it — the model cannot violate a constraint it was never shown. */
+const FORMATS = [
+  { name: "a braise or stew", needs: ["Stovetop", "Big pot", "Slow cooker"] },
+  { name: "a sheet-pan roast", needs: ["Oven", "Sheet pans"] },
+  { name: "a grain or legume bowl", needs: [] },
+  { name: "a noodle or pasta dish", needs: ["Stovetop", "Big pot"] },
+  { name: "a soup", needs: ["Stovetop", "Big pot", "Microwave", "Slow cooker"] },
+  { name: "a handheld — wrap, taco, sandwich", needs: [] },
+  { name: "a plate a vegetable genuinely leads", needs: [] },
+  { name: "a hard sear in a hot pan", needs: ["Cast iron pan", "Nonstick pan", "Stovetop"] },
+  { name: "something raw or barely cooked", needs: [] },
+  { name: "a steamed dish", needs: ["Microwave", "Big pot", "Stovetop"] },
+  { name: "eggs as dinner", needs: ["Stovetop", "Nonstick pan", "Microwave"] },
+  { name: "a bake or gratin", needs: ["Oven"] },
+];
+
+/* Underused on purpose. The vegetable slot has drifted to whatever is easiest to
+   prep — first cabbage, then broccoli once cabbage was corrected. Weighting the
+   draw against recent history is the mechanical version of that correction, and
+   unlike a written rule it can't be quietly deprioritised. */
+const VEGETABLES = [
+  "fennel", "celery root", "kohlrabi", "leeks", "parsnips", "turnips",
+  "delicata squash", "chard", "escarole", "radicchio", "endive", "collards",
+  "Brussels sprouts", "cauliflower", "broccoli", "cabbage", "carrots",
+  "green beans", "asparagus", "eggplant", "zucchini", "peppers", "corn",
+  "sweet potatoes", "beets", "kale", "spinach", "snap peas", "okra",
+  "artichokes", "cucumbers", "tomatoes", "mushrooms", "potatoes", "peas",
+];
+
+/* Rough seasonal windows by month index (0 = January). Not a hard filter — a
+   nudge, because in-season produce is cheaper, better, and less likely to be
+   wasted. Also free variety: the calendar rotates the slot without being asked. */
+const SEASON = {
+  0: ["cabbage", "kale", "leeks", "parsnips", "turnips", "celery root", "beets", "collards"],
+  1: ["cabbage", "kale", "leeks", "parsnips", "chard", "radicchio", "endive", "fennel"],
+  2: ["asparagus", "leeks", "chard", "spinach", "radicchio", "fennel", "escarole"],
+  3: ["asparagus", "peas", "spinach", "snap peas", "chard", "artichokes"],
+  4: ["asparagus", "peas", "snap peas", "spinach", "zucchini", "artichokes"],
+  5: ["zucchini", "green beans", "peppers", "cucumbers", "tomatoes", "corn"],
+  6: ["corn", "tomatoes", "zucchini", "peppers", "eggplant", "okra", "cucumbers"],
+  7: ["corn", "tomatoes", "eggplant", "peppers", "okra", "green beans", "zucchini"],
+  8: ["eggplant", "peppers", "tomatoes", "delicata squash", "kale", "chard", "corn"],
+  9: ["delicata squash", "cauliflower", "Brussels sprouts", "kale", "fennel", "beets"],
+  10: ["Brussels sprouts", "cauliflower", "cabbage", "parsnips", "celery root", "kohlrabi"],
+  11: ["cabbage", "kale", "leeks", "parsnips", "turnips", "celery root", "Brussels sprouts"],
+};
+
+/* A hidden progression, never surfaced as a curriculum or a progress bar. The
+   point is that the model should know they've already done a hard sear six times
+   and should stop explaining it — and should have something new to teach. */
+const TECHNIQUES = [
+  "a pan sauce built from the fond",
+  "a proper hard sear and why the pan must be dry",
+  "an emulsion — how a dressing holds together",
+  "blooming whole spices in fat",
+  "salting ahead, and what it does to texture",
+  "a quick pickle as a component rather than a condiment",
+  "resting meat, and carryover heat",
+  "building a braise's liquid so it reduces into a sauce",
+  "toasting and grinding a spice blend",
+  "using starchy cooking water to bind a sauce",
+  "a compound butter or flavoured fat",
+  "reducing to concentrate rather than thickening with starch",
+];
+
+/* Weighted draw: anything used in the recent past is far less likely to come up
+   again, which is what makes week twelve feel different from week one. */
+function drawWeighted(pool, recent, recencyWindow = 8) {
+  const seen = new Map();
+  recent.slice(0, recencyWindow).forEach((v, i) => {
+    // more recent = heavier penalty
+    seen.set(v, Math.max(seen.get(v) || 0, recencyWindow - i));
+  });
+  const weighted = pool.map((item) => {
+    const penalty = seen.get(item) || 0;
+    return { item, w: 1 / (1 + penalty * penalty) };
+  });
+  const total = weighted.reduce((a, b) => a + b.w, 0);
+  let r = Math.random() * total;
+  for (const { item, w } of weighted) {
+    r -= w;
+    if (r <= 0) return item;
+  }
+  return weighted[weighted.length - 1].item;
+}
+
+/* Formats the person's kitchen can actually produce. Always leaves the
+   equipment-free formats available, so even a microwave-only kitchen has real
+   options rather than an empty list. */
+function availableFormats(equipment) {
+  const owned = new Set(equipment || []);
+  return FORMATS.filter((f) => f.needs.length === 0 || f.needs.some((n) => owned.has(n)));
+}
+
+function drawWeekSeed(profile, history, month = new Date().getMonth()) {
+  const recentTraditions = (history || []).flatMap((w) => w.seed?.tradition || []);
+  const recentVegetables = (history || []).flatMap((w) => w.seed?.vegetable || []);
+  const recentTechniques = (history || []).flatMap((w) => w.seed?.technique || []);
+
+  const tradition = drawWeighted(TRADITIONS, recentTraditions, 12);
+
+  // Seasonal produce first, falling back to the full list so the draw never fails.
+  const inSeason = (SEASON[month] || []).filter((v) => !(profile.dislikes || "").toLowerCase().includes(v));
+  const vegPool = inSeason.length >= 4 ? inSeason : VEGETABLES;
+  const vegetable = drawWeighted(vegPool, recentVegetables, 6);
+
+  const technique = drawWeighted(TECHNIQUES, recentTechniques, 10);
+
+  // One format per cooking night, capped — drawn without replacement so no two
+  // nights share a shape.
+  const pool = availableFormats(profile.equipment);
+  const want = Math.min(Math.max(3, orderDays(profile.nights).length), pool.length);
+  const formats = [];
+  const left = [...pool];
+  while (formats.length < want && left.length) {
+    formats.push(left.splice(Math.floor(Math.random() * left.length), 1)[0].name);
+  }
+
+  return { tradition, vegetable, technique, formats, month };
+}
 
 const SECTIONS = ["Produce", "Protein", "Dairy & eggs", "Bakery", "Pantry", "Frozen", "Other"];
 
@@ -146,7 +307,48 @@ function quickAsksFor(view, atStove) {
   return QUICK_ASKS[view] || QUICK_ASKS.default;
 }
 
-const MISSING = ["It was great", "Needed acid", "Needed fat", "Needed crunch", "Too spicy", "Not spicy enough", "Too bland", "Too much food"];
+/* A diagnostic vocabulary, not a score. A 3-out-of-5 is uninterpretable — it
+   teaches the cook nothing and gives the app nothing to act on. "Flat" is
+   actionable in both directions: the person learns that flat means it wanted
+   acid, and the app learns they are systematically under-acidifying.
+   Each entry carries the fix it implies, so the aggregate below can say
+   something specific rather than just counting complaints. */
+const MISSING = [
+  { label: "Nailed it", fix: null },
+  { label: "Tasted flat", fix: "acid — they consistently under-acidify, so build it in and say why" },
+  { label: "Too rich", fix: "acid and freshness against fat; lighten the finishing step" },
+  { label: "Wanted crunch", fix: "a deliberate textural contrast added at the end" },
+  { label: "Boring to eat", fix: "texture and temperature contrast, not more seasoning" },
+  { label: "Too spicy", fix: "lower the heat ceiling in practice, not just on paper" },
+  { label: "Not spicy enough", fix: "they can take more heat than their setting suggests" },
+  { label: "Too much work", fix: "fewer components and fewer pans, not faster cooking" },
+  { label: "Too much food", fix: "scale down; they are being over-served" },
+];
+const MISSING_LABELS = MISSING.map((m) => m.label);
+
+/* What the app has actually learned about their palate, derived from the
+   diagnoses rather than asked for. This is the compounding loop: week twelve is
+   better than week one because twelve weeks of signal exist. Only fires on a
+   real pattern — two of the same diagnosis — because one bad night is noise. */
+function palateModel(history) {
+  const counts = new Map();
+  (history || []).forEach((w) =>
+    (w.dishes || []).forEach((d) => {
+      if (!d.missing || d.missing === "Nailed it") return;
+      counts.set(d.missing, (counts.get(d.missing) || 0) + 1);
+    })
+  );
+  const patterns = [...counts.entries()]
+    .filter(([, n]) => n >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([label, n]) => {
+      const entry = MISSING.find((m) => m.label === label);
+      return entry?.fix ? `${label} ${n}x → ${entry.fix}` : null;
+    })
+    .filter(Boolean);
+  return patterns;
+}
 
 /* Single colon, no other punctuation — stays inside the documented key shape. */
 const STORE_KEY = "mise:profile-v3";
@@ -161,15 +363,53 @@ const HISTORY_KEY = "mise:history-v1";
    summarising, where Haiku costs a third as much for input and reads the same. */
 let SESSION_CONTEXT = "";
 
+/* Bring-your-own-key lives in localStorage, not in our database. It is read
+   here per request, sent once, used, and discarded server-side. Deliberately
+   NOT stored via /api/storage like the rest of the profile — that would put
+   other people's API credentials in our database, making a breach of our data
+   a breach of their OpenAI billing. Browser-local means it never leaves the
+   device except to make the call the person asked for. */
+const BYOK_KEY = "mise:byok-v1";
+
+function readByok() {
+  try {
+    const raw = window.localStorage?.getItem(BYOK_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    return v?.provider && v?.key ? v : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeByok(provider, key) {
+  try {
+    if (!provider || !key) window.localStorage?.removeItem(BYOK_KEY);
+    else window.localStorage?.setItem(BYOK_KEY, JSON.stringify({ provider, key }));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 async function callClaude(messages, opts = {}) {
+  const byok = readByok();
   const res = await fetch("/api/chat", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages, tier: opts.tier || "main",
-      maxTokens: opts.maxTokens || 1000, sessionContext: SESSION_CONTEXT }),
+      maxTokens: opts.maxTokens || 1000, sessionContext: SESSION_CONTEXT,
+      ...(byok ? { userProvider: byok.provider, userKey: byok.key } : {}) }),
   });
   if (res.status === 402) { window.location.href = "/pricing?reason=expired"; throw new Error("Redirecting to plans…"); }
   if (res.status === 401) { window.location.href = "/login?reason=expired"; throw new Error("Redirecting to sign in…"); }
-  if (!res.ok) throw new Error("Couldn't reach the kitchen just now. Give it another go in a moment.");
+  if (!res.ok) {
+    // The server sends a specific message for problems only the person can fix
+    // — a rejected key, an account out of credit — since a generic error would
+    // leave them with no idea it was their own account rather than the app.
+    let detail = null;
+    try { detail = (await res.json())?.detail; } catch (_) {}
+    throw new Error(detail || "Couldn't reach the kitchen just now. Give it another go in a moment.");
+  }
   const data = await res.json();
   return data.text || "";
 }
@@ -1056,6 +1296,10 @@ export default function App() {
   const [swapTarget, setSwapTarget] = useState(null);   // {item, mode}
   const [scrollTarget, setScrollTarget] = useState(null);
   const [weekId, setWeekId] = useState(null);
+  /* The current week's draw. Persisted onto the archived week so future draws can
+     weight against it — without that, the weighting has no history and week
+     twelve looks exactly like week one again. */
+  const [weekSeed, setWeekSeed] = useState(null);
   const [history, setHistory] = useState([]);
   /* null = untested, true = writes land, false = writes are being dropped.
      Artifact storage only works once the artifact is published, and it fails
@@ -1106,7 +1350,8 @@ export default function App() {
       if (!weekId) return;
       const prev = historyRef.current;
       const idx = prev.findIndex((w) => w.id === weekId);
-      const base = idx >= 0 ? prev[idx] : { id: weekId, startedAt: new Date().toISOString() };
+      const base = idx >= 0 ? prev[idx]
+        : { id: weekId, startedAt: new Date().toISOString(), seed: weekSeed || null };
       const merged = { ...base, ...patch, updatedAt: new Date().toISOString() };
       const next = idx >= 0 ? prev.map((w, i) => (i === idx ? merged : w)) : [merged, ...prev];
       /* Photos are data URLs living inside this blob, and storage caps at 5MB per
@@ -1187,8 +1432,13 @@ ${nights.map((d, i) => `${i + 1}. ${DAY_FULL[d]}`).join("\n")}
 
 Assign each dish to a night. Reason about what actually spoils first (fish and delicate herbs
 early, hardy roots and cabbage late), which dish makes leftovers a later night can use, and
-which night has least time. If there are more dishes than nights, leave the extras unassigned
-and say so.
+which night has least time.
+
+If there are MORE dishes than nights, leave the extras unassigned and say so.
+If there are FEWER dishes than nights, say which nights are still open rather than silently
+leaving them blank — and offer the two real options: pick another dish, or cook one of these
+twice. Cooking something twice in a week is a perfectly reasonable choice, especially if a
+dish makes enough for two nights; just don't present it as the default.
 
 Give ONE short line per night — the day, the dish, and the reason in a few words, using the real
 day and dish names so it reads naturally. Keep "say" to those lines only, one per line, no preamble.
@@ -1470,8 +1720,11 @@ not the names:
     const r = [...profile.restrictions, profile.restrictionsNote].filter(Boolean).join(", ");
     const loved = favorites.filter((f) => f.rating >= 4).map((f) => f.title).slice(-8);
     const flopped = favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${f.missing || "didn't land"})`).slice(-6);
-    const lessons = favorites.flatMap((f) => (f.missing && f.missing !== "It was great" ? [f.missing] : [])).slice(-6);
+    const lessons = favorites.flatMap((f) => (f.missing && f.missing !== "Nailed it" ? [f.missing] : [])).slice(-6);
     const perNight = orderDays(profile.nights).map((d) => `${DAY_FULL[d]} ${countFor(d)}`).join(", ");
+    /* Derived from their own diagnoses over time — the difference between an app
+       that remembers and one that just stores. Only real patterns appear here. */
+    const palate = palateModel(history);
     return `${
       profile.consistent
         ? `COOKS FOR: ${profile.people} ${profile.people === 1 ? "person" : "people"} every night`
@@ -1520,7 +1773,13 @@ ${flopped.length ? `DISHES THAT DIDN'T LAND: ${flopped.join("; ")}` : ""}
 ${lessons.length ? `RECURRING FEEDBACK — build these in: ${[...new Set(lessons)].join("; ")}` : ""}
 ${recentTitles.length ? `COOKED IN PREVIOUS WEEKS — when inventing NEW suggestions, steer away from these and their near-variants so the weeks don't blur together:
 ${recentTitles.join("; ")}
-This is guidance for generating fresh ideas only. It is NOT a ban list. If one of these is already on their menu, or they ask about it, discuss it normally — never tell someone they "can't" cook something.` : ""}`;
+This is guidance for generating fresh ideas only. It is NOT a ban list. If one of these is already on their menu, or they ask about it, discuss it normally — never tell someone they "can't" cook something.` : ""}${
+      palate.length
+        ? `
+WHAT THEIR OWN FEEDBACK HAS TAUGHT YOU — act on this, don't narrate it back at them:
+${palate.map((x) => `- ${x}`).join("\n")}`
+        : ""
+    }`;
   };
 
   /* How many people eat on a given night. */
@@ -1704,32 +1963,139 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
 
   /* ------------------------------------------------------------ ideas flow */
 
-  async function startIdeas() {
+  async function startIdeas(existingSeed) {
     mark("ideas", true);
     setErr("");
     setBusy("Putting some ideas together");
     setView("ideas");
     setWeekId(uid());  // a fresh id for this run-through, used once it's archived
+
+    /* Drawn in code, before the model sees anything. This is what actually makes
+       week twelve different from week one — see the note on the seed above. */
+    const seed = existingSeed || drawWeekSeed(profile, history);
+    setWeekSeed(seed);
+
+    /* The umami list is filtered against their restrictions BEFORE it reaches the
+       prompt. Previously the doctrine named miso and soy as the standard fix for a
+       flat dish, and a no-soy user could get it suggested — because a rule saying
+       "check the restriction" competes with a list saying "reach for this." A list
+       that never contains the excluded item can't lose that argument. */
+    /* Family-based, not literal word overlap. The first version of this filter
+       checked whether a restriction word appeared literally inside an umami
+       item's own words, with a length>3 cutoff — which meant "soy" and "nut"
+       (both <=3 letters) were never even checked, and "vegan" has no literal
+       ingredient-word match at all. Result: a vegan, no-soy, nut-allergy
+       profile filtered out precisely nothing, and the umami list still handed
+       the model miso, soy sauce, anchovy, parmesan and cured pork. Caught by
+       building a benchmark that actually exercises this code path — a check
+       against the CONCEPT a restriction implies is what the earlier version
+       was missing, not a bigger word list. */
+    const FOOD_FAMILIES = {
+      soy: ["soy sauce", "tamari", "miso", "soy"],
+      nuts: [], // no nuts appear in this specific list; kept for parity with the app-wide check
+      meat: ["pork", "anchovy", "fish sauce"],
+      fish: ["anchovy", "fish sauce", "dried shrimp"],
+      shellfish: ["dried shrimp"],
+      dairy: ["parmesan", "cheese", "butter"],
+    };
+    const IMPLIES_EXCLUDE = {
+      vegan: ["meat", "fish", "shellfish", "dairy"],
+      vegetarian: ["meat", "fish", "shellfish"],
+      pescatarian: ["meat"],
+      "dairy-free": ["dairy"],
+      "no soy": ["soy"], "soy-free": ["soy"], "soy allergy": ["soy"],
+      "nut allergy": ["nuts"], "no nuts": ["nuts"], "tree nut allergy": ["nuts"],
+      "shellfish allergy": ["shellfish"], "no shellfish": ["shellfish"],
+    };
+    const restrictionText = [...(profile.restrictions || []), profile.restrictionsNote || ""]
+      .join(" ; ").toLowerCase();
+    const excludedTerms = new Set();
+    Object.entries(IMPLIES_EXCLUDE).forEach(([phrase, families]) => {
+      if (restrictionText.includes(phrase)) families.forEach((f) => FOOD_FAMILIES[f]?.forEach((t) => excludedTerms.add(t)));
+    });
+    const dislikeText = (profile.dislikes || "").toLowerCase();
+
+    const umami = ["anchovy or fish sauce", "miso", "soy sauce or tamari", "parmesan or a hard cheese rind",
+      "tomato paste cooked out", "caramelised onions", "cured pork", "dried shrimp", "seaweed",
+      "roasted garlic", "browned butter", "olives or capers", "a splash of the cooking water"]
+      .filter((x) => {
+        const low = x.toLowerCase();
+        if ([...excludedTerms].some((t) => low.includes(t))) return false;
+        // dislikes still get a plain word check — those are simple ingredient
+        // names, not restriction categories needing family expansion.
+        return !low.split(/[ ,]+/).some((w) => w.length > 2 && dislikeText.includes(w));
+      });
+
     const prompt = `Here is the person you're cooking with:
-Do two things.
+THIS WEEK'S DRAW — decided already, not up for negotiation:
+- Tradition to work from: ${seed.tradition}
+- Vegetable that must appear across the week: ${seed.vegetable}
+- Technique to teach in passing: ${seed.technique}
+- Cooking formats available to you, one per dish, no repeats:
+${seed.formats.map((f) => `    · ${f}`).join("\n")}
 
-1. Propose this week's grocery spine: one fresh herb, green onions, one primary protein, one
-vegetable, one flavor system, one optional wildcard. One sentence on how the pieces cross over.
+These were drawn for this week specifically so the weeks don't blur together. Don't ask for a
+different tradition and don't quietly drift to a more familiar one — the whole point is that
+you wouldn't have picked ${seed.tradition} yourself. Make THIS week good rather than proposing
+the week you'd have proposed anyway. If the tradition and their restrictions genuinely can't
+meet, say so plainly rather than silently substituting.
 
-2. Propose ${Math.max(4, Math.min(6, profile.nights.length + 2))} CANDIDATE dishes — options to
-react to, not a locked plan. Have a favorite and say which in your opening remark.
+If a dish tastes flat, these are the fixes available given their restrictions:
+${umami.join(", ")}.
 
-No two candidates may share a cuisine, and no two may share a COOKING FORMAT. Check the list
-against itself before you answer: if two dishes come from the same tradition, or two are both
-stir-fries, replace one. Low adventurousness means familiar, well-executed dishes — it does NOT
+Do three things.
+
+0. FIRST, before any dish, write a one-line constraint card in your own words:
+"Cooking for N. Cannot use: [restrictions, allergies, dislikes]. Heat ceiling: X. Can only cook
+with: [their equipment]." Then, after each dish, tag it: (fits: no [restriction], [equipment] only).
+Writing the check before the output is the point — a dish that can't be tagged doesn't belong.
+
+1. Propose this week's grocery spine: one fresh herb, green onions, one primary protein,
+${seed.vegetable} as the vegetable, one flavor system, one optional wildcard. One sentence on
+how the pieces cross over.
+
+2. Propose ${Math.max(4, orderDays(profile.nights).length + 2)} CANDIDATE dishes — options to
+react to, not a locked plan. Have a favorite and say which in your opening remark. They cook
+${orderDays(profile.nights).length} night(s) a week, so there must be at least that many
+candidates plus a couple of spares to reject — never fewer than one per night.
+
+No two candidates may share a cuisine, and no two may share a COOKING FORMAT. "Same cuisine"
+means the same FLAVOUR WORLD, not the same dish name — a tahini-lemon bowl, an olive-and-herb
+pita and a dill-cucumber salad are three different dishes and one single cuisine. Different
+titles are not diversity. Check the list against itself before you answer: if two dishes draw
+on the same broad flavour tradition, or two are both stir-fries, replace one. AMBITION AND TIME ARE INDEPENDENT. Adventurousness is about the IDEA — an unfamiliar technique,
+a pairing they wouldn't have guessed, a familiar dish seen from a new angle. It is not about how
+long something takes. Caramelised onions take an hour and are not remotely adventurous; smashing
+cucumbers so the ridges catch a dressing takes two minutes and is a genuinely good idea. So high
+adventurousness inside a short time limit is NOT a contradiction to flag — it's a brief: be
+clever AND be fast. Respect the time ceiling absolutely and put the ambition in the thinking.
+The only real conflict is a technique that physically cannot be rushed (a proper braise, a
+laminated dough) — don't propose those inside a short window, or say plainly that they need
+more time than they have.
+
+Low adventurousness means familiar, well-executed dishes — it does NOT
 mean staying inside one cuisine; a roast chicken, a carbonara, a black bean soup and a chicken
 schnitzel are all thoroughly familiar and all completely different from each other.
+
+THE SPINE IS A CONSTRAINT, NOT A HEADING. Every dish must be built from the spine you just
+named, plus genuine pantry staples (oil, vinegar, salt, pepper, dried spices, flour, rice,
+pasta, canned tomatoes, onions, garlic). Introducing a whole new fresh ingredient or a second
+protein means the person buys something that appears once and rots — which is the single
+problem this whole app exists to solve. If the protein is canned chickpeas, do NOT also
+introduce white beans, black beans and potatoes across other dishes: that is three legumes and
+a starch bought for one person. At most ONE dish may reach outside the spine, and if it does,
+its "why" must say what earns it. Prefer using the spine harder over shopping wider.
 
 Do not put the same distinctive ingredient in more than one dish unless it's the week's shared
 protein or vegetable — and specifically, mushrooms should appear in at most one dish. Pasta, a braise, a sheet-pan roast, a quick pan-sear, a
 grain bowl, soup, eggs or beans, a handheld, a vegetable-led plate: pick from across that
 range. An ordinary format done well is not a lesser suggestion — a great pasta with broccoli
 belongs on this list as much as anything with an unusual sauce.
+
+If a step implies a process their equipment cannot perform, say where the ingredient comes from
+instead of implying they make it. With only a microwave, "toasted seeds" is not achievable —
+write "pre-toasted" or "store-bought toasted" so it's unambiguous, or leave it out. Never let a
+dish quietly assume a tool they don't have.
 
 Write in plain, warm language a person of any age can read easily. No jargon without a quick
 gloss. ${CHAT_VOICE} That applies to "say". "logic" is one sentence. Each "blurb" and "why" is
@@ -2651,6 +3017,8 @@ Respond with ONLY this JSON:
         {view === "ideas" && (
           <Ideas
             thread={thread} candidates={candidates} ecosystem={ecosystem} busy={busy}
+            seed={weekSeed}
+            onReroll={() => startIdeas(drawWeekSeed(profile, history))}
             setCandidates={setCandidates} onSend={sendFeedback} onSwap={swapDish}
             onNext={() => setView("week")} onStart={() => setView("thisweek")}
             onAskMise={(t) => { setMiseOpen(true); askMise(t); }}
@@ -3320,7 +3688,7 @@ function ThisWeek({ thisWeek, setThisWeek, profile, onEdit, onGo, busy }) {
 
 /* ------------------------------------------------------------------- IDEAS */
 
-function Ideas({ thread, candidates, ecosystem, busy, setCandidates, onSend, onSwap, onNext, onStart, request, setRequest, onAskMise }) {
+function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandidates, onSend, onSwap, onNext, onStart, request, setRequest, onAskMise }) {
   const [draft, setDraft] = useState("");
   const [openNote, setOpenNote] = useState(null);
   const [ecoOpen, setEcoOpen] = useState(false);
@@ -3356,6 +3724,22 @@ function Ideas({ thread, candidates, ecosystem, busy, setCandidates, onSend, onS
     <div className="stack">
       {ecosystem && (
         <section className={`card card--dark${ecoOpen ? "" : " card--dark-shut"}`}>
+          {/* The draw, shown rather than hidden. Two reasons: it makes the range
+              visible (this is where "where did that come from" happens), and a
+              reroll gives a rejection signal the weighting can learn from. */}
+          {seed && (
+            <div className="seed">
+              <div className="seed__row">
+                <span className="seed__k">This week&apos;s draw</span>
+                <button className="seed__re" onClick={onReroll} disabled={busy}>Draw again</button>
+              </div>
+              <p className="seed__v">
+                <strong>{seed.tradition}</strong> · built around <strong>{seed.vegetable}</strong>
+              </p>
+              <p className="seed__t">Something to pick up along the way: {seed.technique}.</p>
+            </div>
+          )}
+
           <button className="eco__toggle" onClick={() => setEcoOpen((v) => !v)} aria-expanded={ecoOpen}>
             <span>What we&apos;re buying this week</span>
             <span className={`fold__chev${ecoOpen ? " fold__chev--open" : ""}`} aria-hidden="true">▾</span>
@@ -3510,6 +3894,16 @@ function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, on
           Cook the delicate things early — fish and soft herbs won't wait until Saturday.
           {!profile.consistent && ` Each night is scaled to its own headcount — ${totalCovers} servings in total this week.`}
         </p>
+        {/* Stated in the UI rather than left to the model to mention: a night can
+            legitimately be left empty, or repeat a dish. Not the point of the app,
+            but people shouldn't feel obliged to fill every slot with something new. */}
+        {chosen.length > 0 && chosen.length < nights.length && (
+          <p className="hint">
+            You have {chosen.length} {chosen.length === 1 ? "dish" : "dishes"} for {nights.length} nights.
+            You can add another, leave a night open, or put the same dish on two nights — plenty of
+            these make enough for a second night.
+          </p>
+        )}
         <div className="nights">
           {nights.map((d) => {
             const dish = candidates.find((c) => c.id === week[d]);
@@ -4030,7 +4424,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
 
             <h3>Anything off about it?</h3>
             <div className="grid-2">
-              {MISSING.map((m) => (
+              {MISSING_LABELS.map((m) => (
                 <Chip key={m} active={missing === m} onClick={() => setMissing(missing === m ? "" : m)}>{m}</Chip>
               ))}
             </div>
@@ -4594,7 +4988,7 @@ function HistoryRate({ dish, onSave, onCancel }) {
       </div>
 
       <div className="grid-2">
-        {MISSING.map((m) => (
+        {MISSING_LABELS.map((m) => (
           <button key={m} className={`chip${missing === m ? " chip--on" : ""}`}
             onClick={() => setMissing(missing === m ? "" : m)}>
             <span className="chip__main">{m}</span>
@@ -4793,6 +5187,107 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
   );
 }
 
+/* Which model answers, and whose account pays for it.
+
+   Deliberately NOT a "connect your ChatGPT account" flow. Billing a person's
+   ChatGPT *subscription* for third-party inference requires the app to identify
+   itself to OpenAI as the Codex CLI so the traffic is treated as first-party —
+   that's the whole mechanism, and it's exactly what Anthropic prohibited in
+   February 2026 (billing enforcement April 2026) and Google closed for Gemini
+   CLI around the same time. OpenAI hasn't shut it yet, which is the only reason
+   it works anywhere. An API key gets the same result — their account pays,
+   ours doesn't — and can't be switched off underneath the app. */
+function AiSource() {
+  const existing = readByok();
+  const [provider, setProvider] = useState(existing?.provider || "");
+  const [key, setKey] = useState("");
+  const [saved, setSaved] = useState(!!existing);
+  const [msg, setMsg] = useState("");
+
+  const save = () => {
+    if (!provider || !key.trim()) return;
+    const ok = writeByok(provider, key.trim());
+    setSaved(ok);
+    setKey("");   // cleared from React state immediately after handing it off
+    setMsg(ok
+      ? "Saved on this device. Requests now bill to your own account."
+      : "Couldn't save — your browser may be blocking local storage.");
+  };
+
+  const clear = () => {
+    writeByok(null, null);
+    setProvider("");
+    setKey("");
+    setSaved(false);
+    setMsg("Removed. Back to the built-in option.");
+  };
+
+  return (
+    <section className="card">
+      <h2>Where the cooking ideas come from</h2>
+      <p className="lead">
+        By default Mise uses her own setup and you don&apos;t need to think about it.
+        If you&apos;d rather run on your own account — your model, your billing — add a
+        key below.
+      </p>
+
+      {saved ? (
+        <>
+          <div className="setg">
+            <div className="setg__t setg__t--full">
+              <span className="setg__k">Using</span>
+              <span className="setg__v setg__v--sm">
+                Your own {existing?.provider === "openai" ? "OpenAI" : "Anthropic"} key
+              </span>
+            </div>
+          </div>
+          <div className="row">
+            <Btn small variant="ghost" onClick={clear}>Use Mise&apos;s built-in instead</Btn>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="grid-2">
+            <button className={`chip${provider === "openai" ? " chip--on" : ""}`}
+              onClick={() => setProvider("openai")}>
+              <span className="chip__main">OpenAI</span>
+              <span className="chip__sub">platform.openai.com</span>
+            </button>
+            <button className={`chip${provider === "anthropic" ? " chip--on" : ""}`}
+              onClick={() => setProvider("anthropic")}>
+              <span className="chip__main">Anthropic</span>
+              <span className="chip__sub">console.anthropic.com</span>
+            </button>
+          </div>
+
+          {provider && (
+            <>
+              <div className="field">
+                <label htmlFor="byok">Your API key</label>
+                <input id="byok" type="password" value={key}
+                  autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck="false"
+                  onChange={(e) => setKey(e.target.value)}
+                  placeholder={provider === "openai" ? "sk-…" : "sk-ant-…"} />
+              </div>
+              <p className="hint">
+                This is an API key from the developer console — not your ChatGPT or Claude
+                subscription login. It&apos;s stored only in this browser, never on our
+                servers, and is sent straight to {provider === "openai" ? "OpenAI" : "Anthropic"}
+                {" "}to answer your requests. Usage bills to your account.
+              </p>
+              <div className="row">
+                <Btn small onClick={save} disabled={!key.trim()}>Save key</Btn>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {msg && <p className="hint">{msg}</p>}
+    </section>
+  );
+}
+
 function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, busy }) {
   const loved = favorites.filter((f) => f.rating >= 4).slice().reverse();
   const rest = favorites.filter((f) => f.rating < 4).slice().reverse();
@@ -4849,6 +5344,8 @@ function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, b
         </div>
         {savedAt && <p className="hint">Saved {fmtDate(new Date(savedAt), { month: "long", day: "numeric" })}. Used automatically next week.</p>}
       </section>
+
+      <AiSource />
 
       <section className="card">
         <h2>Dishes You Loved</h2>
@@ -6135,6 +6632,17 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .histrate{margin-top:.9rem;padding:1rem;background:var(--sunk);border-radius:18px;
   border:1px solid var(--rule)}
 .histrate .stars{margin-bottom:.6rem}
+.seed{background:var(--glass-strong);border:1px solid var(--rule-2);border-radius:18px;
+  padding:.9rem 1rem;margin-bottom:1rem;box-shadow:var(--spec)}
+.seed__row{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+.seed__k{font-family:'Nunito',sans-serif;font-weight:800;font-size:.72em;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--brick)}
+.seed__re{background:none;border:1px solid var(--rule-2);border-radius:999px;
+  padding:.25rem .7rem;font-family:'Nunito',sans-serif;font-weight:700;font-size:.8em;
+  color:var(--plum);cursor:pointer}
+.seed__re:disabled{opacity:.45;cursor:not-allowed}
+.seed__v{margin:.45rem 0 0;font-size:1.05em}
+.seed__t{margin:.3rem 0 0;font-size:.9em;color:var(--muted);font-style:italic}
 .setg{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1.1rem}
 .setg__t{background:var(--glass-strong);border:1px solid var(--rule-2);border-radius:16px;
   padding:.75rem .9rem;display:flex;flex-direction:column;gap:.15rem;min-width:0;

@@ -3,6 +3,7 @@ import { requireEntitledUser } from "@/lib/auth";
 import { DOCTRINE_ALL } from "@/lib/doctrine";
 import * as anthropic from "@/lib/providers/anthropic";
 import * as gemini from "@/lib/providers/gemini";
+import * as openai from "@/lib/providers/openai";
 
 /* This route exists for exactly one reason: the artifact version had to call
    Claude directly from the browser with no key, because Claude.ai's runtime
@@ -15,8 +16,13 @@ import * as gemini from "@/lib/providers/gemini";
    components/MiseApp.jsx, the doctrine, parseJSON's truncation repair) is
    completely unaware which one is actually answering. Set AI_PROVIDER=gemini
    to use Google's free tier; leave it unset (or "anthropic") to use Claude. */
-const PROVIDERS = { anthropic, gemini };
-const provider = PROVIDERS[process.env.AI_PROVIDER] || PROVIDERS.anthropic;
+const PROVIDERS = { anthropic, gemini, openai };
+const serverProvider = PROVIDERS[process.env.AI_PROVIDER] || PROVIDERS.anthropic;
+
+/* Providers a user is allowed to nominate with their own key. Deliberately a
+   allowlist rather than trusting the client's string — otherwise the request
+   body could name any module in PROVIDERS and route around the server config. */
+const BYOK_PROVIDERS = { openai, anthropic };
 
 export async function POST(req) {
   const auth = await requireEntitledUser();
@@ -31,7 +37,7 @@ export async function POST(req) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const { messages, tier, maxTokens, sessionContext } = body || {};
+  const { messages, tier, maxTokens, sessionContext, userProvider, userKey } = body || {};
   if (!Array.isArray(messages) || !messages.length) {
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
@@ -51,11 +57,26 @@ export async function POST(req) {
   // capped so a client can't just request an arbitrarily expensive completion.
   const tokenCap = Math.min(Math.max(Number(maxTokens) || 1000, 1), 2200);
 
+  /* If the person brought their own key, use it — their account pays, and the
+     key exists only for the life of this request. It is never written to the
+     database, never logged, and not retained after the call returns. */
+  const byok = userKey && BYOK_PROVIDERS[userProvider];
+  const active = byok || serverProvider;
+
   try {
-    const text = await provider.callModel(messages, systemText, { tier, maxTokens: tokenCap });
+    const text = await active.callModel(messages, systemText, {
+      tier,
+      maxTokens: tokenCap,
+      ...(byok ? { userKey } : {}),
+    });
     return NextResponse.json({ text });
   } catch (e) {
-    console.error("chat route failure", e);
-    return NextResponse.json({ error: "network" }, { status: 502 });
+    // Deliberately not logging the error object wholesale on the BYOK path —
+    // a thrown request object could carry the key into the log.
+    console.error("chat route failure", byok ? `(byok:${userProvider}) ${e.message}` : e);
+    return NextResponse.json(
+      { error: "network", detail: e.userFacing || null },
+      { status: 502 }
+    );
   }
 }
