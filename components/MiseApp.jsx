@@ -778,10 +778,37 @@ async function renderDishCard(dish, recipe, photo) {
     drawCover(ctx, img, M, TOP, maxW, ph, 30);
     photoBottom = TOP + ph;
   } else {
+    /* No photo of the food, so a ceramic surface stands in. A share card is an
+       advertisement — a bare glass panel reads as a missing image, while a real
+       textured surface reads as a considered design choice. Two options chosen
+       by the dish title so the same dish always gets the same one: consistent
+       across re-shares, and varied across a feed of them. */
     const panelTop = 132;
     const panelH = footerTop - panelTop - 36;
-    glassPanel(ctx, M - 28, panelTop, maxW + 56, panelH, 44);
-    drawMark(ctx, M + 2, panelTop + 58, 1.6, "rgba(180,71,34,.5)");
+    const key = (dish.title || "").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+    const fallback = await loadImage(key % 2 ? "/img/clay.webp" : "/img/glaze.webp");
+    if (fallback) {
+      // Clipped to the panel's rounded rect, then dimmed so the dark title
+      // stays legible on top of it whichever texture came up.
+      ctx.save();
+      roundRect(ctx, M - 28, panelTop, maxW + 56, panelH, 44);
+      ctx.clip();
+      drawCover(ctx, fallback, M - 28, panelTop, maxW + 56, panelH, 0);
+      // 0.72 washed both textures out to near-identical grey — the terracotta
+      // lost all its warmth, which defeated having two. 0.52 keeps them
+      // distinguishable while leaving the dark title well above AA contrast
+      // (measured, not guessed — see the check in the build notes).
+      ctx.fillStyle = "rgba(250,245,244,.52)";
+      ctx.fillRect(M - 28, panelTop, maxW + 56, panelH);
+      ctx.restore();
+      ctx.strokeStyle = "rgba(255,255,255,.8)";
+      ctx.lineWidth = 2;
+      roundRect(ctx, M - 28, panelTop, maxW + 56, panelH, 44);
+      ctx.stroke();
+    } else {
+      glassPanel(ctx, M - 28, panelTop, maxW + 56, panelH, 44);
+    }
+    drawMark(ctx, M + 2, panelTop + 58, 1.6, "rgba(180,71,34,.55)");
   }
 
   const spaceTop = img ? photoBottom + 74 : 132 + 150;
@@ -1166,9 +1193,16 @@ function Fold({ title, note, open, onToggle, children, tone = "" }) {
   );
 }
 
-function Empty({ title, children }) {
+function Empty({ title, children, img, alt }) {
   return (
     <div className="empty">
+      {img && (
+        <div className="empty__art">
+          {/* Decorative: the heading already says what's going on, so a screen
+              reader gaining "photograph of an empty paper bag" adds nothing. */}
+          <img src={img} alt={alt || ""} loading="lazy" />
+        </div>
+      )}
       <h2>{title}</h2>
       <div className="empty__b">{children}</div>
     </div>
@@ -1390,6 +1424,57 @@ export default function App() {
      once, and it works for cards that mount later without extra wiring.
      rAF-throttled so a fast mouse doesn't queue more style writes than the
      screen can actually paint. */
+  /* Tilt-driven specular on touch devices. The pointer listener below does
+     nothing on a phone — there's no cursor — so the same --gx/--gy variables
+     get driven by device orientation instead: tilt the phone and the highlight
+     travels across the glass. Needs no permission on Android or on iOS for the
+     non-absolute orientation event, and silently does nothing where the sensor
+     is absent. */
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = null;
+    const onTilt = (e) => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        // gamma is left/right tilt (-90..90), beta is front/back (-180..180).
+        // Clamped to a usable range so a small wrist movement covers the panel
+        // rather than pinning the highlight to an edge.
+        const gx = 50 + Math.max(-30, Math.min(30, e.gamma || 0)) * 1.4;
+        const gy = 50 + Math.max(-30, Math.min(30, (e.beta || 0) - 40)) * 1.0;
+        document.querySelectorAll(".card").forEach((c) => {
+          c.style.setProperty("--gx", `${gx}%`);
+          c.style.setProperty("--gy", `${gy}%`);
+        });
+      });
+    };
+    window.addEventListener("deviceorientation", onTilt);
+    return () => {
+      window.removeEventListener("deviceorientation", onTilt);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  /* Parallax on the surface behind the glass. */
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = null;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        // 12% of scroll distance: enough to read as depth, small enough that
+        // the texture never runs out at the bottom of a long page.
+        document.documentElement.style.setProperty("--par", `${window.scrollY * -0.12}px`);
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
   useEffect(() => {
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     let raf = null;
@@ -2863,6 +2948,7 @@ Respond with ONLY this JSON:
     return (
       <div className="app">
         <style>{CSS}</style>
+        <div className="surface" aria-hidden="true" />
         {/* Echoes the shape of the hero card about to appear, rather than a bare
            spinner floating with nothing around it — consistent with the rest of
            the loading system instead of a one-off exception to it. */}
@@ -2900,6 +2986,7 @@ Respond with ONLY this JSON:
   return (
     <div className="app">
       <style>{CSS}</style>
+      <div className="surface" aria-hidden="true" />
 
       {/* Defines the actual distortion used by every glass surface — this is
          what makes it lensing rather than blur. No native web API exposes
@@ -3167,6 +3254,23 @@ Respond with ONLY this JSON:
               setFavorites(next);
               persist({ favorites: next });
             }}
+            onShare={async (f) => {
+              setBusy("Making your card");
+              try {
+                // Favourites store their own photo and note, so the card is the
+                // dish they actually cooked rather than a generic render.
+                const canvas = await renderDishCard(
+                  { title: f.title, blurb: f.note || "" },
+                  f.recipe,
+                  f.photos?.[0]
+                );
+                await shareCanvas(canvas, `${(f.title || "dish").replace(/[^\w -]+/g, "").trim()}.png`, f.title);
+              } catch (_) {
+                setErr("Couldn't make that card.");
+              } finally {
+                setBusy("");
+              }
+            }}
             busy={busy}
           />
         )}
@@ -3253,7 +3357,11 @@ function Intro({ onDone }) {
 
   const screens = [
     {
-      art: <MiseAvatar mood="happy" size={104} />,
+      art: (
+        <div className="introart">
+          <img src="/img/dill.webp" alt="" loading="eager" />
+        </div>
+      ),
       h: "Nobody needs a whole bunch of dill for one dish.",
       p: "I'm Mise. I help you figure out what to cook this week — and I plan it so the things you buy actually get used up, instead of half a bunch wilting in the drawer.",
     },
@@ -3455,7 +3563,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
             <h2>How many people are you cooking for?</h2>
             <p className="lead">
               {profile.consistent
-                ? "This changes more than portion size, so it's worth getting right."
+                ? "This changes more than portion size."
                 : "Your usual number — you'll set each night separately on the next step."}
             </p>
             <div className="stepper">
@@ -3465,7 +3573,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
             </div>
             <p className="hint">
               {!profile.consistent
-                ? "I'll treat each night on its own — a solo Tuesday still has solo package-size problems even if Saturday feeds six."
+                ? "I'll scale each night on its own."
                 : profile.people === 1
                 ? "Cooking for one means package sizes are the real problem. I'll design around them."
                 : profile.people <= 4
@@ -3538,7 +3646,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
         {step === 3 && (
           <>
             <h2>How adventurous are you feeling?</h2>
-            <p className="lead">A traditional dish can still be interesting. This is about how far from familiar you want to go.</p>
+            <p className="lead">How far from familiar do you want to go?</p>
             <Scale
               options={ADVENTURE}
               value={profile.adventure}
@@ -3601,8 +3709,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
           <>
             <h2>Here&apos;s your kitchen</h2>
             <p className="lead">
-              Everything below is true because of what you just told me. It shapes every
-              suggestion from here.
+              All of this comes from what you just told me.
             </p>
             <ul className="kitrecap">
               {recapLines(profile).map((line, i) => (
@@ -3729,6 +3836,7 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
               reroll gives a rejection signal the weighting can learn from. */}
           {seed && (
             <div className="seed">
+              <div className="seed__art" aria-hidden="true" />
               <div className="seed__row">
                 <span className="seed__k">This week&apos;s draw</span>
                 <button className="seed__re" onClick={onReroll} disabled={busy}>Draw again</button>
@@ -3988,7 +4096,7 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
 
   if (!shopping.length)
     return (
-      <Empty title="No list yet">
+      <Empty title="No list yet" img="/img/bag.webp">
         <p>Pick your dishes in Ideas, then build the list from My Week — I only shop once the menu is agreed.</p>
       </Empty>
     );
@@ -4407,7 +4515,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
             <p className="lead">
               {alreadyRated
                 ? "You've rated this before. Rate it again if it went differently."
-                : "This is how I learn what you like. It shapes what I suggest next week."}
+                : "This shapes what I suggest next week."}
             </p>
             <div className="stars" role="radiogroup" aria-label="Rating out of five">
               {[1, 2, 3, 4, 5].map((n) => (
@@ -4555,6 +4663,7 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
 
   return (
     <div className="cook" role="region" aria-label="Cooking mode" ref={scrollRef}>
+      <div className="surface surface--linen" aria-hidden="true" />
       {/* -------- top bar -------- */}
       <div className="cook__top">
         <button className="cook__exit" onClick={() => { voice.stop(); onExit(); }}>Leave</button>
@@ -5078,7 +5187,7 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
     return (
       <div className="stack">
         {warning}
-        <Empty title="Nothing saved yet">
+        <Empty title="Nothing saved yet" img="/img/container.webp">
           <p>
             Once you build a shopping list, that week gets saved here automatically —
             what you planned, what you rated, what stuck.
@@ -5222,13 +5331,27 @@ function AiSource() {
     setMsg("Removed. Back to the built-in option.");
   };
 
+  // Collapsed by default and last on the page. This is a power-user escape
+  // hatch, not a feature to sell — almost nobody has an API key, and putting it
+  // in front of everyone else just raises a question they don't need answered.
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button className="advlink" onClick={() => setOpen(true)}>
+        {saved ? "Using your own API key · change" : "Advanced: use your own API key"}
+      </button>
+    );
+  }
+
   return (
     <section className="card">
-      <h2>Where the cooking ideas come from</h2>
+      <div className="card__head">
+        <h2>Use your own API key</h2>
+        <Btn small variant="ghost" onClick={() => setOpen(false)}>Close</Btn>
+      </div>
       <p className="lead">
-        By default Mise uses her own setup and you don&apos;t need to think about it.
-        If you&apos;d rather run on your own account — your model, your billing — add a
-        key below.
+        Optional. Runs Mise on your own account instead of ours — your model, your billing.
       </p>
 
       {saved ? (
@@ -5270,10 +5393,8 @@ function AiSource() {
                   placeholder={provider === "openai" ? "sk-…" : "sk-ant-…"} />
               </div>
               <p className="hint">
-                This is an API key from the developer console — not your ChatGPT or Claude
-                subscription login. It&apos;s stored only in this browser, never on our
-                servers, and is sent straight to {provider === "openai" ? "OpenAI" : "Anthropic"}
-                {" "}to answer your requests. Usage bills to your account.
+                A developer-console key, not your ChatGPT or Claude login. Stored only in
+                this browser, never on our servers. Usage bills to you.
               </p>
               <div className="row">
                 <Btn small onClick={save} disabled={!key.trim()}>Save key</Btn>
@@ -5288,7 +5409,7 @@ function AiSource() {
   );
 }
 
-function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, busy }) {
+function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, onShare, busy }) {
   const loved = favorites.filter((f) => f.rating >= 4).slice().reverse();
   const rest = favorites.filter((f) => f.rating < 4).slice().reverse();
 
@@ -5345,7 +5466,6 @@ function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, b
         {savedAt && <p className="hint">Saved {fmtDate(new Date(savedAt), { month: "long", day: "numeric" })}. Used automatically next week.</p>}
       </section>
 
-      <AiSource />
 
       <section className="card">
         <h2>Dishes You Loved</h2>
@@ -5366,6 +5486,7 @@ function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, b
             </div>
             <div className="fav__acts">
               <Btn small variant="ghost" onClick={() => onSuggest(f)} disabled={!!busy}>More like this</Btn>
+              <Btn small variant="ghost" onClick={() => onShare(f)}>Share</Btn>
               <Btn small variant="ghost" onClick={() => onRemove(f.id)}>Remove</Btn>
             </div>
           </div>
@@ -5387,6 +5508,9 @@ function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, b
           ))}
         </section>
       )}
+
+      {/* Last thing on the page, collapsed. */}
+      <AiSource />
     </div>
   );
 }
@@ -5983,36 +6107,14 @@ const CSS = `
   --shadow:0 1px 2px rgba(30,20,30,.04), 0 6px 18px -8px rgba(87,60,86,.16);
   --shadow-lift:0 2px 4px rgba(30,20,30,.05), 0 18px 40px -14px rgba(87,60,86,.24);
 
-  background:var(--paper); color:var(--ink);
+  /* TRANSPARENT on purpose. The surface the glass refracts lives in its own
+     fixed layer (.surface, below) so scrolling never repaints it — only a
+     composited transform moves it. An opaque background here would sit directly
+     on top of that layer and hide it completely, which is exactly what happened
+     the first time. The paper colour lives on the body as the fallback. */
+  background:transparent; color:var(--ink);
   font-family:'Nunito',system-ui,sans-serif; line-height:1.55; font-weight:600;
   min-height:100vh; padding-bottom:7rem;
-  /* Translucent surfaces need something behind them worth refracting — over a
-     flat field they just read as slightly grey white. These soft colour pools,
-     drawn from the existing palette, are what the glass actually picks up. */
-  /* A room in daylight, not a wash of colour. The earlier versions kept adding
-     pigment — apricot, blush, lavender — which reads spa or nursery, never
-     kitchen. A real kitchen in natural light is mostly NEUTRAL: the colour
-     comes from the temperature of the light, not from paint. So this is warm
-     where the sun lands and cool in the shade, and it has a direction —
-     light entering high on the left, shadow settling low and right, the way
-     a window actually behaves. Saturation stays very low throughout; it's
-     light falling on pale surfaces, not colour applied to them. */
-  background-image:
-    /* North-facing light. The previous version put pale BUTTER here, and warm
-       yellow sitting over the warm-pink --paper produced a yellow-tan cast in
-       the top-left corner that read as dingy rather than sunlit. North light —
-       the cool, even light kitchens and studios are actually prized for — is
-       just as real a lighting condition and doesn't muddy against this paper. */
-    radial-gradient(60% 48% at 4% -4%, rgba(226,238,250,.98), transparent 62%),
-    /* the open sky it sits in */
-    radial-gradient(70% 40% at 58% -6%, rgba(238,245,251,.85), transparent 64%),
-    /* a quieter warm bounce off wood or stone, mid-right — kept so the whole
-       room isn't cold, but well away from the corner that was the problem */
-    radial-gradient(44% 32% at 100% 46%, rgba(247,236,222,.55), transparent 62%),
-    /* cool shadow pooling low and right, where the light doesn't reach */
-    radial-gradient(76% 46% at 78% 106%, rgba(199,211,226,.66), transparent 66%);
-  background-attachment:fixed;
-  background-repeat:no-repeat;
 }
 /* keep legacy names working so nothing goes unstyled mid-refactor */
 .app{--steel:var(--sunk); --card:var(--surface); --line:var(--rule-2); --blade:var(--muted)}
@@ -6632,17 +6734,60 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .histrate{margin-top:.9rem;padding:1rem;background:var(--sunk);border-radius:18px;
   border:1px solid var(--rule)}
 .histrate .stars{margin-bottom:.6rem}
-.seed{background:var(--glass-strong);border:1px solid var(--rule-2);border-radius:18px;
+/* The physical surface the glass sits on. Fixed and behind everything, so
+   scrolling never repaints it — only a transform moves it, and transforms are
+   composited. The photo supplies material; the gradients on top of it supply
+   the directional north light the flat texture doesn't have. */
+.surface{position:fixed;inset:-8% 0 -8% 0;z-index:-1;pointer-events:none;
+  background-image:
+    radial-gradient(60% 48% at 4% 0%, rgba(226,238,250,.55), transparent 62%),
+    radial-gradient(70% 40% at 58% -2%, rgba(238,245,251,.45), transparent 64%),
+    radial-gradient(44% 32% at 100% 46%, rgba(247,236,222,.35), transparent 62%),
+    radial-gradient(76% 46% at 78% 102%, rgba(199,211,226,.42), transparent 66%),
+    url('/textures/marble.webp');
+  background-size:cover;background-position:center;
+  transform:translate3d(0,var(--par,0px),0);
+  will-change:transform}
+/* Cook mode gets linen instead — a cloth on the counter rather than the counter. */
+.cook .surface,.surface--linen{background-image:
+    radial-gradient(60% 48% at 4% 0%, rgba(226,238,250,.40), transparent 62%),
+    url('/textures/linen.webp')}
+@media(prefers-reduced-motion:reduce){.surface{transform:none;will-change:auto}}
+
+/* Photographs, not icons. Rounded to match the glass panels they sit inside,
+   and capped in height so a tall image can't push the actual message off a
+   short screen. */
+.empty__art{margin:0 auto 1.1rem;max-width:280px}
+.empty__art img{width:100%;height:auto;max-height:200px;object-fit:cover;
+  border-radius:20px;display:block;box-shadow:var(--lift-1)}
+.introart{margin:0 auto;max-width:300px}
+.introart img{width:100%;height:auto;max-height:230px;object-fit:cover;
+  border-radius:24px;display:block;box-shadow:var(--lift-2)}
+
+.advlink{display:block;width:100%;margin:.4rem 0 0;padding:.7rem;background:none;border:none;
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:.86em;color:var(--muted);
+  cursor:pointer;text-align:center;border-radius:14px}
+.advlink:hover{color:var(--plum);background:rgba(87,60,86,.05)}
+/* The spice photo sits behind the seed card at low opacity and is masked to
+   fade out toward the text, so the tradition and vegetable stay readable. It's
+   atmosphere, not an illustration of the specific cuisine drawn — 53 traditions
+   can't each have their own photo, and one generic image is honest about that. */
+.seed{position:relative;overflow:hidden;background:var(--glass-strong);border:1px solid var(--rule-2);border-radius:18px;
   padding:.9rem 1rem;margin-bottom:1rem;box-shadow:var(--spec)}
-.seed__row{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+.seed__art{position:absolute;inset:0;background-image:url('/img/spices.webp');
+  background-size:cover;background-position:center;opacity:.16;
+  mask-image:linear-gradient(to right,rgba(0,0,0,.9),transparent 78%);
+  -webkit-mask-image:linear-gradient(to right,rgba(0,0,0,.9),transparent 78%);
+  pointer-events:none}
+.seed__row{position:relative;display:flex;justify-content:space-between;align-items:center;gap:.6rem}
 .seed__k{font-family:'Nunito',sans-serif;font-weight:800;font-size:.72em;letter-spacing:.06em;
   text-transform:uppercase;color:var(--brick)}
 .seed__re{background:none;border:1px solid var(--rule-2);border-radius:999px;
   padding:.25rem .7rem;font-family:'Nunito',sans-serif;font-weight:700;font-size:.8em;
   color:var(--plum);cursor:pointer}
 .seed__re:disabled{opacity:.45;cursor:not-allowed}
-.seed__v{margin:.45rem 0 0;font-size:1.05em}
-.seed__t{margin:.3rem 0 0;font-size:.9em;color:var(--muted);font-style:italic}
+.seed__v{position:relative;margin:.45rem 0 0;font-size:1.05em}
+.seed__t{position:relative;margin:.3rem 0 0;font-size:.9em;color:var(--muted);font-style:italic}
 .setg{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1.1rem}
 .setg__t{background:var(--glass-strong);border:1px solid var(--rule-2);border-radius:16px;
   padding:.75rem .9rem;display:flex;flex-direction:column;gap:.15rem;min-width:0;

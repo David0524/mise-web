@@ -46,9 +46,16 @@ export async function POST(req) {
   // response actually about the person asking rather than a generic answer.
   // It travels with the request because the server has no session-level
   // memory of who's calling beyond the auth cookie already checked above.
-  const systemText = sessionContext
-    ? `${DOCTRINE_ALL}\n\n---\n\n${sessionContext}`
-    : DOCTRINE_ALL;
+  /* Two blocks, NOT one concatenated string. The doctrine is ~10k tokens and
+     never changes; the profile changes whenever anything about the household
+     does — and it changes more often now that it carries a palate model derived
+     from a growing history. Gluing them together meant one cache entry keyed on
+     both, so every profile change invalidated the doctrine too: full price and
+     full latency on 10k stable tokens, over and over. That is the slowdown.
+     Split, the doctrine stays a cheap cache read and only the small profile
+     block is ever re-read at full cost. */
+  const systemBlocks = [DOCTRINE_ALL];
+  if (sessionContext) systemBlocks.push(sessionContext);
 
   // Recipe-writing calls need real headroom — a full recipe with 12 steps, prep
   // state on every ingredient, and doneness/seasoning notes runs to roughly 1,200
@@ -64,7 +71,7 @@ export async function POST(req) {
   const active = byok || serverProvider;
 
   try {
-    const text = await active.callModel(messages, systemText, {
+    const text = await active.callModel(messages, systemBlocks, {
       tier,
       maxTokens: tokenCap,
       ...(byok ? { userKey } : {}),
