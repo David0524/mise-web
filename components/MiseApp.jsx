@@ -1604,13 +1604,37 @@ not the names:
       let touched = false;
       const next = hs.map((w) => {
         if (w.id !== weekId) return w;
-        const dishes = (w.dishes || []).map((d) => {
+        const list = w.dishes || [];
+        const dishes = list.map((d) => {
           // Only fill a gap by default; `replace` is for a negotiated rewrite,
           // which genuinely supersedes what was stored.
           if ((d.recipe && !replace) || (d.title || "").toLowerCase() !== title) return d;
           touched = true;
           return { ...d, recipe };
         });
+        /* A dish picked after the shopping list was built — an adopted
+           leftover, a late "yes" — isn't in the archived menu at all, so
+           there was no gap to fill and the recipe went nowhere. Add it.
+           Repeats are excluded: saveRating deliberately writes those as their
+           own dated entry, and adding one here would duplicate it. */
+        if (!touched && !list.some((d) => (d.title || "").toLowerCase() === title) && !dish.againOf) {
+          touched = true;
+          return {
+            ...w,
+            dishes: [
+              ...dishes,
+              {
+                day: DAYS.find((d) => week[d] === dishId) || null,
+                title: dish.title,
+                blurb: dish.blurb || "",
+                fromLeftovers: !!dish.fromLeftovers,
+                rating: null,
+                missing: null,
+                recipe,
+              },
+            ],
+          };
+        }
         return touched ? { ...w, dishes } : w;
       });
       if (!touched) return hs;
@@ -2360,9 +2384,39 @@ Respond with ONLY this JSON:
       ]);
 
       // This is the moment a week stops being a brainstorm and becomes a real plan.
+      /* Every dish they picked, not only the ones with a night assigned.
+         Assigning days is optional and mostly skipped, so a scheduled-only
+         archive stored an empty menu — which left stashRecipeInHistory nothing
+         to write a recipe into, and "Cook this again" regenerating from
+         scratch even though the recipe existed in session. */
+      const planned = [
+        ...scheduled.map((s) => ({ day: s.day, dish: s.dish })),
+        ...chosen
+          .filter((c) => !scheduled.some((s) => s.dish.id === c.id))
+          .map((c) => ({ day: null, dish: c })),
+      ];
+      /* Merged onto what's already archived rather than replacing it, so
+         tapping "Rebuild my shopping list" can't wipe a recipe, rating, note
+         or photo that's already been recorded against a dish. */
+      const already = historyRef.current.find((w) => w.id === weekId)?.dishes || [];
+      const sameDish = (a, b) => (a || "").toLowerCase() === (b || "").toLowerCase();
       archiveWeek({
         ecosystem,
-        dishes: scheduled.map((s) => ({ day: s.day, title: s.dish.title, blurb: s.dish.blurb, rating: null, missing: null })),
+        dishes: [
+          ...planned.map((p) => {
+            const prev = already.find((d) => sameDish(d.title, p.dish.title));
+            return {
+              ...(prev || { rating: null, missing: null }),
+              day: p.day,
+              title: p.dish.title,
+              blurb: p.dish.blurb,
+              fromLeftovers: !!p.dish.fromLeftovers,
+            };
+          }),
+          // Anything archived that's no longer on the menu — a dish cooked
+          // again, an adopted leftover, something already rated — stays.
+          ...already.filter((d) => !planned.some((p) => sameDish(d.title, p.dish.title))),
+        ],
         shoppingCount: (out.items || []).length,
         people: profile.people,
         spice: profile.spice,
@@ -4454,7 +4508,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
 
             <div className="field">
               <label htmlFor="ra">Or say it in your own words</label>
-              <input id="ra" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
+              <input id="ra" name="miseRecipeAsk" type="text" inputMode="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
                 placeholder="I don't want to buy a pack of buns for one burger"
                 onKeyDown={(e) => { if (e.key === "Enter" && ask.trim()) { onAsk(ask); setAsk(""); } }} />
             </div>
@@ -4867,7 +4921,7 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
 
           <div className="cask__foot">
             <label className="sr" htmlFor="cq">Ask your own question</label>
-            <input id="cq" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on"
+            <input id="cq" name="miseCookAsk" type="text" inputMode="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore autoCapitalize="sentences" autoCorrect="on"
               spellCheck="true" enterKeyHint="send" value={miseText} placeholder="Ask anything…"
               onChange={(e) => setMiseText(e.target.value)}
               onKeyDown={(e) => {
@@ -6053,7 +6107,7 @@ function MisePanel({ thread, busy, onClose, onAsk, dish, asks = QUICK_ASKS.defau
 
       <div className="sheet__foot">
         <label className="sr" htmlFor="mq">Ask Mise a question</label>
-        <input id="mq" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={text} onChange={(e) => setText(e.target.value)}
+        <input id="mq" name="miseStoveAsk" type="text" inputMode="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={text} onChange={(e) => setText(e.target.value)}
           placeholder="What's happening in the pan?"
           onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) send(text); }} />
         <Btn small onClick={() => text.trim() && send(text)} disabled={!text.trim() || busy}>Ask</Btn>
