@@ -105,10 +105,27 @@ export async function POST(req) {
   const byok = userKey && BYOK_PROVIDERS[userProvider];
   const active = byok || serverProvider;
 
+  /* The provider's own time budget starts when callModel is invoked, which
+     misses everything spent before that point: on a cold start, module init,
+     the session cookie verify, and the entitlement query against Postgres all
+     happen first, and on a cold pg connection that is not fast. A 45s attempt
+     stacked on top of that can cross maxDuration, and when the platform kills
+     the function the catch block below never runs — no log, and the caller
+     gets a bare 502 with no detail. That is exactly the failure signature seen
+     on 2026-09-03 15:05: a cold-start pg warning, no `chat fail` line, and the
+     same request succeeding immediately afterwards on a warm instance.
+
+     So the deadline is computed HERE, from when this request actually began,
+     and handed down. 52s of the 60s maxDuration, leaving 8s for serializing
+     the response and returning it. The provider takes the earlier of this and
+     its own budget, so it can only ever be more conservative. */
+  const deadlineAt = startedAt + 52000;
+
   try {
     const text = await active.callModel(messages, systemBlocks, {
       tier,
       maxTokens: tokenCap,
+      deadlineAt,
       ...(byok ? { userKey } : {}),
     });
     /* Timing is here on purpose. The heaviest call in the app sits close to

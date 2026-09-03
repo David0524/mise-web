@@ -88,6 +88,80 @@ const EQUIPMENT = [
    whatever happened to be salient in the weights.
    ──────────────────────────────────────────────────────────────────────────── */
 
+/* Restriction handling, at module scope because TWO things need it now: the
+   umami fallback list inside startIdeas, and the week seed's pantry draw. The
+   seed matters more: it runs in code before any model call, so if it can draw
+   an ingredient the person is allergic to, the model is handed a constraint
+   violation as an instruction. Filtering a list the model never sees is
+   stronger than any rule telling it to check.
+
+   Family-based, not literal word overlap. The first version checked whether a
+   restriction word appeared literally inside an item's own words with a
+   length>3 cutoff — which meant "soy" and "nut" (both <=3 letters) were never
+   checked at all, and "vegan" has no literal ingredient-word match. Result: a
+   vegan, no-soy, nut-allergy profile filtered out precisely nothing. A check
+   against the CONCEPT a restriction implies is what was missing, not a longer
+   word list. */
+const FOOD_FAMILIES = {
+  soy: ["soy sauce", "tamari", "miso", "soy", "gochujang", "doubanjiang", "black bean"],
+  nuts: ["peanut", "tahini", "almond", "cashew", "walnut", "hazelnut", "pistachio"],
+  meat: ["pork", "anchovy", "fish sauce", "lardo", "guanciale", "'nduja", "chorizo"],
+  fish: ["anchovy", "fish sauce", "dried shrimp", "bottarga", "katsuobushi", "bonito"],
+  shellfish: ["dried shrimp", "shrimp paste", "oyster sauce", "belacan", "XO"],
+  dairy: ["parmesan", "cheese", "butter", "yoghurt", "yogurt", "labneh", "cream",
+    /* "creme"/"crème"/"crema" are here because "cream" does NOT match them —
+       substring matching is literal, and creme fraiche leaked past a vegan
+       profile until a test caught it. Any new dairy term needs its actual
+       spellings listed, not a root that looks close enough. */
+    "creme", "crème", "crema", "mascarpone", "ricotta", "ghee", "milk"],
+  gluten: ["soy sauce", "doubanjiang", "bulgur", "couscous", "freekeh", "barley"],
+  sesame: ["tahini", "sesame", "gomasio", "za'atar"],
+};
+
+const IMPLIES_EXCLUDE = {
+  vegan: ["meat", "fish", "shellfish", "dairy"],
+  vegetarian: ["meat", "fish", "shellfish"],
+  pescatarian: ["meat"],
+  "dairy-free": ["dairy"], "no dairy": ["dairy"], "lactose": ["dairy"],
+  "no soy": ["soy"], "soy-free": ["soy"], "soy allergy": ["soy"],
+  "nut allergy": ["nuts"], "no nuts": ["nuts"], "tree nut allergy": ["nuts"],
+  "peanut allergy": ["nuts"],
+  "shellfish allergy": ["shellfish"], "no shellfish": ["shellfish"],
+  "gluten-free": ["gluten"], "no gluten": ["gluten"], "coeliac": ["gluten"], "celiac": ["gluten"],
+  "sesame allergy": ["sesame"], "no sesame": ["sesame"],
+};
+
+/* The set of ingredient terms this person must never be shown. */
+function excludedFoodTerms(profile) {
+  const text = [...(profile?.restrictions || []), profile?.restrictionsNote || ""]
+    .join(" ; ").toLowerCase();
+  const out = new Set();
+  Object.entries(IMPLIES_EXCLUDE).forEach(([phrase, families]) => {
+    if (text.includes(phrase)) families.forEach((f) => FOOD_FAMILIES[f]?.forEach((t) => out.add(t.toLowerCase())));
+  });
+  return out;
+}
+
+/* Anything they've said they dislike — plain ingredient names, so a plain word
+   check is right here; these aren't categories needing family expansion. */
+function dislikesFilter(profile) {
+  const dislikeText = (profile?.dislikes || "").toLowerCase();
+  return (item) => {
+    const low = String(item).toLowerCase();
+    return !low.split(/[ ,]+/).some((w) => w.length > 2 && dislikeText.includes(w));
+  };
+}
+
+function allowedIngredient(profile) {
+  const excluded = excludedFoodTerms(profile);
+  const okDislikes = dislikesFilter(profile);
+  return (item) => {
+    const low = String(item).toLowerCase();
+    if ([...excluded].some((t) => low.includes(t))) return false;
+    return okDislikes(item);
+  };
+}
+
 /* Deliberately enumerated and deliberately wide. Left to its own devices the
    model's implicit repertoire skews hard to a few cuisines; this is the fix, and
    it's the cheapest depth signal there is — week nine proposing a Georgian
@@ -109,6 +183,33 @@ const TRADITIONS = [
    against the person's kitchen IN CODE rather than asking the model to remember
    to adapt. A format that needs a tool they don't own is never put in front of
    it — the model cannot violate a constraint it was never shown. */
+/* The week's flavour base — a pantry ingredient to build around. This is the
+   axis that replaced cuisine as the spine of the draw.
+
+   Naming a tradition ("Sichuan week") made the week feel assigned rather than
+   cooked, and it front-loaded a label before there was any food to attach it
+   to. Naming an INGREDIENT gives the same range — gochujang and preserved
+   lemon and tamarind pull a week somewhere just as firmly as a cuisine label
+   does — but it starts from something you actually buy, put in a pan, and use
+   up. It also plays directly into the app's central promise: a pantry
+   ingredient drawn on Monday is a jar that has to get used by Sunday.
+
+   Every entry here is filtered against restrictions and dislikes IN CODE
+   before it's drawn, via allowedIngredient(). A soy allergy must never see
+   gochujang; a nut allergy must never see tahini. The model is never shown an
+   option it can't execute, which is stronger than trusting it to check. */
+const PANTRY = [
+  "gochujang", "doubanjiang", "miso", "tahini", "harissa", "preserved lemon",
+  "tamarind", "pomegranate molasses", "za'atar", "sumac", "dukkah",
+  "smoked paprika", "dried chiles", "chipotle in adobo", "fish sauce",
+  "oyster sauce", "black vinegar", "sherry vinegar", "capers", "olives",
+  "anchovy", "tomato paste", "coconut milk", "curry leaves", "mustard seeds",
+  "fennel seed", "caraway", "ras el hanout", "berbere", "urfa pepper",
+  "green peppercorns", "yuzu kosho", "furikake", "dried mushrooms",
+  "chickpea flour", "pickled ginger", "buttermilk", "labneh", "creme fraiche",
+  "maple syrup", "brown butter", "roasted garlic", "ginger and scallion",
+];
+
 const FORMATS = [
   { name: "a braise or stew", needs: ["Stovetop", "Big pot", "Slow cooker"] },
   { name: "a sheet-pan roast", needs: ["Oven", "Sheet pans"] },
@@ -206,12 +307,28 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
   const recentTraditions = (history || []).flatMap((w) => w.seed?.tradition || []);
   const recentVegetables = (history || []).flatMap((w) => w.seed?.vegetable || []);
   const recentTechniques = (history || []).flatMap((w) => w.seed?.technique || []);
+  const recentPantry = (history || []).flatMap((w) => w.seed?.pantry || []);
+
+  /* The pantry ingredient is now the spine of the week; tradition is still
+     drawn, but only as a quiet accent the model may lean on and is never asked
+     to announce. Keeping it in the draw preserves the anti-sameness weighting
+     that made it worth enumerating in the first place — left to itself the
+     model's repertoire collapses to a few cuisines — while the week the person
+     actually SEES is organised around an ingredient. */
+  const ok = allowedIngredient(profile);
+  const pantryPool = PANTRY.filter(ok);
+  const pantry = drawWeighted(pantryPool.length ? pantryPool : ["roasted garlic"], recentPantry, 10);
 
   const tradition = drawWeighted(TRADITIONS, recentTraditions, 12);
 
   // Seasonal produce first, falling back to the full list so the draw never fails.
-  const inSeason = (SEASON[month] || []).filter((v) => !(profile.dislikes || "").toLowerCase().includes(v));
-  const vegPool = inSeason.length >= 4 ? inSeason : VEGETABLES;
+  const inSeason = (SEASON[month] || []).filter(ok);
+  /* Both pools are filtered now, so both can come back empty on a very
+     restricted profile — an empty pool would make drawWeighted return
+     undefined and put "undefined" in the prompt. Cabbage is the backstop
+     because nothing in the restriction map excludes it. */
+  const vegFallback = VEGETABLES.filter(ok);
+  const vegPool = inSeason.length >= 4 ? inSeason : (vegFallback.length ? vegFallback : ["cabbage"]);
   const vegetable = drawWeighted(vegPool, recentVegetables, 6);
 
   const technique = drawWeighted(TECHNIQUES, recentTechniques, 10);
@@ -226,7 +343,7 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
     formats.push(left.splice(Math.floor(Math.random() * left.length), 1)[0].name);
   }
 
-  return { tradition, vegetable, technique, formats, month };
+  return { pantry, tradition, vegetable, technique, formats, month };
 }
 
 const SECTIONS = ["Produce", "Protein", "Dairy & eggs", "Bakery", "Pantry", "Frozen", "Other"];
@@ -1190,6 +1307,31 @@ function Working({ label }) {
 /* Card count scales with how many are actually coming — echoes what
    startIdeas asks for, so the placeholder count doesn't overshoot or fall
    short of what actually lands a moment later. */
+/* Tab icons. Inline SVG rather than an icon font or a package: five glyphs is
+   less code than a dependency, and they inherit currentColor so the active
+   state needs no second asset. Each is drawn on a 24-box with a 1.9 stroke to
+   match the header's profile glyph, so the whole chrome reads as one set.
+
+   Deliberately conventional shapes — a basket for shopping, a pot for cooking.
+   A bottom tab bar only works because people already know what it is; a clever
+   glyph here would spend the familiarity that makes the pattern worth using. */
+function TabIcon({ name }) {
+  const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round", strokeLinejoin: "round" };
+  const paths = {
+    // a lightbulb: ideas, before they're committed to
+    brainstorm: <><path d="M9 17.5h6M10 21h4" {...common} /><path d="M12 3a6 6 0 0 0-3.5 10.9V17h7v-3.1A6 6 0 0 0 12 3Z" {...common} /></>,
+    // a week: a calendar grid
+    week: <><rect x="3.2" y="5" width="17.6" height="15.5" rx="2.6" {...common} /><path d="M3.2 10h17.6M8 3.2v3.4M16 3.2v3.4" {...common} /></>,
+    // a shopping basket
+    shop: <><path d="M4 9h16l-1.4 9.4a2 2 0 0 1-2 1.7H7.4a2 2 0 0 1-2-1.7L4 9Z" {...common} /><path d="M8.6 9 12 3.4 15.4 9M9.6 13v3.4M14.4 13v3.4" {...common} /></>,
+    // a pot with a handle and steam
+    cook: <><path d="M4.6 10.5h14.8v4.6a4.6 4.6 0 0 1-4.6 4.6H9.2a4.6 4.6 0 0 1-4.6-4.6v-4.6Z" {...common} /><path d="M19.4 12h1.8a1.4 1.4 0 0 1 0 2.8h-1.8M4.6 12H2.8a1.4 1.4 0 0 0 0 2.8h1.8" {...common} /><path d="M9.5 7.6c0-1.2 1-1.5 1-2.6M14.5 7.6c0-1.2-1-1.5-1-2.6" {...common} /></>,
+    // a lidded container: what's left, put away
+    leftovers: <><path d="M4.8 9.6h14.4v8.2a2.2 2.2 0 0 1-2.2 2.2H7a2.2 2.2 0 0 1-2.2-2.2V9.6Z" {...common} /><rect x="3.2" y="5.4" width="17.6" height="4.2" rx="1.6" {...common} /></>,
+  };
+  return <svg viewBox="0 0 24 24" width="23" height="23" aria-hidden="true">{paths[name]}</svg>;
+}
+
 function DishSkeleton({ count = 4 }) {
   return (
     <div className="dcards" aria-hidden="true">
@@ -1208,12 +1350,49 @@ function DishSkeleton({ count = 4 }) {
   );
 }
 
+/* A progress bar for the AI waits, which are genuinely long — the ideas call
+   has been measured between 20 and 45 seconds on Gemini's free tier. A bare
+   skeleton with nothing moving reads as frozen at that length, and the honest
+   failure mode is someone tapping away or reloading mid-request.
+
+   The progress is MODELLED, not measured: there's no progress event to read
+   from a single POST, so it eases asymptotically toward 93% and never claims
+   to finish. That's the honest shape for an unknown duration — it always
+   implies "still working", never "nearly done". It reaches 93% only in the
+   limit, so it can't sit at 100% while the request is still open, which is
+   the specific lie a linear bar tells.
+
+   Its own component so the once-a-second tick re-renders 40 lines of bar
+   rather than the whole Ideas tree with its five skeleton cards. */
+function LoadBar({ label = "Working on it" }) {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSecs((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // 1 - e^(-t/16): ~46% at 10s, ~78% at 25s, ~88% at 35s, approaching 93%.
+  const pct = Math.min(93, (1 - Math.exp(-secs / 16)) * 93);
+
+  return (
+    <div className="lbar" role="progressbar" aria-label={label}
+      aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+      <div className="lbar__track">
+        <div className="lbar__fill" style={{ width: `${pct}%` }} />
+      </div>
+      {/* Only past 25s, and only because by then the wait is unusual enough
+          that knowing it's the free tier prevents a pointless reload. */}
+      {secs >= 25 && <p className="lbar__note">Still going — this one can take a while.</p>}
+    </div>
+  );
+}
+
 function Skeleton({ title, note, rows = 6 }) {
   return (
     <section className="card" aria-busy="true">
       <h2>{title}</h2>
       <p className="lead">{note}</p>
-      <Working label="Working on it" />
+      <LoadBar label={title} />
       <ul className="skel" aria-hidden="true">
         {Array.from({ length: rows }).map((_, i) => (
           <li key={i}><span className="ph" style={{ width: `${88 - (i % 4) * 14}%` }} /></li>
@@ -1300,6 +1479,13 @@ export default function App() {
   const [view, setView] = useState("start");
   const [step, setStep] = useState(0);
   const [err, setErr] = useState("");
+  /* The action that produced the current error, so the alert can offer to run
+     it again. Held as state rather than re-derived, because by the time
+     someone taps "Try again" the component has re-rendered and the inputs may
+     have moved on — capturing the closure at failure time is what makes the
+     retry repeat exactly what was attempted, not something adjacent to it.
+     Null when a failure has no sensible retry. */
+  const [retry, setRetry] = useState(null);
   const [busy, setBusy] = useState("");
   /* `busy` is only the label shown in the bottom bar. `building` tracks WHICH work is
      in flight, so a screen can show its own progress instead of an empty state that
@@ -1389,6 +1575,21 @@ export default function App() {
      silently — so surface it rather than letting people think it saved. */
   const [storageOk, setStorageOk] = useState(null);
   const historyRef = useRef([]);
+
+  /* Every failing async action funnels through here. A helper rather than two
+     setState calls at each site for two reasons: it keeps `err` and `retry`
+     from drifting out of sync — a stale retry surviving a new error would
+     re-run the wrong thing, which is worse than offering no retry at all —
+     and it makes adding a retry to a new action one argument instead of a
+     pattern to remember. Pass no second argument and the alert simply has no
+     retry button, which is right for failures that would fail identically
+     again (a content block, a malformed request). */
+  const fail = useCallback((e, again) => {
+    setErr(e?.message || "Something went wrong. Give it another go in a moment.");
+    setRetry(again ? () => again : null);
+  }, []);
+
+  const clearErr = useCallback(() => { setErr(""); setRetry(null); }, []);
 
   const headingRef = useRef(null);
 
@@ -1512,9 +1713,21 @@ export default function App() {
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = null;
-        // 12% of scroll distance: enough to read as depth, small enough that
-        // the texture never runs out at the bottom of a long page.
-        document.documentElement.style.setProperty("--par", `${window.scrollY * -0.12}px`);
+        /* 12% of scroll distance reads as depth — but it has to be CLAMPED.
+           .surface is inset -8% top and bottom, so it has 8% of the viewport
+           height of slack at each end and no more. Unclamped, 12% of scroll
+           exceeds that after only about two-thirds of a screen, and every
+           page longer than that scrolled the texture clean off its own bottom
+           edge, showing the flat paper colour underneath.
+
+           So it drifts up to the overscan and then bottoms out and stays
+           there. The parallax still does its job over the first screen or so,
+           which is where a depth cue is actually perceptible; past that,
+           holding still is invisible and correct. 1px of margin keeps a
+           sub-pixel rounding error off the seam. */
+        const slack = Math.max(0, window.innerHeight * 0.08 - 1);
+        const drift = Math.min(window.scrollY * 0.12, slack);
+        document.documentElement.style.setProperty("--par", `${-drift}px`);
       });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -1601,7 +1814,7 @@ not the names:
         { who: "mise", text: out.say || "" },
       ]);
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => suggestOrder());
     } finally {
       setBusy("");
     }
@@ -2149,63 +2362,34 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
        flat dish, and a no-soy user could get it suggested — because a rule saying
        "check the restriction" competes with a list saying "reach for this." A list
        that never contains the excluded item can't lose that argument. */
-    /* Family-based, not literal word overlap. The first version of this filter
-       checked whether a restriction word appeared literally inside an umami
-       item's own words, with a length>3 cutoff — which meant "soy" and "nut"
-       (both <=3 letters) were never even checked, and "vegan" has no literal
-       ingredient-word match at all. Result: a vegan, no-soy, nut-allergy
-       profile filtered out precisely nothing, and the umami list still handed
-       the model miso, soy sauce, anchovy, parmesan and cured pork. Caught by
-       building a benchmark that actually exercises this code path — a check
-       against the CONCEPT a restriction implies is what the earlier version
-       was missing, not a bigger word list. */
-    const FOOD_FAMILIES = {
-      soy: ["soy sauce", "tamari", "miso", "soy"],
-      nuts: [], // no nuts appear in this specific list; kept for parity with the app-wide check
-      meat: ["pork", "anchovy", "fish sauce"],
-      fish: ["anchovy", "fish sauce", "dried shrimp"],
-      shellfish: ["dried shrimp"],
-      dairy: ["parmesan", "cheese", "butter"],
-    };
-    const IMPLIES_EXCLUDE = {
-      vegan: ["meat", "fish", "shellfish", "dairy"],
-      vegetarian: ["meat", "fish", "shellfish"],
-      pescatarian: ["meat"],
-      "dairy-free": ["dairy"],
-      "no soy": ["soy"], "soy-free": ["soy"], "soy allergy": ["soy"],
-      "nut allergy": ["nuts"], "no nuts": ["nuts"], "tree nut allergy": ["nuts"],
-      "shellfish allergy": ["shellfish"], "no shellfish": ["shellfish"],
-    };
-    const restrictionText = [...(profile.restrictions || []), profile.restrictionsNote || ""]
-      .join(" ; ").toLowerCase();
-    const excludedTerms = new Set();
-    Object.entries(IMPLIES_EXCLUDE).forEach(([phrase, families]) => {
-      if (restrictionText.includes(phrase)) families.forEach((f) => FOOD_FAMILIES[f]?.forEach((t) => excludedTerms.add(t)));
-    });
-    const dislikeText = (profile.dislikes || "").toLowerCase();
+    /* Uses the module-scope filter, NOT a local copy. There used to be a
+       duplicate family map inlined right here; once the week seed needed the
+       same logic, two copies meant the narrower one silently under-filtered.
+       One definition, exercised by scripts-level tests, is the whole point. */
+    const okIngredient = allowedIngredient(profile);
 
     const umami = ["anchovy or fish sauce", "miso", "soy sauce or tamari", "parmesan or a hard cheese rind",
       "tomato paste cooked out", "caramelised onions", "cured pork", "dried shrimp", "seaweed",
       "roasted garlic", "browned butter", "olives or capers", "a splash of the cooking water"]
-      .filter((x) => {
-        const low = x.toLowerCase();
-        if ([...excludedTerms].some((t) => low.includes(t))) return false;
-        // dislikes still get a plain word check — those are simple ingredient
-        // names, not restriction categories needing family expansion.
-        return !low.split(/[ ,]+/).some((w) => w.length > 2 && dislikeText.includes(w));
-      });
+      .filter(okIngredient);
 
     const prompt = `Here is the person you're cooking with:
 THIS WEEK'S DRAW — decided already, not up for negotiation:
-- Tradition to work from: ${seed.tradition}
+- THE WEEK'S FLAVOUR BASE, and the spine of this plan: ${seed.pantry}. Build the
+  week around this ingredient. At least three dishes should use it, in genuinely
+  different ways — not the same sauce three times. Say plainly what it is and
+  what it does, in case they've never bought it.
 - Vegetable that must appear across the week: ${seed.vegetable}
 - Technique to teach in passing: ${seed.technique}
+- Optional accent, only if it helps: ${seed.tradition}. Do NOT announce this or
+  organise the week around it, and do not name it in your opening remark — it's
+  a direction to lean, not a theme. The week is about the ingredient.
 - Cooking formats available to you, one per dish, no repeats:
 ${seed.formats.map((f) => `    · ${f}`).join("\n")}
 
 These were drawn for this week specifically so the weeks don't blur together. Don't ask for a
 different tradition and don't quietly drift to a more familiar one — the whole point is that
-you wouldn't have picked ${seed.tradition} yourself. Make THIS week good rather than proposing
+you wouldn't have picked ${seed.pantry} yourself. Make THIS week good rather than proposing
 the week you'd have proposed anyway. If the tradition and their restrictions genuinely can't
 meet, say so plainly rather than silently substituting.
 
@@ -2222,7 +2406,7 @@ Writing the check before the output is the point — a dish that can't be tagged
 "why" or "say". Do not repeat it in the visible copy in any form.
 
 1. Propose this week's grocery spine: one fresh herb, green onions, one primary protein,
-${seed.vegetable} as the vegetable, one flavor system, one optional wildcard. One sentence on
+${seed.vegetable} as the vegetable, ${seed.pantry} as the flavor system, one optional wildcard. One sentence on
 how the pieces cross over.
 
 2. Propose ${Math.max(4, orderDays(profile.nights).length + 2)} CANDIDATE dishes — options to
@@ -2290,7 +2474,8 @@ Respond with ONLY this JSON, no backticks:
       setConvo([{ role: "user", content: prompt }, { role: "assistant", content: raw }]);
       setThread([{ who: "mise", text: out.say || "" }]);
     } catch (e) {
-      setErr(e.message);
+      // Same seed on retry: "Try again" should rerun THIS week, not reroll it.
+      fail(e, () => runIdeas(seed));
     } finally {
       setBusy("");
       mark("ideas", false);
@@ -2310,7 +2495,9 @@ Respond with ONLY this JSON, no backticks:
   function runIdeas(seed) {
     return startIdeas(seed).catch((e) => {
       console.error("startIdeas failed before the request was sent:", e);
-      setErr(e?.message || "Something went wrong putting the ideas together.");
+      // Retries with the SAME seed, so "Try again" reruns the week they were
+      // shown rather than silently drawing a different one.
+      fail(e, () => runIdeas(seed));
       setBusy("");
       mark("ideas", false);
     });
@@ -2371,7 +2558,7 @@ Return the FULL revised list.`;
       setConvo([{ role: "user", content: prompt }, { role: "assistant", content: raw }]);
       setThread((t) => [...t, { who: "mise", text: out.say || "" }]);
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => sendFeedback(text));
     } finally {
       setBusy("");
     }
@@ -2404,7 +2591,7 @@ Respond with ONLY this JSON:
       setCandidates((cs) => cs.map((c) => (c.id === id ? { ...cleanDish(out), id: c.id, reaction: null, note: "" } : c)));
       if (out.say) setThread((t) => [...t, { who: "mise", text: out.say }]);
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => swapDish(id));
     } finally {
       setBusy("");
     }
@@ -2509,7 +2696,7 @@ Respond with ONLY this JSON:
         cravings: thisWeek.cravings || null,
       });
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => buildShopping());
     } finally {
       setBusy("");
       mark("shopping", false);
@@ -2547,7 +2734,7 @@ Respond with ONLY this JSON:
         );
       if (out.say) setThread((t) => [...t, { who: "mise", text: out.say }]);
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => reviseShopping(instruction));
     } finally {
       setBusy("");
     }
@@ -2615,7 +2802,9 @@ Respond with ONLY this JSON:
          the one you actually made. */
       stashRecipeInHistory(dishId, built);
     } catch (e) {
-      if (!opts.quiet) setErr(e.message);   // a failed prefetch retries on demand
+      // A quiet prefetch failure stays silent — it retries on demand when the
+      // person actually opens the dish. A visible one gets a retry button.
+      if (!opts.quiet) fail(e, () => getRecipe(dishId, opts));
       throw e;
     } finally {
       if (!opts.quiet) {
@@ -2665,7 +2854,7 @@ Respond with ONLY this JSON:
       setRecipeChat((c) => [...c, { who: "mise", text: out.say || "" }]);
       setRecipeOptions((out.options || []).map((o) => ({ ...o, id: uid() })));
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => proposeRecipeChange(instruction));
     } finally {
       setBusy("");
       setNegotiating(false);
@@ -2761,7 +2950,7 @@ Respond with ONLY this JSON:
         ]);
       }
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => applyRecipeChange(option));
     } finally {
       setBusy("");
       setNegotiating(false);
@@ -2835,7 +3024,7 @@ Respond with ONLY this JSON:
       if (out.say) setThread((t) => [...t, { who: "mise", text: out.say }]);
       if (out.orphans) setThread((t) => [...t, { who: "mise", text: out.orphans }]);
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => getLeftoverIdeas(focusItems));
     } finally {
       setBusy("");
       mark("leftovers", false);
@@ -2858,7 +3047,7 @@ Respond with ONLY this JSON:
       const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1500, docSlices: ["core", "flavor"] });
       setLeftoverRecipes((r) => ({ ...r, [idea.id]: parseJSON(raw) }));
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => expandLeftover(idea));
     } finally {
       setBusy("");
       mark("recipe", null);
@@ -3083,7 +3272,7 @@ Respond with ONLY this JSON:
       setThread((t) => [...t, { who: "mise", text: out.say || "" }]);
       setView("ideas");
     } catch (e) {
-      setErr(e.message);
+      fail(e, () => suggestLike(fav));
     } finally {
       setBusy("");
     }
@@ -3112,16 +3301,67 @@ Respond with ONLY this JSON:
       </div>
     );
 
+  /* Five, hard capped — a bottom tab bar stops being readable past that, and
+     the labels start truncating on a narrow phone. History used to be the
+     sixth; it moved into My Kitchen, which is where a record of past weeks
+     belongs anyway. "Ideas" is now "Brainstorm": it says what you do there
+     rather than what you get. */
   const NAV = [
-    ["ideas", "Ideas"],
-    ["week", "My Week"],
-    ["shop", "Shopping"],
-    ["cook", "Cooking"],
-    ["leftovers", "Leftovers"],
-    ["history", "History"],
+    ["ideas", "Brainstorm", "brainstorm"],
+    ["week", "My Week", "week"],
+    ["shop", "Shopping", "shop"],
+    ["cook", "Cooking", "cook"],
+    ["leftovers", "Leftovers", "leftovers"],
   ];
 
   const useFirst = shopping.filter((i) => Number(i.days) <= 3);
+
+  /* Swipe between tabs. The tab bar and the swipe share one ordered list, so
+     the gesture and the bar can't disagree about what's left of what.
+
+     The guard matters more than the gesture. This app already has horizontal
+     scrollers inside pages — the recipe step carousel, the day strip — and a
+     naive window-level swipe handler would steal those, so a sideways flick
+     through recipe steps would jump you to Shopping instead. Before acting,
+     walk up from the touch target and bail if anything between it and the
+     page can itself scroll horizontally. Native behaviour wins; the tab swipe
+     only claims gestures nothing else wanted.
+
+     Thresholds: 60px of travel to beat an accidental drag, and horizontal
+     distance at least 1.7x vertical so a diagonal scroll isn't read as a
+     swipe. Both tuned to be harder to trigger by accident than on purpose —
+     an unwanted page change is far more annoying than a swipe that didn't
+     take. */
+  const touch = useRef(null);
+  const tabIds = NAV.map(([id]) => id);
+
+  const onTouchStart = (e) => {
+    if (e.touches.length !== 1) return;   // pinch/zoom is not a swipe
+    touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, target: e.target };
+  };
+
+  const onTouchEnd = (e) => {
+    const t = touch.current;
+    touch.current = null;
+    if (!t || !e.changedTouches?.length) return;
+
+    // Anything scrollable sideways between the target and here owns this gesture.
+    for (let el = t.target; el && el !== document.body; el = el.parentElement) {
+      if (el.dataset?.noswipe !== undefined) return;
+      const style = el instanceof Element ? getComputedStyle(el) : null;
+      const scrolls = style && /auto|scroll/.test(style.overflowX);
+      if (scrolls && el.scrollWidth > el.clientWidth + 4) return;
+    }
+
+    const dx = e.changedTouches[0].clientX - t.x;
+    const dy = e.changedTouches[0].clientY - t.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.7) return;
+
+    const i = tabIds.indexOf(view);
+    if (i < 0) return;                    // not on a tab: setup, start, My Kitchen
+    const next = tabIds[dx < 0 ? i + 1 : i - 1];
+    if (next) setView(next);
+  };
 
   /* True when the visible screen is already rendering its own progress state. */
   const hasLocalIndicator =
@@ -3129,6 +3369,41 @@ Respond with ONLY this JSON:
     (view === "leftovers" && building.leftovers && !leftoverIdeas.length) ||
     (view === "cook" && building.recipe === cookingId && !recipes[cookingId]) ||
     (view === "ideas" && !!busy);
+
+  /* History lives inside My Kitchen now rather than owning a nav slot. Built
+     here as an element and handed down as a prop, so MyKitchen doesn't need
+     eight more props threaded through it just to render something the parent
+     already had everything for. */
+  const historyNode = (
+          <HistoryView
+            history={history}
+            currentWeekId={weekId}
+            storageOk={storageOk}
+            onOpenWeek={() => setView("week")}
+            onNewWeek={startNewWeek}
+            onCookAgain={cookAgain}
+            onSuggest={suggestLike}
+            busy={busy}
+            onRateHistory={rateHistoryDish}
+            onShareDish={async (d) => {
+              setBusy("Making your card");
+              try {
+                // History entries carry their own photo and baked-in recipe, so a
+                // shared card from here is the real thing they cooked.
+                const canvas = await renderDishCard(
+                  { title: d.title, blurb: d.blurb },
+                  d.recipe,
+                  d.photos?.[0]
+                );
+                await shareCanvas(canvas, `${(d.title || "dish").replace(/[^\w -]+/g, "").trim()}.png`, d.title);
+              } catch (_) {
+                setErr("Couldn't make that card.");
+              } finally {
+                setBusy("");
+              }
+            }}
+          />
+  );
 
   return (
     <div className="app">
@@ -3180,32 +3455,24 @@ Respond with ONLY this JSON:
         </div>
       </header>
 
-      {view !== "start" && (
-        <nav className="nav no-print" aria-label="Main sections">
-          {NAV.map(([id, label]) => (
-            <button
-              key={id}
-              className={`nav__b${view === id ? " nav__b--on" : ""}`}
-              onClick={() => setView(id)}
-              aria-current={view === id ? "page" : undefined}
-            >
-              {label}
-              {id === "cook" && staleRecipeCount > 0 && (
-                <span className="nav__dot" title={`${staleRecipeCount} recipe(s) need updating`} />
-              )}
-            </button>
-          ))}
-        </nav>
-      )}
 
       {err && (
         <div className="alert no-print" role="alert">
           <p>{err}</p>
-          <Btn small variant="ghost" onClick={() => setErr("")}>Close</Btn>
+          <div className="alert__acts">
+            {retry && (
+              /* Read the closure out BEFORE clearing state — clearErr sets
+                 retry to null, and calling it afterwards would invoke null. */
+              <Btn small onClick={() => { const again = retry; clearErr(); again(); }} disabled={!!busy}>
+                Try again
+              </Btn>
+            )}
+            <Btn small variant="ghost" onClick={clearErr}>Close</Btn>
+          </div>
         </div>
       )}
 
-      <main className="main screen">
+      <main className="main screen" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <h1 className="sr-focus" ref={headingRef} tabIndex={-1}>
           {view === "start" ? "Welcome" : NAV.find(([id]) => id === view)?.[1] || "Mise"}
         </h1>
@@ -3362,63 +3629,11 @@ Respond with ONLY this JSON:
           />
         )}
 
-        {view === "history" && (
-          <HistoryView
-            history={history}
-            currentWeekId={weekId}
-            storageOk={storageOk}
-            onOpenWeek={() => setView("week")}
-            onNewWeek={startNewWeek}
-            onCookAgain={cookAgain}
-            onRateHistory={rateHistoryDish}
-            onShareDish={async (d) => {
-              setBusy("Making your card");
-              try {
-                // History entries carry their own photo and baked-in recipe, so a
-                // shared card from here is the real thing they cooked.
-                const canvas = await renderDishCard(
-                  { title: d.title, blurb: d.blurb },
-                  d.recipe,
-                  d.photos?.[0]
-                );
-                await shareCanvas(canvas, `${(d.title || "dish").replace(/[^\w -]+/g, "").trim()}.png`, d.title);
-              } catch (_) {
-                setErr("Couldn't make that card.");
-              } finally {
-                setBusy("");
-              }
-            }}
-          />
-        )}
-
         {view === "me" && (
           <MyKitchen
-            profile={profile} favorites={favorites} savedAt={savedAt}
+            profile={profile} savedAt={savedAt}
+            historyNode={historyNode}
             onEdit={() => { setView("setup"); setStep(0); }}
-            onSuggest={suggestLike}
-            onRemove={(id) => {
-              const next = favorites.filter((f) => f.id !== id);
-              setFavorites(next);
-              persist({ favorites: next });
-            }}
-            onShare={async (f) => {
-              setBusy("Making your card");
-              try {
-                // Favourites store their own photo and note, so the card is the
-                // dish they actually cooked rather than a generic render.
-                const canvas = await renderDishCard(
-                  { title: f.title, blurb: f.note || "" },
-                  f.recipe,
-                  f.photos?.[0]
-                );
-                await shareCanvas(canvas, `${(f.title || "dish").replace(/[^\w -]+/g, "").trim()}.png`, f.title);
-              } catch (_) {
-                setErr("Couldn't make that card.");
-              } finally {
-                setBusy("");
-              }
-            }}
-            busy={busy}
           />
         )}
       </main>
@@ -3431,6 +3646,36 @@ Respond with ONLY this JSON:
           <span className="fab__av"><MiseAvatar mood={busy === "mise" ? "thinking" : "idle"} size={40} /></span>
           <span className="fab__t">Ask Mise</span>
         </button>
+      )}
+
+      {view !== "start" && (
+        /* Bottom tab bar. It sits at the bottom because that is where every
+           phone app of the last decade has put primary navigation, and this
+           app's whole audience premise — usable by a college student and by
+           someone in their eighties — is better served by the pattern people
+           already have than by anything invented here.
+
+           Rendered AFTER the fab in source order but positioned below it in
+           CSS, so the fab is lifted clear of the bar rather than being
+           overlapped by it. */
+        <nav className="tabbar no-print" aria-label="Main sections">
+          {NAV.map(([id, label, icon]) => (
+            <button
+              key={id}
+              className={`tabbar__b${view === id ? " tabbar__b--on" : ""}`}
+              onClick={() => setView(id)}
+              aria-current={view === id ? "page" : undefined}
+            >
+              <span className="tabbar__i">
+                <TabIcon name={icon} />
+                {id === "cook" && staleRecipeCount > 0 && (
+                  <span className="tabbar__dot" title={`${staleRecipeCount} recipe(s) need updating`} />
+                )}
+              </span>
+              <span className="tabbar__l">{label}</span>
+            </button>
+          ))}
+        </nav>
       )}
 
       {cooking && recipes[cookingId] && (
@@ -3969,6 +4214,7 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
         <section className="card">
           <h2>Thinking through your week</h2>
           <p className="lead">Working out a spine for the week and a few dishes to react to.</p>
+          <LoadBar label="Putting your week together" />
           <DishSkeleton count={5} />
         </section>
       </div>
@@ -3989,7 +4235,12 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
                 <button className="seed__re" onClick={onReroll} disabled={busy}>Draw again</button>
               </div>
               <p className="seed__v">
-                <strong>{seed.tradition}</strong> · built around <strong>{seed.vegetable}</strong>
+                {/* Ingredient-led. This used to read "<tradition> · built
+                    around <vegetable>", which announced a cuisine before there
+                    was any food attached to it and made the week feel assigned.
+                    The tradition is still drawn — it quietly widens the model's
+                    range — but it isn't a label the person has to accept. */}
+                <strong>{seed.pantry}</strong> · with <strong>{seed.vegetable}</strong>
               </p>
               <p className="seed__t">Something to pick up along the way: {seed.technique}.</p>
             </div>
@@ -5288,7 +5539,7 @@ function HistoryRate({ dish, onSave, onCancel }) {
   );
 }
 
-function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk, onCookAgain, onShareDish, onRateHistory }) {
+function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk, onCookAgain, onShareDish, onRateHistory, onSuggest, busy }) {
   const [editing, setEditing] = useState(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -5415,6 +5666,17 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
                       <Btn small variant="ghost" onClick={() => onShareDish(d)}>
                         Share
                       </Btn>
+                      {/* "More like this" used to live in a list of every dish
+                          ever rated on the My Kitchen page. That list is gone,
+                          but the action is worth keeping — it belongs next to
+                          the dish it's about, which is here. Only offered for
+                          dishes that actually landed; asking for more like
+                          something rated 2 makes no sense. */}
+                      {d.rating >= 4 && onSuggest && (
+                        <Btn small variant="ghost" onClick={() => onSuggest(d)} disabled={!!busy}>
+                          More like this
+                        </Btn>
+                      )}
                       <Btn small variant="ghost"
                         onClick={() => setEditing(editing === `${w.id}:${i}` ? null : `${w.id}:${i}`)}>
                         {d.rating ? "Edit rating" : "Rate it"}
@@ -5556,15 +5818,38 @@ function AiSource() {
   );
 }
 
-function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, onShare, busy }) {
-  const loved = favorites.filter((f) => f.rating >= 4).slice().reverse();
-  const rest = favorites.filter((f) => f.rating < 4).slice().reverse();
+function MyKitchen({ profile, savedAt, onEdit, historyNode }) {
+  /* Everything folds. This page was the tallest in the app — a full setup
+     summary, then every dish ever rated, twice over, then the AI note — and
+     almost none of it is what you came for. Opening it to a short stack of
+     labelled headers means the page answers "what's in here" in one screen
+     instead of asking you to scroll to find out.
+
+     Setup starts open because it's the reason to visit; history starts closed
+     because it grows without bound and would otherwise recreate the exact
+     problem folding is meant to solve.
+
+     "Dishes You Loved" and "Didn't quite land" are gone. They listed every
+     rating forever with no way to act on them, and the ratings already do
+     their real work invisibly — palateModel() feeds diagnoses back into the
+     prompt whether or not anyone reads a list of them. */
+  const [open, setOpen] = useState({ setup: true, history: false });
+  const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
   return (
     <div className="stack">
-      <section className="card">
+      <Fold
+        title="Your setup"
+        note="What I plan around."
+        open={open.setup}
+        onToggle={() => toggle("setup")}
+      >
         <div className="card__head">
-          <h2>Your Setup</h2>
+          <p className="lead">
+            {savedAt
+              ? `Saved ${fmtDate(new Date(savedAt), { month: "long", day: "numeric" })}. Used automatically next week.`
+              : "Used automatically every week."}
+          </p>
           <Btn small variant="ghost" onClick={onEdit}>Change</Btn>
         </div>
         {/* Same packed tile grid as the start screen. Big numbers get their own
@@ -5610,51 +5895,16 @@ function MyKitchen({ profile, favorites, savedAt, onEdit, onSuggest, onRemove, o
             </div>
           )}
         </div>
-        {savedAt && <p className="hint">Saved {fmtDate(new Date(savedAt), { month: "long", day: "numeric" })}. Used automatically next week.</p>}
-      </section>
+      </Fold>
 
-
-      <section className="card">
-        <h2>Dishes You Loved</h2>
-        {!loved.length && <p className="lead">Nothing yet. Rate a dish after you cook it and it'll show up here.</p>}
-        {loved.map((f) => (
-          <div key={f.id} className="fav">
-            <div>
-              <h3>{f.title}</h3>
-              <p className="fav__meta">
-                {f.rating} out of 5 · {fmtDate(new Date(f.date), { month: "short", day: "numeric" })}
-                {f.note ? ` · "${f.note}"` : ""}
-              </p>
-              {f.photos?.length > 0 && (
-                <div className="shots shots--sm">
-                  {f.photos.map((src, i) => <img key={i} src={src} alt={`${f.title}, photo ${i + 1}`} />)}
-                </div>
-              )}
-            </div>
-            <div className="fav__acts">
-              <Btn small variant="ghost" onClick={() => onSuggest(f)} disabled={!!busy}>More like this</Btn>
-              <Btn small variant="ghost" onClick={() => onShare(f)}>Share</Btn>
-              <Btn small variant="ghost" onClick={() => onRemove(f.id)}>Remove</Btn>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      {rest.length > 0 && (
-        <section className="card">
-          <h2>Didn't quite land</h2>
-          <p className="lead">I use these too — they tell me what to build in next time.</p>
-          {rest.map((f) => (
-            <div key={f.id} className="fav">
-              <div>
-                <h3>{f.title}</h3>
-                <p className="fav__meta">{f.rating} out of 5{f.missing ? ` · ${f.missing}` : ""}</p>
-              </div>
-              <Btn small variant="ghost" onClick={() => onRemove(f.id)}>Remove</Btn>
-            </div>
-          ))}
-        </section>
-      )}
+      <Fold
+        title="Weeks you've cooked"
+        note="Every week you've planned, and the dishes you rated."
+        open={open.history}
+        onToggle={() => toggle("history")}
+      >
+        {historyNode}
+      </Fold>
 
       {/* Last thing on the page, collapsed. */}
       <AiSource />
@@ -6371,21 +6621,59 @@ const CSS = `
   letter-spacing:.24em;text-transform:uppercase;color:var(--plum)}
 
 /* nav */
-.nav{display:flex;gap:.3rem;overflow-x:auto;max-width:960px;margin:0 auto;padding:.6rem 1.15rem;
-  border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:5;
-  background:rgba(250,245,244,.62);
-  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
-.nav__b{flex:0 0 auto;min-height:44px;padding:0 1.05rem;background:none;border:none;
-  font-family:'Nunito',sans-serif;font-weight:700;font-size:.92em;color:var(--muted);
-  letter-spacing:-.005em;cursor:pointer;border-radius:16px;position:relative;
-  transition:background .16s ease, color .16s ease}
-.nav__b:hover{color:var(--ink)}
-.nav__dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--brick);
-  margin-left:.35rem;vertical-align:middle}
-.nav__b--on{background:var(--brick);color:#fff;font-weight:800;
-  box-shadow:var(--spec), 0 4px 14px -6px rgba(180,71,34,.65)}
+/* ── Bottom tab bar ──────────────────────────────────────────────────────────
+   Replaces a horizontally-scrolling row of text pills at the top. That row had
+   two problems: on a phone the sixth item was off-screen, so a whole section
+   was invisible unless you thought to swipe a nav bar, and nothing about it
+   looked like navigation people had seen before. Five fixed tabs at the bottom
+   is the pattern every phone user already knows, and it puts the targets where
+   a thumb actually reaches.
 
-.main{max-width:960px;margin:0 auto;padding:1.15rem}
+   --tabbar-h is published as a variable because three other things have to
+   know this height: the page's bottom padding, the Ask Mise bubble that must
+   sit above it, and the sticky CTA buttons that settle above it. */
+:root{--tabbar-h:60px}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:22;
+  display:grid;grid-template-columns:repeat(5,1fr);
+  /* The safe-area inset is what keeps the labels off the home indicator on a
+     notched phone; without it the bar looks correct in a browser and clipped
+     on the actual device. */
+  padding:.35rem .25rem calc(.35rem + env(safe-area-inset-bottom,0px));
+  border-top:1px solid var(--rule);
+  background:rgba(250,245,244,.86);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+.tabbar__b{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:.15rem;min-height:52px;padding:.3rem .1rem;background:none;border:none;cursor:pointer;
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:.68em;letter-spacing:-.005em;
+  color:var(--muted);border-radius:14px;-webkit-tap-highlight-color:transparent;
+  transition:color .16s ease}
+.tabbar__i{position:relative;display:flex;align-items:center;justify-content:center;
+  width:34px;height:26px;border-radius:999px;transition:background .16s ease}
+.tabbar__l{line-height:1.1;text-align:center}
+.tabbar__b:hover{color:var(--ink)}
+/* Active state is a filled pill behind the ICON only, not the whole tab. A
+   full-height fill on a 1/5-width tab reads as a block of colour rather than a
+   selection, and the label under it stops being legible. */
+.tabbar__b--on{color:var(--brick);font-weight:800}
+.tabbar__b--on .tabbar__i{background:rgba(180,71,34,.13)}
+.tabbar__dot{position:absolute;top:-1px;right:1px;width:8px;height:8px;border-radius:50%;
+  background:var(--brick);box-shadow:0 0 0 2px var(--paper)}
+@media(min-width:760px){
+  /* On a wide screen the bar stops spanning the whole width and centres,
+     because a 5-column grid across 1400px puts the tabs absurdly far apart. */
+  .tabbar{left:50%;right:auto;transform:translateX(-50%);width:min(560px,96vw);
+    bottom:.6rem;border:1px solid var(--rule);border-radius:22px;
+    box-shadow:var(--shadow-lift)}
+}
+@media print{.tabbar{display:none}}
+
+
+
+/* Bottom padding clears the fixed tab bar AND the Ask Mise bubble that floats
+   above it — without it the last card on every page sat underneath both. */
+.main{max-width:960px;margin:0 auto;
+  padding:1.15rem 1.15rem calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + 5.5rem)}
+@media print{.main{padding:1.15rem}}
 .stack{display:flex;flex-direction:column;gap:1.1rem}
 .sec-h{margin-top:.4rem}
 
@@ -6571,7 +6859,27 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .progress__label{font-weight:700;font-size:.95em;color:var(--ink-2)}
 .progress__bar span::after{content:"";position:absolute;left:6px;right:6px;top:2px;height:3px;
   border-radius:999px;background:rgba(255,255,255,.35)}
-.wiz{display:flex;gap:.65rem;margin-top:1.6rem;flex-wrap:wrap;align-items:center}
+/* The primary action at the foot of a page. Already the wrapper on all five of
+   them, so making it sticky here does the job without touching a single call
+   site.
+
+   Sticky with a bottom offset is the whole mechanism: the button rides just
+   above the tab bar while there's page left below it, and settles into its
+   real position once that scrolls into view. No scroll listener, no measuring,
+   no state — the browser owns it, so it can't drift out of sync or jank.
+
+   The backdrop is needed because the button now floats over content: a bare
+   button over a dish card was unreadable at the overlap. */
+.wiz{display:flex;gap:.65rem;margin-top:1.6rem;flex-wrap:wrap;align-items:center;
+  position:sticky;z-index:6;
+  bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + .55rem);
+  padding:.55rem;margin-left:-.55rem;margin-right:-.55rem;border-radius:20px;
+  background:rgba(250,245,244,.72);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+/* Inside cook mode there's no tab bar, so it only needs to clear the edge. */
+.cook .wiz{bottom:.6rem}
+@media print{.wiz{position:static;background:none;backdrop-filter:none}}
+@media(prefers-reduced-motion:reduce){.wiz{transition:none}}
 
 /* Onboarding motion. Everything here respects prefers-reduced-motion at the
    bottom of this block — motion should help people understand where they are,
@@ -7248,7 +7556,9 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .fab{display:flex;align-items:center;gap:.55rem;padding:.55rem 1.05rem .55rem .6rem}
 .fab__av{display:flex;background:var(--card);border-radius:50%;padding:3px;flex:0 0 auto}
 .fab__av .mise-av{color:var(--ink)}
-.fab{position:fixed;right:1rem;bottom:1rem;z-index:20;
+/* Lifted clear of the tab bar rather than overlapping it. */
+.fab{position:fixed;right:1rem;z-index:20;
+  bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + .7rem);
   background:linear-gradient(140deg,var(--brick),#8E3417);color:#fff;
   border:none;border-radius:999px;padding:.5rem 1.35rem .5rem .5rem;min-height:64px;
   cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;font-size:1em;
@@ -7295,6 +7605,28 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   border-radius:16px;box-shadow:var(--shadow-lift);animation:surfaceDown .22s ease-out}
 .alert p{margin:0}
 .alert .btn--ghost{background:transparent;color:#fff;border-color:#fff}
+/* Two buttons now instead of one. Grouped so they stay together when the
+   message wraps to its own line on a narrow phone, rather than the retry
+   drifting to one end of the banner and Close to the other. */
+.alert__acts{display:flex;gap:.5rem;align-items:center;flex-shrink:0}
+/* "Try again" is the action worth taking, so it reads as solid-on-brick
+   rather than as another ghost button competing with Close. */
+.alert__acts .btn--solid{background:#fff;color:var(--brick);box-shadow:none}
+
+/* Progress bar for the long AI waits. See the note on LoadBar for why the
+   progress is modelled rather than measured. */
+.lbar{margin:1rem 0 .2rem}
+.lbar__track{height:8px;border-radius:999px;overflow:hidden;
+  background:rgba(87,60,86,.12)}
+.lbar__fill{height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--rose),var(--brick));
+  /* Eased in CSS as well as in the width value: the width updates once a
+     second, and without a transition it would visibly step. 1s linear makes
+     the once-a-second jump read as continuous travel. */
+  transition:width 1s linear}
+.lbar__note{margin:.5rem 0 0;font-family:'Nunito',sans-serif;font-weight:600;
+  font-size:.88em;color:var(--muted)}
+@media(prefers-reduced-motion:reduce){.lbar__fill{transition:none}}
 .working{display:flex;align-items:center;gap:.6rem;font-family:'Nunito',sans-serif;
   font-weight:600;color:var(--ink-2);margin:0}
 .working__dots{display:inline-flex;gap:4px}
