@@ -2,6 +2,11 @@
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 
+/* The one definition of the app's directional daylight, shared with the
+   sign-in / sign-up / pricing pages so the app and its front door are lit the
+   same way. Interpolated into the .surface rule in CSS below. */
+import { DAYLIGHT } from "@/lib/authStyles";
+
 /* ============================================================================
    MISE — a weekly cooking collaborator
    Built on the weekly-cooking-collaborator skill.
@@ -6879,31 +6884,33 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* The physical surface the glass sits on. Fixed and behind everything, so
    scrolling never repaints it — only a transform moves it, and transforms are
    composited. The photo supplies material; the gradients on top of it supply
-   the directional north light the flat texture doesn't have. */
+   the directional north light the flat texture doesn't have.
+
+   The light is the DAYLIGHT constant, imported — the SAME gradient stack the
+   sign-in and pricing pages use over oak, not a local variant. This surface
+   previously carried its own dimmed copy of it, and that copy got dimmed
+   further in an attempt to make the marble easier to see. That was backwards:
+   these gradients are where the blue and the sunlight come from, so weakening
+   them made the marble more literally visible and the whole room darker and
+   flatter. A flat photograph gets its sense of direction from the light laid
+   over it, so the texture actually reads BEST when that light is strong. */
 .surface{position:fixed;inset:-8% 0 -8% 0;z-index:-1;pointer-events:none;
-  background-image:
-    radial-gradient(60% 48% at 4% 0%, rgba(226,238,250,.40), transparent 62%),
-    radial-gradient(70% 40% at 58% -2%, rgba(238,245,251,.32), transparent 64%),
-    radial-gradient(44% 32% at 100% 46%, rgba(247,236,222,.26), transparent 62%),
-    radial-gradient(76% 46% at 78% 102%, rgba(199,211,226,.30), transparent 66%),
-    url('/textures/marble.webp');
+  background-image:${DAYLIGHT},url('/textures/marble.webp');
   background-size:cover;background-position:center;
+  background-color:var(--paper);
   transform:translate3d(0,var(--par,0px),0);
   will-change:transform}
-/* Cook mode: no photographic texture at all.
+/* Cook mode: the same daylight, no photographic texture under it.
    It had linen — a cloth on the counter rather than the counter — and it read
    as noise exactly where noise costs the most. This is the one screen you read
-   at arm's length, mid-task, with your hands busy and possibly steam between
-   you and the phone, and the step type is set large for that reason. A fabric
-   weave sitting behind 2em text fights it for the same visual frequency.
-   So: light shaped by gradient only, keeping the same north-light direction as
-   the marble so it still feels like the same room, but with nothing competing
-   at text scale. Stays light because cook mode sets navy text on it. Also one
-   fewer image request on the screen most likely to be opened on bad kitchen
-   wifi. */
-.cook .surface,.surface--linen{background-image:
-    radial-gradient(92% 62% at 10% -8%, rgba(255,255,255,.92), transparent 72%),
-    radial-gradient(52% 40% at 92% 106%, rgba(247,236,222,.50), transparent 70%),
+   at arm's length, mid-task, hands busy, possibly with steam between you and
+   the phone, and the step type is set large for that reason. A fabric weave
+   sitting behind 2em text fights it at the same visual frequency.
+   So: identical light, so it's unmistakably the same room, over a plain pale
+   ground instead of cloth. Stays light because cook mode sets navy text on it.
+   Also one fewer image request on the screen most likely to be opened on bad
+   kitchen wifi. */
+.cook .surface,.surface--linen{background-image:${DAYLIGHT},
     linear-gradient(178deg, #FBF7F6 0%, #F2ECEB 100%);
   background-color:var(--paper)}
 @media(prefers-reduced-motion:reduce){.surface{transform:none;will-change:auto}}
