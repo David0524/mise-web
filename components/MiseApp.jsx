@@ -1684,19 +1684,33 @@ export default function App() {
      per session — a bubble that re-dances every time you change tab would go
      from charming to nagging on about the third repeat. */
   const [fabPhase, setFabPhase] = useState("wide");
+  /* Ran-once flag in a ref, and fabPhase deliberately NOT in the dependency
+     list. Both matter, and getting the second one wrong is why the bubble
+     never shrank: with fabPhase as a dep, the timer that set "dance" caused
+     the effect to re-run, whose CLEANUP cleared the pending "small" timer
+     before it could fire. The bubble danced forever and never collapsed.
+
+     Chained timers inside one effect run, so the sequence can't be torn down
+     halfway by its own state change. */
+  const fabRan = useRef(false);
   useEffect(() => {
     if (view === "start") return;                 // no bubble on the start screen yet
-    if (fabPhase !== "wide") return;              // already danced this session
+    if (fabRan.current) return;                   // once per session, not per tab change
+    fabRan.current = true;
+
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const timers = [];
     if (reduced) {
       // Skip straight to the useful end state; the dance is decoration.
-      const t = setTimeout(() => setFabPhase("small"), 2500);
-      return () => clearTimeout(t);
+      timers.push(setTimeout(() => setFabPhase("small"), 2500));
+    } else {
+      timers.push(setTimeout(() => {
+        setFabPhase("dance");
+        timers.push(setTimeout(() => setFabPhase("small"), 2200));
+      }, 900));
     }
-    const a = setTimeout(() => setFabPhase("dance"), 900);
-    const b = setTimeout(() => setFabPhase("small"), 900 + 2200);
-    return () => { clearTimeout(a); clearTimeout(b); };
-  }, [view, fabPhase]);
+    return () => timers.forEach(clearTimeout);
+  }, [view]);
 
   /* Every failing async action funnels through here. A helper rather than two
      setState calls at each site for two reasons: it keeps `err` and `retry`
@@ -3486,7 +3500,14 @@ Respond with ONLY this JSON:
      for the rest of the gesture — deciding per-frame makes a slightly diagonal
      drag flicker between scrolling and swiping. */
   const pagesRef = useRef(null);
-  const [dragging, setDragging] = useState(false);
+  /* Which neighbour is mounted: null, "prev" or "next" — not a boolean.
+     Mounting BOTH neighbours the moment a horizontal drag was detected meant
+     two large React trees reconciling on the first frame of the gesture, which
+     is exactly when the finger is moving and there is no spare time. Only one
+     side is ever revealed, so only one gets mounted; if the drag reverses
+     mid-hold the other mounts then, at a moment when the transform is already
+     near zero and a frame drop is invisible. */
+  const [dragSide, setDragSide] = useState(null);
   const drag = useRef({ active: false, axis: null, x0: 0, y0: 0, dx: 0, w: 0, t0: 0 });
 
   const tabIds = NAV.map(([id]) => id);
@@ -3498,31 +3519,67 @@ Respond with ONLY this JSON:
     const node = pagesRef.current;
     if (!node || tabIndex < 0) return;   // setup, start and My Kitchen don't swipe
 
+    /* rAF-batched transform writes. A touchmove can fire more than once per
+       frame, and each write to style.transform that the compositor never gets
+       to paint is wasted work that shows up as stutter. Coalescing to one
+       write per frame is most of the difference between "jittery" and
+       "smooth". */
+    let frame = null;
+    let pendingX = 0;
+    const paint = () => {
+      frame = null;
+      node.style.transform = `translate3d(${pendingX}px,0,0)`;
+    };
     const setX = (px, animate) => {
-      node.style.transition = animate
-        ? "transform .26s cubic-bezier(.22,.68,.28,1)"   // gentle, no overshoot
-        : "none";
-      node.style.transform = `translate3d(${px}px,0,0)`;
+      pendingX = px;
+      if (animate) {
+        if (frame) { cancelAnimationFrame(frame); frame = null; }
+        node.style.transition = "transform .26s cubic-bezier(.22,.68,.28,1)";
+        node.style.transform = `translate3d(${px}px,0,0)`;
+        return;
+      }
+      node.style.transition = "none";
+      if (!frame) frame = requestAnimationFrame(paint);
     };
 
-    /* Anything that scrolls sideways between the touch target and here owns
-       the gesture — the recipe step carousel, the day strip. Native behaviour
-       wins; the deck only takes gestures nothing else wanted. */
-    const ownedByChild = (target) => {
+    /* Does an ancestor own this gesture? Only if it can actually scroll
+       FURTHER in the direction being dragged.
+
+       The first version bailed whenever any ancestor merely had
+       overflow-x:auto and was wider than its box — which is why the shopping
+       page stopped swiping altogether. A page can contain a horizontal
+       scroller that is sitting at its end, or that isn't even the thing being
+       touched, and refusing the gesture on that basis breaks swiping on the
+       whole page. Checking direction and remaining scroll room means a
+       carousel keeps its gesture exactly while it has somewhere to go, and
+       hands it back at the ends.
+
+       overflow-x:clip is explicitly not a scroller — it clips without
+       scrolling, and .main uses it. */
+    const ownedByChild = (target, dx) => {
       for (let el = target; el && el !== node; el = el.parentElement) {
         if (el.dataset?.noswipe !== undefined) return true;
-        const st = el instanceof Element ? getComputedStyle(el) : null;
-        if (st && /auto|scroll/.test(st.overflowX) && el.scrollWidth > el.clientWidth + 4) return true;
+        if (!(el instanceof Element)) continue;
+        const ox = getComputedStyle(el).overflowX;
+        if (!/auto|scroll/.test(ox)) continue;
+        const room = el.scrollWidth - el.clientWidth;
+        if (room <= 4) continue;                       // nothing to scroll
+        const atStart = el.scrollLeft <= 1;
+        const atEnd = el.scrollLeft >= room - 1;
+        // dragging right (dx>0) reveals earlier content: only theirs if there
+        // is earlier content left to reveal.
+        if (dx > 0 && !atStart) return true;
+        if (dx < 0 && !atEnd) return true;
       }
       return false;
     };
 
     const onStart = (e) => {
       if (e.touches.length !== 1) return;              // pinch is not a swipe
-      if (ownedByChild(e.target)) return;
       const t = e.touches[0];
       drag.current = { active: true, axis: null, x0: t.clientX, y0: t.clientY,
-        dx: 0, w: node.clientWidth || window.innerWidth, t0: Date.now() };
+        dx: 0, w: node.clientWidth || window.innerWidth, t0: Date.now(),
+        target: e.target, side: null };
     };
 
     const onMove = (e) => {
@@ -3534,8 +3591,15 @@ Respond with ONLY this JSON:
 
       if (!d.axis) {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;        // too early to tell
-        d.axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? "x" : "y";
-        if (d.axis === "x") setDragging(true);                    // mount the neighbours
+        if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+          // Direction is known now, so the ownership question can finally be
+          // asked properly — it depends on which way the drag is going.
+          if (ownedByChild(d.target, dx)) { d.active = false; return; }
+          d.axis = "x";
+          setDragSide(dx < 0 ? "next" : "prev");
+        } else {
+          d.axis = "y";
+        }
       }
       if (d.axis !== "x") return;                                 // it's a scroll, leave it
 
@@ -3547,13 +3611,19 @@ Respond with ONLY this JSON:
       const atEdge = (dx > 0 && !prevId) || (dx < 0 && !nextId);
       d.dx = atEdge ? dx * 0.33 : dx;
       setX(d.dx, false);
+
+      // Reversed direction while holding: mount the other side. Cheap here
+      // because the deck is back near its resting position.
+      const want = dx < 0 ? "next" : "prev";
+      if (want !== d.side) { d.side = want; setDragSide(want); }
     };
 
     const onEnd = () => {
       const d = drag.current;
       if (!d.active) return;
       drag.current = { ...d, active: false };
-      if (d.axis !== "x") { setDragging(false); return; }
+      if (frame) { cancelAnimationFrame(frame); frame = null; }
+      if (d.axis !== "x") { setDragSide(null); return; }
 
       /* Commit on distance OR speed. Distance alone means a quick confident
          flick that only travelled 60px snaps back, which feels broken; the
@@ -3571,13 +3641,13 @@ Respond with ONLY this JSON:
         setX(d.dx < 0 ? -d.w : d.w, true);
         setTimeout(() => {
           setView(target);
-          setDragging(false);
+          setDragSide(null);
           const n = pagesRef.current;
           if (n) { n.style.transition = "none"; n.style.transform = "translate3d(0,0,0)"; }
         }, 260);
       } else {
         setX(0, true);
-        setTimeout(() => setDragging(false), 260);
+        setTimeout(() => setDragSide(null), 260);
       }
     };
 
@@ -3586,6 +3656,7 @@ Respond with ONLY this JSON:
     node.addEventListener("touchend", onEnd, { passive: true });
     node.addEventListener("touchcancel", onEnd, { passive: true });
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       node.removeEventListener("touchstart", onStart);
       node.removeEventListener("touchmove", onMove);
       node.removeEventListener("touchend", onEnd);
@@ -3908,12 +3979,12 @@ Respond with ONLY this JSON:
             positioned one screen-width either side, so the whole strip moves
             as one under your finger. Mounting them on demand rather than
             always keeps five heavy trees from being live at once. */}
-        <div className="pages" ref={pagesRef}>
-          {dragging && prevId && (
+        <div className={`pages${dragSide ? " pages--dragging" : ""}`} ref={pagesRef}>
+          {dragSide === "prev" && prevId && (
             <div className="pages__side pages__side--prev" aria-hidden="true">{screen(prevId)}</div>
           )}
           <div className="pages__cur">{screen(view)}</div>
-          {dragging && nextId && (
+          {dragSide === "next" && nextId && (
             <div className="pages__side pages__side--next" aria-hidden="true">{screen(nextId)}</div>
           )}
         </div>
@@ -7022,7 +7093,12 @@ html{background:#F7F3F2}
    vertical scroll has to wait to find out whether the JS wanted the gesture,
    which is the classic "scrolling feels laggy" symptom of a hand-rolled
    swiper. */
-.pages{position:relative;touch-action:pan-y;will-change:transform}
+/* will-change only WHILE dragging. Left on permanently it keeps the whole
+   deck on its own compositor layer for the entire session, which costs memory
+   and on some phones forces every page repaint through that layer — the
+   opposite of the smoothness it's meant to buy. */
+.pages{position:relative;touch-action:pan-y}
+.pages--dragging{will-change:transform}
 .pages__cur{position:relative}
 .pages__side{position:absolute;top:0;width:100%}
 /* The 1.15rem matches .main's horizontal padding, so a neighbour's left edge
