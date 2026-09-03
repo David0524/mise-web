@@ -6265,6 +6265,21 @@ const CSS = `
 }
 /* keep legacy names working so nothing goes unstyled mid-refactor */
 .app{--steel:var(--sunk); --card:var(--surface); --line:var(--rule-2); --blade:var(--muted)}
+
+/* How much the marble layer is lifted. Pulled out as a variable because it is
+   the one value in the design that has needed several passes and is quicker to
+   settle by eye than by argument — open devtools, select the .app element, and
+   change this live until it looks right, then tell me the number.
+
+   Measured reference points, all luminance out of 255:
+     white card #FFFFFF ........ 255
+     paper #FAF5F4 ............. 246
+     marble at 1.22 ............ 246   <- level with the paper (shipped)
+     marble at 1.12 ............ 226
+     marble at 1.00, untreated .. 201   <- darker, not brighter
+   The stone is pale and low-contrast to begin with (stddev 5.2), so above
+   about 1.24 it stops reading as marble at all and becomes plain white. */
+.app{--surface-lift:1.22}
 /* Sized in rem, not px, so the reader's own browser text-size setting scales the
    whole interface. Contrast follows the operating system rather than an in-app toggle. */
 .app{font-size:1.125rem}
@@ -6888,25 +6903,25 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    Two levers here, and it matters which does what. This took several passes,
    because the obvious lever is the wrong one:
 
-   - brightness() is what makes it bright. marble.webp measures 79% luminance
-     (RGB 203,201,200, stddev 5.2) — pale, almost featureless stone that still
-     reads grey against #FAF5F4 paper. Weakening the gradients to "show more
-     marble" moves the composite DOWN (215 -> 208): more stone, less light,
-     darker room. Multiplying the layer lifts the stone itself, which is the
-     thing that was never bright enough. 1.12 lands near 227 against paper's
-     246: clearly lit, still obviously stone.
-   - DAYLIGHT_SOFT is only the tint, at 9-12% — so the marble is ~90% of what
+   - brightness() is what makes it bright, and it is the ONLY thing that does.
+     marble.webp measures 79% luminance (RGB 203,201,200, stddev 5.2) — pale,
+     almost featureless stone that still reads grey next to #FAF5F4 paper and
+     #FFFFFF cards. Removing the overlay entirely does not make it brighter,
+     it makes it 201: darker than any veiled version. The gradients were never
+     the problem. --surface-lift is the dial; see its note above.
+   - DAYLIGHT_SOFT is only the tint, at 8-10% — so the marble is ~90% of what
      you see. It uses saturated colours rather than the auth pages' near-white
      ones, because near-white at low alpha over pale stone is invisible (1.6
      points of blue-red spread, measured). See its own note in authStyles.js.
 
-   If it needs to go further, brightness is the dial. Raising the alphas
-   instead just veils the stone again, which is the whole problem. */
+   At the shipped 1.22 the stone sits level with the paper, so the background
+   reads as one continuous lit surface rather than a grey panel behind white
+   cards — which is what "dark" was actually describing. */
 .surface{position:fixed;inset:-8% 0 -8% 0;z-index:-1;pointer-events:none;
   background-image:${DAYLIGHT_SOFT},url('/textures/marble.webp');
   background-size:cover;background-position:center;
   background-color:var(--paper);
-  filter:brightness(1.12) saturate(1.04);
+  filter:brightness(var(--surface-lift,1.22)) saturate(1.04);
   transform:translate3d(0,var(--par,0px),0);
   will-change:transform}
 /* Cook mode: the same daylight, no photographic texture under it.
