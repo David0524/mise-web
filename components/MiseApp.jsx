@@ -425,6 +425,36 @@ async function callClaude(messages, opts = {}) {
   return data.text || "";
 }
 
+/* The constraint check ("fits: no dairy, cast iron only") is a deliberate
+   forcing function in the ideas prompt — making the model state the check
+   before the dish is what keeps restrictions and equipment honoured. It was
+   never meant to be read by anyone, but it was landing appended to the visible
+   blurb, so it showed on dish cards and on the share image.
+
+   It now goes in its own "fits" field that nothing renders. This strip is the
+   belt to that braces, and it earns its place twice over: weeks already saved
+   in history have the tag baked into their stored text, and a model told not
+   to repeat something will occasionally repeat it anyway. Runs on ingest, so
+   nothing downstream — card, week list, share canvas, print — has to know. */
+function stripFits(s) {
+  if (typeof s !== "string") return s;
+  return s
+    // "(fits: no dairy, cast iron only)" in brackets, the usual shape
+    .replace(/[([{]\s*fits\s*:[^)\]}]*[)\]}]/gi, "")
+    // or trailing and bare, with no closing bracket to anchor on
+    .replace(/\s*[—–-]?\s*\bfits\s*:.*$/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
+}
+
+/* Applied wherever a dish enters app state, so a leaked tag can't reach the UI
+   from any of the four calls that mint dishes. */
+function cleanDish(d) {
+  if (!d || typeof d !== "object") return d;
+  return { ...d, title: stripFits(d.title), blurb: stripFits(d.blurb), why: stripFits(d.why) };
+}
+
 function parseJSON(text, onRepair) {
   let t = text.replace(/```json/gi, "").replace(/```/g, "").trim();
   const s = t.search(/[[{]/);
@@ -754,12 +784,15 @@ async function renderDishCard(dish, recipe, photo) {
   while (titleLines.length > (img ? 2 : 3) && titleSize > 46) {
     titleSize -= 8;
     ctx.font = `800 ${titleSize}px Nunito, system-ui, sans-serif`;
-    titleLines = wrapText(ctx, dish.title, maxW);
+    titleLines = wrapText(ctx, stripFits(dish.title), maxW);
   }
   const titleLead = titleSize * 1.16;
 
   ctx.font = "600 38px Nunito, system-ui, sans-serif";
-  const blurbLines = wrapText(ctx, dish.blurb || "", maxW).slice(0, img ? 2 : 3);
+  // stripFits: a week saved before the tag moved to its own field still has
+  // it inside the stored blurb, and a share image is the most public surface
+  // in the app — the last place it should surface.
+  const blurbLines = wrapText(ctx, stripFits(dish.blurb) || "", maxW).slice(0, img ? 2 : 3);
   const blurbLead = 52;
   const meta = [recipe?.servings, recipe?.time].filter(Boolean).join("   ·   ");
 
@@ -894,8 +927,8 @@ async function renderWeekCard(dishes, ecosystem) {
   const measure = () => {
     ctx.font = `700 ${size}px Nunito, system-ui, sans-serif`;
     const rows = shown.map((d) => ({
-      title: wrapText(ctx, d.title, maxW).slice(0, 2),
-      blurb: d.blurb || "",
+      title: wrapText(ctx, stripFits(d.title), maxW).slice(0, 2),
+      blurb: stripFits(d.blurb) || "",
     }));
     const h = rows.reduce((acc, r) => acc + r.title.length * (size + 10) + (r.blurb ? 44 : 0) + 34, 0);
     return { rows, h };
@@ -2178,8 +2211,10 @@ Do three things.
 
 0. FIRST, before any dish, write a one-line constraint card in your own words:
 "Cooking for N. Cannot use: [restrictions, allergies, dislikes]. Heat ceiling: X. Can only cook
-with: [their equipment]." Then, after each dish, tag it: (fits: no [restriction], [equipment] only).
+with: [their equipment]." Then give each dish a "fits" field: (no [restriction], [equipment] only).
 Writing the check before the output is the point — a dish that can't be tagged doesn't belong.
+"fits" is a private check, never shown to anyone: it MUST NOT appear inside "title", "blurb",
+"why" or "say". Do not repeat it in the visible copy in any form.
 
 1. Propose this week's grocery spine: one fresh herb, green onions, one primary protein,
 ${seed.vegetable} as the vegetable, one flavor system, one optional wildcard. One sentence on
@@ -2235,7 +2270,7 @@ gloss. ${CHAT_VOICE} That applies to "say". "logic" is one sentence. Each "blurb
 Respond with ONLY this JSON, no backticks:
 {"say":"",
 "ecosystem":{"aromatics":"the herb-and-aromatic anchor, whatever actually fits — not always cilantro and green onion","protein":"","vegetable":"","flavorSystem":"","wildcard":"","logic":""},
-"dishes":[{"title":"","blurb":"what it is","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30}]}`;
+"dishes":[{"title":"","blurb":"what it is","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","fits":"private constraint check, never displayed","spice":0,"minutes":30}]}`;
 
     try {
       /* The most structured output in the app: an ecosystem block plus one
@@ -2246,7 +2281,7 @@ Respond with ONLY this JSON, no backticks:
       const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1800, docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
       setEcosystem(out.ecosystem || null);
-      setCandidates((out.dishes || []).map((d) => ({ ...d, id: uid(), reaction: null, note: "" })));
+      setCandidates((out.dishes || []).map((d) => ({ ...cleanDish(d), id: uid(), reaction: null, note: "" })));
       setConvo([{ role: "user", content: prompt }, { role: "assistant", content: raw }]);
       setThread([{ who: "mise", text: out.say || "" }]);
     } catch (e) {
@@ -2325,7 +2360,7 @@ Return the FULL revised list.`;
       setCandidates(
         (out.dishes || []).map((d) => {
           const old = prior.get((d.title || "").toLowerCase());
-          return { ...d, id: old?.id || uid(), reaction: old?.reaction ?? null, note: old?.note || "" };
+          return { ...cleanDish(d), id: old?.id || uid(), reaction: old?.reaction ?? null, note: old?.note || "" };
         })
       );
       setConvo([{ role: "user", content: prompt }, { role: "assistant", content: raw }]);
@@ -2361,7 +2396,7 @@ Respond with ONLY this JSON:
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
-      setCandidates((cs) => cs.map((c) => (c.id === id ? { ...out, id: c.id, reaction: null, note: "" } : c)));
+      setCandidates((cs) => cs.map((c) => (c.id === id ? { ...cleanDish(out), id: c.id, reaction: null, note: "" } : c)));
       if (out.say) setThread((t) => [...t, { who: "mise", text: out.say }]);
     } catch (e) {
       setErr(e.message);
@@ -3039,7 +3074,7 @@ Respond with ONLY this JSON:
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
-      setCandidates((cs) => [...cs, ...(out.dishes || []).map((d) => ({ ...d, id: uid(), reaction: null, note: "" }))]);
+      setCandidates((cs) => [...cs, ...(out.dishes || []).map((d) => ({ ...cleanDish(d), id: uid(), reaction: null, note: "" }))]);
       setThread((t) => [...t, { who: "mise", text: out.say || "" }]);
       setView("ideas");
     } catch (e) {
@@ -4203,7 +4238,7 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
 
   if (!shopping.length)
     return (
-      <Empty title="No list yet" img="/img/bag.webp">
+      <Empty title="No list yet">
         <p>Pick your dishes in Ideas, then build the list from My Week — I only shop once the menu is agreed.</p>
       </Empty>
     );
@@ -5294,7 +5329,7 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
     return (
       <div className="stack">
         {warning}
-        <Empty title="Nothing saved yet" img="/img/container.webp">
+        <Empty title="Nothing saved yet">
           <p>
             Once you build a shopping list, that week gets saved here automatically —
             what you planned, what you rated, what stuck.
@@ -6847,18 +6882,30 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    the directional north light the flat texture doesn't have. */
 .surface{position:fixed;inset:-8% 0 -8% 0;z-index:-1;pointer-events:none;
   background-image:
-    radial-gradient(60% 48% at 4% 0%, rgba(226,238,250,.55), transparent 62%),
-    radial-gradient(70% 40% at 58% -2%, rgba(238,245,251,.45), transparent 64%),
-    radial-gradient(44% 32% at 100% 46%, rgba(247,236,222,.35), transparent 62%),
-    radial-gradient(76% 46% at 78% 102%, rgba(199,211,226,.42), transparent 66%),
+    radial-gradient(60% 48% at 4% 0%, rgba(226,238,250,.40), transparent 62%),
+    radial-gradient(70% 40% at 58% -2%, rgba(238,245,251,.32), transparent 64%),
+    radial-gradient(44% 32% at 100% 46%, rgba(247,236,222,.26), transparent 62%),
+    radial-gradient(76% 46% at 78% 102%, rgba(199,211,226,.30), transparent 66%),
     url('/textures/marble.webp');
   background-size:cover;background-position:center;
   transform:translate3d(0,var(--par,0px),0);
   will-change:transform}
-/* Cook mode gets linen instead — a cloth on the counter rather than the counter. */
+/* Cook mode: no photographic texture at all.
+   It had linen — a cloth on the counter rather than the counter — and it read
+   as noise exactly where noise costs the most. This is the one screen you read
+   at arm's length, mid-task, with your hands busy and possibly steam between
+   you and the phone, and the step type is set large for that reason. A fabric
+   weave sitting behind 2em text fights it for the same visual frequency.
+   So: light shaped by gradient only, keeping the same north-light direction as
+   the marble so it still feels like the same room, but with nothing competing
+   at text scale. Stays light because cook mode sets navy text on it. Also one
+   fewer image request on the screen most likely to be opened on bad kitchen
+   wifi. */
 .cook .surface,.surface--linen{background-image:
-    radial-gradient(60% 48% at 4% 0%, rgba(226,238,250,.40), transparent 62%),
-    url('/textures/linen.webp')}
+    radial-gradient(92% 62% at 10% -8%, rgba(255,255,255,.92), transparent 72%),
+    radial-gradient(52% 40% at 92% 106%, rgba(247,236,222,.50), transparent 70%),
+    linear-gradient(178deg, #FBF7F6 0%, #F2ECEB 100%);
+  background-color:var(--paper)}
 @media(prefers-reduced-motion:reduce){.surface{transform:none;will-change:auto}}
 
 /* Photographs, not icons. Rounded to match the glass panels they sit inside,
