@@ -1576,6 +1576,14 @@ export default function App() {
   const [storageOk, setStorageOk] = useState(null);
   const historyRef = useRef([]);
 
+  /* Swipe bookkeeping. MUST live above the `if (!loaded)` early return further
+     down: a hook declared after a conditional return doesn't run on the render
+     that takes the return, so the hook count changes between renders and React
+     throws #310 ("rendered more hooks than during the previous render"). It was
+     declared next to the touch handlers, which read better and crashed the app
+     on load. Handlers can sit wherever; hooks cannot. */
+  const touch = useRef(null);
+
   /* Every failing async action funnels through here. A helper rather than two
      setState calls at each site for two reasons: it keeps `err` and `retry`
      from drifting out of sync — a stale retry surviving a new error would
@@ -3332,7 +3340,6 @@ Respond with ONLY this JSON:
      swipe. Both tuned to be harder to trigger by accident than on purpose —
      an unwanted page change is far more annoying than a swipe that didn't
      take. */
-  const touch = useRef(null);
   const tabIds = NAV.map(([id]) => id);
 
   const onTouchStart = (e) => {
