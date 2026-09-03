@@ -6266,20 +6266,25 @@ const CSS = `
 /* keep legacy names working so nothing goes unstyled mid-refactor */
 .app{--steel:var(--sunk); --card:var(--surface); --line:var(--rule-2); --blade:var(--muted)}
 
-/* How much the marble layer is lifted. Pulled out as a variable because it is
-   the one value in the design that has needed several passes and is quicker to
-   settle by eye than by argument — open devtools, select the .app element, and
-   change this live until it looks right, then tell me the number.
+/* How much the marble layer is lifted on top of the asset itself. Small now,
+   because the real fix went into the image rather than staying a filter.
 
-   Measured reference points, all luminance out of 255:
-     white card #FFFFFF ........ 255
-     paper #FAF5F4 ............. 246
-     marble at 1.22 ............ 246   <- level with the paper (shipped)
-     marble at 1.12 ............ 226
-     marble at 1.00, untreated .. 201   <- darker, not brighter
-   The stone is pale and low-contrast to begin with (stddev 5.2), so above
-   about 1.24 it stops reading as marble at all and becomes plain white. */
-.app{--surface-lift:1.22}
+   The texture originally shipped with a white point of 215 and a range of
+   184-215 — there was no white anywhere in the file. On its own it looks
+   white, because it's the lightest thing in frame and the eye adapts to it;
+   dropped behind #FFFFFF cards and #FAF5F4 paper the same pixels read grey.
+   That mismatch between "the image looks white" and "the app looks dark" was
+   the whole confusion, and no amount of overlay tuning could fix it.
+
+   marble.webp is now re-levelled to 200-255. That also DOUBLED the visible
+   veining (stddev 5.4 -> 9.6), because stretching the range separates tones
+   that were previously compressed into a 31-value band — brighter and more
+   marble-like at once, which the filter approach couldn't do.
+
+   Luminance reference, all /255:  white card 255 | paper 246 | this at
+   1.06 ≈ 244 | asset alone 230 | the old asset 201.
+   Tune live in devtools on .app if you want it hotter or cooler. */
+.app{--surface-lift:1.06}
 /* Sized in rem, not px, so the reader's own browser text-size setting scales the
    whole interface. Contrast follows the operating system rather than an in-app toggle. */
 .app{font-size:1.125rem}
@@ -6903,20 +6908,20 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    Two levers here, and it matters which does what. This took several passes,
    because the obvious lever is the wrong one:
 
-   - brightness() is what makes it bright, and it is the ONLY thing that does.
-     marble.webp measures 79% luminance (RGB 203,201,200, stddev 5.2) — pale,
-     almost featureless stone that still reads grey next to #FAF5F4 paper and
-     #FFFFFF cards. Removing the overlay entirely does not make it brighter,
-     it makes it 201: darker than any veiled version. The gradients were never
-     the problem. --surface-lift is the dial; see its note above.
+   - The ASSET carries the brightness now. marble.webp is re-levelled to a
+     200-255 range; it used to be 184-215, with no white in it at all, which
+     is why it looked white on its own and grey in the app. --surface-lift is
+     only a small final trim on top; see its note above. The gradients were
+     never what made it dark, and removing them made it worse, not better.
    - DAYLIGHT_SOFT is only the tint, at 8-10% — so the marble is ~90% of what
      you see. It uses saturated colours rather than the auth pages' near-white
      ones, because near-white at low alpha over pale stone is invisible (1.6
      points of blue-red spread, measured). See its own note in authStyles.js.
 
-   At the shipped 1.22 the stone sits level with the paper, so the background
-   reads as one continuous lit surface rather than a grey panel behind white
-   cards — which is what "dark" was actually describing. */
+   Between the re-levelled asset (230) and the 1.06 trim, the stone lands
+   around 244 against paper's 246, so the background reads as one continuous
+   lit surface rather than a grey panel behind white cards — which is what
+   "dark" was actually describing all along. */
 .surface{position:fixed;inset:-8% 0 -8% 0;z-index:-1;pointer-events:none;
   background-image:${DAYLIGHT_SOFT},url('/textures/marble.webp');
   background-size:cover;background-position:center;
