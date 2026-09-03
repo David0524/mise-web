@@ -2091,8 +2091,19 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
     setWeekId(uid());  // a fresh id for this run-through, used once it's archived
 
     /* Drawn in code, before the model sees anything. This is what actually makes
-       week twelve different from week one — see the note on the seed above. */
-    const seed = existingSeed || drawWeekSeed(profile, history);
+       week twelve different from week one — see the note on the seed above.
+
+       The shape check on existingSeed is not paranoia, it's a fixed bug: this
+       was wired up as `onGo={startIdeas}`, so React handed the button's click
+       event in as `existingSeed`. Being an object, it was truthy, so it was
+       used AS the seed — and `seed.formats.map(...)` below then threw
+       "Cannot read properties of undefined (reading 'map')". Because that
+       throw happened before the try block, nothing caught it: no error
+       surfaced, no request was ever sent, and the screen sat on
+       "Putting some ideas together" forever with nothing in the server logs.
+       Anything that isn't a real seed is now ignored rather than trusted. */
+    const usable = existingSeed && Array.isArray(existingSeed.formats) ? existingSeed : null;
+    const seed = usable || drawWeekSeed(profile, history);
     setWeekSeed(seed);
 
     /* The umami list is filtered against their restrictions BEFORE it reaches the
@@ -2244,6 +2255,25 @@ Respond with ONLY this JSON, no backticks:
       setBusy("");
       mark("ideas", false);
     }
+  }
+
+  /* startIdeas builds a long prompt before its own try block, so anything that
+     throws during that construction escapes the catch above entirely. When it
+     does, the damage is invisible in the worst way: setBusy and setView have
+     already run, so the screen switches to the ideas view and sits on
+     "Putting some ideas together" forever, no request is sent, and the server
+     logs stay empty because the server was never involved. That is exactly how
+     the click-event-as-seed bug presented, and it cost days to find.
+
+     Catching at the call site turns that whole class of failure into a visible
+     error with a cleared spinner. Call this, not startIdeas directly. */
+  function runIdeas(seed) {
+    return startIdeas(seed).catch((e) => {
+      console.error("startIdeas failed before the request was sent:", e);
+      setErr(e?.message || "Something went wrong putting the ideas together.");
+      setBusy("");
+      mark("ideas", false);
+    });
   }
 
   async function sendFeedback(text) {
@@ -3173,7 +3203,7 @@ Respond with ONLY this JSON:
             setThisWeek={setThisWeek}
             profile={profile}
             onEdit={() => { setView("setup"); setStep(0); }}
-            onGo={startIdeas}
+            onGo={() => runIdeas()}
             busy={busy}
           />
         )}
@@ -3182,7 +3212,7 @@ Respond with ONLY this JSON:
           <Ideas
             thread={thread} candidates={candidates} ecosystem={ecosystem} busy={busy}
             seed={weekSeed}
-            onReroll={() => startIdeas(drawWeekSeed(profile, history))}
+            onReroll={() => runIdeas(drawWeekSeed(profile, history))}
             setCandidates={setCandidates} onSend={sendFeedback} onSwap={swapDish}
             onNext={() => setView("week")} onStart={() => setView("thisweek")}
             onAskMise={(t) => { setMiseOpen(true); askMise(t); }}
@@ -3285,7 +3315,7 @@ Respond with ONLY this JSON:
           <LeftoversView
             haveOnHand={haveOnHand} setHaveOnHand={setHaveOnHand}
             ideas={leftoverIdeas} recipes={leftoverRecipes}
-            onGet={getLeftoverIdeas} onExpand={expandLeftover} busy={busy}
+            onGet={() => getLeftoverIdeas()} onExpand={expandLeftover} busy={busy}
             scheduled={scheduled} shopping={shopping}
             building={building.leftovers} buildingRecipe={building.recipe}
             onAdopt={adoptLeftover} safety={leftoverSafety}
