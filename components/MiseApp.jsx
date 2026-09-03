@@ -413,6 +413,12 @@ async function callClaude(messages, opts = {}) {
     // leave them with no idea it was their own account rather than the app.
     let detail = null;
     try { detail = (await res.json())?.detail; } catch (_) {}
+    /* Log the raw status too. The friendly copy below is right for a person,
+       but it made every distinct failure look identical while debugging —
+       a 502 from the provider, a 504 timeout and a 500 crash all read as
+       "couldn't reach the kitchen". This goes to the console, not the screen,
+       so the copy stays clean. */
+    console.error(`callClaude failed: HTTP ${res.status}`, detail || "(no detail)");
     throw new Error(detail || "Couldn't reach the kitchen just now. Give it another go in a moment.");
   }
   const data = await res.json();

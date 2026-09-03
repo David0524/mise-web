@@ -33,8 +33,26 @@ export const maxDuration = 60;
 const BYOK_PROVIDERS = { openai, anthropic };
 
 export async function POST(req) {
+  /* Entry log. This exists because a failure mode showed up that produced NO
+     server log at all: the app loaded, a call failed, and Vercel showed only
+     an unrelated `pg` SSL warning. With nothing logged it's impossible to tell
+     apart three very different problems — the request never arrived, it was
+     rejected by an early return below, or the function was killed by the
+     platform mid-flight. One line on the way in distinguishes them:
+       - no "chat in" line at all  -> the request never reached this route
+       - "chat in" but no "chat ok"/"chat fail" -> killed mid-flight (timeout)
+       - "chat in" + "chat reject" -> an early return, with the reason
+     Keep it. It costs one line per call and it is the difference between
+     diagnosing this in one deploy and guessing for a week. */
+  const startedAt = Date.now();
+  const label = `${process.env.AI_PROVIDER || "anthropic"}`;
+  console.log(`chat in (provider=${label})`);
+
   const auth = await requireEntitledUser();
   if (auth.error) {
+    // Previously silent: this returned without logging, so an auth or paywall
+    // rejection looked identical to the route never being called.
+    console.error(`chat reject: ${auth.error} (${auth.status})`);
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
@@ -42,11 +60,13 @@ export async function POST(req) {
   try {
     body = await req.json();
   } catch (_) {
+    console.error("chat reject: unparseable body (400)");
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
   const { messages, tier, maxTokens, sessionContext, userProvider, userKey, docSlices } = body || {};
   if (!Array.isArray(messages) || !messages.length) {
+    console.error("chat reject: no messages (400)");
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
 
@@ -91,11 +111,23 @@ export async function POST(req) {
       maxTokens: tokenCap,
       ...(byok ? { userKey } : {}),
     });
+    /* Timing is here on purpose. The heaviest call in the app sits close to
+       the provider's own time budget, so "how long did the one that worked
+       take" is the number that says whether the budget is right — guessing at
+       it is what caused a working-but-slow call to be cut off before. */
+    console.log(
+      `chat ok in ${Date.now() - startedAt}ms ` +
+      `(tier=${tier || "main"}, slices=${Array.isArray(docSlices) && docSlices.length ? docSlices.join("+") : "all"}, cap=${tokenCap})`
+    );
     return NextResponse.json({ text });
   } catch (e) {
     // Deliberately not logging the error object wholesale on the BYOK path —
     // a thrown request object could carry the key into the log.
-    console.error("chat route failure", byok ? `(byok:${userProvider}) ${e.message}` : e);
+    console.error(
+      `chat fail after ${Date.now() - startedAt}ms ` +
+      `(tier=${tier || "main"}, slices=${Array.isArray(docSlices) && docSlices.length ? docSlices.join("+") : "all"}):`,
+      byok ? `(byok:${userProvider}) ${e.message}` : e
+    );
     return NextResponse.json(
       { error: "network", detail: e.userFacing || null },
       { status: 502 }
