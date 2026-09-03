@@ -1692,6 +1692,40 @@ export default function App() {
 
      Chained timers inside one effect run, so the sequence can't be torn down
      halfway by its own state change. */
+  /* Does the screen currently on show have a sticky CTA under it?
+
+     The bubble has to clear that bar when it exists, and sit just above the
+     tab bar when it doesn't — a fixed allowance for it left the bubble
+     floating in mid-air on every screen without one. Enumerating which views
+     have a CTA in JS would be a second list to keep in step with the markup
+     and would go stale the first time a button moved, so this asks the DOM
+     instead: is there a .wiz in the visible page?
+
+     A MutationObserver rather than a view-keyed effect because a CTA can
+     appear and disappear WITHIN a view — the ideas page has no "Next" until
+     dishes exist, and the shopping page swaps its button as the list is
+     built. Watching for the element itself catches all of that without
+     needing to know why it changed. */
+  const [hasCta, setHasCta] = useState(false);
+  useEffect(() => {
+    const node = pagesRef.current;
+    if (!node) return;
+    // Only the page actually on screen counts — a neighbour mounted mid-swipe
+    // has its own CTA and must not move the bubble.
+    const check = () => setHasCta(!!node.querySelector(".pages__cur .wiz"));
+    check();
+    /* Feature-detected. An unguarded `new MutationObserver` here threw in an
+       environment that didn't provide one and took the ENTIRE app down —
+       blank screen, not a misplaced bubble. Nothing about where a decorative
+       button rests is worth that, so a missing observer degrades to the
+       single check above: the bubble may sit at the wrong height until the
+       next view change, which is invisible next to the alternative. */
+    if (typeof MutationObserver !== "function") return;
+    const mo = new MutationObserver(check);
+    mo.observe(node, { childList: true, subtree: true });
+    return () => mo.disconnect();
+  }, [view, loaded]);
+
   const fabRan = useRef(false);
   useEffect(() => {
     if (view === "start") return;                 // no bubble on the start screen yet
@@ -3511,7 +3545,20 @@ Respond with ONLY this JSON:
   const drag = useRef({ active: false, axis: null, x0: 0, y0: 0, dx: 0, w: 0, t0: 0 });
 
   const tabIds = NAV.map(([id]) => id);
-  const tabIndex = tabIds.indexOf(view);
+  /* "Just this week" IS the Brainstorm tab as far as navigation is concerned —
+     it's the screen that tab shows before any ideas exist. Without this alias
+     its view id ("thisweek") isn't in the tab list, tabIndex came back -1, and
+     the effect below returned before attaching a single listener. That's why
+     swiping did nothing until a week had been generated and the view became
+     "ideas": the gesture was never wired up on the screen people actually
+     start on.
+
+     setup and My Kitchen are deliberately absent — they're not tabs, they're
+     places you go and come back from, and swiping out of a form you're filling
+     in would lose the entry. */
+  const TAB_ALIAS = { thisweek: "ideas" };
+  const activeTab = TAB_ALIAS[view] || view;
+  const tabIndex = tabIds.indexOf(activeTab);
   const prevId = tabIndex > 0 ? tabIds[tabIndex - 1] : null;
   const nextId = tabIndex >= 0 && tabIndex < tabIds.length - 1 ? tabIds[tabIndex + 1] : null;
 
@@ -3995,7 +4042,7 @@ Respond with ONLY this JSON:
           every control is disabled until it returns. */}
       {view !== "start" && !(busy && busy !== "mise" && !hasLocalIndicator) && (
         <button
-          className={`fab no-print${fabPhase === "dance" ? " fab--dance" : ""}${fabPhase === "small" ? " fab--small" : ""}`}
+          className={`fab no-print${hasCta ? " fab--overcta" : ""}${fabPhase === "dance" ? " fab--dance" : ""}${fabPhase === "small" ? " fab--small" : ""}`}
           onClick={() => setMiseOpen(true)}
           aria-label="Ask Mise, your sous chef"
         >
@@ -4021,9 +4068,9 @@ Respond with ONLY this JSON:
           {NAV.map(([id, label, icon]) => (
             <button
               key={id}
-              className={`tabbar__b${view === id ? " tabbar__b--on" : ""}`}
+              className={`tabbar__b${activeTab === id ? " tabbar__b--on" : ""}`}
               onClick={() => setView(id)}
-              aria-current={view === id ? "page" : undefined}
+              aria-current={activeTab === id ? "page" : undefined}
             >
               <span className="tabbar__i">
                 <TabIcon name={icon} />
@@ -6891,13 +6938,26 @@ const CSS = `
   /* Glass: translucent fill + saturation boost so colour bleeds through from
      behind, a hairline rim, and a specular top highlight. The highlight is
      what sells it as a lit pane rather than just something transparent. */
-  --glass:rgba(255,255,255,.58);
-  --glass-strong:rgba(255,255,255,.70);
-  --glass-rim:rgba(255,255,255,.75);
+  /* Thinner than they were (.58/.70). The marble underneath has only 28
+     unique tonal values in it, so a 58% white fill on top of a 20px blur left
+     literally nothing to see — the cards read as flat off-white panels and the
+     stone was only visible in the rubber-band gap above the header. Combined
+     with the brightness lift on .surface, which pushes the marble to roughly
+     the same luminance as the fill, the texture was being erased twice over.
+     At .36 the veining reads through the card while the text on top keeps a
+     very large contrast margin (navy #12141C on ~240 luminance). */
+  --glass:rgba(255,255,255,.36);
+  --glass-strong:rgba(255,255,255,.50);
+  --glass-rim:rgba(255,255,255,.62);
   /* url(#glassDistort) bends content behind the panel; saturate+blur handle
      colour and softness the same way as before. Real, tested optical
      distortion — not a heavier blur pretending to be one. */
-  --glass-blur:url(#glassDistort) saturate(180%) blur(20px);
+  /* 12px, down from 20px. A 20px blur across a near-flat texture averages
+     away the only detail it has; 12px still reads as glass and still bends the
+     background through the displacement filter, but leaves the veining
+     legible. saturate is eased too — at 180% it was pushing the faint blue in
+     the daylight tint toward a visible cast on white cards. */
+  --glass-blur:url(#glassDistort) saturate(140%) blur(12px);
   --spec:inset 0 1px 0 rgba(255,255,255,.9);
   --lift-1:0 1px 2px rgba(87,60,86,.06), 0 8px 24px -10px rgba(87,60,86,.22);
   --lift-2:0 2px 6px rgba(87,60,86,.07), 0 18px 44px -16px rgba(87,60,86,.28);
@@ -8012,12 +8072,18 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .fab{display:flex;align-items:center;gap:.55rem;padding:.55rem 1.05rem .55rem .6rem}
 .fab__av{display:flex;background:var(--card);border-radius:50%;padding:3px;flex:0 0 auto}
 .fab__av .mise-av{color:var(--ink)}
-/* Sits ABOVE the sticky CTA bar, not on top of it. --cta-clear is the height
-   of that bar plus its gap; without it the bubble landed squarely on "Make my
-   shopping list", which is the one control on the page you most need to hit. */
+/* Two resting heights.
+
+   Default: just above the tab bar, which is where it belongs on any screen
+   with no primary action at the foot of it.
+
+   .fab--overcta: lifted by the height of the sticky CTA bar, applied only
+   while such a bar is actually on screen. It used to be lifted permanently,
+   which fixed the overlap on the pages that have a CTA and left the bubble
+   hovering in empty space on the ones that don't. */
 :root{--cta-clear:4.6rem}
 .fab{position:fixed;right:1rem;z-index:20;
-  bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cta-clear));
+  bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + .7rem);
   background:linear-gradient(140deg,var(--brick),#8E3417);color:#fff;
   border:none;border-radius:999px;padding:.5rem 1.35rem .5rem .5rem;min-height:64px;
   cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;font-size:1em;
@@ -8029,8 +8095,12 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    wide (arrives) -> dance (waves once) -> small (round, out of the way).
    Width and padding are transitioned, so the collapse is one continuous
    movement into the round button rather than a swap between two elements. */
+.fab--overcta{bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cta-clear))}
+/* bottom is transitioned so the bubble slides between the two heights when a
+   CTA appears or disappears, rather than teleporting mid-scroll. */
 .fab{transition:transform .12s ease, width .42s cubic-bezier(.4,1.3,.5,1),
-  padding .42s cubic-bezier(.4,1.3,.5,1), box-shadow .3s ease}
+  padding .42s cubic-bezier(.4,1.3,.5,1), box-shadow .3s ease,
+  bottom .24s cubic-bezier(.22,.68,.28,1)}
 .fab__t{white-space:nowrap;overflow:hidden;max-width:7em;opacity:1;
   transition:max-width .38s cubic-bezier(.4,1.3,.5,1), opacity .22s ease}
 
@@ -8079,6 +8149,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   .fab--dance,.fab--dance .fab__av{animation:none}
   .fab--dance::after{display:none}
   .fab,.fab__t{transition:none}
+  /* bottom still changes, just without the slide */
 }
 .sheet{position:fixed;inset:auto .5rem 0 .5rem;z-index:30;background:var(--surface);
   display:flex;flex-direction:column;max-height:88vh;overflow:hidden;
