@@ -479,6 +479,34 @@ const STORE_KEY = "mise:profile-v3";
    along on the debounced profile save. */
 const HISTORY_KEY = "mise:history-v1";
 
+/* Recipes get their own storage key, separate from the history blob.
+
+   This is the third attempt at "don't regenerate a recipe you already have",
+   and the first two failed for the same reason: the recipe was stored as a
+   nested field on a dish, inside a week, inside one big history object that
+   THREE different functions write with three different merge rules —
+   archiveWeek replaces, saveRating maps, stashRecipeInHistory patches from
+   inside a setState updater. Any one of them running at the wrong moment
+   drops the field, and because archiveWeek reads historyRef.current
+   synchronously while stashRecipeInHistory only updates that ref when React
+   later runs its updater, "the wrong moment" is a race rather than a
+   reproducible sequence. Patching each writer in turn is what made this look
+   fixed twice.
+
+   So the recipe stops being a field on a dish and becomes its own record,
+   keyed by normalised title, written directly and never merged with anything.
+   History still carries a copy for display, but nothing depends on that copy
+   surviving: cookAgain consults the book, and the book is only ever appended
+   to. A title is the right key because that's what "cook this again" actually
+   means to the person — the same dish, whatever week they first made it. */
+const RECIPE_KEY = "mise:recipes-v1";
+
+/* Cap chosen against the 5MB-per-key storage limit: a recipe is roughly 1-2KB
+   of JSON, so 200 is generous while staying an order of magnitude clear. */
+const RECIPE_BOOK_MAX = 200;
+
+const recipeKeyFor = (title) => (title || "").toLowerCase().replace(/\s+/g, " ").trim();
+
 /* --------------------------------------------------------------- model call */
 
 /* Two tiers. Most work needs Sonnet; a few calls are short, low-stakes and
@@ -1185,17 +1213,53 @@ function printDoc(title, bodyHtml) {
 <body><div class="noprint"><button onclick="window.print()">Print this page</button></div>
 ${bodyHtml}</body></html>`;
 
+  /* A hidden iframe, NOT window.open.
+
+     Installed to the home screen, the app runs in a standalone window with no
+     address bar, no tabs and no back gesture. window.open there spawns a
+     separate browser context with no chrome to escape from — the print sheet
+     appears, and once it's dismissed you're stranded on a blank page with no
+     way back into the app except force-quitting it. That's the bug.
+
+     An iframe keeps everything inside the current document: the print dialog
+     is the OS sheet, cancelling it returns you exactly where you were, and
+     there's no second window to get stuck in. It also works identically in a
+     normal browser tab, so there's no branch on display-mode to get wrong. */
   try {
-    const w = window.open("", "_blank");
-    if (w && w.document) {
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      setTimeout(() => { try { w.focus(); w.print(); } catch (_) {} }, 350);
-      return true;
-    }
+    const frame = document.createElement("iframe");
+    // Not display:none — a hidden frame doesn't paint, and some engines then
+    // print a blank page. Off-screen and zero-opacity still lays out.
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.cssText =
+      "position:fixed;left:-9999px;top:0;width:820px;height:1100px;opacity:0;border:0;pointer-events:none";
+    document.body.appendChild(frame);
+
+    const doc = frame.contentDocument;
+    if (!doc) throw new Error("no iframe document");
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    const fire = () => {
+      try {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+      } catch (_) {
+        /* nothing more to do — the download fallback below is the safety net */
+      }
+      /* Removed on a delay rather than immediately: print() returns as soon as
+         the sheet is up on some engines, and tearing the frame down while the
+         sheet is still reading from it prints a blank page. 60s is well past
+         any plausible dialog, and the frame is inert until then. */
+      setTimeout(() => { try { frame.remove(); } catch (_) {} }, 60000);
+    };
+
+    // Wait for the frame to actually have content laid out before printing.
+    if (frame.contentWindow?.document?.readyState === "complete") setTimeout(fire, 60);
+    else frame.onload = () => setTimeout(fire, 60);
+    return true;
   } catch (_) {
-    /* popup blocked or sandboxed — fall through to download */
+    /* sandboxed or blocked — fall through to the download */
   }
 
   try {
@@ -1576,13 +1640,63 @@ export default function App() {
   const [storageOk, setStorageOk] = useState(null);
   const historyRef = useRef([]);
 
-  /* Swipe bookkeeping. MUST live above the `if (!loaded)` early return further
-     down: a hook declared after a conditional return doesn't run on the render
-     that takes the return, so the hook count changes between renders and React
-     throws #310 ("rendered more hooks than during the previous render"). It was
-     declared next to the touch handlers, which read better and crashed the app
-     on load. Handlers can sit wherever; hooks cannot. */
-  const touch = useRef(null);
+  /* The recipe book: normalised title -> recipe. See RECIPE_KEY above for why
+     this exists separately from history. Held in a ref as well as state
+     because getRecipe writes to it from inside an async function and must see
+     its own most recent writes without waiting for a render. */
+  const [recipeBook, setRecipeBook] = useState({});
+  const recipeBookRef = useRef({});
+
+  /* Written directly, never through a state updater. That's the whole point of
+     the separate key — no merge rules, no reading a ref that a queued updater
+     hasn't refreshed yet, nothing else writing this object. */
+  const rememberRecipe = useCallback(async (title, recipe) => {
+    const key = recipeKeyFor(title);
+    if (!key || !recipe) return;
+    const next = { ...recipeBookRef.current, [key]: { ...recipe, savedAt: new Date().toISOString() } };
+    // Oldest out first if it ever gets that far.
+    const keys = Object.keys(next);
+    if (keys.length > RECIPE_BOOK_MAX) {
+      keys
+        .sort((a, b) => String(next[a].savedAt || "").localeCompare(String(next[b].savedAt || "")))
+        .slice(0, keys.length - RECIPE_BOOK_MAX)
+        .forEach((k) => delete next[k]);
+    }
+    recipeBookRef.current = next;
+    setRecipeBook(next);
+    try { await apiStorageSet(RECIPE_KEY, JSON.stringify(next)); } catch (_) {}
+  }, []);
+
+  const recallRecipe = useCallback((title) => recipeBookRef.current[recipeKeyFor(title)] || null, []);
+
+  /* Ask Mise bubble lifecycle: wide -> dance -> small.
+
+     The bubble has to sit above the sticky CTA bar, which means it occupies
+     prime real estate at the bottom right of every screen. Wide and permanent,
+     it covered the primary action. Small and permanent, nobody would ever
+     notice it. So it does both in sequence: it arrives wide and legible, waves
+     once so you know it's there, then shrinks to just the character and gets
+     out of the way. After that it's a familiar round button, which is all it
+     needs to be.
+
+     Timings: 900ms before the dance so it isn't competing with the page
+     painting in, 2.2s of dance (two full waves), then it collapses. Runs once
+     per session — a bubble that re-dances every time you change tab would go
+     from charming to nagging on about the third repeat. */
+  const [fabPhase, setFabPhase] = useState("wide");
+  useEffect(() => {
+    if (view === "start") return;                 // no bubble on the start screen yet
+    if (fabPhase !== "wide") return;              // already danced this session
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      // Skip straight to the useful end state; the dance is decoration.
+      const t = setTimeout(() => setFabPhase("small"), 2500);
+      return () => clearTimeout(t);
+    }
+    const a = setTimeout(() => setFabPhase("dance"), 900);
+    const b = setTimeout(() => setFabPhase("small"), 900 + 2200);
+    return () => { clearTimeout(a); clearTimeout(b); };
+  }, [view, fabPhase]);
 
   /* Every failing async action funnels through here. A helper rather than two
      setState calls at each site for two reasons: it keeps `err` and `retry`
@@ -1628,6 +1742,27 @@ export default function App() {
         }
       } catch (_) {
         /* no history yet */
+      }
+      try {
+        const r = await apiStorageGet(RECIPE_KEY);
+        const book = r?.value ? JSON.parse(r.value) : {};
+        /* Backfill from history on first run after this shipped: anyone with
+           existing weeks has recipes sitting in the old nested location, and
+           they should keep working rather than being regenerated once more. */
+        let seeded = book;
+        (historyRef.current || []).forEach((w) =>
+          (w.dishes || []).forEach((d) => {
+            const k = recipeKeyFor(d.title);
+            if (k && d.recipe && !seeded[k]) seeded = { ...seeded, [k]: d.recipe };
+          })
+        );
+        recipeBookRef.current = seeded;
+        setRecipeBook(seeded);
+        if (seeded !== book) {
+          try { await apiStorageSet(RECIPE_KEY, JSON.stringify(seeded)); } catch (_) {}
+        }
+      } catch (_) {
+        /* no book yet */
       } finally {
         setLoaded(true);
       }
@@ -1865,55 +2000,62 @@ not the names:
      because history entries have their own ids — and only fills a gap, never
      overwrites a recipe already stored, so a rewrite from a later week can't
      clobber what was actually cooked. */
+  /* Keeps history's own display copy in step. NOT the mechanism cookAgain
+     relies on any more — that's the recipe book — but history still shows what
+     was cooked, so the copy should be there.
+
+     Rewritten to compute from historyRef.current and then call setHistory with
+     a plain value. It used to do all of this INSIDE the setHistory updater,
+     including the storage write. State updaters must be pure: React may call
+     them more than once or discard the result, and more importantly
+     archiveWeek reads historyRef.current synchronously while an updater only
+     refreshes that ref whenever React gets round to running it. That gap is
+     how a freshly stashed recipe could be overwritten by an archiveWeek that
+     had already read the pre-stash value — a race, not a sequence, which is
+     why it presented as "fixed" and then came back. */
   function stashRecipeInHistory(dishId, recipe, replace = false) {
     const dish = candidates.find((c) => c.id === dishId);
     if (!dish || !recipe) return;
     const title = (dish.title || "").toLowerCase();
 
-    setHistory((hs) => {
-      let touched = false;
-      const next = hs.map((w) => {
-        if (w.id !== weekId) return w;
-        const list = w.dishes || [];
-        const dishes = list.map((d) => {
-          // Only fill a gap by default; `replace` is for a negotiated rewrite,
-          // which genuinely supersedes what was stored.
-          if ((d.recipe && !replace) || (d.title || "").toLowerCase() !== title) return d;
-          touched = true;
-          return { ...d, recipe };
-        });
-        /* A dish picked after the shopping list was built — an adopted
-           leftover, a late "yes" — isn't in the archived menu at all, so
-           there was no gap to fill and the recipe went nowhere. Add it.
-           Repeats are excluded: saveRating deliberately writes those as their
-           own dated entry, and adding one here would duplicate it. */
-        if (!touched && !list.some((d) => (d.title || "").toLowerCase() === title) && !dish.againOf) {
-          touched = true;
-          return {
-            ...w,
-            dishes: [
-              ...dishes,
-              {
-                day: DAYS.find((d) => week[d] === dishId) || null,
-                title: dish.title,
-                blurb: dish.blurb || "",
-                fromLeftovers: !!dish.fromLeftovers,
-                rating: null,
-                missing: null,
-                recipe,
-              },
-            ],
-          };
-        }
-        return touched ? { ...w, dishes } : w;
+    const hs = historyRef.current || [];
+    let touched = false;
+    const next = hs.map((w) => {
+      if (w.id !== weekId) return w;
+      const list = w.dishes || [];
+      let dishes = list.map((d) => {
+        // Only fill a gap by default; `replace` is for a negotiated rewrite,
+        // which genuinely supersedes what was stored.
+        if ((d.recipe && !replace) || (d.title || "").toLowerCase() !== title) return d;
+        touched = true;
+        return { ...d, recipe };
       });
-      if (!touched) return hs;
-      historyRef.current = next;
-      try {
-        apiStorageSet(HISTORY_KEY, JSON.stringify(next));
-      } catch (_) {}
-      return next;
+      /* A dish picked after the shopping list was built — an adopted leftover,
+         a late "yes" — isn't in the archived menu at all, so there was no gap
+         to fill. Add it. Repeats are excluded: saveRating deliberately writes
+         those as their own dated entry, and adding one here would duplicate. */
+      if (!touched && !list.some((d) => (d.title || "").toLowerCase() === title) && !dish.againOf) {
+        touched = true;
+        dishes = [
+          ...dishes,
+          {
+            day: DAYS.find((d) => week[d] === dishId) || null,
+            title: dish.title,
+            blurb: dish.blurb || "",
+            fromLeftovers: !!dish.fromLeftovers,
+            rating: null,
+            missing: null,
+            recipe,
+          },
+        ];
+      }
+      return touched ? { ...w, dishes } : w;
     });
+    if (!touched) return;
+
+    historyRef.current = next;
+    setHistory(next);
+    apiStorageSet(HISTORY_KEY, JSON.stringify(next)).catch(() => {});
   }
 
   /* Cook something from History again. It becomes a dish in the current week, so
@@ -1933,8 +2075,13 @@ not the names:
       setCandidates((cs) => cs.map((c) => (c.id === existing.id ? { ...c, reaction: "yes" } : c)));
       setCookingId(existing.id);
       if (!recipes[existing.id]) {
-        if (dish.recipe) {
-          setRecipes((r) => ({ ...r, [existing.id]: { ...dish.recipe, basis: shoppingSignature } }));
+        /* History's own copy first, then the recipe book. The book is the
+           reliable one — history's copy is written through merge paths that
+           have dropped it before — but preferring the entry you tapped keeps
+           a per-week variation intact if one exists. */
+        const known = dish.recipe || recallRecipe(dish.title);
+        if (known) {
+          setRecipes((r) => ({ ...r, [existing.id]: { ...known, basis: shoppingSignature } }));
         } else {
           getRecipe(existing.id);
         }
@@ -1958,8 +2105,9 @@ not the names:
     ]);
     setCookingId(id);
     setView("cook");
-    if (dish.recipe) {
-      setRecipes((r) => ({ ...r, [id]: { ...dish.recipe, basis: shoppingSignature } }));
+    const known = dish.recipe || recallRecipe(dish.title);
+    if (known) {
+      setRecipes((r) => ({ ...r, [id]: { ...known, basis: shoppingSignature } }));
     } else {
       setTimeout(() => getRecipe(id), 0);   // after the candidate lands in state
     }
@@ -2417,65 +2565,71 @@ Writing the check before the output is the point — a dish that can't be tagged
 ${seed.vegetable} as the vegetable, ${seed.pantry} as the flavor system, one optional wildcard. One sentence on
 how the pieces cross over.
 
-2. Propose ${Math.max(4, orderDays(profile.nights).length + 2)} CANDIDATE dishes — options to
-react to, not a locked plan. Have a favorite and say which in your opening remark. They cook
-${orderDays(profile.nights).length} night(s) a week, so there must be at least that many
-candidates plus a couple of spares to reject — never fewer than one per night.
+2. Propose ${Math.max(4, Math.min(orderDays(profile.nights).length + 1, Math.max(6, orderDays(profile.nights).length)))} CANDIDATE dishes —
+options to react to, not a locked plan. Have a favorite and say which in your opening remark.
+They cook ${orderDays(profile.nights).length} night(s) a week, and there must never be fewer
+candidates than nights.
 
 No two candidates may share a cuisine, and no two may share a COOKING FORMAT. "Same cuisine"
-means the same FLAVOUR WORLD, not the same dish name — a tahini-lemon bowl, an olive-and-herb
-pita and a dill-cucumber salad are three different dishes and one single cuisine. Different
-titles are not diversity. Check the list against itself before you answer: if two dishes draw
-on the same broad flavour tradition, or two are both stir-fries, replace one. AMBITION AND TIME ARE INDEPENDENT. Adventurousness is about the IDEA — an unfamiliar technique,
-a pairing they wouldn't have guessed, a familiar dish seen from a new angle. It is not about how
-long something takes. Caramelised onions take an hour and are not remotely adventurous; smashing
-cucumbers so the ridges catch a dressing takes two minutes and is a genuinely good idea. So high
-adventurousness inside a short time limit is NOT a contradiction to flag — it's a brief: be
-clever AND be fast. Respect the time ceiling absolutely and put the ambition in the thinking.
-The only real conflict is a technique that physically cannot be rushed (a proper braise, a
-laminated dough) — don't propose those inside a short window, or say plainly that they need
-more time than they have.
+means the same FLAVOUR WORLD, not the same dish name — a tahini-lemon bowl and a dill-cucumber
+salad are two dishes and one cuisine. Check the list against itself before answering: if two
+draw on the same tradition, or two are both stir-fries, replace one. Pick formats from across
+the range (pasta, braise, sheet-pan, pan-sear, grain bowl, soup, eggs or beans, a handheld, a
+vegetable-led plate). An ordinary format done well is not a lesser suggestion.
 
-Low adventurousness means familiar, well-executed dishes — it does NOT
-mean staying inside one cuisine; a roast chicken, a carbonara, a black bean soup and a chicken
-schnitzel are all thoroughly familiar and all completely different from each other.
+AMBITION AND TIME ARE INDEPENDENT. Adventurousness is about the IDEA — an unfamiliar technique,
+an unguessable pairing, a familiar dish from a new angle — not about how long it takes.
+Caramelised onions take an hour and are not adventurous; smashed cucumbers take two minutes and
+are a genuinely good idea. High adventurousness inside a short limit is a brief, not a
+contradiction to flag: be clever AND fast. The only real conflict is something that physically
+cannot be rushed (a proper braise, laminated dough) — don't propose those in a short window.
+Low adventurousness means familiar dishes well executed, NOT one cuisine: roast chicken,
+carbonara, black bean soup and schnitzel are all familiar and all different.
 
-THE SPINE IS A CONSTRAINT, NOT A HEADING. Every dish must be built from the spine you just
-named, plus genuine pantry staples (oil, vinegar, salt, pepper, dried spices, flour, rice,
-pasta, canned tomatoes, onions, garlic). Introducing a whole new fresh ingredient or a second
-protein means the person buys something that appears once and rots — which is the single
-problem this whole app exists to solve. If the protein is canned chickpeas, do NOT also
-introduce white beans, black beans and potatoes across other dishes: that is three legumes and
-a starch bought for one person. At most ONE dish may reach outside the spine, and if it does,
-its "why" must say what earns it. Prefer using the spine harder over shopping wider.
+THE SPINE IS A CONSTRAINT, NOT A HEADING. Every dish is built from the spine you just named plus
+genuine pantry staples (oil, vinegar, salt, pepper, dried spices, flour, rice, pasta, canned
+tomatoes, onions, garlic). A new fresh ingredient or a second protein means buying something
+that appears once and rots — the single problem this app exists to solve. If the protein is
+canned chickpeas, don't also introduce white beans, black beans and potatoes elsewhere: that's
+three legumes and a starch for one person. At most ONE dish may reach outside the spine, and its
+"why" must say what earns it. Use the spine harder rather than shopping wider. Don't repeat a
+distinctive ingredient across dishes unless it's the shared protein or vegetable; mushrooms
+appear in at most one dish.
 
-Do not put the same distinctive ingredient in more than one dish unless it's the week's shared
-protein or vegetable — and specifically, mushrooms should appear in at most one dish. Pasta, a braise, a sheet-pan roast, a quick pan-sear, a
-grain bowl, soup, eggs or beans, a handheld, a vegetable-led plate: pick from across that
-range. An ordinary format done well is not a lesser suggestion — a great pasta with broccoli
-belongs on this list as much as anything with an unusual sauce.
-
-If a step implies a process their equipment cannot perform, say where the ingredient comes from
-instead of implying they make it. With only a microwave, "toasted seeds" is not achievable —
-write "pre-toasted" or "store-bought toasted" so it's unambiguous, or leave it out. Never let a
-dish quietly assume a tool they don't have.
+Never let a dish assume a tool they don't have. If a step needs equipment they lack, say where
+the ingredient comes from instead — with only a microwave, write "pre-toasted seeds", not
+"toasted seeds".
 
 Write in plain, warm language a person of any age can read easily. No jargon without a quick
 gloss. ${CHAT_VOICE} That applies to "say". "logic" is one sentence. Each "blurb" and "why" is
-14 words or fewer. "spice" is 0-4 and must not exceed their ceiling of ${profile.spice}.
+10 words or fewer; "fits" is 6 or fewer. "spice" is 0-4 and must not exceed their ceiling of
+${profile.spice}.
 
 Respond with ONLY this JSON, no backticks:
 {"say":"",
 "ecosystem":{"aromatics":"the herb-and-aromatic anchor, whatever actually fits — not always cilantro and green onion","protein":"","vegetable":"","flavorSystem":"","wildcard":"","logic":""},
-"dishes":[{"title":"","blurb":"what it is","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","fits":"private constraint check, never displayed","spice":0,"minutes":30}]}`;
+"dishes":[{"title":"","blurb":"what it is","why":"the specific idea that makes this worth thinking of — not \u0027healthy\u0027 or \u0027quick\u0027","fits":"private check, never displayed","spice":0,"minutes":30}]}`;
 
     try {
-      /* The most structured output in the app: an ecosystem block plus one
-         object per candidate dish, and the candidate count scales with their
-         nights. On the 1000 default this was the call most likely to hit the
-         cap and come back as truncated JSON for parseJSON to repair. The
-         route caps this at 2200 regardless, so it can't run away. */
-      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1800, docSlices: ["core", "flavor"] });
+      /* 1200, down from 1800.
+
+         This is the slowest call in the app and the one that times out, so it
+         matters where the time actually goes. Input is ~10.5k tokens of
+         doctrine and prompt, but input is prefill — processed in parallel, and
+         trimming it barely moves the clock. Output is decoded one token at a
+         time, and maxOutputTokens is maxTokens + THINKING_HEADROOM (3000), so
+         1800 meant a 4800-token ceiling on the part that costs real seconds.
+
+         Measured, the visible answer is around 700 tokens: an ecosystem block
+         plus six dish objects with 10-word fields. 1200 leaves comfortable
+         slack over that while cutting the worst-case decode from 4800 to 4200,
+         and the fewer/terser dishes cut the visible part by roughly a quarter
+         on top.
+
+         If this ever truncates, gemini.js logs finishReason MAX_TOKENS and the
+         thinking/answer token split — that's the number to look at before
+         raising this back up, rather than guessing. */
+      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1200, docSlices: ["core", "flavor"] });
       const out = parseJSON(raw);
       setEcosystem(out.ecosystem || null);
       setCandidates((out.dishes || []).map((d) => ({ ...cleanDish(d), id: uid(), reaction: null, note: "" })));
@@ -2803,6 +2957,9 @@ Respond with ONLY this JSON:
       const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900, docSlices: ["core", "flavor"] });
       const built = { ...parseJSON(raw), basis: shoppingSignature };
       setRecipes((r) => ({ ...r, [dishId]: built }));
+      // Into the book, keyed by title. This is the copy cookAgain will find.
+      const dishTitle = candidates.find((c) => c.id === dishId)?.title;
+      rememberRecipe(dishTitle, built);
       /* Bake it into the archived week straight away, rather than waiting for a
          rating. Previously the recipe only reached history via saveRating — so
          a dish you cooked but never rated had nothing stored, and "Cook this
@@ -2939,6 +3096,9 @@ Respond with ONLY this JSON:
       if (out.recipe) {
         const revised = { ...out.recipe, basis: nextSignature };
         setRecipes((r) => ({ ...r, [cookingId]: revised }));
+        // A negotiated rewrite is the version they chose — it replaces the
+        // stored one rather than being dropped when they come back to it.
+        rememberRecipe(candidates.find((c) => c.id === cookingId)?.title, revised);
         // A negotiated rewrite ("make it milder") is the version they actually
         // cooked, so it should replace what's stored — otherwise Cook Again
         // would hand back the pre-negotiation recipe.
@@ -3286,6 +3446,153 @@ Respond with ONLY this JSON:
     }
   }
 
+  /* NAV and the swipe deck live up here, ABOVE the `if (!loaded)` early
+     return below, because the deck declares hooks (useRef, useState,
+     useEffect). A hook declared after a conditional return doesn't run on the
+     render that takes the return, so the hook count changes between renders
+     and React throws #310 — which is exactly how the tab bar shipped broken
+     once already. Handlers and derived values can sit anywhere; hooks cannot. */
+  /* Five, hard capped — a bottom tab bar stops being readable past that, and
+     the labels start truncating on a narrow phone. History used to be the
+     sixth; it moved into My Kitchen, which is where a record of past weeks
+     belongs anyway. "Ideas" is now "Brainstorm": it says what you do there
+     rather than what you get. */
+  const NAV = [
+    ["ideas", "Brainstorm", "brainstorm"],
+    ["week", "My Week", "week"],
+    ["shop", "Shopping", "shop"],
+    ["cook", "Cooking", "cook"],
+    ["leftovers", "Leftovers", "leftovers"],
+  ];
+
+  /* ── Swipe deck ─────────────────────────────────────────────────────────────
+     Follows the finger, holds wherever you let it sit between pages, and snaps
+     to whichever side you release toward.
+
+     Two implementation decisions carry all the weight here:
+
+     1. The transform is written straight to the DOM node during the gesture,
+        not through state. A touchmove fires ~60x/second and each of these
+        pages is a large tree; re-rendering on every frame would drop frames on
+        exactly the mid-range phone this app is meant to feel good on. React
+        owns which pages are mounted; the browser owns where they sit.
+
+     2. The listeners are attached natively with {passive:false}. React
+        registers touchmove passively, so preventDefault() inside an onTouchMove
+        prop is ignored and the page scrolls vertically while you're trying to
+        swipe sideways. This is the only way to actually claim the gesture.
+
+     Axis is decided once, on the first few pixels of movement, and then held
+     for the rest of the gesture — deciding per-frame makes a slightly diagonal
+     drag flicker between scrolling and swiping. */
+  const pagesRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef({ active: false, axis: null, x0: 0, y0: 0, dx: 0, w: 0, t0: 0 });
+
+  const tabIds = NAV.map(([id]) => id);
+  const tabIndex = tabIds.indexOf(view);
+  const prevId = tabIndex > 0 ? tabIds[tabIndex - 1] : null;
+  const nextId = tabIndex >= 0 && tabIndex < tabIds.length - 1 ? tabIds[tabIndex + 1] : null;
+
+  useEffect(() => {
+    const node = pagesRef.current;
+    if (!node || tabIndex < 0) return;   // setup, start and My Kitchen don't swipe
+
+    const setX = (px, animate) => {
+      node.style.transition = animate
+        ? "transform .26s cubic-bezier(.22,.68,.28,1)"   // gentle, no overshoot
+        : "none";
+      node.style.transform = `translate3d(${px}px,0,0)`;
+    };
+
+    /* Anything that scrolls sideways between the touch target and here owns
+       the gesture — the recipe step carousel, the day strip. Native behaviour
+       wins; the deck only takes gestures nothing else wanted. */
+    const ownedByChild = (target) => {
+      for (let el = target; el && el !== node; el = el.parentElement) {
+        if (el.dataset?.noswipe !== undefined) return true;
+        const st = el instanceof Element ? getComputedStyle(el) : null;
+        if (st && /auto|scroll/.test(st.overflowX) && el.scrollWidth > el.clientWidth + 4) return true;
+      }
+      return false;
+    };
+
+    const onStart = (e) => {
+      if (e.touches.length !== 1) return;              // pinch is not a swipe
+      if (ownedByChild(e.target)) return;
+      const t = e.touches[0];
+      drag.current = { active: true, axis: null, x0: t.clientX, y0: t.clientY,
+        dx: 0, w: node.clientWidth || window.innerWidth, t0: Date.now() };
+    };
+
+    const onMove = (e) => {
+      const d = drag.current;
+      if (!d.active) return;
+      const t = e.touches[0];
+      const dx = t.clientX - d.x0;
+      const dy = t.clientY - d.y0;
+
+      if (!d.axis) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;        // too early to tell
+        d.axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? "x" : "y";
+        if (d.axis === "x") setDragging(true);                    // mount the neighbours
+      }
+      if (d.axis !== "x") return;                                 // it's a scroll, leave it
+
+      e.preventDefault();                                         // needs {passive:false}
+
+      /* Resistance at the ends. Dragging past the first or last page still
+         moves, but at a third of the distance, so the deck feels bounded
+         instead of broken — the same cue a native list gives you. */
+      const atEdge = (dx > 0 && !prevId) || (dx < 0 && !nextId);
+      d.dx = atEdge ? dx * 0.33 : dx;
+      setX(d.dx, false);
+    };
+
+    const onEnd = () => {
+      const d = drag.current;
+      if (!d.active) return;
+      drag.current = { ...d, active: false };
+      if (d.axis !== "x") { setDragging(false); return; }
+
+      /* Commit on distance OR speed. Distance alone means a quick confident
+         flick that only travelled 60px snaps back, which feels broken; the
+         velocity term is what makes a flick work. */
+      const elapsed = Math.max(1, Date.now() - d.t0);
+      const velocity = d.dx / elapsed;                            // px per ms
+      const far = Math.abs(d.dx) > d.w * 0.28;
+      const fast = Math.abs(velocity) > 0.45;
+      const target = d.dx < 0 ? nextId : prevId;
+
+      if ((far || fast) && target) {
+        // Finish the travel, then swap the page under a reset transform so
+        // there's no visible jump between the animation ending and the
+        // new page appearing.
+        setX(d.dx < 0 ? -d.w : d.w, true);
+        setTimeout(() => {
+          setView(target);
+          setDragging(false);
+          const n = pagesRef.current;
+          if (n) { n.style.transition = "none"; n.style.transform = "translate3d(0,0,0)"; }
+        }, 260);
+      } else {
+        setX(0, true);
+        setTimeout(() => setDragging(false), 260);
+      }
+    };
+
+    node.addEventListener("touchstart", onStart, { passive: true });
+    node.addEventListener("touchmove", onMove, { passive: false });
+    node.addEventListener("touchend", onEnd, { passive: true });
+    node.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => {
+      node.removeEventListener("touchstart", onStart);
+      node.removeEventListener("touchmove", onMove);
+      node.removeEventListener("touchend", onEnd);
+      node.removeEventListener("touchcancel", onEnd);
+    };
+  }, [view, tabIndex, prevId, nextId]);
+
   /* --------------------------------------------------------------------- UI */
 
   if (!loaded)
@@ -3309,66 +3616,8 @@ Respond with ONLY this JSON:
       </div>
     );
 
-  /* Five, hard capped — a bottom tab bar stops being readable past that, and
-     the labels start truncating on a narrow phone. History used to be the
-     sixth; it moved into My Kitchen, which is where a record of past weeks
-     belongs anyway. "Ideas" is now "Brainstorm": it says what you do there
-     rather than what you get. */
-  const NAV = [
-    ["ideas", "Brainstorm", "brainstorm"],
-    ["week", "My Week", "week"],
-    ["shop", "Shopping", "shop"],
-    ["cook", "Cooking", "cook"],
-    ["leftovers", "Leftovers", "leftovers"],
-  ];
 
   const useFirst = shopping.filter((i) => Number(i.days) <= 3);
-
-  /* Swipe between tabs. The tab bar and the swipe share one ordered list, so
-     the gesture and the bar can't disagree about what's left of what.
-
-     The guard matters more than the gesture. This app already has horizontal
-     scrollers inside pages — the recipe step carousel, the day strip — and a
-     naive window-level swipe handler would steal those, so a sideways flick
-     through recipe steps would jump you to Shopping instead. Before acting,
-     walk up from the touch target and bail if anything between it and the
-     page can itself scroll horizontally. Native behaviour wins; the tab swipe
-     only claims gestures nothing else wanted.
-
-     Thresholds: 60px of travel to beat an accidental drag, and horizontal
-     distance at least 1.7x vertical so a diagonal scroll isn't read as a
-     swipe. Both tuned to be harder to trigger by accident than on purpose —
-     an unwanted page change is far more annoying than a swipe that didn't
-     take. */
-  const tabIds = NAV.map(([id]) => id);
-
-  const onTouchStart = (e) => {
-    if (e.touches.length !== 1) return;   // pinch/zoom is not a swipe
-    touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, target: e.target };
-  };
-
-  const onTouchEnd = (e) => {
-    const t = touch.current;
-    touch.current = null;
-    if (!t || !e.changedTouches?.length) return;
-
-    // Anything scrollable sideways between the target and here owns this gesture.
-    for (let el = t.target; el && el !== document.body; el = el.parentElement) {
-      if (el.dataset?.noswipe !== undefined) return;
-      const style = el instanceof Element ? getComputedStyle(el) : null;
-      const scrolls = style && /auto|scroll/.test(style.overflowX);
-      if (scrolls && el.scrollWidth > el.clientWidth + 4) return;
-    }
-
-    const dx = e.changedTouches[0].clientX - t.x;
-    const dy = e.changedTouches[0].clientY - t.y;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.7) return;
-
-    const i = tabIds.indexOf(view);
-    if (i < 0) return;                    // not on a tab: setup, start, My Kitchen
-    const next = tabIds[dx < 0 ? i + 1 : i - 1];
-    if (next) setView(next);
-  };
 
   /* True when the visible screen is already rendering its own progress state. */
   const hasLocalIndicator =
@@ -3381,6 +3630,177 @@ Respond with ONLY this JSON:
      here as an element and handed down as a prop, so MyKitchen doesn't need
      eight more props threaded through it just to render something the parent
      already had everything for. */
+  /* Every page, as a function of which page. Extracted from the old inline
+     `{view === "ideas" && ...}` chain so the swipe deck can render a NEIGHBOUR
+     page as well as the current one — mid-gesture you're looking at two pages
+     at once, which is impossible when the markup can only ever describe the
+     active one. */
+  const screen = (v) => (
+    <>
+
+
+        {v === "start" && (
+          <Start
+            savedAt={savedAt}
+            setupDone={setupDone}
+            profile={profile}
+            onSetup={() => { setView("setup"); setStep(0); }}
+            onWeek={() => setView("thisweek")}
+          />
+        )}
+
+        {v === "setup" && (
+          <Setup
+            profile={profile}
+            set={set}
+            toggleIn={toggleIn}
+            step={step}
+            setStep={setStep}
+            onDone={() => {
+              // Reaching the end of setup is what actually completes onboarding —
+              // not the autosave timer having fired at some point.
+              setSetupDone(true);
+              persist({ setupDone: true });
+              setView("thisweek");
+            }}
+          />
+        )}
+
+        {v === "thisweek" && (
+          <ThisWeek
+            thisWeek={thisWeek}
+            setThisWeek={setThisWeek}
+            profile={profile}
+            onEdit={() => { setView("setup"); setStep(0); }}
+            onGo={() => runIdeas()}
+            busy={busy}
+          />
+        )}
+
+        {v === "ideas" && (
+          <Ideas
+            thread={thread} candidates={candidates} ecosystem={ecosystem} busy={busy}
+            seed={weekSeed}
+            onReroll={() => runIdeas(drawWeekSeed(profile, history))}
+            setCandidates={setCandidates} onSend={sendFeedback} onSwap={swapDish}
+            onNext={() => setView("week")} onStart={() => setView("thisweek")}
+            onAskMise={(t) => { setMiseOpen(true); askMise(t); }}
+            request={thisWeek.request}
+            setRequest={(v) => setThisWeek((w) => ({ ...w, request: v }))}
+          />
+        )}
+
+        {v === "week" && (
+          <WeekView
+            profile={profile} chosen={chosen} candidates={candidates} week={week} setWeek={setWeek}
+            shopping={shopping} onShop={buildShopping} busy={busy}
+            onAskMise={(t) => { setMiseOpen(true); askMise(t); }}
+            onCook={(id) => { setCookingId(id); if (!recipes[id]) getRecipe(id); setView("cook"); }}
+            onNewWeek={startNewWeek}
+            onSuggestOrder={suggestOrder}
+            onShareWeek={async () => {
+              setBusy("Making your card");
+              try {
+                const canvas = await renderWeekCard(chosen, ecosystem);
+                await shareCanvas(canvas, "my-week.png", "This week I'm cooking");
+              } catch (_) {
+                setErr("Couldn't make that card.");
+              } finally {
+                setBusy("");
+              }
+            }}
+            countFor={countFor} totalCovers={totalCovers}
+            onCount={(d, delta) =>
+              setProfile((pr) => {
+                const cur = Number(pr.headcount?.[d]) || pr.people;
+                return { ...pr, headcount: { ...pr.headcount, [d]: Math.max(1, Math.min(12, cur + delta)) } };
+              })
+            }
+          />
+        )}
+
+        {v === "shop" && (
+          <Shop
+            shopping={shopping} setShopping={setShopping} busy={busy} useFirst={useFirst}
+            building={building.shopping} onRebuild={buildShopping}
+            onNext={() => setView("cook")}
+            onSwap={(item) => setSwapTarget({ item, mode: "shopping" })}
+            onExclude={(name) => setExcluded((x) => (x.includes(name) ? x : [...x, name]))}
+            prefetching={prefetching}
+            recipesReady={scheduled.length > 0 && scheduled.every((s) => recipes[s.dish.id])}
+            onAsk={reviseShopping} onPrint={() => printShoppingList(shopping, profile)}
+          />
+        )}
+
+        {v === "cook" && (
+          <Cook
+            candidates={candidates} scheduled={scheduled} chosen={chosen} cookingId={cookingId}
+            setCookingId={(id) => { setCookingId(id); if (id && !recipes[id]) getRecipe(id); }}
+            recipes={recipes} setRecipes={setRecipes} busy={busy}
+            doneSteps={doneSteps} setDoneSteps={setDoneSteps}
+            onAsk={proposeRecipeChange} onMise={() => setMiseOpen(true)}
+            recipeChat={recipeChat} recipeOptions={recipeOptions} negotiating={negotiating}
+            onPickOption={applyRecipeChange}
+            onRate={saveRating} onPrint={() => recipes[cookingId] && printRecipe(recipes[cookingId])}
+            favorites={favorites} buildingRecipe={building.recipe}
+            onSwap={(item) => setSwapTarget({ item, mode: "recipe" })}
+            onShare={async () => {
+              const dish = candidates.find((c) => c.id === cookingId);
+              if (!dish) return;
+              // Their own photo if they've rated it with one — that's the version
+              // worth sharing, not a generic card.
+              const shot = [...favorites].reverse().find(
+                (f) => f.title === dish.title && f.photos?.length
+              )?.photos?.[0];
+              setBusy("Making your card");
+              try {
+                const canvas = await renderDishCard(dish, recipes[cookingId], shot);
+                await shareCanvas(canvas, `${dish.title.replace(/[^\w -]+/g, "").trim() || "dish"}.png`, dish.title);
+              } catch (_) {
+                setErr("Couldn't make that card.");
+              } finally {
+                setBusy("");
+              }
+            }}
+            scrollTarget={scrollTarget} onScrolled={() => setScrollTarget(null)}
+            prefetching={prefetching}
+            onStartCooking={() => setCooking(true)}
+            shoppingSignature={shoppingSignature}
+            hasList={shopping.length > 0}
+            onRewrite={() => getRecipe(cookingId)}
+            onAddToList={(names) => {
+              setShopping((s) => [
+                ...s,
+                ...names
+                  .filter((n) => n && !s.some((i) => (i.item || "").toLowerCase() === n.toLowerCase()))
+                  .map((n) => ({ id: uid(), item: n, qty: "", section: "Other", jobs: "Added by you", days: 7, checked: false, have: false })),
+              ]);
+              setExcluded((x) => x.filter((n) => !names.some((m) => m.toLowerCase() === n.toLowerCase())));
+            }}
+          />
+        )}
+
+        {v === "leftovers" && (
+          <LeftoversView
+            haveOnHand={haveOnHand} setHaveOnHand={setHaveOnHand}
+            ideas={leftoverIdeas} recipes={leftoverRecipes}
+            onGet={() => getLeftoverIdeas()} onExpand={expandLeftover} busy={busy}
+            scheduled={scheduled} shopping={shopping}
+            building={building.leftovers} buildingRecipe={building.recipe}
+            onAdopt={adoptLeftover} safety={leftoverSafety}
+          />
+        )}
+
+        {v === "me" && (
+          <MyKitchen
+            profile={profile} savedAt={savedAt}
+            historyNode={historyNode}
+            onEdit={() => { setView("setup"); setStep(0); }}
+          />
+        )}
+    </>
+  );
+
   const historyNode = (
           <HistoryView
             history={history}
@@ -3479,178 +3899,39 @@ Respond with ONLY this JSON:
         </div>
       )}
 
-      <main className="main screen" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <main className="main screen">
         <h1 className="sr-focus" ref={headingRef} tabIndex={-1}>
           {view === "start" ? "Welcome" : NAV.find(([id]) => id === view)?.[1] || "Mise"}
         </h1>
-
-        {view === "start" && (
-          <Start
-            savedAt={savedAt}
-            setupDone={setupDone}
-            profile={profile}
-            onSetup={() => { setView("setup"); setStep(0); }}
-            onWeek={() => setView("thisweek")}
-          />
-        )}
-
-        {view === "setup" && (
-          <Setup
-            profile={profile}
-            set={set}
-            toggleIn={toggleIn}
-            step={step}
-            setStep={setStep}
-            onDone={() => {
-              // Reaching the end of setup is what actually completes onboarding —
-              // not the autosave timer having fired at some point.
-              setSetupDone(true);
-              persist({ setupDone: true });
-              setView("thisweek");
-            }}
-          />
-        )}
-
-        {view === "thisweek" && (
-          <ThisWeek
-            thisWeek={thisWeek}
-            setThisWeek={setThisWeek}
-            profile={profile}
-            onEdit={() => { setView("setup"); setStep(0); }}
-            onGo={() => runIdeas()}
-            busy={busy}
-          />
-        )}
-
-        {view === "ideas" && (
-          <Ideas
-            thread={thread} candidates={candidates} ecosystem={ecosystem} busy={busy}
-            seed={weekSeed}
-            onReroll={() => runIdeas(drawWeekSeed(profile, history))}
-            setCandidates={setCandidates} onSend={sendFeedback} onSwap={swapDish}
-            onNext={() => setView("week")} onStart={() => setView("thisweek")}
-            onAskMise={(t) => { setMiseOpen(true); askMise(t); }}
-            request={thisWeek.request}
-            setRequest={(v) => setThisWeek((w) => ({ ...w, request: v }))}
-          />
-        )}
-
-        {view === "week" && (
-          <WeekView
-            profile={profile} chosen={chosen} candidates={candidates} week={week} setWeek={setWeek}
-            shopping={shopping} onShop={buildShopping} busy={busy}
-            onAskMise={(t) => { setMiseOpen(true); askMise(t); }}
-            onCook={(id) => { setCookingId(id); if (!recipes[id]) getRecipe(id); setView("cook"); }}
-            onNewWeek={startNewWeek}
-            onSuggestOrder={suggestOrder}
-            onShareWeek={async () => {
-              setBusy("Making your card");
-              try {
-                const canvas = await renderWeekCard(chosen, ecosystem);
-                await shareCanvas(canvas, "my-week.png", "This week I'm cooking");
-              } catch (_) {
-                setErr("Couldn't make that card.");
-              } finally {
-                setBusy("");
-              }
-            }}
-            countFor={countFor} totalCovers={totalCovers}
-            onCount={(d, delta) =>
-              setProfile((pr) => {
-                const cur = Number(pr.headcount?.[d]) || pr.people;
-                return { ...pr, headcount: { ...pr.headcount, [d]: Math.max(1, Math.min(12, cur + delta)) } };
-              })
-            }
-          />
-        )}
-
-        {view === "shop" && (
-          <Shop
-            shopping={shopping} setShopping={setShopping} busy={busy} useFirst={useFirst}
-            building={building.shopping} onRebuild={buildShopping}
-            onNext={() => setView("cook")}
-            onSwap={(item) => setSwapTarget({ item, mode: "shopping" })}
-            onExclude={(name) => setExcluded((x) => (x.includes(name) ? x : [...x, name]))}
-            prefetching={prefetching}
-            recipesReady={scheduled.length > 0 && scheduled.every((s) => recipes[s.dish.id])}
-            onAsk={reviseShopping} onPrint={() => printShoppingList(shopping, profile)}
-          />
-        )}
-
-        {view === "cook" && (
-          <Cook
-            candidates={candidates} scheduled={scheduled} chosen={chosen} cookingId={cookingId}
-            setCookingId={(id) => { setCookingId(id); if (id && !recipes[id]) getRecipe(id); }}
-            recipes={recipes} setRecipes={setRecipes} busy={busy}
-            doneSteps={doneSteps} setDoneSteps={setDoneSteps}
-            onAsk={proposeRecipeChange} onMise={() => setMiseOpen(true)}
-            recipeChat={recipeChat} recipeOptions={recipeOptions} negotiating={negotiating}
-            onPickOption={applyRecipeChange}
-            onRate={saveRating} onPrint={() => recipes[cookingId] && printRecipe(recipes[cookingId])}
-            favorites={favorites} buildingRecipe={building.recipe}
-            onSwap={(item) => setSwapTarget({ item, mode: "recipe" })}
-            onShare={async () => {
-              const dish = candidates.find((c) => c.id === cookingId);
-              if (!dish) return;
-              // Their own photo if they've rated it with one — that's the version
-              // worth sharing, not a generic card.
-              const shot = [...favorites].reverse().find(
-                (f) => f.title === dish.title && f.photos?.length
-              )?.photos?.[0];
-              setBusy("Making your card");
-              try {
-                const canvas = await renderDishCard(dish, recipes[cookingId], shot);
-                await shareCanvas(canvas, `${dish.title.replace(/[^\w -]+/g, "").trim() || "dish"}.png`, dish.title);
-              } catch (_) {
-                setErr("Couldn't make that card.");
-              } finally {
-                setBusy("");
-              }
-            }}
-            scrollTarget={scrollTarget} onScrolled={() => setScrollTarget(null)}
-            prefetching={prefetching}
-            onStartCooking={() => setCooking(true)}
-            shoppingSignature={shoppingSignature}
-            hasList={shopping.length > 0}
-            onRewrite={() => getRecipe(cookingId)}
-            onAddToList={(names) => {
-              setShopping((s) => [
-                ...s,
-                ...names
-                  .filter((n) => n && !s.some((i) => (i.item || "").toLowerCase() === n.toLowerCase()))
-                  .map((n) => ({ id: uid(), item: n, qty: "", section: "Other", jobs: "Added by you", days: 7, checked: false, have: false })),
-              ]);
-              setExcluded((x) => x.filter((n) => !names.some((m) => m.toLowerCase() === n.toLowerCase())));
-            }}
-          />
-        )}
-
-        {view === "leftovers" && (
-          <LeftoversView
-            haveOnHand={haveOnHand} setHaveOnHand={setHaveOnHand}
-            ideas={leftoverIdeas} recipes={leftoverRecipes}
-            onGet={() => getLeftoverIdeas()} onExpand={expandLeftover} busy={busy}
-            scheduled={scheduled} shopping={shopping}
-            building={building.leftovers} buildingRecipe={building.recipe}
-            onAdopt={adoptLeftover} safety={leftoverSafety}
-          />
-        )}
-
-        {view === "me" && (
-          <MyKitchen
-            profile={profile} savedAt={savedAt}
-            historyNode={historyNode}
-            onEdit={() => { setView("setup"); setStep(0); }}
-          />
-        )}
+        {/* Swipe deck. The current page sits in the middle; the two
+            neighbours are mounted only while a horizontal drag is in progress,
+            positioned one screen-width either side, so the whole strip moves
+            as one under your finger. Mounting them on demand rather than
+            always keeps five heavy trees from being live at once. */}
+        <div className="pages" ref={pagesRef}>
+          {dragging && prevId && (
+            <div className="pages__side pages__side--prev" aria-hidden="true">{screen(prevId)}</div>
+          )}
+          <div className="pages__cur">{screen(view)}</div>
+          {dragging && nextId && (
+            <div className="pages__side pages__side--next" aria-hidden="true">{screen(nextId)}</div>
+          )}
+        </div>
       </main>
 
       {/* The bubble sat on top of the loading bar. Hidden while the global
           indicator is up — you can't ask her anything mid-request anyway, since
           every control is disabled until it returns. */}
       {view !== "start" && !(busy && busy !== "mise" && !hasLocalIndicator) && (
-        <button className="fab no-print" onClick={() => setMiseOpen(true)} aria-label="Ask Mise, your sous chef">
+        <button
+          className={`fab no-print${fabPhase === "dance" ? " fab--dance" : ""}${fabPhase === "small" ? " fab--small" : ""}`}
+          onClick={() => setMiseOpen(true)}
+          aria-label="Ask Mise, your sous chef"
+        >
           <span className="fab__av"><MiseAvatar mood={busy === "mise" ? "thinking" : "idle"} size={40} /></span>
+          {/* Kept in the DOM when collapsed rather than removed, so the width
+              transition has something to animate from and the accessible name
+              doesn't change under a screen reader mid-animation. */}
           <span className="fab__t">Ask Mise</span>
         </button>
       )}
@@ -3732,11 +4013,23 @@ Respond with ONLY this JSON:
         />
       )}
 
-      {/* The busybar is the fallback indicator only. When a screen is already
-          showing its own skeleton for the work in flight, showing this too meant
-          two spinners on screen at once. */}
+      {/* Fallback indicator, for work that no visible screen is already showing
+          a skeleton for. It used to be a filled indigo panel pinned to the
+          bottom of the viewport, at the same z-index as the tab bar — so it
+          covered the navigation completely while anything was loading, which
+          is the worst possible moment to hide the way out.
+
+          Deleting it outright was tempting, but it's the only feedback for a
+          handful of actions that have no on-screen skeleton (sharing a card,
+          revising a list from the sheet), and silence there reads as a dead
+          tap. So it moved to a 3px line across the very top: same information,
+          zero chrome, nothing covered. The label stays in the DOM for screen
+          readers via aria-live, just not painted. */}
       {busy && busy !== "mise" && !hasLocalIndicator && (
-        <div className="busybar no-print"><Working label={busy} /></div>
+        <div className="topbar no-print" role="status" aria-live="polite">
+          <span className="topbar__run" />
+          <span className="sr">{busy}</span>
+        </div>
       )}
     </div>
   );
@@ -5264,9 +5557,14 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
 
           {lastMise && <p className="cask__say">{lastMise.text}</p>}
 
+          {/* .quick, not .cbtn. These are the same suggested questions as the
+              main Ask Mise sheet, so they should look identical — .cbtn is the
+              big cook-mode ACTION button (52px, heavier weight), and borrowing
+              it here made the chat suggestions noticeably taller and chunkier
+              than the same list everywhere else in the app. */}
           <div className="cask__qs">
             {QUICK_ASKS.stove.slice(0, 4).map((q) => (
-              <button key={q} className="cbtn" onClick={() => onAskMise(q)} disabled={miseBusy}>{q}</button>
+              <button key={q} className="quick" onClick={() => onAskMise(q)} disabled={miseBusy}>{q}</button>
             ))}
           </div>
 
@@ -5547,6 +5845,9 @@ function HistoryRate({ dish, onSave, onCancel }) {
 }
 
 function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk, onCookAgain, onShareDish, onRateHistory, onSuggest, busy }) {
+  /* Which dish is expanded — one at a time, so the week doesn't turn back into
+     the tall scroll this fold was meant to fix. */
+  const [openDish, setOpenDish] = useState(null);
   const [editing, setEditing] = useState(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -5635,60 +5936,76 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
 
             {w.dishes?.length > 0 && (
               <ul className="hist__dishes">
-                {w.dishes.map((d, i) => (
-                  <li key={i}>
-                    <div>
-                      <strong>{d.day ? `${DAY_FULL[d.day]}: ` : ""}{d.title}</strong>
-                      {d.fromLeftovers && <span className="hist__tag">from leftovers</span>}
-                      {d.cookedAgain && <span className="hist__tag">cooked again</span>}
-                      {d.cookedAt && (
-                        <span className="hist__when">
-                          {fmtDate(new Date(d.cookedAt), { month: "short", day: "numeric" })}
-                        </span>
-                      )}
-                      {d.blurb && <span className="hist__blurb"> — {d.blurb}</span>}
-                    </div>
-                    <div className="hist__rating">
-                      {d.rating != null ? (
-                        <span title={`${d.rating} out of 5`}>
-                          {"★".repeat(d.rating)}
-                          <span className="hist__dim">{"★".repeat(5 - d.rating)}</span>
-                        </span>
-                      ) : (
-                        <span className="hist__unrated">not rated</span>
-                      )}
-                    </div>
-                    {d.photos?.length > 0 && (
-                      <div className="shots shots--sm">
-                        {d.photos.map((src, i) => <img key={i} src={src} alt={`${d.title}, photo ${i + 1}`} />)}
+                {w.dishes.map((d, i) => {
+                  const key = `${w.id}:${i}`;
+                  const isOpen = openDish === key;
+                  return (
+                  <li key={i} className={isOpen ? "hist__d hist__d--open" : "hist__d"}>
+                    {/* The DISH is the expandable card now, not the week. A week
+                        is a heading you scan; a dish is the thing you act on, so
+                        the fold belongs at the level where the actions are. The
+                        summary row stays scannable — night, title, stars — and
+                        everything you'd only want once you've picked a dish is
+                        behind the tap. */}
+                    <button className="hist__sum" onClick={() => setOpenDish(isOpen ? null : key)}
+                      aria-expanded={isOpen}>
+                      <span className="hist__sumt">
+                        <strong>{d.day ? `${DAY_FULL[d.day]}: ` : ""}{d.title}</strong>
+                        {d.fromLeftovers && <span className="hist__tag">from leftovers</span>}
+                        {d.cookedAgain && <span className="hist__tag">cooked again</span>}
+                      </span>
+                      <span className="hist__rating">
+                        {d.rating != null ? (
+                          <span title={`${d.rating} out of 5`}>
+                            {"★".repeat(d.rating)}
+                            <span className="hist__dim">{"★".repeat(5 - d.rating)}</span>
+                          </span>
+                        ) : (
+                          <span className="hist__unrated">not rated</span>
+                        )}
+                      </span>
+                      <span className={`fold__chev${isOpen ? " fold__chev--open" : ""}`} aria-hidden="true">▾</span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="hist__body">
+                        {d.cookedAt && (
+                          <p className="hist__when">
+                            Cooked {fmtDate(new Date(d.cookedAt), { month: "long", day: "numeric" })}
+                          </p>
+                        )}
+                        {d.blurb && <p className="hist__blurb">{d.blurb}</p>}
+                        {d.photos?.length > 0 && (
+                          <div className="shots shots--sm">
+                            {d.photos.map((src, j) => <img key={j} src={src} alt={`${d.title}, photo ${j + 1}`} />)}
+                          </div>
+                        )}
+                        {d.missing && d.missing !== "It was great" && (
+                          <p className="hist__note">{d.missing}{d.note ? ` — ${d.note}` : ""}</p>
+                        )}
+                        {/* One horizontal line. .hist__acts scrolls sideways
+                            rather than wrapping, so four buttons stay on one
+                            row on a narrow phone instead of stacking into a
+                            ragged block. */}
+                        <div className="hist__acts" data-noswipe>
+                          <Btn small variant="ghost" onClick={() => onCookAgain(d)}>
+                            Cook again
+                          </Btn>
+                          <Btn small variant="ghost" onClick={() => onShareDish(d)}>
+                            Share
+                          </Btn>
+                          <Btn small variant="ghost"
+                            onClick={() => setEditing(editing === key ? null : key)}>
+                            {d.rating ? "Edit rating" : "Rate it"}
+                          </Btn>
+                          {d.rating >= 4 && onSuggest && (
+                            <Btn small variant="ghost" onClick={() => onSuggest(d)} disabled={!!busy}>
+                              More like this
+                            </Btn>
+                          )}
+                        </div>
                       </div>
                     )}
-                    {d.missing && d.missing !== "It was great" && (
-                      <p className="hist__note">{d.missing}{d.note ? ` — ${d.note}` : ""}</p>
-                    )}
-                    <div className="row">
-                      <Btn small variant="ghost" onClick={() => onCookAgain(d)}>
-                        Cook this again
-                      </Btn>
-                      <Btn small variant="ghost" onClick={() => onShareDish(d)}>
-                        Share
-                      </Btn>
-                      {/* "More like this" used to live in a list of every dish
-                          ever rated on the My Kitchen page. That list is gone,
-                          but the action is worth keeping — it belongs next to
-                          the dish it's about, which is here. Only offered for
-                          dishes that actually landed; asking for more like
-                          something rated 2 makes no sense. */}
-                      {d.rating >= 4 && onSuggest && (
-                        <Btn small variant="ghost" onClick={() => onSuggest(d)} disabled={!!busy}>
-                          More like this
-                        </Btn>
-                      )}
-                      <Btn small variant="ghost"
-                        onClick={() => setEditing(editing === `${w.id}:${i}` ? null : `${w.id}:${i}`)}>
-                        {d.rating ? "Edit rating" : "Rate it"}
-                      </Btn>
-                    </div>
 
                     {editing === `${w.id}:${i}` && (
                       <HistoryRate
@@ -5698,7 +6015,8 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
                       />
                     )}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             )}
 
@@ -5840,7 +6158,11 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode }) {
      rating forever with no way to act on them, and the ratings already do
      their real work invisibly — palateModel() feeds diagnoses back into the
      prompt whether or not anyone reads a list of them. */
-  const [open, setOpen] = useState({ setup: true, history: false });
+  /* History open by default now. It was closed because it grew without bound
+     and made the page tall — but the dishes inside it are individually folded
+     now, so an open week list is a short scannable index rather than a wall.
+     Setup is the smaller of the two and stays open too. */
+  const [open, setOpen] = useState({ setup: true, history: true });
   const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
   return (
@@ -6562,7 +6884,21 @@ const CSS = `
    silently makes position:sticky inert in every descendant — which is why the
    nav never actually pinned despite having correct sticky CSS. clip does the
    same job of preventing sideways scroll without breaking sticky. */
-.app{overflow-x:clip}
+/* The clip moved OFF .app and onto .main.
+   .surface is position:fixed inside .app, and a clip on an ancestor clips
+   fixed descendants — so the marble was being cut off at .app's top edge,
+   which on a home-screen install sits below the status bar. That's why it
+   only reached the clock once the page had scrolled and .app's box had moved
+   up. Clipping .main instead keeps the horizontal-overflow protection exactly
+   where the wide content actually is, and leaves the background free to cover
+   the whole viewport including the safe areas. */
+.app{overflow-x:visible}
+.main{overflow-x:clip}
+/* Belt and braces: if a browser still clips the fixed layer for some reason,
+   the area behind the status bar is painted the same colour the treated
+   marble resolves to (~246 luminance) rather than a visibly different flat
+   paper, so any residual seam is invisible instead of a hard line. */
+html{background:#F7F3F2}
 /* every string here is model-generated and can be any length */
 .app p,.app li,.app strong,.app span{overflow-wrap:anywhere}
 .app input[type=text],.app textarea,.app select{max-width:100%}
@@ -6575,7 +6911,7 @@ const CSS = `
 /* Headings are navy by default; on dark surfaces they must inherit or they vanish. */
 .card--dark h1,.card--dark h2,.card--dark h3,.card--dark h4,
 .cook h1,.cook h2,.cook h3,.cook h4,
-.sheet__hdr h1,.sheet__hdr h2,.busybar h2{color:inherit}
+.sheet__hdr h1,.sheet__hdr h2{color:inherit}
 
 .app button:focus-visible,.app input:focus-visible,.app textarea:focus-visible,
 .app select:focus-visible,.app [tabindex]:focus-visible{outline:3px solid var(--hot);outline-offset:3px}
@@ -6675,6 +7011,26 @@ const CSS = `
 @media print{.tabbar{display:none}}
 
 
+
+/* ── Swipe deck ──────────────────────────────────────────────────────────────
+   The strip that moves under your finger. The current page is in normal flow
+   so it defines the container's height; the two neighbours are absolute, one
+   screen-width either side, and only exist while a drag is in progress.
+
+   touch-action:pan-y is what lets the browser keep vertical scrolling
+   instantaneous while the horizontal axis is ours to claim — without it, every
+   vertical scroll has to wait to find out whether the JS wanted the gesture,
+   which is the classic "scrolling feels laggy" symptom of a hand-rolled
+   swiper. */
+.pages{position:relative;touch-action:pan-y;will-change:transform}
+.pages__cur{position:relative}
+.pages__side{position:absolute;top:0;width:100%}
+/* The 1.15rem matches .main's horizontal padding, so a neighbour's left edge
+   lines up with where the current page's edge actually is rather than
+   overlapping it by the gutter. */
+.pages__side--prev{left:calc(-100% - 2.3rem)}
+.pages__side--next{left:calc(100% + 2.3rem)}
+@media print{.pages__side{display:none}}
 
 /* Bottom padding clears the fixed tab bar AND the Ask Mise bubble that floats
    above it — without it the last card on every page sat underneath both. */
@@ -7180,12 +7536,29 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* ---- history ---- */
 .hist--current{border-color:rgba(180,71,34,.4)}
 .hist__dishes{list-style:none;padding:0;margin:1.1rem 0 0}
-.hist__dishes li{padding:1rem 0;border-top:1px solid var(--rule);display:flex;
+/* Each dish is its own expandable card. The summary row is a real button so
+   it's keyboard reachable and announces its expanded state. */
+.hist__d{border-top:1px solid var(--rule)}
+.hist__sum{display:flex;align-items:center;gap:.7rem;width:100%;padding:.95rem 0;
+  background:none;border:none;text-align:left;cursor:pointer;font:inherit;color:inherit}
+.hist__sumt{flex:1;min-width:0}
+.hist__sumt strong{display:block;font-family:'Nunito',sans-serif}
+.hist__d--open .hist__sum{padding-bottom:.35rem}
+.hist__body{padding:0 0 1rem;animation:bodyIn .16s ease-out}
+/* One horizontal line, scrolling rather than wrapping. Four ghost buttons
+   wrap into a ragged two-row block on a narrow phone otherwise, which is what
+   made this look untidy. data-noswipe on the element keeps a sideways drag
+   here from being read as a page swipe. */
+.hist__acts{display:flex;gap:.45rem;margin-top:.85rem;overflow-x:auto;
+  padding-bottom:.2rem;scrollbar-width:none}
+.hist__acts::-webkit-scrollbar{display:none}
+.hist__acts .btn{flex:0 0 auto}
+.hist__dishes li.legacy{padding:1rem 0;border-top:1px solid var(--rule);display:flex;
   flex-direction:column;gap:.45rem;align-items:flex-start}
-.hist__blurb{color:var(--muted);font-weight:400}
+.hist__blurb{color:var(--muted);font-weight:400;margin:.15rem 0 0}
 .hist__rating{margin-top:.25rem;font-size:1.05em;letter-spacing:.1em;color:var(--brick)}
 .hist__dim{color:var(--rule-2)}
-.hist__when{margin-left:.5rem;font-family:'Nunito',sans-serif;font-size:.8em;color:var(--muted)}
+.hist__when{margin:0;font-family:'Nunito',sans-serif;font-size:.82em;color:var(--muted)}
 .hist__tag{display:inline-block;margin-left:.5rem;background:var(--sunk);color:var(--plum);
   font-family:'Nunito',sans-serif;font-size:.72em;font-weight:650;letter-spacing:.04em;
   text-transform:uppercase;padding:.18rem .5rem;border-radius:999px;vertical-align:middle}
@@ -7563,15 +7936,74 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .fab{display:flex;align-items:center;gap:.55rem;padding:.55rem 1.05rem .55rem .6rem}
 .fab__av{display:flex;background:var(--card);border-radius:50%;padding:3px;flex:0 0 auto}
 .fab__av .mise-av{color:var(--ink)}
-/* Lifted clear of the tab bar rather than overlapping it. */
+/* Sits ABOVE the sticky CTA bar, not on top of it. --cta-clear is the height
+   of that bar plus its gap; without it the bubble landed squarely on "Make my
+   shopping list", which is the one control on the page you most need to hit. */
+:root{--cta-clear:4.6rem}
 .fab{position:fixed;right:1rem;z-index:20;
-  bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + .7rem);
+  bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cta-clear));
   background:linear-gradient(140deg,var(--brick),#8E3417);color:#fff;
   border:none;border-radius:999px;padding:.5rem 1.35rem .5rem .5rem;min-height:64px;
   cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700;font-size:1em;
   box-shadow:0 10px 30px -8px rgba(180,71,34,.65);transition:transform .12s ease}
 .fab:hover{transform:translateY(-2px)}
 .fab:active{transform:scale(.95)}
+
+/* ── The bubble's three states ───────────────────────────────────────────────
+   wide (arrives) -> dance (waves once) -> small (round, out of the way).
+   Width and padding are transitioned, so the collapse is one continuous
+   movement into the round button rather than a swap between two elements. */
+.fab{transition:transform .12s ease, width .42s cubic-bezier(.4,1.3,.5,1),
+  padding .42s cubic-bezier(.4,1.3,.5,1), box-shadow .3s ease}
+.fab__t{white-space:nowrap;overflow:hidden;max-width:7em;opacity:1;
+  transition:max-width .38s cubic-bezier(.4,1.3,.5,1), opacity .22s ease}
+
+/* Collapsed: label folds to nothing, the pill becomes a circle around the
+   avatar. min-height is unchanged so the tap target never shrinks below 64px —
+   the point is to take less visual room, not to become harder to hit. */
+.fab--small{padding:.5rem;border-radius:50%}
+.fab--small .fab__t{max-width:0;opacity:0}
+
+/* The dance. Three things at once, none of them a spin:
+     - the whole bubble does a squash-and-stretch hop, twice, like a pot coming
+       to a boil and settling. Squash on landing is what makes it read as
+       weight rather than as a sliding graphic.
+     - the character tilts into the hop, so it looks like it's leaning out to
+       say something instead of being animated at.
+     - a soft ring expands out from under it once per hop, which is what
+       actually catches peripheral vision — motion at the edge of the retina
+       registers as an expanding contour far better than as a moving object.
+   Two waves and it stops. Anything longer starts reading as a notification
+   that needs dismissing. */
+.fab--dance{animation:fabHop 1.1s cubic-bezier(.3,.9,.4,1) 2}
+.fab--dance .fab__av{animation:fabLean 1.1s cubic-bezier(.3,.9,.4,1) 2}
+.fab--dance::after{content:"";position:absolute;inset:0;border-radius:inherit;
+  border:2px solid var(--rose);animation:fabRing 1.1s ease-out 2;pointer-events:none}
+
+@keyframes fabHop{
+  0%   {transform:translateY(0)      scaleX(1)    scaleY(1)}
+  18%  {transform:translateY(0)      scaleX(1.06) scaleY(.94)}   /* wind up */
+  42%  {transform:translateY(-13px)  scaleX(.97)  scaleY(1.05)}  /* lift */
+  62%  {transform:translateY(0)      scaleX(1.07) scaleY(.93)}   /* land, squash */
+  78%  {transform:translateY(-4px)   scaleX(1)    scaleY(1)}
+  100% {transform:translateY(0)      scaleX(1)    scaleY(1)}
+}
+@keyframes fabLean{
+  0%,100%{transform:rotate(0)}
+  42%    {transform:rotate(-9deg)}
+  62%    {transform:rotate(5deg)}
+}
+@keyframes fabRing{
+  0%  {opacity:.55;transform:scale(1)}
+  100%{opacity:0;  transform:scale(1.55)}
+}
+@media(prefers-reduced-motion:reduce){
+  /* No hop, no ring. The collapse still happens, because that's layout rather
+     than decoration — it's what stops the bubble covering the CTA. */
+  .fab--dance,.fab--dance .fab__av{animation:none}
+  .fab--dance::after{display:none}
+  .fab,.fab__t{transition:none}
+}
 .sheet{position:fixed;inset:auto .5rem 0 .5rem;z-index:30;background:var(--surface);
   display:flex;flex-direction:column;max-height:88vh;overflow:hidden;
   border-radius:26px 26px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.28)}
@@ -7641,9 +8073,22 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .working__dots i:nth-child(2){animation-delay:.16s}
 .working__dots i:nth-child(3){animation-delay:.32s}
 @keyframes p{0%,100%{opacity:.25}50%{opacity:1}}
-.busybar{position:fixed;left:.6rem;right:.6rem;bottom:.6rem;background:var(--indigo);
-  padding:.9rem 1.25rem;z-index:22;border-radius:16px;box-shadow:var(--shadow-lift)}
-.busybar .working{color:#F2EFF6}
+/* Global fallback progress: a 3px line at the very top. Replaced a filled
+   indigo panel pinned to the bottom that sat at the tab bar's z-index and hid
+   the navigation for the whole duration of any load. Indeterminate on purpose
+   — there's no progress to report on a single POST, so it travels rather than
+   fills. */
+.topbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:30;overflow:hidden;
+  background:rgba(87,60,86,.10)}
+.topbar__run{position:absolute;inset:0;display:block;
+  background:linear-gradient(90deg,transparent,var(--brick),var(--rose),transparent);
+  animation:topRun 1.15s ease-in-out infinite}
+@keyframes topRun{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){
+  /* Still visible, just not moving — a static tint reads as "busy" without
+     animating for someone who asked their device not to. */
+  .topbar__run{animation:none;background:var(--brick);opacity:.5}
+}
 
 @media(max-width:560px){
   .hdr__logo{font-size:1.8em}
