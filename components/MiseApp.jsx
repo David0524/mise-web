@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 /* The one definition of the app's directional daylight, shared with the
    sign-in / sign-up / pricing pages so the app and its front door are lit the
    same way. Interpolated into the .surface rule in CSS below. */
-import { DAYLIGHT } from "@/lib/authStyles";
+import { DAYLIGHT, DAYLIGHT_SOFT } from "@/lib/authStyles";
 
 /* ============================================================================
    MISE — a weekly cooking collaborator
@@ -6883,21 +6883,30 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .histrate .stars{margin-bottom:.6rem}
 /* The physical surface the glass sits on. Fixed and behind everything, so
    scrolling never repaints it — only a transform moves it, and transforms are
-   composited. The photo supplies material; the gradients on top of it supply
-   the directional north light the flat texture doesn't have.
+   composited.
 
-   The light is the DAYLIGHT constant, imported — the SAME gradient stack the
-   sign-in and pricing pages use over oak, not a local variant. This surface
-   previously carried its own dimmed copy of it, and that copy got dimmed
-   further in an attempt to make the marble easier to see. That was backwards:
-   these gradients are where the blue and the sunlight come from, so weakening
-   them made the marble more literally visible and the whole room darker and
-   flatter. A flat photograph gets its sense of direction from the light laid
-   over it, so the texture actually reads BEST when that light is strong. */
+   Two levers here, and it matters which does what. This took several passes,
+   because the obvious lever is the wrong one:
+
+   - brightness() is what makes it bright. marble.webp measures 79% luminance
+     (RGB 203,201,200, stddev 5.2) — pale, almost featureless stone that still
+     reads grey against #FAF5F4 paper. Weakening the gradients to "show more
+     marble" moves the composite DOWN (215 -> 208): more stone, less light,
+     darker room. Multiplying the layer lifts the stone itself, which is the
+     thing that was never bright enough. 1.12 lands near 227 against paper's
+     246: clearly lit, still obviously stone.
+   - DAYLIGHT_SOFT is only the tint, at 9-12% — so the marble is ~90% of what
+     you see. It uses saturated colours rather than the auth pages' near-white
+     ones, because near-white at low alpha over pale stone is invisible (1.6
+     points of blue-red spread, measured). See its own note in authStyles.js.
+
+   If it needs to go further, brightness is the dial. Raising the alphas
+   instead just veils the stone again, which is the whole problem. */
 .surface{position:fixed;inset:-8% 0 -8% 0;z-index:-1;pointer-events:none;
-  background-image:${DAYLIGHT},url('/textures/marble.webp');
+  background-image:${DAYLIGHT_SOFT},url('/textures/marble.webp');
   background-size:cover;background-position:center;
   background-color:var(--paper);
+  filter:brightness(1.12) saturate(1.04);
   transform:translate3d(0,var(--par,0px),0);
   will-change:transform}
 /* Cook mode: the same daylight, no photographic texture under it.
@@ -6909,10 +6918,16 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    So: identical light, so it's unmistakably the same room, over a plain pale
    ground instead of cloth. Stays light because cook mode sets navy text on it.
    Also one fewer image request on the screen most likely to be opened on bad
-   kitchen wifi. */
+   kitchen wifi.
+
+   Full DAYLIGHT, not the soft variant: there's no stone here to show through,
+   so the gradients are the whole picture and want their real strength. And
+   filter:none because .surface's brightness lift exists to raise a grey stone
+   layer — applied to an already-pale gradient it just clips toward white. */
 .cook .surface,.surface--linen{background-image:${DAYLIGHT},
     linear-gradient(178deg, #FBF7F6 0%, #F2ECEB 100%);
-  background-color:var(--paper)}
+  background-color:var(--paper);
+  filter:none}
 @media(prefers-reduced-motion:reduce){.surface{transform:none;will-change:auto}}
 
 /* Photographs, not icons. Rounded to match the glass panels they sit inside,
