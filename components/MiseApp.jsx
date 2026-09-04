@@ -1692,38 +1692,60 @@ export default function App() {
 
      Chained timers inside one effect run, so the sequence can't be torn down
      halfway by its own state change. */
-  /* Does the screen currently on show have a sticky CTA under it?
+  /* Is a CTA actually sitting in the strip the bubble wants to occupy?
 
-     The bubble has to clear that bar when it exists, and sit just above the
-     tab bar when it doesn't — a fixed allowance for it left the bubble
-     floating in mid-air on every screen without one. Enumerating which views
-     have a CTA in JS would be a second list to keep in step with the markup
-     and would go stale the first time a button moved, so this asks the DOM
-     instead: is there a .wiz in the visible page?
+     This started as "does a .wiz exist on this page", which was wrong: the
+     Leftovers CTA lives mid-page inside a card, so it exists on that screen
+     but is nowhere near the bottom once you've scrolled past it — and the
+     bubble stayed lifted over empty space regardless. Existence is not
+     position.
 
-     A MutationObserver rather than a view-keyed effect because a CTA can
-     appear and disappear WITHIN a view — the ideas page has no "Next" until
-     dishes exist, and the shopping page swaps its button as the list is
-     built. Watching for the element itself catches all of that without
-     needing to know why it changed. */
+     So it measures instead. The bubble's resting box is a known band above the
+     tab bar; if the CTA's rectangle overlaps that band, lift out of the way,
+     otherwise sit low. That answers the actual question ("would these two
+     collide right now?") rather than a proxy for it, and it self-corrects as
+     you scroll, as a sticky bar settles, and as CTAs appear or disappear.
+
+     Recomputed on scroll and resize, rAF-throttled, plus a MutationObserver
+     for CTAs that come and go without either event. */
   const [hasCta, setHasCta] = useState(false);
   useEffect(() => {
     const node = pagesRef.current;
     if (!node) return;
-    // Only the page actually on screen counts — a neighbour mounted mid-swipe
-    // has its own CTA and must not move the bubble.
-    const check = () => setHasCta(!!node.querySelector(".pages__cur .wiz"));
-    check();
-    /* Feature-detected. An unguarded `new MutationObserver` here threw in an
-       environment that didn't provide one and took the ENTIRE app down —
-       blank screen, not a misplaced bubble. Nothing about where a decorative
-       button rests is worth that, so a missing observer degrades to the
-       single check above: the bubble may sit at the wrong height until the
-       next view change, which is invisible next to the alternative. */
-    if (typeof MutationObserver !== "function") return;
-    const mo = new MutationObserver(check);
-    mo.observe(node, { childList: true, subtree: true });
-    return () => mo.disconnect();
+
+    let frame = null;
+    const measure = () => {
+      frame = null;
+      const cta = node.querySelector(".pages__cur .wiz");
+      if (!cta) { setHasCta(false); return; }
+
+      const vh = window.innerHeight;
+      // The bubble's default resting band: tab bar + gap, 64px tall.
+      const tabbar = parseFloat(getComputedStyle(document.documentElement)
+        .getPropertyValue("--tabbar-h")) || 60;
+      const fabBottom = vh - (tabbar + 11);
+      const fabTop = fabBottom - 64;
+
+      const r = cta.getBoundingClientRect();
+      // Overlap test with a little slack so they don't sit flush against
+      // each other.
+      setHasCta(r.bottom > fabTop - 8 && r.top < fabBottom + 8);
+    };
+
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    /* Feature-detected: an unguarded constructor here once took the whole app
+       down over the resting height of a decorative button. */
+    const mo = typeof MutationObserver === "function" ? new MutationObserver(onScroll) : null;
+    mo?.observe(node, { childList: true, subtree: true });
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      mo?.disconnect();
+    };
   }, [view, loaded]);
 
   const fabRan = useRef(false);
@@ -7014,7 +7036,7 @@ const CSS = `
    quality (100-300 KB, real tonal range) can be levelled properly and would
    be both brighter and more marble-like. Nothing in CSS can add information
    that isn't in a 7.7 KB file. */
-.app{--surface-lift:1.08}
+.app{--surface-lift:1.0}
 /* Sized in rem, not px, so the reader's own browser text-size setting scales the
    whole interface. Contrast follows the operating system rather than an in-app toggle. */
 .app{font-size:1.125rem}
@@ -8120,12 +8142,36 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .fab--overcta{bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cta-clear))}
 /* bottom is transitioned so the bubble slides between the two heights when a
    CTA appears or disappears, rather than teleporting mid-scroll. */
-.fab{transition:transform .12s ease, width .42s cubic-bezier(.4,1.3,.5,1),
-  height .42s cubic-bezier(.4,1.3,.5,1), gap .42s cubic-bezier(.4,1.3,.5,1),
-  padding .42s cubic-bezier(.4,1.3,.5,1), box-shadow .3s ease,
-  bottom .24s cubic-bezier(.22,.68,.28,1)}
+/* STAGED, and that's what makes it feel unforced.
+
+   Everything used to move at once on a springy overshoot curve, so the pill
+   snapped shut with the text still inside it — mechanically correct, and rigid
+   to watch, because a single simultaneous change reads as a state swap rather
+   than a movement.
+
+   Now it happens in two beats. The label fades and folds first (200ms), then
+   the box closes behind it (420ms, starting 120ms in, so the two overlap
+   rather than queue). Easing is a plain deceleration curve, no overshoot: a
+   bubble settling into a corner shouldn't bounce, and the previous
+   cubic-bezier(.4,1.3,.5,1) overshot by 30% on every property at once.
+
+   The bottom offset is slower still (320ms) because it moves the furthest and
+   is the one change the eye follows rather than glances at.
+
+   (No backticks in this comment: the whole stylesheet is a JS template
+   literal, so a stray backtick terminates it. That has broken the build twice
+   now.) */
+.fab{transition:
+  transform .12s ease,
+  width .42s cubic-bezier(.25,.8,.25,1) .12s,
+  height .42s cubic-bezier(.25,.8,.25,1) .12s,
+  gap .3s cubic-bezier(.25,.8,.25,1),
+  padding .42s cubic-bezier(.25,.8,.25,1) .12s,
+  box-shadow .34s ease,
+  bottom .32s cubic-bezier(.25,.8,.25,1)}
 .fab__t{white-space:nowrap;overflow:hidden;max-width:7em;opacity:1;
-  transition:max-width .38s cubic-bezier(.4,1.3,.5,1), opacity .22s ease}
+  transition:max-width .28s cubic-bezier(.25,.8,.25,1),
+    opacity .2s ease}
 
 /* Collapsed: a real circle with the character dead centre.
 
@@ -8139,7 +8185,10 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    64px keeps the tap target exactly where it was — the point is to take less
    visual room, not to become harder to hit. */
 .fab--small{width:64px;height:64px;min-height:64px;padding:0;gap:0;
-  justify-content:center;border-radius:50%}
+  justify-content:center;border-radius:50%;
+  /* Slightly softer shadow once it's small — a 30px spread under a 64px
+     circle read as heavier than under the wide pill it came from. */
+  box-shadow:0 8px 22px -10px rgba(180,71,34,.6)}
 .fab--small .fab__t{max-width:0;opacity:0;margin:0}
 /* The avatar's own 3px ring would sit off-centre inside a 64px circle at
    40px + padding, so centre it explicitly rather than relying on flex
