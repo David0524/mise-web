@@ -40,7 +40,14 @@ export default function RootLayout({ children }) {
           paddingLeft: "env(safe-area-inset-left)",
           paddingRight: "env(safe-area-inset-right)",
           minHeight: "100vh",
-          background: "#FAF5F4",
+          // TRANSPARENT on purpose, same reasoning as .app in MiseApp.jsx: body is
+          // an in-flow ancestor of .surface (the fixed, z-index:-1 marble layer),
+          // and an in-flow element's own background paints ABOVE a negative-z-index
+          // descendant in stacking order — an opaque fill here sat directly on top
+          // of the marble and hid it outright, only showing during an iOS
+          // overscroll bounce that forces a recomposite. html's own background
+          // (#F7F3F2, in MiseApp.jsx) is the real fallback.
+          background: "transparent",
         }}
       >
         {children}
