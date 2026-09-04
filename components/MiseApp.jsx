@@ -1727,24 +1727,39 @@ export default function App() {
   }, [view, loaded]);
 
   const fabRan = useRef(false);
+  const fabTimers = useRef([]);
   useEffect(() => {
     if (view === "start") return;                 // no bubble on the start screen yet
     if (fabRan.current) return;                   // once per session, not per tab change
     fabRan.current = true;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const timers = [];
     if (reduced) {
       // Skip straight to the useful end state; the dance is decoration.
-      timers.push(setTimeout(() => setFabPhase("small"), 2500));
+      fabTimers.current.push(setTimeout(() => setFabPhase("small"), 2500));
     } else {
-      timers.push(setTimeout(() => {
+      fabTimers.current.push(setTimeout(() => {
         setFabPhase("dance");
-        timers.push(setTimeout(() => setFabPhase("small"), 2200));
+        fabTimers.current.push(setTimeout(() => setFabPhase("small"), 2200));
       }, 900));
     }
-    return () => timers.forEach(clearTimeout);
+    /* Deliberately NO cleanup returned, and the ids live in a ref rather than
+       a local array.
+
+       This effect depends on `view`, so it re-runs whenever you change tab.
+       React runs the previous run's cleanup first — and a cleanup that cleared
+       these timers killed the pending collapse, while the new run hit the
+       fabRan guard and returned without re-arming anything. Change tab within
+       the first three seconds and the bubble stayed wide forever; sit still
+       and it worked. That's exactly the "shrinks eventually" behaviour, and
+       it's why this looked fixed under test: the test never navigated during
+       the sequence.
+
+       Unmount cleanup is handled by its own effect below, which is the only
+       place these timers should ever be cancelled. */
   }, [view]);
+
+  useEffect(() => () => fabTimers.current.forEach(clearTimeout), []);
 
   /* Every failing async action funnels through here. A helper rather than two
      setState calls at each site for two reasons: it keeps `err` and `retry`
@@ -6999,7 +7014,7 @@ const CSS = `
    quality (100-300 KB, real tonal range) can be levelled properly and would
    be both brighter and more marble-like. Nothing in CSS can add information
    that isn't in a 7.7 KB file. */
-.app{--surface-lift:1.22}
+.app{--surface-lift:1.08}
 /* Sized in rem, not px, so the reader's own browser text-size setting scales the
    whole interface. Contrast follows the operating system rather than an in-app toggle. */
 .app{font-size:1.125rem}
@@ -8099,16 +8114,30 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* bottom is transitioned so the bubble slides between the two heights when a
    CTA appears or disappears, rather than teleporting mid-scroll. */
 .fab{transition:transform .12s ease, width .42s cubic-bezier(.4,1.3,.5,1),
+  height .42s cubic-bezier(.4,1.3,.5,1), gap .42s cubic-bezier(.4,1.3,.5,1),
   padding .42s cubic-bezier(.4,1.3,.5,1), box-shadow .3s ease,
   bottom .24s cubic-bezier(.22,.68,.28,1)}
 .fab__t{white-space:nowrap;overflow:hidden;max-width:7em;opacity:1;
   transition:max-width .38s cubic-bezier(.4,1.3,.5,1), opacity .22s ease}
 
-/* Collapsed: label folds to nothing, the pill becomes a circle around the
-   avatar. min-height is unchanged so the tap target never shrinks below 64px —
-   the point is to take less visual room, not to become harder to hit. */
-.fab--small{padding:.5rem;border-radius:50%}
-.fab--small .fab__t{max-width:0;opacity:0}
+/* Collapsed: a real circle with the character dead centre.
+
+   Explicit equal width and height, zero padding and zero gap — all three are
+   required. Collapsing only the label left the flex GAP and the pill's
+   asymmetric padding (.55rem left, 1.05rem right, sized for text that is no
+   longer there) still in the box, so the button came out about 65x64 with the
+   avatar pushed off to the left: a slightly oval, off-centre blob. Folding the
+   text away is not the same as removing the space that was reserved for it.
+
+   64px keeps the tap target exactly where it was — the point is to take less
+   visual room, not to become harder to hit. */
+.fab--small{width:64px;height:64px;min-height:64px;padding:0;gap:0;
+  justify-content:center;border-radius:50%}
+.fab--small .fab__t{max-width:0;opacity:0;margin:0}
+/* The avatar's own 3px ring would sit off-centre inside a 64px circle at
+   40px + padding, so centre it explicitly rather than relying on flex
+   defaults that were tuned for the wide layout. */
+.fab--small .fab__av{margin:0}
 
 /* The dance. Three things at once, none of them a spin:
      - the whole bubble does a squash-and-stretch hop, twice, like a pot coming
@@ -8162,7 +8191,12 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 @media(min-width:760px){.sheet__hdr{border-radius:22px 22px 0 0}}
 .sheet__name{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.2em}
 .sheet__role{font-family:'Nunito',sans-serif;font-size:.85em;opacity:.8;margin-left:.6rem}
-.sheet__x{min-height:46px;padding:0 1rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);
+/* inline-flex with explicit centring. With only min-height and horizontal
+   padding, the label sat off-centre in the pill for the same reason the
+   collapsed bubble did — the box was sized by one rule and the content
+   positioned by another's defaults. */
+.sheet__x{display:inline-flex;align-items:center;justify-content:center;
+  min-height:46px;padding:0 1rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);
   color:#F4F1F8;font-family:'Nunito',sans-serif;font-weight:600;font-size:.92em;cursor:pointer;
   border-radius:999px}
 .sheet__body{overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.7rem;flex:1}
