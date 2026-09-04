@@ -7044,7 +7044,14 @@ const CSS = `
    the area behind the status bar is painted the same colour the treated
    marble resolves to (~246 luminance) rather than a visibly different flat
    paper, so any residual seam is invisible instead of a hard line. */
-html{background:#F7F3F2}
+/* The canvas colour, on <html> so it covers the safe areas above and below the
+   viewport — that's what stops the status-bar strip reading as a different
+   colour from the page. It must be HERE and not on <body>: a background on
+   body paints as an in-flow block box, which lands on top of the fixed
+   .surface (z-index:-1) and hides the marble entirely. On html it becomes the
+   canvas, painted first, with the texture above it. Paper, not a near-white,
+   so any pixel the texture doesn't reach matches the rest of the app. */
+html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 /* every string here is model-generated and can be any length */
 .app p,.app li,.app strong,.app span{overflow-wrap:anywhere}
 .app input[type=text],.app textarea,.app select{max-width:100%}

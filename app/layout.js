@@ -40,7 +40,21 @@ export default function RootLayout({ children }) {
           paddingLeft: "env(safe-area-inset-left)",
           paddingRight: "env(safe-area-inset-right)",
           minHeight: "100vh",
-          background: "#FAF5F4",
+          /* TRANSPARENT, deliberately — the paper colour lives on <html> in
+             MiseApp's CSS instead, and moving it there is load-bearing.
+
+             CSS paints, inside the root stacking context, in this order:
+               1. the root/canvas background
+               2. negative z-index descendants   <- .surface (z-index:-1)
+               3. in-flow block backgrounds      <- this element's own box
+             An opaque background HERE is painted at step 3, directly on top of
+             the marble at step 2, hiding it everywhere except the rubber-band
+             overscroll area outside body's box. It only worked originally
+             because body had no background on <html> to compete with, so this
+             colour propagated up to the canvas at step 1 and sat harmlessly
+             below the texture. The moment <html> got its own background that
+             propagation stopped and this became an opaque lid. */
+          background: "transparent",
         }}
       >
         {children}
