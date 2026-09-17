@@ -6318,7 +6318,7 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
      and made the page tall — but the dishes inside it are individually folded
      now, so an open week list is a short scannable index rather than a wall.
      Setup is the smaller of the two and stays open too. */
-  const [open, setOpen] = useState({ setup: true, look: true, history: true });
+  const [open, setOpen] = useState({ setup: true, history: true });
   const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
   return (
@@ -6382,36 +6382,24 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
         </div>
       </Fold>
 
-      <Fold
-        title="Look"
-        note="How the app is drawn."
-        open={open.look}
-        onToggle={() => toggle("look")}
-      >
-        <p className="lead">
-          Two complete looks. Switching is instant and nothing else changes —
-          same food, same plan.
-        </p>
-        <div className="looks">
-          {[
-            ["modern", "Modern", "Cool paper, glass panels, soft light."],
-            ["canvas", "Canvas", "Warm stock, drawn edges, hatching, flat ink."],
-          ].map(([id, label, note]) => (
-            <button
-              key={id}
-              className={`looks__o${style === id ? " looks__o--on" : ""}`}
-              onClick={() => onStyle(id)}
-              aria-pressed={style === id}
-            >
-              <span className={`looks__sw looks__sw--${id}`} aria-hidden="true" />
-              <span className="looks__t">
-                <strong>{label}</strong>
-                <span>{note}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </Fold>
+      {/* Compact by design. This was a whole fold with a lead paragraph and a
+          sentence under each option — four lines of prose to explain a choice
+          you can simply look at. The swatches show the two looks; the words
+          were telling you what your eyes were about to tell you anyway. */}
+      <div className="looks" role="group" aria-label="Look">
+        <span className="looks__k">Look</span>
+        {[["modern", "Modern"], ["canvas", "Canvas"]].map(([id, label]) => (
+          <button
+            key={id}
+            className={`looks__o${style === id ? " looks__o--on" : ""}`}
+            onClick={() => onStyle(id)}
+            aria-pressed={style === id}
+          >
+            <span className={`looks__sw looks__sw--${id}`} aria-hidden="true" />
+            {label}
+          </button>
+        ))}
+      </div>
 
       <Fold
         title="Weeks you've cooked"
@@ -6979,6 +6967,12 @@ function MisePanel({ thread, busy, onClose, onAsk, dish, asks = QUICK_ASKS.defau
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600;1,700&display=swap');
+/* Caveat: the hand face for the canvas look. Headings, the wordmark and the
+   step numbers only — never body copy. The house rule is that hand lettering
+   is for the sign-off, not the text you have to read at the stove with your
+   hands full; body stays Nunito in both looks so legibility is never the price
+   of the style. */
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap');
 
 .app{
   /* Palette: rose, brick, ink-navy, indigo, plum — weighted toward paper white.
@@ -7795,33 +7789,28 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    the light bands and the grain into it once; this rule only places it and
    carries the parallax. No background-image, because a finish is geometry —
    which is the whole reason this surface finally works. */
-/* The look switcher. Each option carries a swatch that is a miniature of the
-   look itself, because two words cannot tell you what a visual style feels
-   like — you have to see the stock and the edge. */
-.looks{display:grid;gap:.6rem;margin-top:.9rem}
-.looks__o{display:flex;align-items:center;gap:.85rem;width:100%;padding:.75rem;
-  background:none;border:1.5px solid var(--rule);border-radius:16px;cursor:pointer;
-  text-align:left;font:inherit;color:inherit;transition:border-color .16s ease}
-.looks__o--on{border-color:var(--brick);border-width:2px}
-.looks__t{display:flex;flex-direction:column;gap:.1rem;min-width:0}
-.looks__t strong{font-family:'Nunito',sans-serif}
-.looks__t span{font-size:.88em;color:var(--muted)}
-.looks__sw{flex:0 0 auto;width:52px;height:52px;border-radius:12px;position:relative;overflow:hidden}
-/* modern: cool paper with the daylight wash and a glass chip on it */
+/* The look switcher: one short row, not a panel. A swatch shows each look
+   better than a sentence describing it could, so the descriptions went and the
+   control shrank to the height of a single button. */
+.looks{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;
+  padding:.3rem 0 .1rem}
+.looks__k{font-family:'Nunito',sans-serif;font-weight:700;font-size:.82em;
+  color:var(--muted);margin-right:.25rem}
+.looks__o{display:inline-flex;align-items:center;gap:.45rem;
+  padding:.3rem .7rem .3rem .35rem;min-height:40px;
+  background:none;border:1.5px solid var(--rule);border-radius:999px;cursor:pointer;
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:.88em;color:var(--muted);
+  transition:border-color .16s ease, color .16s ease}
+.looks__o--on{border-color:var(--brick);color:var(--ink)}
+.looks__sw{flex:0 0 auto;width:26px;height:26px;border-radius:50%;position:relative;overflow:hidden}
 .looks__sw--modern{background:
-  radial-gradient(70% 60% at 20% 0%, rgba(226,238,250,.9), transparent 62%),
+  radial-gradient(80% 70% at 22% 0%, rgba(226,238,250,.95), transparent 64%),
   linear-gradient(170deg,#FDFAF9,#F1E9E8);
   border:1px solid var(--rule)}
-.looks__sw--modern::after{content:"";position:absolute;inset:12px 10px;
-  background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.8);border-radius:8px}
-/* canvas: warm stock, a light band, hatching and a drawn edge */
 .looks__sw--canvas{background:
-  repeating-linear-gradient(-45deg, rgba(255,244,225,.85) 0 9px, transparent 9px 18px),
+  repeating-linear-gradient(-45deg, rgba(255,244,225,.9) 0 5px, transparent 5px 10px),
   #F6EFE3;
-  border:1.6px solid #241F1B}
-.looks__sw--canvas::after{content:"";position:absolute;inset:11px 9px 13px 11px;
-  border:1.2px solid #241F1B;border-radius:6px 9px 7px 10px / 9px 6px 10px 7px;
-  background:repeating-linear-gradient(-45deg,#B9A991 0 1px, transparent 1px 5px)}
+  border:1.4px solid #241F1B}
 
 /* ============================================================================
    THE CANVAS LOOK
