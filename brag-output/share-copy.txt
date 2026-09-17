@@ -1,3 +1,3 @@
-Introducing Mise: a weekly cooking collaborator that plans the week, builds the list, and talks you through it at the stove.
+Mise is a weekly cooking collaborator. Tell it about your kitchen, agree on a few dishes, and it builds the shopping list, writes the recipes, talks you through cooking them at the stove, and remembers how they turned out.
 
-It's built around the thing recipe apps ignore — cooking for one means package sizes are the real problem. Tell it "I don't want a whole bunch of dill" and the list actually changes.
+One app, from "who's eating" to "that tasted flat, remember it."

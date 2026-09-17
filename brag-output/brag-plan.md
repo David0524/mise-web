@@ -1,187 +1,225 @@
-# Brag Plan: Mise
+# Brag Plan: Mise (v2 — product-tour cut)
+
+Supersedes the first cut (v1, commit `5675b8a`), which led on the dill line and never
+showed the app working. This version is a walkthrough of the real flow, staged like an
+iPhone app ad.
 
 ## What is this app?
 
-Mise is a weekly cooking collaborator — a sous chef that plans your week, builds a
-shopping list around what actually gets used up, and talks you through cooking it at
-the stove. What makes it impressive is the problem it takes seriously: for people
-cooking for one or two, **package sizes** are the real problem, not portions. Nobody
-needs a whole bunch of dill for one dish.
+Mise is a weekly cooking collaborator: you tell it about your kitchen, it proposes
+dishes and changes them on your feedback, assigns them to nights, builds one shopping
+list, writes the recipes, talks you through cooking at the stove, then learns from how
+it went.
 
 ## The angle
 
-Almost every cooking app gives you recipes. Mise's premise is that recipes were never
-the bottleneck — the grocery store's packaging was. The video leads with the product's
-own funniest, most specific line ("Nobody needs a whole bunch of dill for one dish"),
-then proves it by showing the shopping list *actually reacting* to that complaint.
+An iPhone-ad product tour. The device is the hero, held still in frame while the app
+does the work inside it; short confident lines of type carry the narration on the left.
+The pitch is not a claim, it's the **sequence** — the fact that one app carries you from
+"who's eating" all the way to "that tasted flat, remember it". Nothing is invented: every
+screen is the app's own layout and copy.
 
-The joke is real and the joke is the feature. That's the whole video: state the absurd
-little grievance everyone who cooks alone recognizes, then show the app doing something
-about it. No SaaS language, no "streamline your meal planning."
+The dill gets exactly one mention, in passing, as the app's own setup hint. It is a
+detail, not the premise.
 
 ## Hook (first 2-3 seconds)
 
-The landing page headline, full-frame, in the app's own Nunito 900 on its own warm oak
-paper: **"Nobody needs a whole bunch of dill for one dish."** The line settles, then a
-drawn bunch of dill appears beside it and all but two sprigs fade to grey — the waste,
-visible, before any product has been shown.
+Black. The phone rises into frame already alive, showing Mise's own intro screen, and
+one line lands beside it: **"A week of dinners, handled."** No logo yet, no claim — the
+device and the promise, then straight into the product.
 
 ## Key moments (the middle)
 
-- **Mise herself arrives on the real glass card** — the exact `MiseHello` SVG from
-  `app/page.js`, on the same translucent glass card with the specular rim the signup
-  page uses. Not a redrawn approximation; the actual artwork.
-- **Three verbs from the real pricing copy** land one at a time: *plans the week*,
-  *builds the list*, *talks you through it*.
-- **The shopping list, working.** The Shopping tab recreated with a real-looking list,
-  and the app's actual placeholder typed into its note field:
-  *"I don't want a whole bunch of dill"*. On submit, the dill row rewrites itself from
-  "1 bunch · dill" to "2 sprigs · dill" with a second line explaining where the rest
-  goes. That row change is the product's entire thesis in one beat.
+The middle *is* the flow. Seven screens, each a real one:
+
+- **Your kitchen** — the setup wizard: "How many people are you cooking for?", the
+  stepper on 1, the real hint about package sizes, the step rail reading
+  "Step 1 of 7 · Who's eating".
+- **Brainstorm** — two dish cards with title, blurb and the *why* line, and a tap that
+  flips "Add it" to "Added".
+- **My Week** — the night cards, dishes assigned to Tuesday / Thursday / Saturday.
+- **Shopping** — "Use These First" in the warn card, then the real list rows: bold
+  quantity, item, the `3d` spoilage badge and a `have` badge.
+- **The recipe** — "What you need" components, "Worth learning here", and the numbered
+  steps with their `why` lines.
+- **Cooking** — the dark stove mode: "Step 3 of 7", the progress bar, the big step
+  sentence, a live timer chip, "Voice on".
+- **Rating** — the stars, "Anything off about it?" and the real chips
+  (Nailed it / Tasted flat / Wanted crunch).
 
 ## Outro / punchline
 
-Back to paper. The app's own sentence, which is the thesis stated plainly:
-**"Cooking for one means package sizes are the real problem."** Then the wordmark:
-Mise — a weekly cooking collaborator — $12/month.
+The captions stop. The phone settles to centre, the wordmark and the real tagline arrive
+on the strong cue at 23.174s, with "$12/month · cancel anytime" beneath it.
 
 ## User flow worth showing
 
-Three beats of actually using it, and the centerpiece is beat 2–3:
-
-1. **Entry** — open Mise, meet the sous chef, see the week's shape.
-2. **Key action** — tell it a constraint in plain language ("I don't want a whole bunch
-   of dill") in the Shopping tab's note field.
-3. **Result** — the list rewrites the quantity and tells you where the remainder goes,
-   instead of making you buy a bunch and throw most of it away.
+This whole video is the flow, end to end:
+**kitchen & preferences → idea generation → the week → one shopping list → the recipe →
+cooking at the stove → rating it afterwards.** Seven beats, in the app's own order.
 
 ## Tone
 
-- Preset: `polished`
-- Creative direction: quiet premium product film in warm kitchen daylight — a well-made
-  domestic object, filmed calmly
-- Interpretation: four scenes, long holds, soft crossfades, no hard cuts. The type does
-  the work; motion is restrained (short travel, `power3.out`, nothing bounces). The
-  humor is in the copy, so the direction stays straight-faced. Confidence through
-  restraint, per the `polished` preset.
+- Preset: `app-store` (closest of the seven to an iPhone ad — feature-clean, smooth
+  reveals, no mess), pulled toward `polished` for restraint
+- Creative direction: iPhone app ad — device hero on a deep plum-black seamless
+  background, one short line of type per screen, cuts on the bar line
+- Interpretation: nine scenes rather than the preset's 4-6, because the user asked for a
+  seven-stage walkthrough and each stage needs its own screen. Pace comes from cutting
+  on the beat grid, not from shortening reads: the phone never moves during a scene, the
+  screen content cross-dissolves, and each caption slams in and then holds. No bounce,
+  no overshoot, no gratuitous device rotation.
 
 ## Format: landscape — 1920x1080
-## Duration: 20.0 seconds
+## Duration: 24.8 seconds
+
+Above the 15-25s sweet spot's middle and at the top of the range by design: seven
+product stages plus an open and a close do not fit in 20s without outrunning the
+reading floor.
 
 ## Visual identity (from the project)
 
-Extracted from `lib/authStyles.js`, `app/layout.js`, and `app/page.js`:
-
-- Background: `#F6EFE3` pale oak paper, over `public/textures/oak.webp`, with the real
-  `DAYLIGHT` north-light gradient stack layered on top
-- Accent: `#B44722` persimmon (brick), edge `#813318`, rose `#EE9265`
-- Text: `#1A1B24` ink; muted `#6E6472`; plum `#573C56`
-- Display font: Nunito 900 / 800 (shipped locally as woff2)
+- Background (the ad stage): deep plum-black gradient built from the app's own
+  `--navy #12141C` and `--plum #573C56` — the device needs a dark stage for the warm
+  paper UI to read as lit
+- Caption text: `#F6EFE3` paper on the dark stage; accent `#EE9265` rose (the persimmon
+  `#B44722` is too dark to pass AA on black — rose is the same family and clears it)
+- Inside the phone: the app's in-app tokens verbatim — `--paper #FAF5F4`,
+  `--surface #FFFFFF`, `--sunk #F4EBE9`, `--ink #1A1B24`, `--muted #6E6472`,
+  `--hot #B44722`, `--good #2F6B54`, `--tape #F0D9D5`, `--rule rgba(87,60,86,.14)`
+- Display font: Nunito 900 / 800 (local woff2)
 - Body font: Nunito 600 / 700
-- Strongest visual element: the `MiseHello` chef-hat character SVG on the translucent
-  glass card (`S.card` — `rgba(255,255,255,.62)` fill, white hairline rim, inset
-  specular highlight, plum-tinted drop shadow)
+- Strongest visual element: the app itself, shown at phone scale — the tab bar, the
+  cards, the step rail, the stove mode
 
 ## Share copy (draft)
 
-Nobody needs a whole bunch of dill for one dish. So I built Mise — it plans your week,
-builds the list around what actually gets used up, and talks you through it at the stove.
+Mise is a weekly cooking collaborator: tell it about your kitchen, agree on a few
+dishes, and it builds the list, writes the recipes, talks you through cooking them, and
+remembers how they went.
 
 ## Audio direction
 
-- Role: warm bed with sparse, motion-matched accents
-- Music: `happy-beats-business-moves-vol-10-by-ende-dot-app.mp3` (110 BPM, 60s, the
-  calmest of the bundled tracks — suits `polished`)
-- Music treatment: starts at 0 under the hook at 0.30, eases to 0.42 for the product
-  scenes, ducks to 0.30 behind the typing so the keypresses read, then fades out
-  17.6 → 20.0 so the final accent rings over silence
+- Role: clean rhythmic bed with sparse interface accents — an ad mix, not a score
+- Music: `happy-beats-business-moves-vol-9-by-ende-dot-app.mp3` (114.84 BPM, 113.6s).
+  Swapped from v1's vol-10: its strong cues start at 1.07s and run evenly to 23.2s, so
+  every scene cut can land on the grid.
+- Music treatment: 0.34 from the open, 0.44 through the tour, no ducking (there is no
+  typing to protect this time), fade 22.6 → 24.8 under the sign-off
 - Music cue guidance: preset read from
-  `assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.music-cues.json`
-  (tempo 109.96, 109 beats, 64 strong cues). Beat grid is ~0.546s.
-  Strong cues targeted: **6.014** (intensity 0.92 — Mise card reveal), **14.733**
-  (0.93 — the dill row resolving), **15.824** (0.96 — outro line). Beat-grid window for
-  the three sequential verb chips: 6.281 / 7.349 / 8.220 (every *other* beat, ~1.0s
-  apart, so each 3-word chip clears the reading floor).
-- Audio-reactive treatment: subtle — bass band drives the warmth and presence of the
-  daylight glow behind the glass card, and the card's own shadow depth. 3-6% swing on
-  anything carrying text. No waveform bars, no pulsing orbs.
-- SFX posture: sparse and warm. Low high-frequency-risk files only
-  (`impactSoft_medium`, `bong_001`, `keypress-*` at low gain).
-- Audio-coupled moments: hook settle; card arrival; three chips one by one; the note
-  field typing; submit; the row rewrite; the outro line; the wordmark ring-out.
-- Restraint rule: no SFX on a text exit, nothing bright or clicky repeated, and the
-  music never swells louder than the typing it sits under.
+  `assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.music-cues.json`.
+  Beat grid ~0.5225s; a bar is 4 beats ≈ 2.09s. **Every one of the nine scene cuts is on
+  a beat** — 2.647 / 5.282 / 8.441 / 10.542 / 13.177 / 15.813 / 18.959 / 21.595.
+  Three explicit strong-cue locks: **6.339** (1.00 — the "Add it" tap),
+  **12.655** (1.00 — the shopping list's `have` badge settling), **23.174** (0.99 — the
+  wordmark landing).
+- Audio-reactive treatment: subtle — the stage light behind the device breathes with the
+  bass, and the device's rim highlight gains a little presence on the beat. 3-6% only,
+  and nothing on the screen content itself, which must stay a clean product shot.
+- SFX posture: sparse interface-grade accents. A soft switch per screen cut would be too
+  busy at nine cuts, so accents go only on the three moments that mean something: the
+  device arriving, the "Add it" tap, and the sign-off.
+- Audio-coupled moments: device arrival (1.068); the tap (6.339); the wordmark (23.174).
+- Restraint rule: no accent on a screen cross-dissolve, nothing bright, and no sound at
+  all during the recipe and cooking scenes — those two should feel calm.
 
 ## Storyboard
 
-### Scene 1 — The dill problem — 5.5s (0.0 → 5.5)
+Stage for every scene: the deep plum-black backdrop, the soft stage light, and the phone
+chassis held at a fixed position right of centre. Only the screen inside it changes, and
+only the caption block left of it changes. The phone itself never moves after Scene 1.
 
-Full-frame warm oak paper with the real daylight gradients. The hook line sits centered
-in Nunito 900 at ~118px ink: "Nobody needs a whole bunch of dill for one dish." It rises
-6px into place and settles — beat-locked to 0.824. At 2.7s a hand-drawn bunch of dill
-fades in to the right of the line; at 3.5s all but two sprigs desaturate to grey and
-drop to 25% opacity, leaving two green sprigs. Small plum caps bottom-left: MISE.
-Settled read time for the 9-word hook: 2.7s before the dill draws any attention.
-Sequential/interaction: none — one settle, then the dill's two-stage fade.
-Audio intent: a single warm, soft landing under the line, then near-silence so the joke
-lands in the quiet.
-Audio-coupled idea: `impact/impactSoft_medium_001.ogg` at the line's settle (0.824).
-Music: low warm bed at 0.30.
-Transition mood: soft crossfade → Scene 2
+### Scene 1 — The device arrives — 2.65s (0.0 → 2.647)
+Black stage. The phone rises 60px and settles, screen already showing Mise's intro: the
+character mark, "I'm Mise." and the app's own promise line. Caption left, Nunito 900 at
+92px: **"A week of dinners, handled."** Arrives beat-locked to 1.068.
+Sequential/interaction: none — one arrival.
+Audio intent: a single soft arrival, then the bed opens up.
+Audio-coupled idea: `impactSoft_medium_004` at 1.068.
+Music: bed in at 0.34.
+Transition mood: clean cut on the beat → Scene 2
 
-### Scene 2 — Meet Mise — 4.5s (5.5 → 10.0)
+### Scene 2 — Your kitchen — 2.64s (2.647 → 5.282)
+Screen: the setup wizard. Step rail "Step 1 of 7 · Who's eating", the question
+"How many people are you cooking for?", the stepper reading **1**, and the app's real
+hint: "Cooking for one means package sizes are the real problem. I'll design around
+them." Caption: **"Start with your kitchen."**
+Sequential/interaction: none — the screen is read, not operated.
+Audio intent: the bed carries it; no accent.
+Music: lifts to 0.44.
+Transition mood: smooth cross-dissolve on the beat → Scene 3
 
-The glass card assembles center-frame — real `S.card` treatment — carrying the actual
-`MiseHello` SVG at 260px and, beneath it, "I'm Mise, your sous chef" in Nunito 800.
-The card scales 0.94 → 1 and lifts 18px, **beat-locked to 6.014**. Then three chips in
-persimmon-tinted glass arrive one at a time on the beat grid, each holding once shown:
-"plans the week" (6.281) · "builds the list" (7.349) · "talks you through it" (8.220).
-All three hold together until 10.0.
-Sequential/interaction: yes — three chips arrive one by one, every other beat (~1.0s
-apart), and all three stay on screen for the last 1.8s of the scene.
-Audio intent: arrival and warmth — the product appearing, not announcing itself.
-Audio-coupled idea: `impactSoft_medium_004` on the card; `interface/bong_001.ogg` at
-each chip, same timestamp as the visual.
-Music: bed eases up to 0.42.
-Transition mood: soft crossfade → Scene 3
+### Scene 3 — Brainstorm — 3.16s (5.282 → 8.441)
+Screen: "Pick the ones you want" over two real dish cards — title, blurb, the italic
+*why* line, "About 35 minutes · Heat: medium", and the Add it / Something else pair.
+**Beat-locked to the strong cue at 6.339**, the first card's button flips to "Added" and
+the card takes the `--good` green edge. Caption: **"It suggests. You decide."**
+Sequential/interaction: yes — a simulated tap on "Add it", with the button changing state.
+Audio intent: one clean interface confirmation, the only "click" in the video.
+Audio-coupled idea: `ui/click2.ogg` at 6.339, on the cue.
+Transition mood: cross-dissolve on the beat → Scene 4
 
-### Scene 3 — The list, working — 5.5s (10.0 → 15.5)
+### Scene 4 — The week — 2.10s (8.441 → 10.542)
+Screen: My Week. Three night cards — Tuesday, Thursday, Saturday — each with its dish
+name and blurb, and "Make my shopping list" pinned at the bottom.
+Caption: **"The week takes shape."**
+Sequential/interaction: the three night cards arrive on consecutive beats
+(8.441 / 8.963 / 9.497) — short two-word day labels, so the grid is safe here.
+Audio intent: bed only.
+Transition mood: cross-dissolve on the beat → Scene 5
 
-The Shopping tab, recreated: a glass panel headed "Shopping" with five list rows in the
-app's real row style (quantity left in plum, item name in ink) — *1 bunch · dill*,
-*2 · chicken thighs*, *1 · napa cabbage*, *1 tub · gochujang*, *400g · rice*. Below the
-list, the app's real note field with its real placeholder. From 10.6 to 12.3 the line
-**"I don't want a whole bunch of dill"** types in character by character. At 12.5 the
-field submits (button depresses). At 13.108 the dill row rewrites: quantity crossfades
-"1 bunch" → "2 sprigs" and a second line slides down under it in plum:
-"the rest goes in Thursday's soup". The row's glass warms toward persimmon and holds.
-A soft resolve accent lands on the strong cue at **14.733** as the row settles to rest.
-Sequential/interaction: yes — text types character by character into a real field, the
-submit is simulated, and the row updates in place afterward.
-Audio intent: the quiet satisfaction of a computer doing the annoying arithmetic for you.
-Audio-coupled idea: sparse `keyboard/keypress-*.wav` on roughly every third character at
-0.14 gain; `ui/click2.ogg` on submit; `impact/impactSoft_medium_002.ogg` on the rewrite.
-Music: ducked to 0.30 under the typing, back to 0.40 after submit.
-Transition mood: soft crossfade → Scene 4
+### Scene 5 — One list — 2.64s (10.542 → 13.177)
+Screen: Shopping. The warn card "Use These First" with two entries, then "Shopping List",
+"9 still to buy. Tap any line to change it." and the real rows — bold quantity, item, the
+`3d` badge on what spoils, and a `have` badge. **Beat-locked at 12.655** (cue 1.00) the
+`have` badge settles onto the last row. Caption: **"One list, nothing wasted."**
+Sequential/interaction: yes — rows arrive on alternating beats, then the badge lands.
+Audio intent: bed only; the badge lands on the cue without a sound of its own.
+Transition mood: cross-dissolve on the beat → Scene 6
 
-### Scene 4 — Package sizes — 4.5s (15.5 → 20.0)
+### Scene 6 — The recipe — 2.64s (13.177 → 15.813)
+Screen: the recipe. "Worth learning here" in the tape-coloured learn block, "What you
+need" with its components, then "Steps · 7 steps · swipe →" and two numbered steps with
+their grey *why* lines. Caption: **"Recipes that explain themselves."**
+Sequential/interaction: none — a calm read.
+Audio intent: deliberately no accent. This scene and the next are the quiet centre.
+Transition mood: cross-dissolve on the beat → Scene 7
 
-Back to clean paper. The thesis line arrives in Nunito 800 at ~86px ink, **beat-locked
-to 15.824**: "Cooking for one means package sizes are the real problem." It holds
-through 18.0 (9 words, 2.2s settled). At 18.553 it lifts away and the wordmark block
-replaces it: the small `MiseHello` mark, "Mise" in Nunito 900, the real tagline "a
-weekly cooking collaborator" in muted, and "$12/month · cancel anytime" in plum. Holds
-to 20.0 as the music fades out under it.
-Sequential/interaction: none — two held statements.
-Audio intent: settle and sign off; the last accent rings into silence.
-Audio-coupled idea: `impact/impactSoft_heavy_000.ogg` on the thesis line (15.824);
-`interface/bong_001.ogg` on the wordmark (18.553), left to ring as the bed fades.
-Music: fade 17.6 → 20.0 to zero.
-Transition mood: hold to black-free end (paper holds) — end of video
+### Scene 7 — At the stove — 3.15s (15.813 → 18.959)
+Screen: stove mode, the app's dark cooking surface. "Leave" / dish title / "Voice on" top
+bar, a running timer chip "04:12 · sear · step 3", "Step 3 of 7" with the progress bar at
+43%, the big step sentence and its why line, and the Back / Next step pair.
+Caption: **"Then it cooks with you."** The timer chip counts down on the beat grid.
+Sequential/interaction: yes — the timer digits tick, driven off the timeline.
+Audio intent: still no accent; the bed alone.
+Transition mood: cross-dissolve on the beat → Scene 8
 
-**Music mood for this video:** upbeat-but-restrained warm corporate bed at 110 BPM, mixed
-low and faded out under the sign-off.
-**Audio summary:** A warm bed opens quiet under the hook, lifts slightly as Mise appears
-and the three verbs tick in on the beat grid, ducks so the typing reads as typing,
-resolves with one soft warm hit when the dill row rewrites itself, then fades out so the
-final wordmark accent rings into silence.
+### Scene 8 — How it went — 2.64s (18.959 → 21.595)
+Screen: the rating sheet. Four of five stars filled, the app's own readback
+"Really good", "Anything off about it?" and the real chips — Nailed it, Tasted flat,
+Wanted crunch, Too much work — with "Tasted flat" active, and "Save this".
+Caption: **"It learns what worked."**
+Sequential/interaction: yes — the four stars fill one per beat
+(18.959 / 19.482 / 20.016 / 20.538); they are glyphs, not text, so the grid is safe.
+Audio intent: bed only.
+Transition mood: cross-dissolve on the beat → Scene 9
+
+### Scene 9 — Sign-off — 3.15s (21.595 → 24.741)
+The caption column clears and the phone holds exactly where it has been all along,
+screen resting on the week view. **Beat-locked to the strong cue at 23.174**, the
+wordmark block fades up in the column the captions vacated: the Mise mark, "Mise" in
+Nunito 900, "a weekly cooking collaborator", and "$12/month · cancel anytime". The
+device never moves after Scene 1 — the lockup comes to it, not the other way round.
+Music fades out under it.
+Sequential/interaction: none.
+Audio intent: one last warm accent, ringing into the fade.
+Audio-coupled idea: `interface/bong_001.ogg` at 23.174.
+Music: fade 22.6 → 24.8 to zero.
+Transition mood: hold to end
+
+**Music mood for this video:** clean 115 BPM ad bed, mixed low and even, faded under the
+sign-off.
+**Audio summary:** The bed opens under a single soft arrival, holds an even level through
+the seven-screen tour with exactly one interface click on the strongest cue, goes
+accent-free through the recipe and stove scenes so they read calm, then fades out as one
+warm note lands on the wordmark.

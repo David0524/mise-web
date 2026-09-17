@@ -8,710 +8,773 @@
          the CDN, and a deterministic render should not depend on the network. -->
     <script src="assets/vendor/gsap.min.js"></script>
     <style>
-      /* Nunito, shipped locally. The project loads it from Google Fonts, but a
-         render must not depend on the network and lint requires an in-file
-         @font-face for any named family. */
-      @font-face {
-        font-family: "Nunito";
-        font-style: normal;
-        font-weight: 600;
-        font-display: block;
-        src: url("assets/fonts/nunito-600.woff2") format("woff2");
-      }
-      @font-face {
-        font-family: "Nunito";
-        font-style: normal;
-        font-weight: 700;
-        font-display: block;
-        src: url("assets/fonts/nunito-700.woff2") format("woff2");
-      }
-      @font-face {
-        font-family: "Nunito";
-        font-style: normal;
-        font-weight: 800;
-        font-display: block;
-        src: url("assets/fonts/nunito-800.woff2") format("woff2");
-      }
-      @font-face {
-        font-family: "Nunito";
-        font-style: normal;
-        font-weight: 900;
-        font-display: block;
-        src: url("assets/fonts/nunito-900.woff2") format("woff2");
-      }
+      /* Nunito, shipped locally. The app loads it from Google Fonts; a render
+         must not depend on the network, and lint requires an in-file @font-face
+         for any named family. */
+      @font-face { font-family: "Nunito"; font-style: normal; font-weight: 600; font-display: block; src: url("assets/fonts/nunito-600.woff2") format("woff2"); }
+      @font-face { font-family: "Nunito"; font-style: normal; font-weight: 700; font-display: block; src: url("assets/fonts/nunito-700.woff2") format("woff2"); }
+      @font-face { font-family: "Nunito"; font-style: normal; font-weight: 800; font-display: block; src: url("assets/fonts/nunito-800.woff2") format("woff2"); }
+      @font-face { font-family: "Nunito"; font-style: normal; font-weight: 900; font-display: block; src: url("assets/fonts/nunito-900.woff2") format("woff2"); }
 
-      /* Palette lifted verbatim from lib/authStyles.js + app/layout.js */
       :root {
-        --brick: #b44722;
-        --brick-edge: #813318;
-        --rose: #ee9265;
-        --plum: #573c56;
-        --ink: #1a1b24;
-        --muted: #6e6472;
-        --rule: rgba(87, 60, 86, 0.26);
-        --paper: #f6efe3;
-        --card: rgba(255, 255, 255, 0.62);
-        --card-rim: rgba(255, 255, 255, 0.75);
+        /* The ad stage. Built from the app's own --navy and --plum so the dark
+           backdrop still belongs to this product. */
+        --stage-1: #14111a;
+        --stage-2: #241c2b;
+        --stage-3: #0a080e;
+        /* Caption type. Persimmon #B44722 does not clear AA on this backdrop, so
+           accents use the same family's lighter rose, which does. */
+        --on-dark: #f6efe3;
+        --on-dark-dim: #c5b9c0;
+        --accent: #ee9265;
+
+        /* The app's in-app tokens, verbatim from components/MiseApp.jsx */
+        --a-paper: #faf5f4;
+        --a-surface: #ffffff;
+        --a-sunk: #f4ebe9;
+        --a-ink: #1a1b24;
+        --a-muted: #6e6472;
+        --a-hot: #b44722;
+        --a-hot-edge: #813318;
+        --a-good: #2f6b54;
+        --a-tape: #f0d9d5;
+        --a-tape-ink: #57303a;
+        --a-warn: #7a4630;
+        --a-warn-bg: #fbede9;
+        --a-rule: rgba(87, 60, 86, 0.14);
+        --a-plum: #573c56;
+        /* The app's dark cooking surface */
+        --c-bg: #1e1a21;
+        --c-ink: #f6efe3;
+        --c-muted: #b3a6ae;
       }
 
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        width: 1920px;
-        height: 1080px;
-        overflow: hidden;
-        background: var(--paper);
-      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--stage-3); }
       #root {
-        position: relative;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        font-family: "Nunito", sans-serif;
-        color: var(--ink);
+        position: relative; width: 100%; height: 100%; overflow: hidden;
+        font-family: "Nunito", sans-serif; color: var(--on-dark);
       }
 
-      /* ── Shared background: pale oak paper, the app's own texture, and the
-         real DAYLIGHT gradient stack from lib/authStyles.js ───────────────── */
-      #paper {
-        position: absolute;
-        inset: 0;
-        background-color: var(--paper);
-        background-image: url("assets/textures/oak.webp");
-        background-size: cover;
-        background-position: center;
+      /* ── The stage ─────────────────────────────────────────────────────── */
+      #stage {
+        position: absolute; inset: 0;
+        background-image:
+          radial-gradient(58% 52% at 68% 40%, var(--stage-2), transparent 68%),
+          radial-gradient(70% 60% at 18% 78%, #1b1622, transparent 70%),
+          linear-gradient(160deg, var(--stage-1), var(--stage-3));
       }
-      #daylight {
-        position: absolute;
-        inset: 0;
-        background-image: radial-gradient(60% 48% at 4% -4%, rgba(226, 238, 250, 0.98), transparent 62%),
-          radial-gradient(70% 40% at 58% -6%, rgba(238, 245, 251, 0.85), transparent 64%),
-          radial-gradient(44% 32% at 100% 46%, rgba(247, 236, 222, 0.55), transparent 62%),
-          radial-gradient(76% 46% at 78% 106%, rgba(199, 211, 226, 0.66), transparent 66%);
-      }
-      /* Audio-reactive bloom. Driven ONLY by the per-frame audio sampler — no
-         tween ever touches it, so there is no competing-property conflict. */
-      #bloom {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        width: 2400px;
-        height: 1500px;
-        margin-left: -1200px;
-        margin-top: -750px;
-        background-image: radial-gradient(
-          46% 44% at 50% 46%,
-          rgba(255, 246, 232, 0.92),
-          rgba(255, 246, 232, 0) 70%
-        );
-        opacity: 0.4;
+      /* Audio-reactive stage light. Driven ONLY by the per-frame sampler, so no
+         tween ever contests these properties. */
+      #stagelight {
+        position: absolute; left: 1460px; top: 540px;
+        width: 1700px; height: 1700px; margin-left: -850px; margin-top: -850px;
+        background-image: radial-gradient(42% 42% at 50% 50%, rgba(238, 146, 101, 0.28), rgba(238, 146, 101, 0) 72%);
+        opacity: 0.5;
       }
 
-      .clip {
-        position: absolute;
-        inset: 0;
-        display: grid;
-        place-items: center;
+      .clip { position: absolute; }
+
+      /* ── Caption column ───────────────────────────────────────────────── */
+      .cap {
+        left: 120px; top: 0; width: 980px; height: 1080px;
+        display: flex; flex-direction: column; justify-content: center;
+      }
+      .cap h2 {
+        font-weight: 900; font-size: 92px; line-height: 1.03;
+        letter-spacing: -0.04em; color: var(--on-dark);
+      }
+      .cap .kick {
+        font-weight: 700; font-size: 26px; letter-spacing: 0.2em;
+        text-transform: uppercase; color: var(--accent); margin-bottom: 26px;
       }
 
-      /* Glass card — S.card from lib/authStyles.js, minus the SVG-distortion
-         backdrop filter (a backdrop-filter over a static background buys
-         nothing in a render and costs frame time). */
-      .glass {
-        background: var(--card);
-        border: 1px solid var(--card-rim);
-        border-radius: 30px;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 6px rgba(87, 60, 86, 0.07),
-          0 18px 44px -16px rgba(87, 60, 86, 0.28);
+      /* ── The device ───────────────────────────────────────────────────── */
+      #phone {
+        position: absolute; left: 1200px; top: 40px; width: 520px; height: 1000px;
+        border-radius: 60px;
+        background: linear-gradient(145deg, #4a4350, #201c26 38%, #15121a 62%, #3b3541);
+        box-shadow: 0 48px 90px -30px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.07);
+      }
+      /* Specular rim, given a little presence by the audio sampler. */
+      #phonerim {
+        position: absolute; inset: 0; border-radius: 60px;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.16));
+        opacity: 0.8;
+      }
+      #screen {
+        position: absolute; left: 16px; top: 16px; width: 488px; height: 968px;
+        border-radius: 46px; overflow: hidden; background: var(--a-paper);
+      }
+      .scr { inset: 0; background: var(--a-paper); }
+      /* The notch island, above every screen. */
+      #island {
+        position: absolute; left: 50%; top: 30px; width: 116px; height: 30px;
+        margin-left: -58px; border-radius: 15px; background: #0b0910; z-index: 9;
       }
 
-      .wordmark-caps {
-        font-weight: 700;
-        font-size: 26px;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
-        color: var(--brick);
+      /* ── Shared phone-UI chrome ───────────────────────────────────────── */
+      .statusbar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 34px 0; font-weight: 800; font-size: 19px; color: var(--a-ink);
       }
-
-      /* ── Scene 1 — the dill problem ──────────────────────────────────────── */
-      #s1-inner {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 96px;
-        width: 100%;
-        padding: 0 130px;
+      .statusbar--dark { color: var(--c-ink); }
+      .sbicons { display: flex; align-items: flex-end; gap: 6px; }
+      .apphead { display: flex; align-items: center; gap: 12px; padding: 22px 26px 16px; }
+      .apphead__t { font-weight: 900; font-size: 27px; letter-spacing: -0.02em; color: var(--a-ink); }
+      .apphead__dot {
+        margin-left: auto; width: 38px; height: 38px; border-radius: 999px;
+        background: var(--a-sunk); border: 1px solid var(--a-rule);
       }
-      #s1-hook {
-        font-weight: 900;
-        font-size: 124px;
-        line-height: 1.04;
-        letter-spacing: -0.035em;
-        max-width: 1120px;
-        color: var(--ink);
+      .body { padding: 0 26px; }
+      .card {
+        background: var(--a-surface); border-radius: 22px; padding: 22px 22px 24px;
+        box-shadow: 0 1px 2px rgba(30, 20, 30, 0.04), 0 6px 18px -8px rgba(87, 60, 86, 0.16);
+        margin-bottom: 16px;
       }
-      #s1-dill-wrap {
-        width: 470px;
-        height: 560px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
+      .card h2 { font-weight: 800; font-size: 26px; line-height: 1.2; letter-spacing: -0.02em; color: var(--a-ink); }
+      .card h3 { font-weight: 800; font-size: 20px; color: var(--a-ink); margin-top: 16px; }
+      .lead { font-weight: 600; font-size: 18px; color: var(--a-muted); margin-top: 8px; line-height: 1.4; }
+      .hint { font-weight: 600; font-size: 17px; color: var(--a-muted); margin-top: 12px; line-height: 1.42; }
+      .sec-h { font-weight: 900; font-size: 22px; color: var(--a-ink); margin: 4px 0 12px; }
+      .btn {
+        display: block; text-align: center; padding: 17px; border-radius: 16px;
+        background: var(--a-hot); color: #fff; font-weight: 800; font-size: 20px;
+        box-shadow: 0 2px 0 var(--a-hot-edge), inset 0 1px 0 rgba(255, 255, 255, 0.25);
       }
-      #s1-dill {
-        width: 100%;
-        height: auto;
-      }
-      #s1-dill .stem {
-        fill: none;
-        stroke-width: 4.2;
-        stroke-linecap: round;
-      }
-      #s1-dill .frond {
-        fill: none;
-        stroke-width: 2.6;
-        stroke-linecap: round;
-      }
-      #s1-dill .sprig {
-        stroke: #4e7a3f;
-      }
-      #s1-dill .sprig .stem,
-      #s1-dill .sprig .frond {
-        stroke: inherit;
-      }
-      #s1-tie {
-        fill: var(--brick);
-        stroke: none;
-      }
-      #s1-mise {
-        position: absolute;
-        left: 130px;
-        bottom: 96px;
-        opacity: 0;
-      }
-      #s1-caption {
-        position: absolute;
-        right: 130px;
-        bottom: 96px;
-        font-weight: 700;
-        font-size: 34px;
-        color: var(--muted);
-        opacity: 0;
-      }
-
-      /* ── Scene 2 — meet Mise ─────────────────────────────────────────────── */
-      #s2-card {
-        width: 1300px;
-        padding: 62px 80px 58px;
-        text-align: center;
-        opacity: 0;
-      }
-      #s2-art {
-        display: flex;
-        justify-content: center;
-        filter: drop-shadow(0 12px 24px rgba(87, 60, 86, 0.22));
-      }
-      #s2-title {
-        font-weight: 800;
-        font-size: 66px;
-        letter-spacing: -0.025em;
-        margin-top: 18px;
-        color: var(--ink);
-      }
-      #s2-chips {
-        display: flex;
-        justify-content: center;
-        gap: 22px;
-        margin-top: 42px;
-      }
+      .btn--sm { padding: 12px 20px; font-size: 18px; border-radius: 14px; display: inline-block; }
+      .btn--ghost { background: transparent; color: var(--a-hot); box-shadow: none; border: 1px solid var(--a-rule); }
+      .btn--good { background: var(--a-good); box-shadow: 0 2px 0 #214d3c, inset 0 1px 0 rgba(255, 255, 255, 0.25); }
       .chip {
-        display: block;
-        padding: 18px 32px;
-        border-radius: 999px;
-        background: rgba(238, 146, 101, 0.2);
-        border: 1px solid var(--rose);
-        color: #7a2e1b;
-        font-weight: 700;
-        font-size: 34px;
-        white-space: nowrap;
-        opacity: 0;
+        display: inline-block; padding: 11px 18px; border-radius: 999px;
+        background: var(--a-sunk); border: 1px solid var(--a-rule);
+        font-weight: 700; font-size: 17px; color: var(--a-plum);
       }
+      .chip--on { background: rgba(180, 71, 34, 0.12); border-color: var(--a-hot); color: var(--a-hot); }
+      .tabbar {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 104px;
+        display: flex; align-items: flex-start; padding-top: 14px;
+        background: rgba(255, 255, 255, 0.94); border-top: 1px solid var(--a-rule);
+      }
+      .tab { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+      .tab__l { font-weight: 700; font-size: 13px; color: var(--a-muted); }
+      .tab--on .tab__l { color: var(--a-hot); }
+      .tab svg { display: block; }
 
-      /* ── Scene 3 — the shopping list, working ────────────────────────────── */
-      #s3-panel {
-        width: 1340px;
-        padding: 52px 58px 48px;
-        opacity: 0;
+      /* ── Screen 2: the setup wizard ───────────────────────────────────── */
+      .progress { padding: 4px 26px 18px; }
+      .progress__segs { display: flex; gap: 5px; }
+      .progress__seg { display: block; flex: 1 1 0; height: 6px; border-radius: 3px; background: var(--a-rule); }
+      .progress__seg--now { background: var(--a-hot); }
+      .progress__t { display: flex; justify-content: space-between; margin-top: 10px; font-weight: 700; font-size: 16px; }
+      .progress__n { color: var(--a-muted); }
+      .progress__label { color: var(--a-hot); }
+      .stepper { display: flex; align-items: center; justify-content: center; gap: 26px; margin: 22px 0 4px; }
+      .stepper__b {
+        display: grid; place-items: center; width: 62px; height: 62px; border-radius: 999px;
+        background: var(--a-sunk); border: 1px solid var(--a-rule);
+        font-weight: 800; font-size: 30px; color: var(--a-plum);
       }
-      #s3-head {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        border-bottom: 1px solid var(--rule);
-        padding-bottom: 22px;
-      }
-      #s3-head h2 {
-        font-weight: 900;
-        font-size: 56px;
-        letter-spacing: -0.03em;
-      }
-      #s3-rows {
-        display: flex;
-        flex-direction: column;
-      }
-      .row {
-        position: relative;
-        display: flex;
-        align-items: flex-start;
-        gap: 34px;
-        padding: 20px 18px;
-        border-bottom: 1px solid rgba(87, 60, 86, 0.12);
-        opacity: 0;
-      }
-      .row .qty {
-        position: relative;
-        display: block;
-        width: 236px;
-        flex: 0 0 236px;
-        text-align: right;
-        font-weight: 700;
-        font-size: 34px;
-        color: var(--plum);
-        padding-top: 4px;
-      }
-      .row .item {
-        position: relative;
-        display: block;
-        font-weight: 600;
-        font-size: 38px;
-        color: var(--ink);
-      }
-      /* The dill row's two quantity states are stacked so one can crossfade
-         into the other without reflowing the row. */
-      .qty-stack {
-        position: relative;
-        display: block;
-        height: 46px;
-      }
-      .qty-stack > span {
-        position: absolute;
-        right: 0;
-        top: 0;
-        display: block;
-        white-space: nowrap;
-      }
-      #s3-qty-new {
-        opacity: 0;
-        color: var(--brick);
-      }
-      #s3-note-line {
-        position: absolute;
-        left: 0;
-        top: 100%;
-        margin-top: 4px;
-        display: block;
-        white-space: nowrap;
-        font-weight: 700;
-        font-size: 28px;
-        color: var(--plum);
-        opacity: 0;
-      }
-      /* Reserve the note line's height from the first frame so that revealing
-         it at 12.75s cannot reflow the rows beneath it mid-render. */
-      #s3-row-dill {
-        border-radius: 14px;
-        min-height: 124px;
-      }
-      #s3-row-tint {
-        position: absolute;
-        inset: 0;
-        border-radius: 14px;
-        background: rgba(238, 146, 101, 0.16);
-        opacity: 0;
-      }
-      #s3-row-bar {
-        position: absolute;
-        left: 0;
-        top: 8px;
-        bottom: 8px;
-        width: 6px;
-        border-radius: 3px;
-        background: var(--brick);
-        opacity: 0;
-      }
-      #s3-ask {
-        display: flex;
-        align-items: center;
-        gap: 22px;
-        margin-top: 34px;
-        opacity: 0;
-      }
-      #s3-field {
-        flex: 1 1 auto;
-        display: flex;
-        align-items: center;
-        min-height: 88px;
-        padding: 0 26px;
-        border-radius: 18px;
-        border: 1px solid var(--rule);
-        background: rgba(255, 255, 255, 0.8);
-        font-weight: 600;
-        font-size: 36px;
-        color: var(--ink);
-      }
-      #s3-typed {
-        white-space: pre;
-      }
-      #s3-caret {
-        display: inline-block;
-        width: 3px;
-        height: 42px;
-        margin-left: 3px;
-        background: var(--brick);
-        opacity: 0;
-      }
-      #s3-btn {
-        display: block;
-        padding: 24px 40px;
-        border-radius: 18px;
-        background: var(--brick);
-        color: #fff;
-        font-weight: 700;
-        font-size: 34px;
-        white-space: nowrap;
-        box-shadow: 0 2px 0 var(--brick-edge), inset 0 1px 0 rgba(255, 255, 255, 0.25),
-          0 8px 24px -10px rgba(87, 60, 86, 0.22);
-      }
+      .stepper__n { font-weight: 900; font-size: 56px; color: var(--a-ink); min-width: 70px; text-align: center; }
+      .check { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+      .check__box { display: block; flex: 0 0 26px; width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--a-rule); background: var(--a-surface); }
+      .check__l { font-weight: 700; font-size: 17px; color: var(--a-ink); }
 
-      /* ── Scene 4 — package sizes ─────────────────────────────────────────── */
-      #s4-thesis {
-        font-weight: 800;
-        font-size: 92px;
-        line-height: 1.1;
-        letter-spacing: -0.03em;
-        max-width: 1480px;
-        text-align: center;
-        color: var(--ink);
-        opacity: 0;
+      /* ── Screen 3: brainstorm dish cards ──────────────────────────────── */
+      .dish { position: relative; }
+      .dish h3 { font-weight: 900; font-size: 24px; line-height: 1.2; color: var(--a-ink); margin: 0; letter-spacing: -0.02em; }
+      .dish__b { font-weight: 600; font-size: 18px; color: var(--a-ink); margin-top: 8px; line-height: 1.4; }
+      .dish__why { font-weight: 600; font-style: italic; font-size: 17px; color: var(--a-muted); margin-top: 8px; line-height: 1.4; }
+      .dish__meta { font-weight: 700; font-size: 15px; color: var(--a-plum); margin-top: 10px; }
+      .dish__acts { display: flex; gap: 10px; margin-top: 16px; }
+      .dish__edge { position: absolute; left: 0; top: 14px; bottom: 14px; width: 5px; border-radius: 3px; background: var(--a-good); opacity: 0; }
+
+      /* ── Screen 4: the week ───────────────────────────────────────────── */
+      .night { background: var(--a-surface); border-radius: 20px; padding: 18px 20px; margin-bottom: 13px; box-shadow: 0 1px 2px rgba(30, 20, 30, 0.04), 0 6px 18px -8px rgba(87, 60, 86, 0.14); }
+      .night h3 { font-weight: 900; font-size: 22px; color: var(--a-ink); margin: 0; }
+      .night__sel {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: 10px; padding: 13px 16px; border-radius: 14px;
+        background: var(--a-sunk); border: 1px solid var(--a-rule);
+        font-weight: 700; font-size: 18px; color: var(--a-ink);
       }
-      /* Centred by flex rather than a translate, so the GSAP y tween below has
-         no CSS transform to fight (lint: gsap_css_transform_conflict). */
-      #s4-sign {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
+      .night__b { font-weight: 600; font-size: 16px; color: var(--a-muted); margin-top: 9px; line-height: 1.38; }
+
+      /* ── Screen 5: shopping ───────────────────────────────────────────── */
+      .card--warn { background: var(--a-warn-bg); border: 1px solid var(--a-tape); }
+      .card--warn h2 { color: var(--a-warn); }
+      .usefirst { list-style: none; margin-top: 12px; }
+      .usefirst li { font-weight: 600; font-size: 17px; color: var(--a-warn); line-height: 1.5; }
+      .usefirst b { font-weight: 800; }
+      .row2 { position: relative; display: flex; align-items: center; gap: 14px; padding: 13px 4px; border-bottom: 1px solid var(--a-rule); }
+      .row2__tick { display: block; flex: 0 0 26px; width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--a-rule); background: var(--a-surface); }
+      .row2__qty { font-weight: 800; font-size: 18px; color: var(--a-plum); }
+      .row2__name { font-weight: 600; font-size: 19px; color: var(--a-ink); }
+      .row2__badge { margin-left: auto; font-weight: 800; font-size: 14px; padding: 5px 11px; border-radius: 999px; }
+      .row2__soon { background: var(--a-tape); color: var(--a-tape-ink); }
+      .row2__got { background: rgba(47, 107, 84, 0.16); color: var(--a-good); }
+      .sec-sub { font-weight: 800; font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--a-muted); margin: 16px 0 2px; }
+
+      /* ── Screen 6: the recipe ─────────────────────────────────────────── */
+      .learn { background: var(--a-tape); border-radius: 18px; padding: 16px 18px; }
+      .learn h3 { font-weight: 900; font-size: 18px; color: var(--a-tape-ink); margin: 0; }
+      .learn p { font-weight: 600; font-size: 17px; color: var(--a-tape-ink); margin-top: 6px; line-height: 1.4; }
+      .comp__l2 { list-style: none; margin-top: 8px; }
+      .comp__l2 li { font-weight: 600; font-size: 18px; color: var(--a-ink); padding: 7px 0; border-bottom: 1px solid var(--a-rule); }
+      .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin-top: 18px; }
+      .sec-head .hint { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+      .hstep { list-style: none; display: flex; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--a-rule); }
+      .hstep__n { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 999px; background: var(--a-hot); color: #fff; font-weight: 900; font-size: 18px; }
+      .hstep__do { display: block; font-weight: 600; font-size: 18px; color: var(--a-ink); line-height: 1.38; }
+      .hstep__why { display: block; font-weight: 600; font-size: 16px; color: var(--a-muted); margin-top: 5px; line-height: 1.36; }
+
+      /* ── Screen 7: at the stove ───────────────────────────────────────── */
+      .scr--cook { background: var(--c-bg); }
+      .cook__top { display: flex; align-items: center; justify-content: space-between; padding: 18px 26px 0; }
+      .cook__exit { font-weight: 800; font-size: 17px; color: var(--c-muted); }
+      .cook__vox { font-weight: 800; font-size: 17px; color: var(--accent); }
+      .cook__title { text-align: center; }
+      .cook__title strong { display: block; font-weight: 900; font-size: 19px; color: var(--c-ink); }
+      .cook__title span { font-weight: 600; font-size: 15px; color: var(--c-muted); }
+      .ctimer {
+        display: flex; align-items: baseline; gap: 12px; margin: 20px 26px 0;
+        padding: 14px 20px; border-radius: 18px;
+        background: rgba(238, 146, 101, 0.16); border: 1px solid rgba(238, 146, 101, 0.4);
       }
-      #s4-art {
-        filter: drop-shadow(0 12px 24px rgba(87, 60, 86, 0.22));
+      .ctimer__clock { font-weight: 900; font-size: 34px; color: var(--accent); letter-spacing: -0.02em; }
+      .ctimer__lab { font-weight: 700; font-size: 16px; color: var(--c-muted); }
+      .cook__body { padding: 26px 26px 0; }
+      .cook__kicker { font-weight: 800; font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-muted); }
+      .cook__bar { height: 8px; border-radius: 4px; background: rgba(246, 239, 227, 0.18); margin-top: 12px; overflow: hidden; }
+      .cook__bar span { display: block; width: 43%; height: 100%; border-radius: 4px; background: var(--accent); }
+      .cook__step { font-weight: 800; font-size: 32px; line-height: 1.25; color: var(--c-ink); margin-top: 26px; letter-spacing: -0.02em; }
+      .cook__why { font-weight: 600; font-size: 19px; color: var(--c-muted); margin-top: 16px; line-height: 1.42; }
+      .cook__nav { display: flex; gap: 12px; margin-top: 28px; }
+      .cook__nav .btn { flex: 1 1 0; }
+      .btn--onDark { background: transparent; color: var(--c-ink); border: 1px solid rgba(246, 239, 227, 0.3); box-shadow: none; }
+
+      /* ── Screen 8: rating ─────────────────────────────────────────────── */
+      .stars { display: flex; gap: 10px; margin-top: 16px; }
+      .grid2 { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+      .field {
+        margin-top: 18px; padding: 15px 16px; border-radius: 14px;
+        background: var(--a-sunk); border: 1px solid var(--a-rule);
+        font-weight: 600; font-size: 17px; color: var(--a-muted);
       }
-      #s4-name {
-        font-weight: 900;
-        font-size: 104px;
-        letter-spacing: -0.04em;
-        margin-top: 14px;
-      }
-      #s4-tag {
-        font-weight: 600;
-        font-size: 42px;
-        color: var(--muted);
-        margin-top: 4px;
-      }
-      #s4-price {
-        font-weight: 700;
-        font-size: 34px;
-        color: var(--plum);
-        margin-top: 30px;
-        padding: 14px 30px;
-        border-radius: 999px;
-        background: rgba(87, 60, 86, 0.08);
-      }
+      .field__l { display: block; font-weight: 800; font-size: 15px; color: var(--a-plum); margin-bottom: 7px; }
+
+      /* ── Sign-off ─────────────────────────────────────────────────────── */
+      #signoff { left: 120px; top: 0; width: 980px; height: 1080px; display: flex; flex-direction: column; justify-content: center; opacity: 0; }
+      #signoff .mark { filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.45)); }
+      #signoff .name { font-weight: 900; font-size: 128px; letter-spacing: -0.045em; color: var(--on-dark); margin-top: 14px; line-height: 1; }
+      #signoff .tag { font-weight: 600; font-size: 44px; color: var(--on-dark-dim); margin-top: 12px; }
+      #signoff .price { align-self: flex-start; font-weight: 700; font-size: 32px; color: var(--accent); margin-top: 34px; padding: 15px 30px; border-radius: 999px; background: rgba(238, 146, 101, 0.14); border: 1px solid rgba(238, 146, 101, 0.34); }
     </style>
   </head>
   <body>
-    <div
-      id="root"
-      data-composition-id="main"
-      data-start="0"
-      data-duration="21.5"
-      data-width="1920"
-      data-height="1080"
-    >
-      <div id="paper"></div>
-      <div id="daylight"></div>
-      <div id="bloom"></div>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="24.8" data-width="1920" data-height="1080">
+      <div id="stage"></div>
+      <div id="stagelight"></div>
 
-      <!-- ── Scene 1 — the dill problem ─────────────────────────────────── -->
-      <section id="s1" class="clip" data-start="0" data-duration="5.5" data-track-index="0">
-        <div id="s1-inner">
-          <h1 id="s1-hook">Nobody needs a whole bunch of dill for one dish.</h1>
-          <div id="s1-dill-wrap">
-            <svg id="s1-dill" viewBox="-24.1 29.8 249.8 212.2" role="img" aria-label="A bunch of dill">
-              <g class="sprig drop"><path class="stem" d="M100.0 232.0 Q39.2 183.0 -0.5 115.8"/><path class="frond" d="M65.4 200.9 Q52.7 201.7 44.9 192.0"/><path class="frond" d="M65.4 200.9 Q71.4 193.9 75.1 183.2"/><path class="frond" d="M53.7 188.7 Q37.0 189.3 26.8 176.8"/><path class="frond" d="M53.7 188.7 Q60.8 179.4 65.1 165.5"/><path class="frond" d="M42.5 176.1 Q25.2 176.4 14.6 163.4"/><path class="frond" d="M42.5 176.1 Q49.1 166.4 53.1 152.1"/><path class="frond" d="M31.8 163.0 Q13.6 162.9 2.4 149.4"/><path class="frond" d="M31.8 163.0 Q37.9 152.7 41.6 137.9"/><path class="frond" d="M21.6 149.5 Q6.7 149.1 -2.4 138.1"/><path class="frond" d="M21.6 149.5 Q25.9 141.0 28.6 129.0"/><path class="frond" d="M11.9 135.5 Q1.2 135.0 -5.3 127.1"/><path class="frond" d="M11.9 135.5 Q14.6 129.4 16.2 120.8"/><path class="frond" d="M2.7 121.1 Q-6.9 120.5 -12.9 113.3"/><path class="frond" d="M2.7 121.1 Q4.7 115.6 5.9 107.8"/><path class="frond" d="M-0.5 115.8 L-14.1 107.2"/><path class="frond" d="M-0.5 115.8 L-11.0 103.6"/><path class="frond" d="M-0.5 115.8 L-7.0 101.1"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q47.4 180.9 16.6 114.3"/><path class="frond" d="M70.4 199.9 Q55.7 200.1 46.6 189.1"/><path class="frond" d="M70.4 199.9 Q78.4 192.3 83.4 180.2"/><path class="frond" d="M60.5 187.5 Q42.5 187.3 31.4 173.9"/><path class="frond" d="M60.5 187.5 Q69.6 178.0 75.2 163.3"/><path class="frond" d="M51.2 174.6 Q35.2 174.2 25.4 162.3"/><path class="frond" d="M51.2 174.6 Q58.6 166.1 63.1 153.3"/><path class="frond" d="M42.4 161.5 Q23.2 160.5 11.4 146.3"/><path class="frond" d="M42.4 161.5 Q50.5 151.1 55.4 135.7"/><path class="frond" d="M34.1 147.9 Q18.6 146.8 9.2 135.4"/><path class="frond" d="M34.1 147.9 Q40.0 139.5 43.6 127.1"/><path class="frond" d="M26.3 133.9 Q14.8 132.9 7.7 124.3"/><path class="frond" d="M26.3 133.9 Q30.2 127.6 32.6 118.3"/><path class="frond" d="M19.1 119.6 Q9.9 118.6 4.2 111.7"/><path class="frond" d="M19.1 119.6 Q21.8 114.5 23.5 107.1"/><path class="frond" d="M16.6 114.3 L3.9 104.5"/><path class="frond" d="M16.6 114.3 L7.3 101.3"/><path class="frond" d="M16.6 114.3 L11.5 99.1"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q57.2 168.4 28.7 97.2"/><path class="frond" d="M75.6 193.2 Q60.2 192.4 50.8 181.0"/><path class="frond" d="M75.6 193.2 Q85.4 185.9 91.5 173.7"/><path class="frond" d="M67.3 178.6 Q47.7 177.2 35.6 162.6"/><path class="frond" d="M67.3 178.6 Q79.2 169.1 86.4 153.5"/><path class="frond" d="M59.3 163.8 Q39.6 162.0 27.4 147.3"/><path class="frond" d="M59.3 163.8 Q70.6 154.0 77.5 138.3"/><path class="frond" d="M51.7 148.9 Q32.9 146.7 21.3 132.7"/><path class="frond" d="M51.7 148.9 Q61.8 139.3 68.0 124.3"/><path class="frond" d="M44.5 133.7 Q29.3 131.7 20.0 120.3"/><path class="frond" d="M44.5 133.7 Q52.1 125.9 56.7 113.7"/><path class="frond" d="M37.6 118.4 Q28.3 117.0 22.6 109.9"/><path class="frond" d="M37.6 118.4 Q41.9 113.5 44.5 106.0"/><path class="frond" d="M31.0 102.9 Q20.7 101.1 14.3 93.2"/><path class="frond" d="M31.0 102.9 Q35.5 97.3 38.2 88.9"/><path class="frond" d="M28.7 97.2 L17.4 85.9"/><path class="frond" d="M28.7 97.2 L21.2 83.1"/><path class="frond" d="M28.7 97.2 L25.7 81.5"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q60.0 163.9 32.4 89.8"/><path class="frond" d="M77.1 190.6 Q63.4 189.6 55.0 179.4"/><path class="frond" d="M77.1 190.6 Q86.3 184.3 91.9 173.5"/><path class="frond" d="M69.3 175.1 Q52.2 173.5 41.7 160.8"/><path class="frond" d="M69.3 175.1 Q80.2 167.1 86.9 153.5"/><path class="frond" d="M61.7 159.5 Q44.5 157.6 33.9 144.7"/><path class="frond" d="M61.7 159.5 Q72.2 151.2 78.5 137.5"/><path class="frond" d="M54.5 143.8 Q39.9 141.8 31.0 130.9"/><path class="frond" d="M54.5 143.8 Q62.8 136.6 67.9 124.9"/><path class="frond" d="M47.6 127.9 Q31.4 125.4 21.5 113.2"/><path class="frond" d="M47.6 127.9 Q56.3 119.7 61.6 106.7"/><path class="frond" d="M40.9 111.9 Q30.7 110.1 24.4 102.3"/><path class="frond" d="M40.9 111.9 Q46.1 106.5 49.3 98.3"/><path class="frond" d="M34.6 95.7 Q25.8 94.0 20.4 87.2"/><path class="frond" d="M34.6 95.7 Q38.8 91.0 41.3 83.8"/><path class="frond" d="M32.4 89.8 L21.6 78.0"/><path class="frond" d="M32.4 89.8 L25.5 75.4"/><path class="frond" d="M32.4 89.8 L30.0 74.0"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q72.3 152.4 54.8 69.9"/><path class="frond" d="M84.3 184.0 Q68.0 181.4 57.9 169.0"/><path class="frond" d="M84.3 184.0 Q97.3 177.4 105.2 164.6"/><path class="frond" d="M79.0 166.2 Q64.1 163.6 55.0 152.2"/><path class="frond" d="M79.0 166.2 Q90.5 160.0 97.5 148.1"/><path class="frond" d="M74.0 148.4 Q54.3 144.5 42.3 129.3"/><path class="frond" d="M74.0 148.4 Q88.6 139.8 97.7 124.1"/><path class="frond" d="M69.2 130.5 Q51.3 126.6 40.4 112.6"/><path class="frond" d="M69.2 130.5 Q82.1 122.4 90.0 107.9"/><path class="frond" d="M64.6 112.6 Q50.9 109.2 42.5 98.4"/><path class="frond" d="M64.6 112.6 Q74.2 106.1 80.1 94.8"/><path class="frond" d="M60.3 94.6 Q50.2 91.8 44.0 83.7"/><path class="frond" d="M60.3 94.6 Q67.2 89.5 71.4 81.1"/><path class="frond" d="M56.3 76.5 Q47.0 73.7 41.3 66.1"/><path class="frond" d="M56.3 76.5 Q62.3 71.7 66.0 63.7"/><path class="frond" d="M54.8 69.9 L46.2 56.4"/><path class="frond" d="M54.8 69.9 L50.6 54.5"/><path class="frond" d="M54.8 69.9 L55.2 53.9"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q75.5 148.9 61.1 63.4"/><path class="frond" d="M86.2 181.9 Q72.8 179.5 64.5 169.2"/><path class="frond" d="M86.2 181.9 Q97.3 176.8 104.1 166.1"/><path class="frond" d="M81.6 163.4 Q63.6 159.8 52.6 145.9"/><path class="frond" d="M81.6 163.4 Q96.1 156.2 105.0 141.8"/><path class="frond" d="M77.2 144.9 Q59.4 140.9 48.5 127.0"/><path class="frond" d="M77.2 144.9 Q91.3 137.4 99.8 122.9"/><path class="frond" d="M73.1 126.3 Q57.8 122.5 48.5 110.4"/><path class="frond" d="M73.1 126.3 Q84.8 119.5 92.0 107.0"/><path class="frond" d="M69.3 107.7 Q54.7 103.7 45.8 92.0"/><path class="frond" d="M69.3 107.7 Q80.1 100.9 86.8 88.8"/><path class="frond" d="M65.6 89.0 Q56.1 86.2 50.3 78.3"/><path class="frond" d="M65.6 89.0 Q72.6 84.3 76.8 76.2"/><path class="frond" d="M62.3 70.2 Q53.9 67.5 48.7 60.4"/><path class="frond" d="M62.3 70.2 Q68.2 65.9 71.8 58.6"/><path class="frond" d="M61.1 63.4 L53.1 49.5"/><path class="frond" d="M61.1 63.4 L57.5 47.8"/><path class="frond" d="M61.1 63.4 L62.2 47.4"/></g>
-<g class="sprig keep"><path class="stem" d="M100.0 232.0 Q86.6 144.2 80.0 55.7"/><path class="frond" d="M92.6 179.3 Q76.7 175.4 67.0 162.9"/><path class="frond" d="M92.6 179.3 Q107.0 173.8 115.8 161.0"/><path class="frond" d="M90.2 159.9 Q75.7 156.1 66.8 144.4"/><path class="frond" d="M90.2 159.9 Q103.2 154.5 111.2 142.7"/><path class="frond" d="M87.9 140.5 Q68.7 134.9 56.9 119.2"/><path class="frond" d="M87.9 140.5 Q105.0 132.9 115.5 116.9"/><path class="frond" d="M85.8 121.1 Q68.5 115.6 57.8 101.1"/><path class="frond" d="M85.8 121.1 Q101.1 113.8 110.4 99.1"/><path class="frond" d="M83.9 101.7 Q72.0 97.6 64.7 87.4"/><path class="frond" d="M83.9 101.7 Q94.2 96.4 100.5 86.1"/><path class="frond" d="M82.1 82.2 Q73.3 78.9 67.8 71.2"/><path class="frond" d="M82.1 82.2 Q89.7 78.0 94.4 70.1"/><path class="frond" d="M80.5 62.8 Q72.0 59.3 66.7 51.6"/><path class="frond" d="M80.5 62.8 Q87.8 58.5 92.2 50.6"/><path class="frond" d="M80.0 55.7 L73.6 41.0"/><path class="frond" d="M80.0 55.7 L78.2 39.8"/><path class="frond" d="M80.0 55.7 L82.9 39.9"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q99.8 146.2 104.0 60.4"/><path class="frond" d="M100.3 180.5 Q86.4 176.1 77.9 164.4"/><path class="frond" d="M100.3 180.5 Q114.4 176.4 123.1 164.8"/><path class="frond" d="M100.6 161.6 Q85.5 156.4 76.3 143.5"/><path class="frond" d="M100.6 161.6 Q116.0 156.7 125.4 143.8"/><path class="frond" d="M101.0 142.7 Q83.4 136.1 72.6 120.6"/><path class="frond" d="M101.0 142.7 Q119.0 136.5 130.0 121.1"/><path class="frond" d="M101.5 123.9 Q85.0 117.2 74.9 102.2"/><path class="frond" d="M101.5 123.9 Q118.4 117.6 128.8 102.7"/><path class="frond" d="M102.1 105.0 Q89.5 99.5 81.8 87.7"/><path class="frond" d="M102.1 105.0 Q115.1 99.8 123.0 88.0"/><path class="frond" d="M102.8 86.1 Q94.4 82.2 89.3 74.0"/><path class="frond" d="M102.8 86.1 Q111.5 82.4 116.9 74.3"/><path class="frond" d="M103.7 67.3 Q95.2 63.0 90.0 54.5"/><path class="frond" d="M103.7 67.3 Q112.5 63.2 117.9 54.7"/><path class="frond" d="M104.0 60.4 L99.7 45.0"/><path class="frond" d="M104.0 60.4 L104.4 44.4"/><path class="frond" d="M104.0 60.4 L109.0 45.2"/></g>
-<g class="sprig keep"><path class="stem" d="M100.0 232.0 Q111.7 148.3 119.7 64.2"/><path class="frond" d="M106.7 181.7 Q91.7 176.0 82.4 162.6"/><path class="frond" d="M106.7 181.7 Q123.3 177.8 133.5 164.7"/><path class="frond" d="M109.0 163.3 Q94.7 157.4 85.9 144.3"/><path class="frond" d="M109.0 163.3 Q125.0 159.1 134.8 146.3"/><path class="frond" d="M111.2 144.8 Q98.5 139.2 90.8 127.3"/><path class="frond" d="M111.2 144.8 Q125.5 140.7 134.2 129.0"/><path class="frond" d="M113.3 126.4 Q99.6 119.8 91.2 106.5"/><path class="frond" d="M113.3 126.4 Q129.0 121.5 138.6 108.3"/><path class="frond" d="M115.3 107.9 Q104.5 102.3 97.9 91.4"/><path class="frond" d="M115.3 107.9 Q127.9 103.6 135.6 92.9"/><path class="frond" d="M117.2 89.4 Q108.6 84.6 103.4 75.6"/><path class="frond" d="M117.2 89.4 Q127.4 85.7 133.6 76.8"/><path class="frond" d="M119.1 70.9 Q112.2 66.8 108.0 59.3"/><path class="frond" d="M119.1 70.9 Q127.3 67.6 132.3 60.2"/><path class="frond" d="M119.7 64.2 L116.9 48.4"/><path class="frond" d="M119.7 64.2 L121.6 48.3"/><path class="frond" d="M119.7 64.2 L126.1 49.5"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q121.6 148.7 132.2 63.4"/><path class="frond" d="M112.0 181.8 Q99.0 176.2 91.0 164.1"/><path class="frond" d="M112.0 181.8 Q127.2 178.8 136.6 167.0"/><path class="frond" d="M115.9 163.4 Q103.6 157.6 96.1 145.8"/><path class="frond" d="M115.9 163.4 Q130.5 160.1 139.5 148.6"/><path class="frond" d="M119.5 144.8 Q106.6 138.3 98.7 125.5"/><path class="frond" d="M119.5 144.8 Q135.2 141.0 144.8 128.5"/><path class="frond" d="M122.8 126.2 Q109.6 119.0 101.5 105.3"/><path class="frond" d="M122.8 126.2 Q139.4 121.8 149.5 108.5"/><path class="frond" d="M125.9 107.6 Q113.9 100.6 106.5 87.6"/><path class="frond" d="M125.9 107.6 Q141.2 103.1 150.6 90.5"/><path class="frond" d="M128.7 88.9 Q120.3 83.6 115.1 74.1"/><path class="frond" d="M128.7 88.9 Q139.8 85.4 146.6 76.1"/><path class="frond" d="M131.3 70.2 Q125.4 66.1 121.7 59.1"/><path class="frond" d="M131.3 70.2 Q139.2 67.4 144.1 60.6"/><path class="frond" d="M132.2 63.4 L130.4 47.4"/><path class="frond" d="M132.2 63.4 L135.2 47.6"/><path class="frond" d="M132.2 63.4 L139.6 49.2"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q133.7 154.6 151.6 72.1"/><path class="frond" d="M118.8 185.1 Q108.4 179.5 102.0 168.8"/><path class="frond" d="M118.8 185.1 Q132.4 183.2 140.8 173.0"/><path class="frond" d="M125.0 167.7 Q113.3 160.8 106.1 148.2"/><path class="frond" d="M125.0 167.7 Q140.9 165.1 150.7 153.1"/><path class="frond" d="M130.8 150.1 Q118.7 142.5 111.3 129.0"/><path class="frond" d="M130.8 150.1 Q147.8 147.1 158.2 134.1"/><path class="frond" d="M136.2 132.4 Q123.9 124.1 116.3 109.6"/><path class="frond" d="M136.2 132.4 Q154.2 128.8 165.2 114.9"/><path class="frond" d="M141.2 114.6 Q132.4 108.2 127.0 97.2"/><path class="frond" d="M141.2 114.6 Q154.6 111.6 162.8 101.1"/><path class="frond" d="M145.9 96.7 Q139.8 91.9 136.0 83.9"/><path class="frond" d="M145.9 96.7 Q155.5 94.3 161.4 86.7"/><path class="frond" d="M150.2 78.7 Q144.0 73.3 140.2 64.8"/><path class="frond" d="M150.2 78.7 Q160.3 75.9 166.6 67.7"/><path class="frond" d="M151.6 72.1 L151.9 56.1"/><path class="frond" d="M151.6 72.1 L156.5 56.8"/><path class="frond" d="M151.6 72.1 L160.8 58.9"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q139.2 163.6 161.1 87.8"/><path class="frond" d="M122.0 190.3 Q112.1 184.0 106.0 172.9"/><path class="frond" d="M122.0 190.3 Q136.1 189.0 144.7 178.5"/><path class="frond" d="M129.2 174.7 Q115.8 165.5 107.6 149.7"/><path class="frond" d="M129.2 174.7 Q149.2 172.4 161.5 157.5"/><path class="frond" d="M136.1 158.9 Q126.1 151.5 119.9 139.0"/><path class="frond" d="M136.1 158.9 Q151.8 156.7 161.4 145.0"/><path class="frond" d="M142.5 142.9 Q131.0 133.7 123.9 118.5"/><path class="frond" d="M142.5 142.9 Q161.5 139.9 173.1 125.6"/><path class="frond" d="M148.5 126.7 Q141.2 120.3 136.6 110.0"/><path class="frond" d="M148.5 126.7 Q161.3 124.4 169.2 114.7"/><path class="frond" d="M154.2 110.4 Q148.5 105.0 145.0 96.6"/><path class="frond" d="M154.2 110.4 Q164.5 108.3 170.9 100.3"/><path class="frond" d="M159.3 93.9 Q153.6 87.9 150.1 78.7"/><path class="frond" d="M159.3 93.9 Q170.5 91.4 177.4 82.7"/><path class="frond" d="M161.1 87.8 L162.8 71.9"/><path class="frond" d="M161.1 87.8 L167.4 73.1"/><path class="frond" d="M161.1 87.8 L171.4 75.6"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q145.3 167.0 171.9 92.4"/><path class="frond" d="M125.5 192.1 Q116.6 185.7 111.1 174.7"/><path class="frond" d="M125.5 192.1 Q139.3 191.3 147.8 181.1"/><path class="frond" d="M134.0 177.1 Q123.4 168.8 117.0 155.1"/><path class="frond" d="M134.0 177.1 Q151.3 175.7 161.9 163.0"/><path class="frond" d="M142.1 161.8 Q130.9 152.3 124.0 136.9"/><path class="frond" d="M142.1 161.8 Q161.4 159.9 173.3 145.5"/><path class="frond" d="M149.7 146.3 Q141.2 138.4 136.0 126.0"/><path class="frond" d="M149.7 146.3 Q165.3 144.4 174.8 132.8"/><path class="frond" d="M156.8 130.5 Q149.5 123.1 145.0 111.6"/><path class="frond" d="M156.8 130.5 Q171.2 128.5 180.0 117.8"/><path class="frond" d="M163.5 114.6 Q159.2 109.7 156.5 102.3"/><path class="frond" d="M163.5 114.6 Q172.7 113.1 178.3 106.1"/><path class="frond" d="M169.8 98.3 Q165.1 92.6 162.2 83.9"/><path class="frond" d="M169.8 98.3 Q180.4 96.4 187.0 88.3"/><path class="frond" d="M171.9 92.4 L174.8 76.7"/><path class="frond" d="M171.9 92.4 L179.2 78.2"/><path class="frond" d="M171.9 92.4 L183.1 80.9"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q149.1 174.2 183.9 106.7"/><path class="frond" d="M128.2 196.4 Q120.8 189.7 116.2 179.0"/><path class="frond" d="M128.2 196.4 Q141.4 196.4 149.4 186.6"/><path class="frond" d="M137.9 183.0 Q129.7 174.9 124.7 162.3"/><path class="frond" d="M137.9 183.0 Q153.5 182.6 163.0 171.1"/><path class="frond" d="M147.2 169.2 Q138.0 159.3 132.4 144.0"/><path class="frond" d="M147.2 169.2 Q166.2 168.4 177.9 154.4"/><path class="frond" d="M156.2 155.3 Q149.2 146.9 144.9 134.3"/><path class="frond" d="M156.2 155.3 Q172.0 154.3 181.7 142.6"/><path class="frond" d="M164.9 141.1 Q158.7 132.9 154.9 120.7"/><path class="frond" d="M164.9 141.1 Q180.1 139.9 189.4 128.6"/><path class="frond" d="M173.2 126.7 Q169.1 120.6 166.5 111.6"/><path class="frond" d="M173.2 126.7 Q184.4 125.6 191.3 117.2"/><path class="frond" d="M181.1 112.1 Q177.6 106.1 175.5 97.5"/><path class="frond" d="M181.1 112.1 Q191.9 110.8 198.5 102.7"/><path class="frond" d="M183.9 106.7 L188.6 91.4"/><path class="frond" d="M183.9 106.7 L192.9 93.4"/><path class="frond" d="M183.9 106.7 L196.3 96.6"/></g>
-<g class="sprig drop"><path class="stem" d="M100.0 232.0 Q160.1 184.0 202.0 119.4"/><path class="frond" d="M134.4 201.7 Q126.9 192.3 122.3 178.2"/><path class="frond" d="M134.4 201.7 Q151.0 202.8 161.2 190.2"/><path class="frond" d="M146.2 189.8 Q140.0 181.1 136.2 168.3"/><path class="frond" d="M146.2 189.8 Q161.5 190.6 170.9 179.0"/><path class="frond" d="M157.6 177.6 Q151.3 167.7 147.5 153.3"/><path class="frond" d="M157.6 177.6 Q175.0 178.1 185.6 165.0"/><path class="frond" d="M168.5 164.9 Q162.6 154.2 158.9 138.8"/><path class="frond" d="M168.5 164.9 Q187.3 165.1 198.8 151.0"/><path class="frond" d="M179.0 151.9 Q174.6 142.7 171.9 129.6"/><path class="frond" d="M179.0 151.9 Q195.0 151.6 204.8 139.8"/><path class="frond" d="M189.0 138.4 Q186.6 132.5 185.2 124.0"/><path class="frond" d="M189.0 138.4 Q199.4 138.1 205.8 130.4"/><path class="frond" d="M198.6 124.6 Q196.8 119.1 195.7 111.4"/><path class="frond" d="M198.6 124.6 Q208.1 124.0 214.0 117.0"/><path class="frond" d="M202.0 119.4 L208.8 104.9"/><path class="frond" d="M202.0 119.4 L212.7 107.6"/><path class="frond" d="M202.0 119.4 L215.7 111.2"/></g>
-              <rect id="s1-tie" x="86" y="222" width="28" height="17" rx="6" />
-            </svg>
-          </div>
-        </div>
-        <div id="s1-mise" class="wordmark-caps">Mise</div>
-        <div id="s1-caption">You buy the bunch anyway.</div>
+      <!-- ══ Captions ══════════════════════════════════════════════════ -->
+      <section class="clip cap" id="cap1" data-start="0" data-duration="2.647" data-track-index="0">
+        <h2>A week of dinners, handled.</h2>
+      </section>
+      <section class="clip cap" id="cap2" data-start="2.647" data-duration="2.635" data-track-index="0">
+        <p class="kick">Step one</p>
+        <h2>Start with your kitchen.</h2>
+      </section>
+      <section class="clip cap" id="cap3" data-start="5.282" data-duration="3.159" data-track-index="0">
+        <p class="kick">Ideas</p>
+        <h2>It suggests. You decide.</h2>
+      </section>
+      <section class="clip cap" id="cap4" data-start="8.441" data-duration="2.101" data-track-index="0">
+        <p class="kick">Your week</p>
+        <h2>The week takes shape.</h2>
+      </section>
+      <section class="clip cap" id="cap5" data-start="10.542" data-duration="2.635" data-track-index="0">
+        <p class="kick">Shopping</p>
+        <h2>One list, nothing wasted.</h2>
+      </section>
+      <section class="clip cap" id="cap6" data-start="13.177" data-duration="2.636" data-track-index="0">
+        <p class="kick">The recipe</p>
+        <h2>Recipes that explain themselves.</h2>
+      </section>
+      <section class="clip cap" id="cap7" data-start="15.813" data-duration="3.146" data-track-index="0">
+        <p class="kick">At the stove</p>
+        <h2>Then it cooks with you.</h2>
+      </section>
+      <section class="clip cap" id="cap8" data-start="18.959" data-duration="2.636" data-track-index="0">
+        <p class="kick">Afterwards</p>
+        <h2>It learns what worked.</h2>
       </section>
 
-      <!-- ── Scene 2 — meet Mise ────────────────────────────────────────── -->
-      <section id="s2" class="clip" data-start="5.5" data-duration="4.5" data-track-index="1">
-        <div id="s2-card" class="glass">
-          <div id="s2-art">
-            <!-- MiseHello, path-for-path from app/page.js -->
-            <svg width="260" height="260" viewBox="0 0 64 64" role="img" aria-label="Mise, your sous chef" style="color: #12141c">
-              <path
-                d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z"
-                fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-              <path d="M17 24h28.6v4.2H17z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-              <path
-                d="M20 28.4h23c0 8.6-.9 13.4-4.2 16.2-2 1.7-4.3 2.3-7.3 2.3s-5.3-.6-7.3-2.3C20.9 41.8 20 37 20 28.4z"
-                fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-              <g fill="currentColor">
-                <circle cx="27.1" cy="37.4" r="1.85" />
-                <circle cx="36.3" cy="37.4" r="1.85" />
-              </g>
-              <path d="M28 41.8c1.6 2.1 5.5 2.1 7.1 0" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round" />
-              <path d="M25.6 46.8l6.4 5.2 6.4-5.2 3.1 1.5-9.5 7.4-9.5-7.4z" fill="#B44722" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
-              <path d="M13 64c1.4-6.6 7-10.6 13.6-11.9L32 56l5.4-3.9C44 53.4 49.6 57.4 51 64z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-              <path d="M37.2 57.6l10.2 1.1-.5 4.1-10.2-1z" fill="#F0D9D5" stroke="currentColor" stroke-width="1.3" />
-            </svg>
-          </div>
-          <div id="s2-title">I&rsquo;m Mise, your sous chef.</div>
-          <div id="s2-chips">
-            <span class="chip" id="s2-chip-1">plans the week</span>
-            <span class="chip" id="s2-chip-2">builds the list</span>
-            <span class="chip" id="s2-chip-3">talks you through it</span>
-          </div>
-        </div>
-      </section>
+      <!-- ══ The device ════════════════════════════════════════════════ -->
+      <div id="phone">
+        <div id="screen">
+          <div id="island"></div>
 
-      <!-- ── Scene 3 — the shopping list, working ───────────────────────── -->
-      <section id="s3" class="clip" data-start="10" data-duration="5.5" data-track-index="2">
-        <div id="s3-panel" class="glass">
-          <div id="s3-head">
-            <h2>Shopping</h2>
-            <span class="wordmark-caps">This week</span>
-          </div>
-          <div id="s3-rows">
-            <div class="row" id="s3-row-dill">
-              <div id="s3-row-tint"></div>
-              <div id="s3-row-bar"></div>
-              <span class="qty">
-                <!-- The old and new quantities are deliberately stacked so one can
-                     crossfade into the other without reflowing the row. -->
-                <span class="qty-stack" data-layout-allow-overlap>
-                  <span id="s3-qty-old" data-layout-allow-overlap>1 bunch</span>
-                  <span id="s3-qty-new" data-layout-allow-overlap>2 sprigs</span>
-                </span>
-              </span>
-              <span class="item">
-                dill
-                <span id="s3-note-line">rest goes in Thursday&rsquo;s soup</span>
-              </span>
+          <!-- ── Screen 1 — Mise's own intro ───────────────────────── -->
+          <section class="clip scr" id="scr1" data-start="0" data-duration="2.647" data-track-index="1">
+            <div class="statusbar"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div class="body" style="padding-top: 92px">
+              <div class="card" style="text-align: center; padding: 34px 26px 30px">
+                <div style="display: flex; justify-content: center; filter: drop-shadow(0 10px 20px rgba(87,60,86,.2))">
+                  <svg width="132" height="132" viewBox="0 0 64 64" role="img" aria-label="Mise, your sous chef" style="color: #12141c">
+                    <path d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <path d="M17 24h28.6v4.2H17z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <path d="M20 28.4h23c0 8.6-.9 13.4-4.2 16.2-2 1.7-4.3 2.3-7.3 2.3s-5.3-.6-7.3-2.3C20.9 41.8 20 37 20 28.4z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <g fill="currentColor"><circle cx="27.1" cy="37.4" r="1.85"/><circle cx="36.3" cy="37.4" r="1.85"/></g>
+                    <path d="M28 41.8c1.6 2.1 5.5 2.1 7.1 0" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round"/>
+                    <path d="M25.6 46.8l6.4 5.2 6.4-5.2 3.1 1.5-9.5 7.4-9.5-7.4z" fill="#B44722" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                    <path d="M13 64c1.4-6.6 7-10.6 13.6-11.9L32 56l5.4-3.9C44 53.4 49.6 57.4 51 64z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                    <path d="M37.2 57.6l10.2 1.1-.5 4.1-10.2-1z" fill="#F0D9D5" stroke="currentColor" stroke-width="1.3"/>
+                  </svg>
+                </div>
+                <h2 style="font-size: 32px; margin-top: 18px">I&rsquo;m Mise.</h2>
+                <p class="lead">I help you figure out what to cook this week &mdash; and I plan it so the things you buy actually get used up, instead of half a bunch wilting in the drawer.</p>
+              </div>
+              <div class="btn">Get started</div>
             </div>
-            <div class="row"><span class="qty">2</span><span class="item">chicken thighs</span></div>
-            <div class="row"><span class="qty">1</span><span class="item">napa cabbage</span></div>
-            <div class="row"><span class="qty">1 tub</span><span class="item">gochujang</span></div>
-            <div class="row"><span class="qty">400 g</span><span class="item">rice</span></div>
-          </div>
-          <div id="s3-ask">
-            <div id="s3-field"><span id="s3-typed"></span><span id="s3-caret"></span></div>
-            <span id="s3-btn">Tell Mise</span>
-          </div>
+          </section>
+
+          <!-- ── Screen 2 — the setup wizard ───────────────────────── -->
+          <section class="clip scr" id="scr2" data-start="2.647" data-duration="2.635" data-track-index="2">
+            <div class="statusbar"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div style="height: 72px"></div>
+            <div class="progress">
+              <div class="progress__segs">
+                <span class="progress__seg progress__seg--now"></span><span class="progress__seg"></span><span class="progress__seg"></span><span class="progress__seg"></span><span class="progress__seg"></span><span class="progress__seg"></span><span class="progress__seg"></span>
+              </div>
+              <p class="progress__t"><span class="progress__n">Step 1 of 7</span><span class="progress__label">Who&rsquo;s eating</span></p>
+            </div>
+            <div class="body">
+              <div class="card">
+                <h2>How many people are you cooking for?</h2>
+                <p class="lead">This changes more than portion size.</p>
+                <div class="stepper">
+                  <span class="stepper__b">-</span><span class="stepper__n">1</span><span class="stepper__b">+</span>
+                </div>
+                <p class="hint">Cooking for one means package sizes are the real problem. I&rsquo;ll design around them.</p>
+                <div class="check"><span class="check__box"></span><span class="check__l">The number changes from night to night</span></div>
+              </div>
+              <div class="btn">Next</div>
+            </div>
+          </section>
+
+          <!-- ── Screen 3 — brainstorm ─────────────────────────────── -->
+          <section class="clip scr" id="scr3" data-start="5.282" data-duration="3.159" data-track-index="3">
+            <div class="statusbar"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div style="height: 58px"></div>
+            <div class="apphead">
+              <svg width="34" height="34" viewBox="0 0 64 64" style="color: #12141c"><path d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><path d="M20 28.4h23c0 8.6-.9 13.4-4.2 16.2-2 1.7-4.3 2.3-7.3 2.3s-5.3-.6-7.3-2.3C20.9 41.8 20 37 20 28.4z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><g fill="currentColor"><circle cx="27.1" cy="37.4" r="2"/><circle cx="36.3" cy="37.4" r="2"/></g></svg>
+              <span class="apphead__t">Brainstorm</span><span class="apphead__dot"></span>
+            </div>
+            <div class="body">
+              <h2 class="sec-h">Pick the ones you want</h2>
+              <div class="card dish" id="dish1">
+                <div class="dish__edge" id="dish1edge"></div>
+                <h3>Gochujang-glazed chicken thighs</h3>
+                <p class="dish__b">Thighs roasted hard, then glazed in the last five minutes so the sugar catches without burning.</p>
+                <p class="dish__why">You have gochujang to use up, and this is the dish that justifies the tub.</p>
+                <p class="dish__meta">About 35 minutes &middot; Heat: medium</p>
+                <div class="dish__acts">
+                  <span class="btn btn--sm" id="dish1btn">Add it</span>
+                  <span class="btn btn--sm btn--ghost">Something else</span>
+                </div>
+              </div>
+              <div class="card dish">
+                <h3>Charred cabbage, brown butter</h3>
+                <p class="dish__b">Wedges seared flat-side down until properly black at the edges, then finished in nutty butter.</p>
+                <p class="dish__why">Uses the other half of the cabbage, and it holds well for Thursday.</p>
+                <p class="dish__meta">About 25 minutes</p>
+                <div class="dish__acts">
+                  <span class="btn btn--sm">Add it</span>
+                  <span class="btn btn--sm btn--ghost">Something else</span>
+                </div>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <span class="tab tab--on"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#B44722" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#B44722"/></svg><span class="tab__l">Brainstorm</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#6E6472" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span>
+            </nav>
+          </section>
+
+          <!-- ── Screen 4 — my week ────────────────────────────────── -->
+          <section class="clip scr" id="scr4" data-start="8.441" data-duration="2.101" data-track-index="4">
+            <div class="statusbar"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div style="height: 58px"></div>
+            <div class="apphead"><span class="apphead__t">My Week</span><span class="apphead__dot"></span></div>
+            <div class="body">
+              <div class="night" id="night1">
+                <h3>Tuesday</h3>
+                <div class="night__sel"><span>Gochujang-glazed chicken thighs</span></div>
+                <p class="night__b">Thighs roasted hard, then glazed at the end.</p>
+              </div>
+              <div class="night" id="night2">
+                <h3>Thursday</h3>
+                <div class="night__sel"><span>Charred cabbage, brown butter</span></div>
+                <p class="night__b">Uses the other half of the cabbage.</p>
+              </div>
+              <div class="night" id="night3">
+                <h3>Saturday</h3>
+                <div class="night__sel"><span>Cold rice, crisped</span></div>
+                <p class="night__b">Tuesday&rsquo;s rice, fried hard with scallions.</p>
+              </div>
+              <div class="btn" style="margin-top: 18px">Make my shopping list</div>
+            </div>
+            <nav class="tabbar">
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#6E6472" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#6E6472"/></svg><span class="tab__l">Brainstorm</span></span>
+              <span class="tab tab--on"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#B44722" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#B44722" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#6E6472" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span>
+            </nav>
+          </section>
+
+          <!-- ── Screen 5 — shopping ───────────────────────────────── -->
+          <section class="clip scr" id="scr5" data-start="10.542" data-duration="2.635" data-track-index="5">
+            <div class="statusbar"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div style="height: 58px"></div>
+            <div class="apphead"><span class="apphead__t">Shopping</span><span class="apphead__dot"></span></div>
+            <div class="body">
+              <div class="card card--warn">
+                <h2 style="font-size: 22px">Use These First</h2>
+                <ul class="usefirst">
+                  <li><b>napa cabbage</b> &mdash; best by Thursday (3 days)</li>
+                  <li><b>scallions</b> &mdash; best by Wednesday (2 days)</li>
+                </ul>
+              </div>
+              <div class="card">
+                <h2 style="font-size: 22px">Shopping List</h2>
+                <p class="lead">9 still to buy. Tap any line to change it.</p>
+                <p class="sec-sub">Produce</p>
+                <div class="row2" id="srow1"><span class="row2__tick"></span><span class="row2__qty">1</span><span class="row2__name">napa cabbage</span><span class="row2__badge row2__soon">3d</span></div>
+                <div class="row2" id="srow2"><span class="row2__tick"></span><span class="row2__qty">1 bunch</span><span class="row2__name">scallions</span><span class="row2__badge row2__soon">2d</span></div>
+                <p class="sec-sub">Protein</p>
+                <div class="row2" id="srow3"><span class="row2__tick"></span><span class="row2__qty">6</span><span class="row2__name">chicken thighs</span></div>
+                <p class="sec-sub">Pantry</p>
+                <div class="row2" id="srow4"><span class="row2__tick"></span><span class="row2__qty">1 tub</span><span class="row2__name">gochujang</span><span class="row2__badge row2__got" id="haveBadge">have</span></div>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#6E6472" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#6E6472"/></svg><span class="tab__l">Brainstorm</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span>
+              <span class="tab tab--on"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#B44722" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#B44722" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#6E6472" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span>
+            </nav>
+          </section>
+
+          <!-- ── Screen 6 — the recipe ─────────────────────────────── -->
+          <section class="clip scr" id="scr6" data-start="13.177" data-duration="2.636" data-track-index="6">
+            <div class="statusbar"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div style="height: 58px"></div>
+            <div class="apphead"><span class="apphead__t">Cooking</span><span class="apphead__dot"></span></div>
+            <div class="body">
+              <div class="card" style="padding-bottom: 20px">
+                <h2 style="font-size: 25px">Gochujang-glazed chicken thighs</h2>
+                <div class="learn" style="margin-top: 16px">
+                  <h3>Worth learning here</h3>
+                  <p>Glazing late. Sugar burns long before chicken cooks, so the glaze goes on once the meat is nearly done.</p>
+                </div>
+                <h3 class="sec-h" style="margin: 16px 0 4px">What you need</h3>
+                <ul class="comp__l2">
+                  <li>6 chicken thighs, bone in</li>
+                  <li>2 tbsp gochujang</li>
+                  <li>1 tbsp honey</li>
+                </ul>
+                <div class="sec-head">
+                  <h3 class="sec-h" style="margin: 0">Steps</h3>
+                  <span class="hint">7 steps
+                    <svg width="16" height="12" viewBox="0 0 16 12"><path d="M1 6h13M9.5 1.5L14 6l-4.5 4.5" fill="none" stroke="#6E6472" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                </div>
+                <ol>
+                  <li class="hstep"><span class="hstep__n">1</span><span><span class="hstep__do">Dry the thighs properly and salt them. Leave them out while the oven heats.</span><span class="hstep__why">Wet skin steams instead of browning.</span></span></li>
+                  <li class="hstep"><span class="hstep__n">2</span><span><span class="hstep__do">Roast skin up at 220&deg;C for 25 minutes, no glaze yet.</span><span class="hstep__why">This is where the fat renders out.</span></span></li>
+                </ol>
+              </div>
+            </div>
+            <nav class="tabbar">
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#6E6472" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#6E6472"/></svg><span class="tab__l">Brainstorm</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span>
+              <span class="tab tab--on"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#B44722" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#B44722" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span>
+            </nav>
+          </section>
+
+          <!-- ── Screen 7 — at the stove ───────────────────────────── -->
+          <section class="clip scr scr--cook" id="scr7" data-start="15.813" data-duration="3.146" data-track-index="7">
+            <div class="statusbar statusbar--dark"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#F6EFE3"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#F6EFE3"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#F6EFE3"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#F6EFE3"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#F6EFE3"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#F6EFE3"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#F6EFE3"/></svg>
+            </span></div>
+            <div style="height: 58px"></div>
+            <div class="cook__top">
+              <span class="cook__exit">Leave</span>
+              <span class="cook__title"><strong>Gochujang chicken</strong><span>for 1</span></span>
+              <span class="cook__vox">Voice on</span>
+            </div>
+            <div class="ctimer">
+              <span class="ctimer__clock" id="timerClock">4:12</span>
+              <span class="ctimer__lab">roast &middot; step 3</span>
+            </div>
+            <div class="cook__body">
+              <p class="cook__kicker">Step 3 of 7</p>
+              <div class="cook__bar"><span></span></div>
+              <p class="cook__step">Turn the heat down and spoon the glaze over. Back in for five minutes.</p>
+              <p class="cook__why">Any earlier and the sugar is charcoal before the thighs are cooked through.</p>
+              <div class="cook__nav">
+                <span class="btn btn--onDark">Back</span>
+                <span class="btn">Next step</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── Screen 8 — how it went ────────────────────────────── -->
+          <section class="clip scr" id="scr8" data-start="18.959" data-duration="2.636" data-track-index="8">
+            <div class="statusbar"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div style="height: 58px"></div>
+            <div class="apphead"><span class="apphead__t">How was it?</span><span class="apphead__dot"></span></div>
+            <div class="body">
+              <div class="card">
+                <h2 style="font-size: 24px">Gochujang-glazed chicken thighs</h2>
+                <div class="stars">
+                  <svg class="star" width="46" height="46" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#D8CEC9"/></svg>
+                  <svg class="star" width="46" height="46" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#D8CEC9"/></svg>
+                  <svg class="star" width="46" height="46" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#D8CEC9"/></svg>
+                  <svg class="star" width="46" height="46" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#D8CEC9"/></svg>
+                  <svg class="star" width="46" height="46" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#D8CEC9"/></svg>
+                </div>
+                <p class="hint" id="ratingRead">Really good</p>
+                <h3>Anything off about it?</h3>
+                <div class="grid2">
+                  <span class="chip">Nailed it</span>
+                  <span class="chip chip--on" id="chipFlat">Tasted flat</span>
+                  <span class="chip">Wanted crunch</span>
+                  <span class="chip">Too much work</span>
+                </div>
+                <div class="field"><span class="field__l">Anything else (optional)</span>The sauce was the best part</div>
+              </div>
+              <div class="btn">Save this</div>
+            </div>
+            <nav class="tabbar">
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#6E6472" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#6E6472"/></svg><span class="tab__l">Brainstorm</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span>
+              <span class="tab tab--on"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#B44722" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#B44722" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span>
+            </nav>
+          </section>
+
+          <!-- ── Screen 9 — the week, resting under the sign-off ───── -->
+          <section class="clip scr" id="scr9" data-start="21.595" data-duration="3.205" data-track-index="9">
+            <div class="statusbar"><span>9:41</span><span class="sbicons">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div style="height: 58px"></div>
+            <div class="apphead"><span class="apphead__t">My Week</span><span class="apphead__dot"></span></div>
+            <div class="body">
+              <div class="night"><h3>Tuesday</h3><div class="night__sel"><span>Gochujang-glazed chicken thighs</span></div><p class="night__b">Thighs roasted hard, then glazed at the end.</p></div>
+              <div class="night"><h3>Thursday</h3><div class="night__sel"><span>Charred cabbage, brown butter</span></div><p class="night__b">Uses the other half of the cabbage.</p></div>
+              <div class="night"><h3>Saturday</h3><div class="night__sel"><span>Cold rice, crisped</span></div><p class="night__b">Tuesday&rsquo;s rice, fried hard with scallions.</p></div>
+            </div>
+            <nav class="tabbar">
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#6E6472" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#6E6472"/></svg><span class="tab__l">Brainstorm</span></span>
+              <span class="tab tab--on"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#B44722" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#B44722" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#6E6472" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span>
+              <span class="tab"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span>
+            </nav>
+          </section>
         </div>
-      </section>
+        <div id="phonerim"></div>
+      </div>
 
-      <!-- ── Scene 4 — package sizes ────────────────────────────────────── -->
-      <section id="s4" class="clip" data-start="15.5" data-duration="6" data-track-index="3">
-        <h2 id="s4-thesis">Cooking for one means package sizes are the real problem.</h2>
-        <div id="s4-sign">
-          <div id="s4-art">
-            <svg width="132" height="132" viewBox="0 0 64 64" role="img" aria-label="Mise" style="color: #12141c">
-              <path
-                d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z"
-                fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-              <path d="M17 24h28.6v4.2H17z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-              <path
-                d="M20 28.4h23c0 8.6-.9 13.4-4.2 16.2-2 1.7-4.3 2.3-7.3 2.3s-5.3-.6-7.3-2.3C20.9 41.8 20 37 20 28.4z"
-                fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-              <g fill="currentColor">
-                <circle cx="27.1" cy="37.4" r="1.85" />
-                <circle cx="36.3" cy="37.4" r="1.85" />
-              </g>
-              <path d="M28 41.8c1.6 2.1 5.5 2.1 7.1 0" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round" />
-              <path d="M25.6 46.8l6.4 5.2 6.4-5.2 3.1 1.5-9.5 7.4-9.5-7.4z" fill="#B44722" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
-              <path d="M13 64c1.4-6.6 7-10.6 13.6-11.9L32 56l5.4-3.9C44 53.4 49.6 57.4 51 64z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" />
-              <path d="M37.2 57.6l10.2 1.1-.5 4.1-10.2-1z" fill="#F0D9D5" stroke="currentColor" stroke-width="1.3" />
-            </svg>
-          </div>
-          <div id="s4-name">Mise</div>
-          <div id="s4-tag">a weekly cooking collaborator</div>
-          <div id="s4-price">$12/month &middot; cancel anytime</div>
+      <!-- ══ Sign-off ══════════════════════════════════════════════════ -->
+      <div id="signoff">
+        <div class="mark">
+          <svg width="164" height="164" viewBox="0 0 64 64" role="img" aria-label="Mise" style="color: #12141c">
+            <path d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z" fill="#F6EFE3" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M17 24h28.6v4.2H17z" fill="#F6EFE3" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M20 28.4h23c0 8.6-.9 13.4-4.2 16.2-2 1.7-4.3 2.3-7.3 2.3s-5.3-.6-7.3-2.3C20.9 41.8 20 37 20 28.4z" fill="#F6EFE3" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <g fill="currentColor"><circle cx="27.1" cy="37.4" r="1.85"/><circle cx="36.3" cy="37.4" r="1.85"/></g>
+            <path d="M28 41.8c1.6 2.1 5.5 2.1 7.1 0" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round"/>
+            <path d="M25.6 46.8l6.4 5.2 6.4-5.2 3.1 1.5-9.5 7.4-9.5-7.4z" fill="#B44722" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="M13 64c1.4-6.6 7-10.6 13.6-11.9L32 56l5.4-3.9C44 53.4 49.6 57.4 51 64z" fill="#F6EFE3" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M37.2 57.6l10.2 1.1-.5 4.1-10.2-1z" fill="#F0D9D5" stroke="currentColor" stroke-width="1.3"/>
+          </svg>
         </div>
-      </section>
+        <div class="name">Mise</div>
+        <div class="tag">a weekly cooking collaborator</div>
+        <div class="price">$12/month &middot; cancel anytime</div>
+      </div>
 
-      <!-- ── Audio ──────────────────────────────────────────────────────────
-           Music bed at 110 BPM, mixed low; level is driven entirely by
-           timeline tweens so preview and render agree. -->
-      <audio
-        id="bgm"
-        src="assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.mp3"
-        data-start="0"
-        data-duration="21.5"
-        data-track-index="10"
-      ></audio>
+      <!-- ══ Audio ═════════════════════════════════════════════════════
+           vol-9 (114.84 BPM): its strong cues start at 1.07s and run evenly to
+           23.2s, so every scene cut can sit on the grid. Level is set entirely
+           by timeline tweens so preview and render agree. -->
+      <audio id="bgm" src="assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3" data-start="0" data-duration="24.8" data-track-index="10"></audio>
 
-      <!-- Warm, low high-frequency-risk accents only. Each carries an explicit
-           data-duration so the mixer never layers two hits on one track. -->
-      <audio id="sfx-hook" src="assets/sfx/impactSoft_medium_001.ogg" data-start="0.824" data-duration="0.183" data-volume="0.34" data-track-index="11"></audio>
-      <audio id="sfx-card" src="assets/sfx/impactSoft_medium_004.ogg" data-start="6.014" data-duration="0.147" data-volume="0.4" data-track-index="11"></audio>
-      <audio id="sfx-chip-1" src="assets/sfx/bong_001.ogg" data-start="6.281" data-duration="0.122" data-volume="0.2" data-track-index="12"></audio>
-      <audio id="sfx-chip-2" src="assets/sfx/bong_001.ogg" data-start="7.349" data-duration="0.122" data-volume="0.2" data-track-index="12"></audio>
-      <audio id="sfx-chip-3" src="assets/sfx/bong_001.ogg" data-start="8.22" data-duration="0.122" data-volume="0.2" data-track-index="12"></audio>
-      <audio id="sfx-key-1" src="assets/sfx/keypress-003.wav" data-start="10.75" data-duration="0.25" data-volume="0.13" data-track-index="13"></audio>
-      <audio id="sfx-key-2" src="assets/sfx/keypress-007.wav" data-start="11.05" data-duration="0.25" data-volume="0.13" data-track-index="13"></audio>
-      <audio id="sfx-key-3" src="assets/sfx/keypress-011.wav" data-start="11.35" data-duration="0.25" data-volume="0.13" data-track-index="13"></audio>
-      <audio id="sfx-key-4" src="assets/sfx/keypress-015.wav" data-start="11.65" data-duration="0.25" data-volume="0.13" data-track-index="13"></audio>
-      <audio id="sfx-key-5" src="assets/sfx/keypress-019.wav" data-start="11.95" data-duration="0.25" data-volume="0.13" data-track-index="13"></audio>
-      <audio id="sfx-submit" src="assets/sfx/click2.ogg" data-start="12.3" data-duration="0.055" data-volume="0.28" data-track-index="11"></audio>
-      <audio id="sfx-rewrite" src="assets/sfx/bong_001.ogg" data-start="12.562" data-duration="0.122" data-volume="0.24" data-track-index="12"></audio>
-      <audio id="sfx-settle" src="assets/sfx/impactSoft_medium_002.ogg" data-start="14.733" data-duration="0.135" data-volume="0.32" data-track-index="11"></audio>
-      <audio id="sfx-thesis" src="assets/sfx/impactSoft_heavy_000.ogg" data-start="15.824" data-duration="0.505" data-volume="0.3" data-track-index="11"></audio>
-      <audio id="sfx-sign" src="assets/sfx/bong_001.ogg" data-start="19.644" data-duration="0.122" data-volume="0.3" data-track-index="12"></audio>
+      <!-- Three accents only. Nine screen cuts would be exhausting with a sound
+           on each, so these mark the arrival, the one interaction, and the end. -->
+      <audio id="sfx-arrive" src="assets/sfx/impactSoft_medium_004.ogg" data-start="1.068" data-duration="0.147" data-volume="0.4" data-track-index="11"></audio>
+      <audio id="sfx-tap" src="assets/sfx/click2.ogg" data-start="6.339" data-duration="0.055" data-volume="0.3" data-track-index="11"></audio>
+      <audio id="sfx-sign" src="assets/sfx/bong_001.ogg" data-start="23.174" data-duration="0.122" data-volume="0.32" data-track-index="11"></audio>
     </div>
 
     <script src="audio-data.js"></script>
     <script>
-      /* Mise brag video — 21.5s, 1920x1080.
-         Beat grid from happy-beats-business-moves-vol-10 (tempo 109.96, ~0.546s).
-         Strong cues used: 6.014 (0.92), 14.733 (0.93), 15.824 (0.96). */
+      /* Mise — product-tour cut. 24.8s, 1920x1080.
+         Music: vol-9, tempo 114.84, beat grid 0.5225s (a bar is ~2.09s).
+         Every scene cut lands on a beat:
+           2.647 · 5.282 · 8.441 · 10.542 · 13.177 · 15.813 · 18.959 · 21.595
+         Strong-cue locks: 6.339 (1.00), 12.655 (1.00), 23.174 (0.99). */
 
       const tl = gsap.timeline({ paused: true });
       const EASE = "power3.out";
 
-      /* ── Scene 1 — the dill problem ───────────────────────────────────── */
-      // beat-locked: 0.824s (beat grid) — the hook settles on the first downbeat
-      tl.fromTo("#s1-hook", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.72, ease: EASE }, 0.824);
-      tl.fromTo("#s1-mise", { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: EASE }, 1.37);
+      /* ── The device arrives, then never moves again ─────────────────────
+         Holding it still is the point: in an ad the product is the fixed
+         subject and the screens do the work. */
+      // beat-locked: settles on 1.068s, the track's first beat
+      tl.fromTo("#phone", { y: 64, opacity: 0 }, { y: 0, opacity: 1, duration: 0.86, ease: EASE }, 0.36);
 
-      // The bunch appears only after the hook has had its settled read time.
-      tl.fromTo("#s1-dill-wrap", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.7, ease: EASE }, 2.7);
-      // …then all but two sprigs go grey and recede: the waste, made visible.
-      tl.to("#s1-dill .drop", { stroke: "#a9a294", opacity: 0.36, duration: 0.8, ease: "power2.inOut" }, 3.553);
-      tl.to("#s1-tie", { opacity: 0.3, duration: 0.8, ease: "power2.inOut" }, 3.553);
-      tl.fromTo("#s1-caption", { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: EASE }, 4.098);
+      /* ── Screen cuts ──────────────────────────────────────────────────
+         Hard cuts, not dissolves. Each screen's window ends exactly where the
+         next begins, so the change is instant and on the beat — which is both
+         how an ad cuts and the only way two screens' text is never on the
+         glass at once. The beat grid does the smoothing. */
+      // beat-grid cuts: 2.647 · 5.282 · 8.441 · 10.542 · 13.177 · 15.813 · 18.959 · 21.595
 
-      // Soft crossfade out.
-      tl.to(["#s1-inner", "#s1-mise", "#s1-caption"], { opacity: 0, duration: 0.42, ease: "power2.in" }, 5.08);
+      /* ── Captions ──────────────────────────────────────────────────────
+         Sequential, never overlapping: each fades out exactly as the next
+         cut arrives, so two headlines are never on the stage together. */
+      const CAP_IN = [0.42, 2.647, 5.282, 8.441, 10.542, 13.177, 15.813, 18.959];
+      const CAP_OUT = [2.647, 5.282, 8.441, 10.542, 13.177, 15.813, 18.959, 21.595];
+      for (let i = 0; i < 8; i++) {
+        const id = "#cap" + (i + 1);
+        tl.fromTo(id, { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.46, ease: EASE }, CAP_IN[i]);
+        tl.to(id, { opacity: 0, duration: 0.24, ease: "power2.in" }, CAP_OUT[i] - 0.24);
+      }
 
-      /* ── Scene 2 — meet Mise ──────────────────────────────────────────── */
-      // beat-locked: 6.014s (strongCue, intensity 0.92) — the card lands on the cue
-      tl.fromTo("#s2-card", { y: 22, scale: 0.94, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.72, ease: EASE }, 6.014);
+      /* ── Scene 3: the one interaction in the video ─────────────────────
+         beat-locked: 6.339s (strongCue, intensity 1.00) — "Add it" becomes
+         "Added", the card takes the app's --good edge, and the only click in
+         the edit lands on the strongest hit available. The reset call sits
+         earlier on the timeline so scrubbing backwards undoes it. */
+      tl.call(function () { setAdded(false); }, [], 5.282);
+      tl.to("#dish1btn", { scale: 0.94, duration: 0.08, ease: "power2.out" }, 6.339);
+      tl.call(function () { setAdded(true); }, [], 6.339);
+      tl.to("#dish1btn", { scale: 1, duration: 0.26, ease: EASE }, 6.419);
+      tl.fromTo("#dish1edge", { opacity: 0, scaleY: 0.4 }, { opacity: 1, scaleY: 1, duration: 0.34, ease: EASE }, 6.339);
 
-      // beat-grid: chip 1 at 6.281s, chip 2 at 7.349s, chip 3 at 8.220s
-      // (every OTHER beat — ~1.0s apart, so each 3-word chip clears the
-      // reading floor instead of being snapped onto the 0.546s pulse).
-      tl.fromTo("#s2-chip-1", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.46, ease: EASE }, 6.281);
-      tl.fromTo("#s2-chip-2", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.46, ease: EASE }, 7.349);
-      tl.fromTo("#s2-chip-3", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.46, ease: EASE }, 8.22);
+      function setAdded(on) {
+        const b = document.getElementById("dish1btn");
+        if (!b) return;
+        b.textContent = on ? "Added" : "Add it";
+        if (on) b.classList.add("btn--good");
+        else b.classList.remove("btn--good");
+      }
 
-      tl.to("#s2-card", { opacity: 0, duration: 0.4, ease: "power2.in" }, 9.62);
+      /* ── Scene 4: the three nights arrive on consecutive beats ─────────
+         beat-grid: 8.441s, 8.963s, 9.497s. Two-word day headings, so the
+         0.52s spacing is well clear of the reading floor. */
+      tl.fromTo("#night1", { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.38, ease: EASE }, 8.441);
+      tl.fromTo("#night2", { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.38, ease: EASE }, 8.963);
+      tl.fromTo("#night3", { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.38, ease: EASE }, 9.497);
 
-      /* ── Scene 3 — the shopping list, working ─────────────────────────── */
-      tl.fromTo("#s3-panel", { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: EASE }, 10.05);
-      tl.fromTo("#s3 .row", { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.34, stagger: 0.075, ease: EASE }, 10.3);
-      tl.fromTo("#s3-ask", { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.36, ease: EASE }, 10.5);
+      /* ── Scene 5: list rows, then the badge on the cue ─────────────────
+         beat-grid: rows at 10.542s, 11.064s, 11.598s, 12.121s. */
+      tl.fromTo("#srow1", { x: 14, opacity: 0 }, { x: 0, opacity: 1, duration: 0.34, ease: EASE }, 10.542);
+      tl.fromTo("#srow2", { x: 14, opacity: 0 }, { x: 0, opacity: 1, duration: 0.34, ease: EASE }, 11.064);
+      tl.fromTo("#srow3", { x: 14, opacity: 0 }, { x: 0, opacity: 1, duration: 0.34, ease: EASE }, 11.598);
+      tl.fromTo("#srow4", { x: 14, opacity: 0 }, { x: 0, opacity: 1, duration: 0.34, ease: EASE }, 12.121);
+      // beat-locked: 12.655s (strongCue, intensity 1.00) — the "have" badge settles
+      tl.fromTo("#haveBadge", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.32, ease: EASE }, 12.655);
 
-      // The app's real placeholder, typed in. Driven off a tweened counter, so
-      // it is exact at any seek position rather than depending on wall time.
-      const NOTE = "I don't want a whole bunch of dill";
-      const typedEl = document.getElementById("s3-typed");
-      const counter = { n: 0 };
-      tl.set("#s3-caret", { opacity: 1 }, 10.55);
+      /* ── Scene 7: the timer actually runs ──────────────────────────────
+         Driven off a tweened counter rather than a clock, so the digits are
+         exact at any seek position and identical on every render. */
+      const clockEl = document.getElementById("timerClock");
+      const clock = { s: 252 }; // 4:12
       tl.to(
-        counter,
+        clock,
         {
-          n: NOTE.length,
-          duration: 1.5,
+          s: 249,
+          duration: 3.1,
           ease: "none",
           onUpdate: function () {
-            typedEl.textContent = NOTE.slice(0, Math.round(counter.n));
+            const t = Math.ceil(clock.s);
+            const ss = t % 60;
+            clockEl.textContent = Math.floor(t / 60) + ":" + (ss < 10 ? "0" : "") + ss;
           },
         },
-        10.6,
+        15.9,
       );
-      // Finite blink after the line is in (no repeat: -1 — renders must be deterministic).
-      tl.to("#s3-caret", { opacity: 0.15, duration: 0.3, repeat: 2, yoyo: true, ease: "none" }, 12.1);
-      tl.set("#s3-caret", { opacity: 0 }, 12.3);
 
-      // Simulated submit.
-      tl.to("#s3-btn", { scale: 0.96, duration: 0.09, ease: "power2.out" }, 12.3);
-      tl.to("#s3-btn", { scale: 1, duration: 0.24, ease: EASE }, 12.39);
+      /* ── Scene 8: four stars fill, one per beat ────────────────────────
+         beat-grid: 18.959s, 19.482s, 20.016s, 20.538s. Glyphs, not text, so
+         the beat spacing costs no readability. The fifth stays empty — the
+         app reads four back as "Really good". */
+      const STAR_BEATS = [18.959, 19.482, 20.016, 20.538];
+      for (let i = 0; i < 4; i++) {
+        tl.to("#scr8 .star:nth-child(" + (i + 1) + ") path", { fill: "#B44722", duration: 0.26, ease: "power2.out" }, STAR_BEATS[i]);
+      }
+      tl.fromTo("#ratingRead", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power2.out" }, 20.538);
+      tl.fromTo("#chipFlat", { opacity: 0.25 }, { opacity: 1, duration: 0.3, ease: "power2.out" }, 20.79);
 
-      // beat-grid: 12.562s — the row rewrites itself. This is the whole product.
-      tl.to("#s3-qty-old", { opacity: 0, duration: 0.3, ease: "power2.inOut" }, 12.562);
-      tl.fromTo("#s3-qty-new", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.36, ease: EASE }, 12.562);
-      tl.fromTo("#s3-note-line", { opacity: 0, y: -6 }, { opacity: 1, y: 0, duration: 0.42, ease: EASE }, 12.75);
-      tl.to("#s3-row-tint", { opacity: 1, duration: 0.5, ease: "power2.out" }, 12.562);
+      /* ── Scene 9: the sign-off ─────────────────────────────────────────
+         beat-locked: 23.174s (strongCue, intensity 0.99) */
+      tl.fromTo("#signoff", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: EASE }, 23.174);
 
-      // beat-locked: 14.733s (strongCue, intensity 0.93) — the row settles to rest.
-      // Non-text accent, so locking it to the pulse costs no readability.
-      tl.fromTo("#s3-row-bar", { opacity: 0, scaleY: 0 }, { opacity: 1, scaleY: 1, duration: 0.34, ease: EASE }, 14.733);
+      /* ── Music level ───────────────────────────────────────────────────
+         Even through the tour — there is no narration or typing to protect —
+         then faded out so the final accent rings into silence. */
+      tl.set("#bgm", { volume: 0.34 }, 0);
+      tl.to("#bgm", { volume: 0.44, duration: 1, ease: "power1.inOut" }, 2.6);
+      tl.to("#bgm", { volume: 0, duration: 2.2, ease: "power1.in" }, 22.6);
 
-      tl.to("#s3-panel", { opacity: 0, duration: 0.42, ease: "power2.in" }, 15.08);
-
-      /* ── Scene 4 — package sizes ──────────────────────────────────────── */
-      // beat-locked: 15.824s (strongCue, intensity 0.96) — the thesis lands on the cue
-      tl.fromTo("#s4-thesis", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.66, ease: EASE }, 15.824);
-      tl.to("#s4-thesis", { y: -18, opacity: 0, duration: 0.4, ease: "power2.in" }, 19.2);
-
-      // beat-locked: 19.644s (strongCue, intensity 0.96) — the sign-off
-      tl.fromTo("#s4-sign", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.66, ease: EASE }, 19.644);
-
-      /* ── Music level ──────────────────────────────────────────────────────
-         Absolute levels on the timeline: quiet under the hook, up for the
-         product scenes, ducked so the typing reads as typing, then faded out
-         so the final accent rings into silence. */
-      tl.set("#bgm", { volume: 0.3 }, 0);
-      tl.to("#bgm", { volume: 0.42, duration: 0.8, ease: "power1.inOut" }, 5.6);
-      tl.to("#bgm", { volume: 0.26, duration: 0.5, ease: "power1.inOut" }, 10.4);
-      tl.to("#bgm", { volume: 0.4, duration: 0.7, ease: "power1.inOut" }, 12.6);
-      tl.to("#bgm", { volume: 0, duration: 2.4, ease: "power1.in" }, 19.1);
-
-      /* ── Audio-reactive bloom ─────────────────────────────────────────────
-         The warm daylight behind the content breathes with the track's bass.
-         Per-frame sampling via tl.call — a single tween would not react at
-         all. Nothing else animates #bloom, so there is no property contest.
-         Kept subtle: this sits behind text. */
-      (function attachBloom() {
+      /* ── Audio-reactive stage light ────────────────────────────────────
+         The light behind the device breathes with the track's bass, and the
+         device's specular rim gains a little presence with it. Per-frame
+         sampling via tl.call — a single tween would not react at all.
+         Nothing else animates either property, so there is no contest, and
+         the screen content itself is deliberately left alone: it has to read
+         as a clean product shot. */
+      (function attachStageLight() {
         if (typeof AUDIO_DATA === "undefined" || !AUDIO_DATA.frames) return;
-        const bloom = document.getElementById("bloom");
+        const light = document.getElementById("stagelight");
+        const rim = document.getElementById("phonerim");
         const fps = AUDIO_DATA.fps;
-        const total = Math.min(AUDIO_DATA.totalFrames, Math.ceil(21.5 * fps));
+        const total = Math.min(AUDIO_DATA.totalFrames, Math.ceil(24.8 * fps));
         for (let f = 0; f < total; f++) {
           const frame = AUDIO_DATA.frames[f];
           if (!frame) continue;
@@ -720,8 +783,9 @@
           tl.call(
             (function (b, e) {
               return function () {
-                bloom.style.opacity = (0.3 + b * 0.34).toFixed(4);
-                bloom.style.transform = "scale(" + (1 + e * 0.045).toFixed(4) + ")";
+                light.style.opacity = (0.38 + b * 0.32).toFixed(4);
+                light.style.transform = "scale(" + (1 + e * 0.05).toFixed(4) + ")";
+                rim.style.opacity = (0.66 + b * 0.22).toFixed(4);
               };
             })(bass, energy),
             [],
