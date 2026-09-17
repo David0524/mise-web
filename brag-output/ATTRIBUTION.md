@@ -1,13 +1,14 @@
 # Third-party assets in this video
 
-Everything visual — the palette, the Nunito type, the `MiseHello` character, all nine
-recreated app screens and every line of the app's own copy — comes from this repository.
-The audio and the animation runtime do not.
+Everything visual comes from this repository: the palette, the Nunito type, the
+`MiseHello` character, the app's own photography (`public/img/`), every recreated
+interface fragment, and the app's own copy. The audio and the animation runtime do not.
 
 | Asset | Path | Source |
 | --- | --- | --- |
-| Music bed | `composition/assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3` | [ende.app](https://ende.app/en) — "Happy Beats / Business Moves" series, bundled with the `brag` Claude Code plugin |
+| Music bed | `composition/assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3` | [ende.app](https://ende.app/en) — "Happy Beats / Business Moves" series, bundled with the `brag` Claude Code plugin |
 | Sound effects | `composition/assets/sfx/*` | [Kenney](https://kenney.nl/) — bundled with the `brag` plugin |
+| Photography (`clay.webp`, `spices.webp`, `dill.webp`) | `composition/assets/img/` | Copied from this repo's own `public/img/` — whatever licence already covers them covers this use |
 | Nunito (woff2, weights 600/700/800/900) | `composition/assets/fonts/` | Google Fonts — SIL Open Font License 1.1 (the same family `app/layout.js` already loads) |
 | GSAP 3.14.2 | `composition/assets/vendor/gsap.min.js` | GreenSock — free "standard" license for this use; vendored so the render needs no network |
 | `brag` plugin (skill, music, SFX) | — | MIT, © 2026 Shunit Haviv Hakimi |
@@ -26,6 +27,6 @@ any paid promotion — or re-render with a track you hold a licence for. Swappin
 cheap: drop the replacement into `composition/assets/music/`, point `#bgm` at it, and
 re-derive the cue timings (`npx hyperframes beats`, or the plugin's
 `scripts/analyze_music_cues.py`) since the beat-locks in `index.html` are specific to
-this track's 114.84 BPM grid.
+this track's 109.96 BPM grid.
 
 Kenney's assets are CC0 and carry no such constraint.

@@ -1,3 +1,3 @@
-Mise is a weekly cooking collaborator. Tell it about your kitchen, agree on a few dishes, and it builds the shopping list, writes the recipes, talks you through cooking them at the stove, and remembers how they turned out.
+Six o'clock, half a cabbage, no idea what to make.
 
-One app, from "who's eating" to "that tasted flat, remember it."
+Mise turns that into a week of dinners you actually want to cook — it learns your kitchen, argues with you about the menu, folds three dishes into one shopping list, and talks you through the pan. Then it remembers how it went.
