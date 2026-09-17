@@ -7013,29 +7013,43 @@ const CSS = `
 /* keep legacy names working so nothing goes unstyled mid-refactor */
 .app{--steel:var(--sunk); --card:var(--surface); --line:var(--rule-2); --blade:var(--muted)}
 
-/* How much the marble layer is lifted. CSS-only, because the asset itself
-   cannot take a tonal edit — measured, after trying it and making a mess:
+/* Marble surface tone. --surface-lift is a no-op at 1.0 and kept only as a
+   tuning knob; the work is in the ASSET now, which is where it belonged.
 
-     public/textures/marble.webp is 852x1846 in 7.7 KB = 0.04 bits per pixel.
-     It holds 28 unique luminance values out of 256, spanning 184-215, with
-     compression blocking 13x stronger on the 4px transform grid than off it.
+   public/textures/marble.webp is the original photograph, REWORKED. Four
+   procedural replacements were tried first and all four read as contour maps
+   or wood grain rather than stone — iso-contours of a noise field inherently
+   make closed loops, and marble veining doesn't. The photo had believable
+   veining all along; its only defect was tone.
 
-   That is a near-flat gradient with heavy blocking hidden by its own lack of
-   contrast. Re-levelling it to 200-255 expanded contrast 1.77x, which pushed
-   those 28 values apart and turned every compression step into a visible
-   band — it magnified artifacts, because there was no detail in there to
-   reveal. Reverted.
+   The rework, and the order matters:
+     1. Gaussian blur 3.2px FIRST. The photo carried compression blocking 13x
+        stronger on the 4px transform grid than off it, and any tonal edit
+        multiplies that into visible bands — which is exactly what a straight
+        levels stretch did when it was tried. Blurring past the grid removes
+        the artifact before anything amplifies it, at the cost of detail the
+        eye cannot resolve at background scale anyway.
+     2. Local contrast x5 around a 38px low-pass, NOT a global stretch. That
+        amplifies the soft mottling that survived rather than pulling the whole
+        histogram apart.
+     3. Re-placed at mean 235, stddev 7.6. Measured on-grid step afterwards:
+        0.72 levels, i.e. below the ~1 level needed to see a band at all.
 
-   brightness() is gentler: it scales the whole signal by 1.22 rather than
-   expanding contrast by 1.77, so blocking grows proportionally instead of
-   separating into bands. This is the most the current file will take.
+   The MEAN is what earlier attempts got wrong, in both directions:
+     - 201 (untouched): the slab sat 45 levels under the paper and read as a
+       grey panel. Reported as "too dark".
+     - ~246 (the previous shipped version, deliberately matched to paper so it
+       wouldn't darken anything): 90% of on-screen pixels were the SAME COLOUR
+       as the page, so nine tenths of the screen had nothing to see by
+       construction. Reported as "just a solid color".
+     - 235 (now): about 11 levels under the paper. Unmistakably a stone
+       surface, without reading as a grey block.
 
-   Luminance /255:  white card 255 | paper 246 | this ~246 | asset alone 201.
+   texture_quality.js asserts all of this, including the coverage rule whose
+   absence let the paper-matched version ship: most of the surface must be a
+   visibly different tone from the page, or it isn't a texture, it's the page.
 
-   TO GO FURTHER, THE FILE HAS TO BE REPLACED. A marble export at normal photo
-   quality (100-300 KB, real tonal range) can be levelled properly and would
-   be both brighter and more marble-like. Nothing in CSS can add information
-   that isn't in a 7.7 KB file. */
+   Luminance /255:  white card 255 | paper 246 | stone ~235 | veins ~205. */
 .app{--surface-lift:1.0}
 /* Sized in rem, not px, so the reader's own browser text-size setting scales the
    whole interface. Contrast follows the operating system rather than an in-app toggle. */
