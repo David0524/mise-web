@@ -1573,6 +1573,14 @@ export default function App() {
      actually completed. */
   const [setupDone, setSetupDone] = useState(false);
 
+  /* Visual style. Two complete looks, not a colour tweak:
+       "modern" — the original: cool paper, glass panels, soft shadows.
+       "canvas" — hand-drawn: warm stock, drawn frames, hatching, no shadows.
+     Persisted with the profile so it survives a reload, and applied as a data
+     attribute on .app so the whole stylesheet can branch on it without any
+     component needing to know which look is active. */
+  const [style, setStyle] = useState("modern");
+
   const [thisWeek, setThisWeek] = useState({ fridge: "", cravings: "", request: "" });
   const [convo, setConvo] = useState([]);
   const [thread, setThread] = useState([]);
@@ -1800,6 +1808,7 @@ export default function App() {
           // Older saves predate this flag; a stored profile with real cooking
           // nights means they got through setup, so don't re-onboard them.
           if (d.setupDone || (d.profile?.nights?.length && d.savedAt)) setSetupDone(true);
+          if (d.style === "canvas" || d.style === "modern") setStyle(d.style);
         }
       } catch (_) {
         /* first run, or storage unavailable — defaults are fine */
@@ -2245,6 +2254,7 @@ not the names:
         favorites: next.favorites ?? favorites,
         savedAt: new Date().toISOString(),
         setupDone: next.setupDone ?? setupDone,
+        style: next.style ?? style,
       };
       await apiStorageSet(STORE_KEY, JSON.stringify(payload));
       setSavedAt(payload.savedAt);
@@ -2252,7 +2262,7 @@ not the names:
     } catch (_) {
       setStorageOk(false);
     }
-  }, [profile, favorites, setupDone]);
+  }, [profile, favorites, setupDone, style]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -3740,7 +3750,7 @@ Respond with ONLY this JSON:
     return (
       <div className="app">
         <style>{CSS}</style>
-        <PaperSurface />
+        <div className="surface" aria-hidden="true" />
         {/* Echoes the shape of the hero card about to appear, rather than a bare
            spinner floating with nothing around it — consistent with the rest of
            the loading system instead of a one-off exception to it. */}
@@ -3936,6 +3946,7 @@ Respond with ONLY this JSON:
           <MyKitchen
             profile={profile} savedAt={savedAt}
             historyNode={historyNode}
+            style={style} onStyle={setStyleAndSave}
             onEdit={() => { setView("setup"); setStep(0); }}
           />
         )}
@@ -3973,10 +3984,14 @@ Respond with ONLY this JSON:
           />
   );
 
+  const setStyleAndSave = (v) => { setStyle(v); persist({ style: v }); };
+
   return (
-    <div className="app">
+    <div className="app" data-style={style}>
       <style>{CSS}</style>
-      <PaperSurface />
+      {/* The drawn stock belongs to the canvas look only. Modern keeps its
+          painted surface, which the .surface rule supplies in CSS. */}
+      {style === "canvas" ? <PaperSurface /> : <div className="surface" aria-hidden="true" />}
 
       {/* Defines the actual distortion used by every glass surface — this is
          what makes it lensing rather than blur. No native web API exposes
@@ -6284,7 +6299,7 @@ function AiSource() {
   );
 }
 
-function MyKitchen({ profile, savedAt, onEdit, historyNode }) {
+function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
   /* Everything folds. This page was the tallest in the app — a full setup
      summary, then every dish ever rated, twice over, then the AI note — and
      almost none of it is what you came for. Opening it to a short stack of
@@ -6303,7 +6318,7 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode }) {
      and made the page tall — but the dishes inside it are individually folded
      now, so an open week list is a short scannable index rather than a wall.
      Setup is the smaller of the two and stays open too. */
-  const [open, setOpen] = useState({ setup: true, history: true });
+  const [open, setOpen] = useState({ setup: true, look: true, history: true });
   const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
   return (
@@ -6364,6 +6379,37 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode }) {
               <span className="setg__v setg__v--sm">A bit healthier</span>
             </div>
           )}
+        </div>
+      </Fold>
+
+      <Fold
+        title="Look"
+        note="How the app is drawn."
+        open={open.look}
+        onToggle={() => toggle("look")}
+      >
+        <p className="lead">
+          Two complete looks. Switching is instant and nothing else changes —
+          same food, same plan.
+        </p>
+        <div className="looks">
+          {[
+            ["modern", "Modern", "Cool paper, glass panels, soft light."],
+            ["canvas", "Canvas", "Warm stock, drawn edges, hatching, flat ink."],
+          ].map(([id, label, note]) => (
+            <button
+              key={id}
+              className={`looks__o${style === id ? " looks__o--on" : ""}`}
+              onClick={() => onStyle(id)}
+              aria-pressed={style === id}
+            >
+              <span className={`looks__sw looks__sw--${id}`} aria-hidden="true" />
+              <span className="looks__t">
+                <strong>{label}</strong>
+                <span>{note}</span>
+              </span>
+            </button>
+          ))}
         </div>
       </Fold>
 
@@ -6940,7 +6986,7 @@ const CSS = `
      elevation rather than by an outline drawn around everything. */
   --rose:#EE9265; --brick:#B44722; --navy:#12141C; --indigo:#3C3F63; --plum:#573C56;
 
-  --paper:#F6EFE3;          /* the ground */
+  --paper:#FAF5F4;          /* the ground */
   --surface:#FFFFFF;        /* raised cards */
   --sunk:#F4EBE9;           /* recessed wells */
   --ink:#1A1B24;            /* body text */
@@ -7032,7 +7078,7 @@ const CSS = `
    .surface (z-index:-1) and hides the background entirely. On html it becomes the
    canvas, painted first, with the texture above it. Paper, not a near-white,
    so any pixel the texture doesn't reach matches the rest of the app. */
-html{background:#F6EFE3}   /* literal: --paper is declared on .app, not :root */
+html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 /* every string here is model-generated and can be any length */
 .app p,.app li,.app strong,.app span{overflow-wrap:anywhere}
 .app input[type=text],.app textarea,.app select{max-width:100%}
@@ -7749,10 +7795,187 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    the light bands and the grain into it once; this rule only places it and
    carries the parallax. No background-image, because a finish is geometry —
    which is the whole reason this surface finally works. */
+/* The look switcher. Each option carries a swatch that is a miniature of the
+   look itself, because two words cannot tell you what a visual style feels
+   like — you have to see the stock and the edge. */
+.looks{display:grid;gap:.6rem;margin-top:.9rem}
+.looks__o{display:flex;align-items:center;gap:.85rem;width:100%;padding:.75rem;
+  background:none;border:1.5px solid var(--rule);border-radius:16px;cursor:pointer;
+  text-align:left;font:inherit;color:inherit;transition:border-color .16s ease}
+.looks__o--on{border-color:var(--brick);border-width:2px}
+.looks__t{display:flex;flex-direction:column;gap:.1rem;min-width:0}
+.looks__t strong{font-family:'Nunito',sans-serif}
+.looks__t span{font-size:.88em;color:var(--muted)}
+.looks__sw{flex:0 0 auto;width:52px;height:52px;border-radius:12px;position:relative;overflow:hidden}
+/* modern: cool paper with the daylight wash and a glass chip on it */
+.looks__sw--modern{background:
+  radial-gradient(70% 60% at 20% 0%, rgba(226,238,250,.9), transparent 62%),
+  linear-gradient(170deg,#FDFAF9,#F1E9E8);
+  border:1px solid var(--rule)}
+.looks__sw--modern::after{content:"";position:absolute;inset:12px 10px;
+  background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.8);border-radius:8px}
+/* canvas: warm stock, a light band, hatching and a drawn edge */
+.looks__sw--canvas{background:
+  repeating-linear-gradient(-45deg, rgba(255,244,225,.85) 0 9px, transparent 9px 18px),
+  #F6EFE3;
+  border:1.6px solid #241F1B}
+.looks__sw--canvas::after{content:"";position:absolute;inset:11px 9px 13px 11px;
+  border:1.2px solid #241F1B;border-radius:6px 9px 7px 10px / 9px 6px 10px 7px;
+  background:repeating-linear-gradient(-45deg,#B9A991 0 1px, transparent 1px 5px)}
+
+/* ============================================================================
+   THE CANVAS LOOK
+   ----------------------------------------------------------------------------
+   A second complete visual language, selected in My Kitchen and applied by
+   [data-style="canvas"] on .app. Built from the hand-drawn-canvas-animation
+   house rules, adapted for an interface rather than a film:
+
+     "Paper, not screen."          -> warm stock, drawn by <PaperSurface>
+     "Texture is a finish."        -> hatching as an SVG pattern, no gradients
+     "Nothing lines up perfectly." -> frames offset from their fills
+     "Cut hard."                   -> no soft shadows, no blur, no glass
+
+   What is deliberately NOT adopted from the skill: canvas-drawn text. Type
+   stays DOM type so it scales with the reader's own font setting, gets
+   selected, and reaches a screen reader. The skill draws films; this is an
+   app people cook from.
+   ============================================================================ */
+
+.app[data-style="canvas"]{
+  --paper:#F6EFE3;
+  --surface:#FBF6EC;        /* card stock, a shade above the ground */
+  --sunk:#EFE6D6;
+  --ink:#241F1B;            /* warm near-black, never pure */
+  --muted:#6B5F54;
+  --rule:#CDBFAA;
+  --rule-2:#B9A991;
+  --glass:#FBF6EC;          /* no glass in this look: cards are opaque stock */
+  --glass-rim:#CDBFAA;
+  --glass-blur:none;
+  --spec:none; --lift-1:none; --lift-2:none; --shadow-lift:none;
+}
+
+/* Kill the whole glass apparatus: blur, specular highlights, lift shadows.
+   In a printed look every one of those reads as a mistake. */
+.app[data-style="canvas"] .card,
+.app[data-style="canvas"] .sheet,
+.app[data-style="canvas"] .tabbar,
+.app[data-style="canvas"] .fab,
+.app[data-style="canvas"] .alert{
+  -webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
+.app[data-style="canvas"] .card::before,
+.app[data-style="canvas"] .card::after{display:none}
+
+/* Cards: opaque stock with a DOUBLE edge — an inner rule and a second rule
+   offset a hair from it. That offset is the whole trick: the house rule is
+   that a fill and its outline never coincide, and two edges a pixel apart
+   read as drawn where one crisp edge reads as printed by a machine. */
+.app[data-style="canvas"] .card{
+  background:var(--surface);
+  border:1.5px solid var(--ink);
+  border-radius:14px 18px 15px 20px / 18px 14px 20px 15px;   /* uneven corners */
+  position:relative}
+.app[data-style="canvas"] .card::after{
+  content:"";display:block;position:absolute;inset:3px 4px 5px 3px;
+  border:1px solid var(--rule-2);border-radius:16px 13px 19px 14px / 13px 18px 14px 19px;
+  pointer-events:none;opacity:.55}
+
+/* Hatching, as a finish rather than a gradient: an SVG pattern of parallel
+   strokes, used on recessed wells and the seed card. Inline data URI so it
+   costs no request and scales freely. */
+.app[data-style="canvas"] .sec,
+.app[data-style="canvas"] .row2--open,
+.app[data-style="canvas"] .seed{
+  background-color:var(--sunk);
+  background-image:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14'>\
+<path d='M-2 12 L12 -2 M0 16 L16 0 M-2 4 L4 -2' stroke='%23B9A991' stroke-width='.9' opacity='.55'/></svg>")}
+
+/* Buttons: a flat ink-edged pill, with the fill sitting a touch off its
+   outline. No gradient, no lift shadow — the press is a 1px nudge, like a
+   stamp being pressed. */
+.app[data-style="canvas"] .btn{
+  border-radius:16px 20px 17px 22px / 20px 16px 22px 17px;
+  border:1.6px solid var(--ink);
+  box-shadow:2px 2px 0 var(--ink);
+  transition:transform .1s ease, box-shadow .1s ease}
+.app[data-style="canvas"] .btn:hover:not(:disabled){filter:none;transform:translate(-1px,-1px);
+  box-shadow:3px 3px 0 var(--ink)}
+.app[data-style="canvas"] .btn:active:not(:disabled){transform:translate(2px,2px);
+  box-shadow:0 0 0 var(--ink)}
+.app[data-style="canvas"] .btn--ghost{background:transparent;color:var(--ink);
+  box-shadow:1.5px 1.5px 0 var(--rule-2)}
+
+/* Inputs: a ruled line rather than a box, the way a form is filled in by hand. */
+.app[data-style="canvas"] .app input[type=text],
+.app[data-style="canvas"] input[type=text],
+.app[data-style="canvas"] textarea{
+  background:transparent;border:none;border-bottom:1.6px solid var(--rule-2);
+  border-radius:0;padding-left:.2rem}
+.app[data-style="canvas"] input[type=text]:focus,
+.app[data-style="canvas"] textarea:focus{border-bottom-color:var(--brick);outline:none}
+
+/* Section rules: a drawn line, not a hairline. */
+.app[data-style="canvas"] .hist__d,
+.app[data-style="canvas"] .row2{
+  border-color:var(--rule)}
+
+/* Tab bar: stock, a drawn top rule, and an ink-ringed pill on the active icon
+   instead of a tinted wash. */
+.app[data-style="canvas"] .tabbar{
+  background:var(--surface);border-top:1.6px solid var(--ink)}
+.app[data-style="canvas"] .tabbar__b--on .tabbar__i{
+  background:transparent;box-shadow:0 0 0 1.6px var(--ink);border-radius:999px}
+.app[data-style="canvas"] .tabbar__dot{box-shadow:0 0 0 2px var(--surface)}
+
+/* The Ask Mise bubble becomes a stamped badge. */
+.app[data-style="canvas"] .fab{
+  background:var(--brick);border:1.8px solid var(--ink);box-shadow:2.5px 2.5px 0 var(--ink)}
+.app[data-style="canvas"] .fab__av{background:var(--surface);box-shadow:none}
+
+/* Chips and quick asks: hand-ruled outlines. */
+.app[data-style="canvas"] .chip,
+.app[data-style="canvas"] .quick{
+  background:transparent;border:1.4px solid var(--rule-2);
+  border-radius:12px 16px 13px 17px / 16px 12px 17px 13px}
+.app[data-style="canvas"] .chip--on{background:var(--brick);color:#fff;border-color:var(--ink)}
+
+/* Headings get a drawn underline — the "guides show" rule: the mark that says
+   a person made this, not a layout engine. */
+.app[data-style="canvas"] .card h2{position:relative;display:inline-block}
+.app[data-style="canvas"] .card h2::after{
+  content:"";position:absolute;left:0;right:-6px;bottom:-6px;height:6px;
+  background:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='120' height='6'>\
+<path d='M0 4 C 22 1, 38 6, 60 3 S 98 1, 120 4' fill='none' stroke='%23EE9265' stroke-width='2.2'/></svg>") repeat-x;
+  opacity:.9}
+
+/* The loading bar becomes a drawn rule filling in. */
+.app[data-style="canvas"] .lbar__track{background:var(--sunk);border:1.2px solid var(--rule-2)}
+.app[data-style="canvas"] .lbar__fill{background:var(--brick)}
+
+/* Progress line and alerts keep their meaning, lose their gloss. */
+.app[data-style="canvas"] .alert{border:1.8px solid var(--ink);border-radius:14px 18px 15px 19px / 18px 14px 19px 15px}
+
+/* Motion: the house cadence is "drawn on twos" — quantised, not smooth. Only
+   applied to the one decorative element that already moves, so nothing in the
+   reading path starts stepping. */
+@media (prefers-reduced-motion: no-preference){
+  .app[data-style="canvas"] .fab--dance{animation-timing-function:steps(6,end)}
+}
+
+/* MODERN's surface: painted, as it was — daylight gradients over warm paper.
+   In the canvas look this element is replaced by <PaperSurface>, a canvas that
+   DRAWS the stock, so the rule below only has to place it. */
 .surface{position:fixed;inset:-8% 0 -8% 0;z-index:-1;pointer-events:none;
+  background-image:${DAYLIGHT},
+    linear-gradient(176deg,#FDFAF9 0%, #F6F0EF 52%, #F1E9E8 100%);
+  background-size:cover;background-position:center;
   background-color:var(--paper);
   transform:translate3d(0,var(--par,0px),0);
   will-change:transform}
+/* The canvas look's surface is a <canvas>; it paints its own stock. */
+.app[data-style="canvas"] canvas.surface{background-image:none;background-color:#F6EFE3}
 /* Cook mode: the same daylight, no photographic texture under it.
    It once had a linen photo — a cloth on the counter rather than the counter —
    and it read as noise exactly where noise costs the most. This is the one screen you read
