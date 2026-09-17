@@ -48,7 +48,7 @@ export default function RootLayout({ children }) {
                2. negative z-index descendants   <- .surface (z-index:-1)
                3. in-flow block backgrounds      <- this element's own box
              An opaque background HERE is painted at step 3, directly on top of
-             the marble at step 2, hiding it everywhere except the rubber-band
+             the .surface layer at step 2, hiding it everywhere except the rubber-band
              overscroll area outside body's box. It only worked originally
              because body had no background on <html> to compete with, so this
              colour propagated up to the canvas at step 1 and sat harmlessly

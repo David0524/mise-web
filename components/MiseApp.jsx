@@ -5,7 +5,9 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 /* The one definition of the app's directional daylight, shared with the
    sign-in / sign-up / pricing pages so the app and its front door are lit the
    same way. Interpolated into the .surface rule in CSS below. */
-import { DAYLIGHT, DAYLIGHT_SOFT } from "@/lib/authStyles";
+import { DAYLIGHT } from "@/lib/authStyles";
+/* The background is DRAWN now, not a gradient or a photo — see PaperSurface. */
+import PaperSurface, { drawPaper } from "./PaperSurface";
 
 /* ============================================================================
    MISE — a weekly cooking collaborator
@@ -827,29 +829,13 @@ function drawCover(ctx, img, x, y, w, h, radius) {
    see before they ever open the app, so it shouldn't look like a different
    product than the one it's advertising. */
 function shareBackground(ctx) {
-  ctx.fillStyle = "#FAF5F4";
-  ctx.fillRect(0, 0, SHARE_W, SHARE_H);
-
-  const pools = [
-    // sunlight through a window, high left — pale butter, almost white
-    [0.04, -0.04, 0.62, "rgba(255,247,228,.95)"],
-    // the cool daylight it sits in
-    [0.62, -0.06, 0.70, "rgba(233,241,247,.85)"],
-    // warm bounce off wood or stone, mid right
-    [1.00, 0.42, 0.46, "rgba(246,232,213,.75)"],
-    // cool shadow pooling low and right
-    [0.78, 1.06, 0.76, "rgba(205,214,224,.65)"],
-  ];
-  pools.forEach(([x, y, r, color]) => {
-    const cx = SHARE_W * x;
-    const cy = SHARE_H * y;
-    const rad = SHARE_W * r;
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
-    g.addColorStop(0, color);
-    g.addColorStop(1, color.replace(/[\d.]+\)$/, "0)"));
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, SHARE_W, SHARE_H);
-  });
+  /* Prints on the SAME drawn paper as the app, from the same function.
+     It used to be four radial gradient pools painted here — a second, private
+     definition of "the light", which drifted from the app's own. A shared card
+     is the thing people see before they ever open the app; it should be the
+     same stock. This is also the one surface where the house rule applies
+     literally, because it is an exported image rather than live UI. */
+  drawPaper(ctx, SHARE_W, SHARE_H, { stock: "#F6EFE3", seed: 11, grainAlpha: 0.07 });
 }
 
 /* A glass pane: translucent fill, hairline rim, and the specular highlight
@@ -3754,7 +3740,7 @@ Respond with ONLY this JSON:
     return (
       <div className="app">
         <style>{CSS}</style>
-        <div className="surface" aria-hidden="true" />
+        <PaperSurface />
         {/* Echoes the shape of the hero card about to appear, rather than a bare
            spinner floating with nothing around it — consistent with the rest of
            the loading system instead of a one-off exception to it. */}
@@ -3990,7 +3976,7 @@ Respond with ONLY this JSON:
   return (
     <div className="app">
       <style>{CSS}</style>
-      <div className="surface" aria-hidden="true" />
+      <PaperSurface />
 
       {/* Defines the actual distortion used by every glass surface — this is
          what makes it lensing rather than blur. No native web API exposes
@@ -5516,7 +5502,7 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
 
   return (
     <div className="cook" role="region" aria-label="Cooking mode" ref={scrollRef}>
-      <div className="surface surface--linen" aria-hidden="true" />
+      <div className="surface surface--cook" aria-hidden="true" />
       {/* -------- top bar -------- */}
       <div className="cook__top">
         <button className="cook__exit" onClick={() => { voice.stop(); onExit(); }}>Leave</button>
@@ -6954,7 +6940,7 @@ const CSS = `
      elevation rather than by an outline drawn around everything. */
   --rose:#EE9265; --brick:#B44722; --navy:#12141C; --indigo:#3C3F63; --plum:#573C56;
 
-  --paper:#FAF5F4;          /* the ground */
+  --paper:#F6EFE3;          /* the ground */
   --surface:#FFFFFF;        /* raised cards */
   --sunk:#F4EBE9;           /* recessed wells */
   --ink:#1A1B24;            /* body text */
@@ -6975,14 +6961,10 @@ const CSS = `
   /* Glass: translucent fill + saturation boost so colour bleeds through from
      behind, a hairline rim, and a specular top highlight. The highlight is
      what sells it as a lit pane rather than just something transparent. */
-  /* Thinner than they were (.58/.70). The marble underneath has only 28
-     unique tonal values in it, so a 58% white fill on top of a 20px blur left
-     literally nothing to see — the cards read as flat off-white panels and the
-     stone was only visible in the rubber-band gap above the header. Combined
-     with the brightness lift on .surface, which pushes the marble to roughly
-     the same luminance as the fill, the texture was being erased twice over.
-     At .36 the veining reads through the card while the text on top keeps a
-     very large contrast margin (navy #12141C on ~240 luminance). */
+  /* Thin on purpose (.58/.70 previously). The cards sit over a gradient-lit
+     surface now, and a heavy white fill flattened the light behind them into
+     one dead panel. At .36 the shading still reads through the card, and text
+     keeps an enormous contrast margin (navy #12141C on ~240 luminance). */
   --glass:rgba(255,255,255,.36);
   --glass-strong:rgba(255,255,255,.50);
   --glass-rim:rgba(255,255,255,.62);
@@ -7013,44 +6995,7 @@ const CSS = `
 /* keep legacy names working so nothing goes unstyled mid-refactor */
 .app{--steel:var(--sunk); --card:var(--surface); --line:var(--rule-2); --blade:var(--muted)}
 
-/* Marble surface tone. --surface-lift is a no-op at 1.0 and kept only as a
-   tuning knob; the work is in the ASSET now, which is where it belonged.
 
-   public/textures/marble.webp is the original photograph, REWORKED. Four
-   procedural replacements were tried first and all four read as contour maps
-   or wood grain rather than stone — iso-contours of a noise field inherently
-   make closed loops, and marble veining doesn't. The photo had believable
-   veining all along; its only defect was tone.
-
-   The rework, and the order matters:
-     1. Gaussian blur 3.2px FIRST. The photo carried compression blocking 13x
-        stronger on the 4px transform grid than off it, and any tonal edit
-        multiplies that into visible bands — which is exactly what a straight
-        levels stretch did when it was tried. Blurring past the grid removes
-        the artifact before anything amplifies it, at the cost of detail the
-        eye cannot resolve at background scale anyway.
-     2. Local contrast x5 around a 38px low-pass, NOT a global stretch. That
-        amplifies the soft mottling that survived rather than pulling the whole
-        histogram apart.
-     3. Re-placed at mean 235, stddev 7.6. Measured on-grid step afterwards:
-        0.72 levels, i.e. below the ~1 level needed to see a band at all.
-
-   The MEAN is what earlier attempts got wrong, in both directions:
-     - 201 (untouched): the slab sat 45 levels under the paper and read as a
-       grey panel. Reported as "too dark".
-     - ~246 (the previous shipped version, deliberately matched to paper so it
-       wouldn't darken anything): 90% of on-screen pixels were the SAME COLOUR
-       as the page, so nine tenths of the screen had nothing to see by
-       construction. Reported as "just a solid color".
-     - 235 (now): about 11 levels under the paper. Unmistakably a stone
-       surface, without reading as a grey block.
-
-   texture_quality.js asserts all of this, including the coverage rule whose
-   absence let the paper-matched version ship: most of the surface must be a
-   visibly different tone from the page, or it isn't a texture, it's the page.
-
-   Luminance /255:  white card 255 | paper 246 | stone ~235 | veins ~205. */
-.app{--surface-lift:1.0}
 /* Sized in rem, not px, so the reader's own browser text-size setting scales the
    whole interface. Contrast follows the operating system rather than an in-app toggle. */
 .app{font-size:1.125rem}
@@ -7068,7 +7013,7 @@ const CSS = `
    same job of preventing sideways scroll without breaking sticky. */
 /* The clip moved OFF .app and onto .main.
    .surface is position:fixed inside .app, and a clip on an ancestor clips
-   fixed descendants — so the marble was being cut off at .app's top edge,
+   fixed descendants — so the background layer was being cut off at .app's top edge,
    which on a home-screen install sits below the status bar. That's why it
    only reached the clock once the page had scrolled and .app's box had moved
    up. Clipping .main instead keeps the horizontal-overflow protection exactly
@@ -7078,16 +7023,16 @@ const CSS = `
 .main{overflow-x:clip}
 /* Belt and braces: if a browser still clips the fixed layer for some reason,
    the area behind the status bar is painted the same colour the treated
-   marble resolves to (~246 luminance) rather than a visibly different flat
+   background layer resolves to (~246 luminance) rather than a visibly flat
    paper, so any residual seam is invisible instead of a hard line. */
 /* The canvas colour, on <html> so it covers the safe areas above and below the
    viewport — that's what stops the status-bar strip reading as a different
    colour from the page. It must be HERE and not on <body>: a background on
    body paints as an in-flow block box, which lands on top of the fixed
-   .surface (z-index:-1) and hides the marble entirely. On html it becomes the
+   .surface (z-index:-1) and hides the background entirely. On html it becomes the
    canvas, painted first, with the texture above it. Paper, not a near-white,
    so any pixel the texture doesn't reach matches the rest of the app. */
-html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
+html{background:#F6EFE3}   /* literal: --paper is declared on .app, not :root */
 /* every string here is model-generated and can be any length */
 .app p,.app li,.app strong,.app span{overflow-wrap:anywhere}
 .app input[type=text],.app textarea,.app select{max-width:100%}
@@ -7788,36 +7733,29 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .histrate{margin-top:.9rem;padding:1rem;background:var(--sunk);border-radius:18px;
   border:1px solid var(--rule)}
 .histrate .stars{margin-bottom:.6rem}
-/* The physical surface the glass sits on. Fixed and behind everything, so
-   scrolling never repaints it — only a transform moves it, and transforms are
+/* The surface the glass sits on. Fixed and behind everything, so scrolling
+   never repaints it — only a transform moves it, and transforms are
    composited.
 
-   Two levers here, and it matters which does what. This took several passes,
-   because the obvious lever is the wrong one:
-
-   - brightness() carries it, via --surface-lift; see its note above for why
-     the asset can't be edited instead. The file's range is 184-215 with no
-     white in it at all, which is why it looks white on its own and grey in
-     the app — the eye adapts to the lightest thing in frame. The gradients
-     were never what made it dark, and removing them made it worse.
-   - DAYLIGHT_SOFT is only the tint, at 8-10% — so the marble is ~90% of what
-     you see. It uses saturated colours rather than the auth pages' near-white
-     ones, because near-white at low alpha over pale stone is invisible (1.6
-     points of blue-red spread, measured). See its own note in authStyles.js.
-
-   At 1.22 the stone lands near paper's 246, so the background reads as one
-   continuous lit surface rather than a grey panel behind white cards — which
-   is what "dark" was actually describing all along. */
+   NO PHOTOGRAPHIC TEXTURE. The marble is gone, deliberately and completely.
+   It was a 7.7 KB near-flat photo whose entire tonal range was narrower than
+   the eye resolves at background scale, and every attempt to rescue it traded
+   one failure for another: left alone it read as a grey panel, brightened it
+   matched the paper exactly, re-levelled it banded, and replacing it with
+   generated stone produced contour maps. The light was always doing the real
+   work; the photo was only ever adding a reason for the background to be
+   wrong. Light alone, no image request, nothing to go stale. */
+/* Now a positioned CANVAS, not a painted div. PaperSurface draws the stock,
+   the light bands and the grain into it once; this rule only places it and
+   carries the parallax. No background-image, because a finish is geometry —
+   which is the whole reason this surface finally works. */
 .surface{position:fixed;inset:-8% 0 -8% 0;z-index:-1;pointer-events:none;
-  background-image:${DAYLIGHT_SOFT},url('/textures/marble.webp');
-  background-size:cover;background-position:center;
   background-color:var(--paper);
-  filter:brightness(var(--surface-lift,1.22)) saturate(1.04);
   transform:translate3d(0,var(--par,0px),0);
   will-change:transform}
 /* Cook mode: the same daylight, no photographic texture under it.
-   It had linen — a cloth on the counter rather than the counter — and it read
-   as noise exactly where noise costs the most. This is the one screen you read
+   It once had a linen photo — a cloth on the counter rather than the counter —
+   and it read as noise exactly where noise costs the most. This is the one screen you read
    at arm's length, mid-task, hands busy, possibly with steam between you and
    the phone, and the step type is set large for that reason. A fabric weave
    sitting behind 2em text fights it at the same visual frequency.
@@ -7830,7 +7768,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    so the gradients are the whole picture and want their real strength. And
    filter:none because .surface's brightness lift exists to raise a grey stone
    layer — applied to an already-pale gradient it just clips toward white. */
-.cook .surface,.surface--linen{background-image:${DAYLIGHT},
+.cook .surface,.surface--cook{background-image:${DAYLIGHT},
     linear-gradient(178deg, #FBF7F6 0%, #F2ECEB 100%);
   background-color:var(--paper);
   filter:none}
