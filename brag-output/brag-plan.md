@@ -1,270 +1,290 @@
-# Brag Plan: Mise (v3 — the story cut)
+# Brag Plan: Mise (v4 — the cooking cut)
 
-Supersedes v2 (`0a6913a`), which toured nine app screens on a 2.6s cut and read as
-"bang bang bang" rather than as anything happening to anyone. v1 (`5675b8a`) is the
-reference for what worked: typed input, a thing visibly changing, motion with a reason.
+Supersedes v3 (`0c55111`). v3 told a story but had no cooking in it: the "pan" was a
+photograph of a clay surface, nothing sizzled, chopped or poured, and the whole film was
+interface fragments on flat paper. It was restrained where it needed to be appetising.
+
+Three things drive this version:
+1. **Real cooking, animated.** There is no footage in this repo, so every cooking action
+   is drawn and animated — a knife chopping scallions into rounds that fly, oil pouring
+   and shimmering, thighs dropping into a hot pan with a ballistic sizzle burst, a glaze
+   stream drawing itself down and coating, a pan tossing with flame licks, a finished
+   plate assembling piece by piece. 13 seconds of it, at the centre of the film.
+2. **Motion everywhere else too.** Springy landings, squash on impact, things reacting to
+   each other, overshoot. v3's uniform `power3.out` read as tasteful and cold.
+3. **The clock is unmistakably a clock.** v3 opened on a bare "6:12" that read as a
+   number. It is now an appliance display — dark panel, amber seven-segment digits, a
+   **blinking colon**, a "PM", and "THURSDAY" beneath it.
 
 ## What is this app?
 
-Mise is a weekly cooking collaborator. You tell it about your kitchen, it proposes
-dishes and rewrites them when you push back, it turns the week into one shopping list,
-and it talks you through cooking at the stove — then learns from how it went.
+Mise is a weekly cooking collaborator. You tell it about your kitchen, it proposes dishes
+and rewrites them when you push back, it folds the week into one shopping list, and it
+talks you through cooking at the stove — then learns from how it went.
 
 ## The angle
 
-**One Thursday, from "nothing to cook" to "that was the best thing I've made in weeks."**
+**One Thursday: from an empty counter at 6:12pm to a plate worth photographing.**
 
-The video follows a single person cooking for one through one full week of the app, and
-almost never shows a screen. Instead it shows the *mechanisms* as motion, scaled up and
-isolated: a number counting down to one, days lighting up, fourteen restriction chips
-cascading past while two lock, thirteen equipment icons snapping into a grid, three
-dishes throwing their ingredients into one list where duplicates visibly collide and
-merge, a glaze going on, a timer running down, four stars filling, a typed note flying
-back into next week.
-
-Two reasons to work this way. Screens are wordy, and the interesting thing about Mise
-isn't its layout — it's what it's doing underneath. Shown as motion, "every answer
-changes what it suggests" stops being a claim and becomes something you watch happen.
-
-The arc is carried by light: the film opens nearly black at six o'clock with nothing in
-the fridge, warms to paper when Mise shows up, and stays warm to the end.
+What a strong cooking ad does: food in motion, close and warm, cut to rhythm — sizzle,
+steam, pour, gloss. What a strong tech ad does: one clear idea, the product's mechanism
+revealed as something satisfying, a confident payoff. This film puts them in the same
+timeline. The app's thinking is animated with the same physical language as the cooking,
+so the setup wizard and the pan belong to one world: plates slide in, chillies light,
+ingredients fly into a list, a glaze pours. Everything is a thing happening, not a thing
+depicted.
 
 ## Hook (first 2-3 seconds)
 
-A clock reading **6:12** in the dark, and the honest sentence under it: "Half a cabbage,
-two eggs, and no idea." No product, no logo, no claim — just the feeling the app exists
-to fix. The track is genuinely quiet for the first 7s (measured: −21 dB, no strong cues
-at all before 8.7s), so the open gets silence to sit in.
+A dark kitchen counter and a microwave clock ticking over to **6:13 PM**. Then, one at a
+time, the three sad things you actually have: half a cabbage, two eggs, a tub of
+gochujang — each landing with a bounce and a small settle-rock. No product, no claim. The
+track measures −21 dB here and has no strong cues before 8.7s, so the open gets quiet.
 
 ## Key moments (the middle)
 
-- **The light coming on.** A warm sweep crosses the frame and the whole film changes
-  temperature. This is the turn, and it's done with colour, not copy.
-- **Building the kitchen — 15 seconds, the centrepiece.** The thing v2 flattened into
-  one screenshot of a stepper. Here it is a machine assembling: the headcount counting
-  4 → 1, the seven-day row lighting Tue/Thu/Sat, the heat meter climbing with its label
-  cycling through the app's real rungs, the adventure dial sweeping to "Show me
-  something new", fourteen real restriction chips cascading through frame while "No
-  pork" and "Nut allergy" lock, thirteen real equipment icons snapping into a grid, and
-  all of it collapsing into one card. This is what the user meant by complexity.
-- **Pushing back, typed.** Three dish ideas deal in; a line is typed into the field —
-  *"thursday feels too heavy"* — and on the strongest cue in the act the middle idea
-  rewrites itself into a different dish. The app's own claim is "I'm not a recipe search
-  box. We talk it through"; this is that, shown.
-- **Three dinners, one list.** Ingredient tokens fly out of three dish cards, converge,
-  and land as a single column — and two duplicate scallion tokens collide mid-air and
-  merge into one line as the counter ticks. The dedup *is* the feature.
-- **The stove.** The app's own terracotta photograph, a slow push in, steam rising, a
-  live timer counting down, and one instruction in type big enough to read from across a
-  kitchen. This is the scene that should make someone hungry.
-- **It learns.** Four stars fill on the beat, a note types itself — *"the glaze was the
-  best part"* — and then flies back up into next week's card, which brightens.
+- **The light comes on.** A warm sweep on a strong cue; the whole film changes temperature
+  from near-black to paper, and the three lonely ingredients lift off the counter and
+  arrange themselves into a neat row — *mise en place*, which is what the app is named
+  after, made literal.
+- **Building the kitchen, animated as objects rather than a form.** Four plates slide in
+  and three slide back out, leaving one. Little pans drop onto Tue / Thu / Sat. Three of
+  five chillies light red. Fourteen real restriction chips cascade while two lock.
+  Thirteen real equipment icons pop into a grid on a strong cue.
+- **Pushing back.** Three ideas deal in with rotation; *"thursday feels too heavy"* types
+  itself; the middle idea flips away and a different dish lands in its place on the
+  strongest cue in the act.
+- **Three dinners, one list.** Eleven ingredient tokens fly out of three dishes and land
+  as nine rows — three scallions collide mid-air and merge into "1 bunch".
+- **THE COOKING — 13 seconds, six beats, one bar each.** Chop, oil, sizzle, heat, glaze,
+  toss. This is the part the film exists for.
+- **The plate.** Rice, thighs, the scallion rounds from the chop (continuity — they are
+  the same rounds), a final drizzle, steam. It holds long enough to want.
+- **It learns.** Four stars pop in on the beat, a note types itself, and flies up into
+  next week.
 
 ## Outro / punchline
 
-"Cook something you're proud of. Every week." Then the wordmark, the real tagline, and
-the price. The track has no strong cues after 55s, so the sign-off gets a quiet landing
-rather than a hit.
+"Cook something you're proud of." with the lockup. The track has no strong cue after 55s,
+so it lands quietly instead of on a faked hit.
 
 ## User flow worth showing
 
-The whole film is the flow, in the app's order, but staged as one person's Thursday:
-**the empty fridge → setting up the kitchen (7 steps) → ideas and pushing back → the
-week → one shopping list → cooking it → rating it → next week is better.**
+The film is the flow, staged as one person's Thursday: **an empty counter → setting up the
+kitchen → ideas and pushing back → one shopping list → actually cooking it → the plate →
+rating it → next week is better.**
 
 ## Tone
 
-- Preset: `cinematic`, pulled back toward `polished`
-- Creative direction: a warm, patient product film — a week in one kitchen, told in
-  light and motion
-- Interpretation: eight acts on the music's own 4-bar phrasing, none shorter than 4.3s
-  and the centrepiece 15.3s long. Long holds, slow crossfades, one idea on screen at a
-  time. Motion is continuous *within* an act rather than a cut *between* acts — the
-  opposite of v2. Nothing bounces; everything eases. Type is large and sparse, and never
-  competes with the thing it's labelling.
+- Preset: `cinematic` for the cooking, `default` (playful, clean, postable) for the app
+  beats — the two are held together by one palette and one light arc
+- Creative direction: a warm cooking ad with a tech ad's spine — appetite first, mechanism
+  second, and every object obeys physics
+- Interpretation: eight acts on the music's own bar grid, cooking given the largest
+  block. Easing is chosen per object rather than globally: `back.out(1.5)` and a squash
+  frame for anything that lands, `power4.in` for the knife coming down, `ease: none` for
+  ballistic particles (the physics lives in the formula), `power1.in` for an accelerating
+  pour, and `power3.out` kept for type so the copy stays classy while the food is playful.
 
 ## Format: landscape — 1920x1080
-## Duration: 59.5 seconds
+## Duration: 59.47 seconds
 
-Deliberately at the length the user allowed. The 15-25s creative law is overridden here
-by an explicit instruction ("the video can be up to a minute long, so don't rush it"),
-and the 15s kitchen-build act only exists because the user asked for that complexity to
-be shown.
+At the length the user allowed. The 15-25s creative law is overridden by explicit
+instruction ("the video can be up to a minute long, so don't rush it").
 
 ## Visual identity (from the project)
 
-- Ground: the app's own `--paper #F6EFE3`, but **animated in temperature** — the film
-  starts at `#100D12` and warms to paper across Act 2
-- Photography, from `public/img/` (the app's own assets, used at or below native size so
-  they stay crisp): `clay.webp` 1080x1349 as the stove surface, `spices.webp` 1000x563
-  as the flavour panel, `dill.webp` 900x900 in the pantry ground
-- Accent: `--hot #B44722` persimmon on paper; `#EE9265` rose when type sits on dark
+- Ground: animated in temperature across the film — `#0E0B10` at the counter, the app's
+  `--paper #F6EFE3` from the light sweep, and back to a warm near-dark `#17110F` for the
+  cooking so the food reads hot and close
+- Accent: `--hot #B44722` persimmon (which is also, conveniently, exactly the colour of a
+  gochujang glaze); `#EE9265` rose for type on dark
 - Text: `--ink #1A1B24` on paper; `#F6EFE3` on dark
+- Food palette, all drawn: board `#9A6A3C` with darker grain, pan `#2A2529` with a
+  `#4A424C` rim, oil `#D9A54A`, thigh `#C98A4B` with `#8E5327` edges, glaze
+  `#8E2F16` → `#B44722`, scallion `#4E7A3F` / `#E8EFE2`, flame `#FF9A3C` → `#FFD27A`,
+  plate `#FFFFFF`, rice `#F7F2E6`
 - Display font: Nunito 900 / 800 (local woff2); body Nunito 600 / 700
-- App tokens for every recreated fragment: `--sunk #F4EBE9`, `--good #2F6B54`,
-  `--tape #F0D9D5`, `--plum #573C56`, `--rule rgba(87,60,86,.14)`
+- App tokens for every interface fragment: `--sunk #F4EBE9`, `--good #2F6B54`,
+  `--tape #F0D9D5`, `--plum #573C56`, `--rule rgba(87,60,86,.2)`
 
 ## Share copy (draft)
 
-Six o'clock, half a cabbage, no idea. Mise turns that into a week of dinners you
-actually want to cook — it learns your kitchen, argues with you about the menu, builds
-one shopping list, and talks you through the pan.
+6:12pm. Half a cabbage, two eggs, and no idea.
+
+Mise plans the week around what you actually own, argues with you about the menu, folds
+three dinners into one shopping list, and then stands at the stove with you. Cook
+something you're proud of.
 
 ## Audio direction
 
-- Role: a patient bed that builds, with accents only where something lands
-- Music: `happy-beats-business-moves-vol-12-by-ende-dot-app.mp3` (109.96 BPM, 117.4s).
-  Chosen by measuring all five bundled tracks' energy in 5s buckets: vol-12 is the only
-  one that opens genuinely quiet (−21.3 dB) and climbs (−15.5 dB by 30s), which is the
-  film's arc. Every other track starts at full level.
+- Role: a bed that starts almost absent and builds, with accents that land on physical
+  contact — a knife hitting a board, thighs hitting oil, a glaze landing
+- Music: `happy-beats-business-moves-vol-12-by-ende-dot-app.mp3` (109.96 BPM, 117.4s),
+  kept from v3: measured across all five bundled tracks in 5s RMS buckets, it is the only
+  one that opens genuinely quiet (−21.3 dB) and climbs (−15 dB by 30s)
 - Music treatment: 0.20 under the dark open, 0.40 from the light sweep, 0.46 through the
-  kitchen build and list, eased to 0.34 for the stove so the type reads calm, fade
-  56.6 → 59.5 to zero
-- Music cue guidance: the shipped preset only analyses the first 25s, so the full grid
-  was regenerated with the plugin's own `analyze_music_cues.py` over a 60s window →
-  `assets/music/vol-12-cues-60s.json` (207 beats, 0.5457s grid, a bar = 2.183s, a 4-bar
-  phrase = 8.73s). **Every act boundary is a bar line**: 7.094 / 11.459 / 26.738 /
-  35.468 / 42.005 / 50.736 / 55.101. Strong-cue locks, one per act where the act has
-  one: **8.742** (0.99, the light sweep), **17.473** (0.99, the adventure dial),
-  **22.930** (1.00, the equipment grid completing), **32.740** (1.00, the dish
-  rewriting), **38.197** (0.99, the merged list landing), **44.745** (1.00, the glaze),
-  **51.293** (1.00, the fourth star). Acts 1 and 8 have no strong cues in range, which
-  is why they are the quiet ones.
-- Audio-reactive treatment: expressive on non-text only — the stove's heat glow and the
-  steam's drift ride the bass, and the warm ground light breathes across the whole film.
-  Anything carrying type stays within a 4% swing.
-- SFX posture: sparse and warm, and weighted to the moments that mean something rather
-  than spread evenly: the light sweep, the kitchen card closing, the typed lines, the
-  dish rewrite, the list landing, the glaze, the stars.
-- Restraint rule: no sound at all in Act 1 — the silence is the point — and nothing
-  bright or clicky anywhere.
+  app beats, **pulled to 0.30 for the whole cooking block** so the sizzle and the chops
+  carry it, 0.42 for the plate and the rating, fade 56.6 → 59.47
+- Music cue guidance: full grid regenerated with the plugin's own `analyze_music_cues.py`
+  over a 60s window (the shipped preset only covers 25s) →
+  `assets/music/vol-12-cues-60s.json`: 207 beats, 0.5457s grid, bar = 2.183s.
+  **Every act boundary and every cooking beat is a bar line.** Strong-cue locks:
+  **8.742** (light sweep) · **17.473** (equipment grid) · **22.930** (the ideas deal) ·
+  **27.295** (the dish rewrite) · **32.740** (the merge) · **38.197** (thighs hit the oil)
+  · **42.562** (the glaze lands) · **44.745** (the toss) · **48.019** (the plate
+  completes) · **51.293** (the fourth star).
+- Audio-reactive treatment: expressive on the cooking, restrained elsewhere. The pan's
+  heat glow and the steam's drift ride the bass; the warm ground light breathes across the
+  whole film. Nothing carrying type moves more than 4%.
+- SFX posture: contact sounds, not decoration. Four chops, oil, the drop into the pan, the
+  glaze, the toss, the plate, and the star. Nothing bright or clicky.
+- Restraint rule: no sound at all in Act 1 — the silence is the point.
 
 ## Storyboard
 
-### Act 1 — Six o'clock — 7.09s (0.0 → 7.094)
-Near-black, `#100D12`, with the clay photograph at 12% as a barely-there ground. Centre
-frame: **6:12** in Nunito 900 at 190px, dim paper. It ticks to **6:13** at 4.4s — the
-only thing that moves. Under it, three ghosted tokens drift up one at a time: *half a
-cabbage*, *two eggs*, *one tub of gochujang*. Then the line: "and no idea what to make."
-Sequential/interaction: yes — three tokens arrive on beats 2.728 / 3.821 / 4.911; the
-clock digit changes.
-Audio intent: silence. No accent, bed at 0.20. The film should feel like the quiet
-before you give up and order in.
-Music: 0.20.
+### Act 1 — Thursday, 6:12pm — 7.09s (0.0 → 7.094)
+Near-black counter (`#0E0B10`) with the clay photograph at 10% as a barely-there surface.
+Centre: an **appliance clock** — a dark rounded panel with an inner amber glow, "6:12" in
+amber seven-segment-styled Nunito 900, a small "PM", a **colon blinking on a finite
+0.6s cycle**, and "THURSDAY" in small caps beneath. At 4.37 it ticks to **6:13**. Then
+three drawn ingredients land on the counter one per beat, each with a `back.out(1.6)`
+drop, a squash frame and a small settle-rock: **half a cabbage** (cut face with concentric
+layers), **two eggs**, **a tub of gochujang**. Last line: "and nothing to make with it."
+Sequential/interaction: yes — clock tick, then three objects landing on beats 4.911 /
+5.457 / 6.003.
+Audio intent: silence. Bed at 0.20, no accents. It should feel like the moment before you
+give up and order in.
 Transition mood: the light arrives → Act 2
 
 ### Act 2 — The light comes on — 4.37s (7.094 → 11.459)
-**Beat-locked to 8.742** (0.99): a warm light sweep crosses left to right, and behind it
-the entire ground warms from `#100D12` to `#F6EFE3` over 1.6s — the film changes
-temperature on a cue. The Mise mark scales in from 0.8 as the warmth arrives. Type:
-"Let's work it out."
-Sequential/interaction: none — one continuous transformation.
-Audio intent: the first sound in the film, and it should feel like relief.
-Audio-coupled idea: `impactSoft_heavy_000.ogg` at 8.742, under the sweep.
-Music: up to 0.40.
+"Let's work it out." has already said its piece on the dark at full contrast and clears as
+the sweep arrives, so no type ever sits on the mid-tone. **Beat-locked to 8.742** (0.99): a
+warm blurred sweep crosses and the ground warms `#0E0B10` → `#F6EFE3` over 1.35s. The
+three ingredients **lift off the counter, rotate level, and settle into an evenly spaced
+row** — mise en place, the app's own name, animated. The Mise mark scales in over them.
+Sequential/interaction: yes — one continuous transformation plus three objects
+repositioning in lockstep.
+Audio intent: the first sound in the film; it should feel like relief.
+Audio-coupled idea: `impactSoft_heavy_000.ogg` at 8.742 under the sweep.
 Transition mood: continuous — the warmth carries → Act 3
 
-### Act 3 — Building the kitchen — 15.28s (11.459 → 26.738)
-Warm paper. Kicker "YOUR KITCHEN" holds for the whole act; the headline reads "Seven
-steps. Every answer changes what it suggests." The act is one continuous assembly, each
-element entering on a beat of the 0.546s grid and *staying*, so the frame fills up:
-
-- 11.459 — "Cooking for" and a numeral that counts **4 → 1** over 0.9s and lands on 1,
-  with the app's real consequence line under it: "package sizes are the real problem."
-- 13.108 (0.98) — the seven-day row appears; **Tue / Thu / Sat** light persimmon at
-  13.642 / 14.199 / 14.733.
-- 15.290 — the heat meter: five segments filling to three, its label stepping through the
-  app's real rungs — "None at all" → "A little" → "Medium" — and settling.
-- 17.473 (0.99) — **beat-locked**: the adventure dial sweeps across five stops and lands
-  on the app's real top rung, "Show me something new".
-- 18.564 (0.99) — the `spices.webp` photograph slides in as the flavour panel, giving the
-  act a warm anchor so it isn't all UI.
-- 19.656 → 22.372 — fourteen real restriction chips cascade through frame, two every
-  beat; **No pork** and **Nut allergy** lock persimmon, the other twelve settle dim.
-- 22.930 (1.00) — **beat-locked**: thirteen real equipment icons snap into a 5-column
-  grid in a fast 0.09s cascade (icons, not text, so the grid can outrun the reading
-  floor), then the whole grid settles as one.
-- 24.555 (0.99) — everything contracts toward centre and resolves into a single card:
-  "Your kitchen, set up", with the recap line "Cooking for one, three nights, medium
-  heat, no pork."
-
-Sequential/interaction: yes, throughout — this act is nothing but sequential reveal, and
-the point is accumulation.
-Audio intent: a build. Each group of arrivals slightly firmer than the last, ending on
-one warm close when the card resolves.
-Audio-coupled idea: soft `bong_001.ogg` on the day lights and the two locking chips;
-`impactSoft_medium_001.ogg` on the equipment grid at 22.930; `impactSoft_medium_004.ogg`
-on the card closing at 24.555.
-Music: 0.46.
+### Act 3 — Your kitchen — 10.91s (11.459 → 22.372)
+Warm paper. Kicker "YOUR KITCHEN"; headline "Seven steps. Every answer changes what it
+suggests." Built as objects, not fields, each arriving on a beat and staying:
+- 11.459 — **four plates** slide in from the right; at 12.55 three slide back out with a
+  small overshoot, leaving one, and the app's real line lands: "Cooking for one means
+  package sizes are the real problem."
+- 13.642 — the seven-day row; **a small pan drops onto Tue / Thu / Sat** on 14.199 /
+  14.733 / 15.29, each with a squash on landing.
+- 15.836 (0.96) — **five chillies**; three light red in sequence, the label stepping
+  through the app's real rungs and settling on "Medium".
+- 17.473 (0.99) — **beat-locked**: thirteen real equipment icons pop into a 5-column grid
+  in a 0.07s `back.out` cascade, then the grid settles as one.
+- 18.564 (0.99) — fourteen real restriction chips cascade two per beat; **No pork** and
+  **Nut allergy** lock persimmon, the other twelve settle dim.
+- 21.0 — everything contracts toward centre and resolves into one card: "Your kitchen, set
+  up — cooking for one · three nights · medium heat · no pork, no nuts."
+Sequential/interaction: yes throughout — the point is accumulation.
+Audio intent: a build; each group firmer than the last, one warm close on the card.
+Audio-coupled idea: `bong_001.ogg` on the pans landing and the two locking chips;
+`impactSoft_medium_001.ogg` on the equipment grid; `impactSoft_medium_004.ogg` on the card.
 Transition mood: soft crossfade → Act 4
 
-### Act 4 — It suggests, you push back — 8.73s (26.738 → 35.468)
-27.295 (0.99): three dish cards deal in from a stack, fanned, then settle into a row —
-title and one line each, in big type, no app chrome. At 29.5 a field appears below them
-and a line **types itself character by character**: "thursday feels too heavy". At 32.740
-(1.00) — **beat-locked** — the middle card lifts, flips, and comes back as a different
-dish, the other two sliding to make room. Type: "It suggests. You push back."
-Sequential/interaction: yes — cards deal one at a time, a line is typed, and a card
-rewrites in response.
-Audio intent: the conversation. Sparse keypresses under the typing, then one clean
-confirmation when the dish changes.
-Audio-coupled idea: `keypress-*.wav` at 0.12 on roughly every fourth character;
-`impactSoft_medium_002.ogg` at 32.740 on the rewrite.
-Music: 0.46.
+### Act 4 — It suggests. You push back. — 6.55s (22.372 → 28.921)
+**Beat-locked 22.930** (1.00): three dish cards deal in from a stack with rotation and
+settle into a row — title and one line each, big type, no app chrome. A field appears and
+**"thursday feels too heavy" types itself** character by character. **Beat-locked 27.295**
+(0.99): the middle card lifts, rotates out, and a different dish drops into its place with
+a `back.out` landing while the others hold.
+Sequential/interaction: yes — cards deal one at a time, a line is typed, a card is
+rewritten in answer.
+Audio intent: sparse keypresses, then one clean confirmation on the swap.
+Audio-coupled idea: `keypress-*.wav` at 0.12 on every fourth character;
+`impactSoft_medium_002.ogg` at 27.295.
 Transition mood: soft crossfade → Act 5
 
-### Act 5 — Three dinners, one list — 6.54s (35.468 → 42.005)
-The three dishes shrink to three small labels along the top. From each, ingredient tokens
-fly out on an arc and fall into a single column forming centre-frame. Two **scallions**
-tokens — one from each of two dishes — collide mid-air at 37.6 and merge into one line,
-its quantity bumping to "1 bunch". A counter beside the list ticks up as tokens land and
-stops at **9 items**. **Beat-locked at 38.197** (0.99) the finished list snaps square.
-Type: "Three dinners. One list. Nothing bought twice."
-Sequential/interaction: yes — twelve tokens on the beat grid, a visible merge, a counter.
+### Act 5 — Three dinners. One list. — 4.37s (28.921 → 33.286)
+Three dish labels along the top. Eleven ingredient tokens fly out of them on arcs and land
+as a tidy nine-row list with an aligned quantity column; a counter ticks to **9 items**.
+Three **scallions** tokens — one from each dish — converge on the same row and **merge**,
+the quantity becoming "1 bunch". **Beat-locked 32.740** (1.00) the finished list snaps.
+Sequential/interaction: yes — eleven tokens on the grid, a visible merge, a counter.
 Audio intent: the satisfaction of things fitting together.
-Audio-coupled idea: soft taps as tokens land, thinned so only every other one sounds;
-`impactSoft_medium_004.ogg` on the snap at 38.197.
-Music: 0.46.
-Transition mood: the ground darkens toward the stove → Act 6
+Audio-coupled idea: soft taps on every other landing; `impactSoft_medium_004.ogg` on the
+snap.
+Transition mood: the ground darkens to the stove → Act 6
 
-### Act 6 — Then it's just you and the pan — 8.73s (42.005 → 50.736)
-The ground dims to a warm near-dark and the `clay.webp` terracotta photograph fills most
-of the frame, pushing in slowly (1.0 → 1.06 across the act — a real Ken Burns move, not a
-cut). Three steam paths rise and drift, their drift driven by the music's bass. A timer
-reads **5:00** and counts down for real. One instruction in 68px type: "Spoon the glaze
-over. Back in for five minutes." — and the app's own reason beneath it: "Any earlier and
-the sugar is charcoal before the thighs are cooked." **Beat-locked at 44.745** (1.00) a
-warm bloom crosses the pan as the glaze goes on. Type: "Then it's just you and the pan."
-Sequential/interaction: yes — the timer runs, the steam moves, the push-in never stops.
-Audio intent: warmth and patience. One low accent for the glaze, nothing else.
-Audio-coupled idea: `impactSoft_heavy_000.ogg` at 44.745.
-Music: eased down to 0.34 so the scene reads calm.
-Transition mood: warm back to paper → Act 7
+### Act 6 — The cooking — 13.08s (33.286 → 46.370)
+Ground goes warm near-dark (`#17110F`). Six beats, one bar each, all drawn and animated.
+A timer and "step 3 of 7" ride along from beat 4. The only type is one line at the top:
+"Then it's just you and the pan."
 
-### Act 7 — And next week starts smarter — 4.37s (50.736 → 55.101)
-Back to paper. Five stars; four fill on consecutive beats (50.736 / 51.293 / 51.838 /
-52.384), the fourth **beat-locked to 51.293** (1.00). A note types itself: "the glaze was
-the best part". At 53.5 the note detaches and flies up-left into a small card labelled
-*next week*, which brightens as it lands. Type: "And next week starts smarter."
-Sequential/interaction: yes — stars on the grid, a typed note, and the note travelling.
-Audio intent: a small, earned lift.
-Audio-coupled idea: `bong_001.ogg` on the fourth star; sparse keypresses under the note.
-Music: back to 0.42.
+- **33.286 · CHOP.** A wooden board slides in with a settle. A scallion lies on it; a knife
+  descends from the right, pivoting at the heel. Four chops on the half-beats — each
+  `power4.in` down, `power2.out` up, the **board jolting 3px on contact** and a **scallion
+  round flying off on an arc into a pile**. The scallion shortens by one round each time.
+  Four contact taps.
+- **35.468 · OIL.** The board slides out left as a **pan** slides in from the right with a
+  weighty settle. A bottle tips at the top and **oil pours** — a tapering stream drawn via
+  `pathLength`/`strokeDashoffset` — pooling into an ellipse that grows and catches a
+  moving highlight. The heat glow beneath the pan blooms up.
+- **37.639 · SIZZLE.** **Beat-locked 38.197** (0.99): three chicken thighs drop into the
+  pan, squash on impact, and a **ballistic sizzle burst** fires — 26 deterministic
+  particles on index-seeded launch vectors, one `ease: none` driver, position a pure
+  function of flight time so any seek shows the right mid-flight frame. Steam starts.
+- **39.822 · HEAT.** The shot holds and breathes: steam curls and drifts on the bass, the
+  glow pulses, the **timer counts down from 5:00 for real**, and "STEP 3 OF 7" arrives.
+  The pan micro-rocks. Nothing new enters — the film takes a breath before the money shot.
+- **42.005 · GLAZE.** The money shot. A **spoon tilts** in from the right and a thick
+  **glaze stream draws itself down** in persimmon, accelerating (`power1.in`). **Beat-locked
+  42.562** (1.00) it lands: the three thighs take a **glaze coat** that fades in over each
+  in sequence, and a **gloss highlight sweeps** diagonally across them. A second, smaller
+  sizzle answers.
+- **44.188 · TOSS.** **Beat-locked 44.745** (1.00): the whole pan group **rotates −14° and
+  back** while the thighs lift, rotate and land again; **three flame licks** rise at the
+  pan edge with a scale-and-fade, and the glow spikes.
+
+Sequential/interaction: continuously — every beat is a physical action with a contact
+sound and a reaction.
+Audio intent: contact. Chops, oil, the drop, the glaze, the toss — and the music stepped
+down to 0.30 so the cooking is what you hear.
+Audio-coupled idea: `keypress`-grade taps are wrong here; use `impactSoft_medium_002` ×4
+for the chops (short, warm, low HF), `impactSoft_medium_001` for the oil,
+`impactSoft_heavy_000` for the drop into the pan at 38.197, `impactSoft_heavy_000` again
+for the glaze at 42.562, `impactSoft_medium_004` for the toss at 44.745.
+Transition mood: the pan slides out, the plate slides in → Act 7
+
+### Act 7 — The plate, and what it learned — 8.73s (46.370 → 55.101)
+The pan exits and a **white plate** scales in on warm dark. It assembles, each piece with a
+`back.out(1.7)` landing: a **rice mound**, **two glazed thighs**, then the **scallion rounds
+from the chop** scattering across the top — the same rounds, which is the point. **Beat-locked
+48.019** (1.00) a final **drizzle arcs over** and steam rises off it. The plate holds
+through 50.2 with only steam and glow moving: the one frame the whole film is for.
+Then the ground returns to paper and the learning beat plays: five stars, **four popping
+in** on 50.202 / 50.747 / 51.293 (beat-locked, 1.00) / 51.838 with a `back.out` overshoot,
+the readback "Really good", a note that **types itself** — "the glaze was the best part" —
+and then **flies up into next week's card**, which brightens as it lands.
+Sequential/interaction: yes — the plate assembles, the stars pop, a note is typed and
+travels.
+Audio intent: warm arrival, then a small earned lift.
+Audio-coupled idea: `impactSoft_medium_004.ogg` on the plate, `bong_001.ogg` on the fourth
+star, sparse keypresses under the note.
 Transition mood: soft crossfade → Act 8
 
-### Act 8 — Sign-off — 4.40s (55.101 → 59.5)
-Warm paper, empty. The line "Cook something you're proud of. Every week." holds alone,
-then lifts, and the lockup arrives: the Mise mark, "Mise" in Nunito 900, "a weekly
-cooking collaborator", "$12/month · cancel anytime". The music fades out under it. No
-strong cue exists here and none is faked.
+### Act 8 — Sign-off — 4.37s (55.101 → 59.466)
+Warm paper. One block arriving together and holding: "Cook something you're proud of.", a
+rule, the Mise mark, "Mise", "a weekly cooking collaborator", "$12/month · cancel
+anytime". Music fades out under it.
 Sequential/interaction: none.
-Audio intent: let it end quietly. One soft note as the lockup lands, then nothing.
-Audio-coupled idea: `bong_001.ogg` at 56.1 on the lockup.
-Music: fade 56.6 → 59.5 to zero.
+Audio intent: end quietly. One soft note as the lockup lands, then nothing.
+Audio-coupled idea: `bong_001.ogg` at 55.5.
 Transition mood: hold to end
 
 **Music mood for this video:** a patient 110 BPM bed that starts almost absent, builds
-through the kitchen and the list, pulls back for the stove, and fades under the sign-off.
-**Audio summary:** Act 1 is silent on purpose. The first sound in the film is the light
-sweep at 8.742s, and from there the bed builds with the assembly, thins for the pan, and
-fades out so the last note can ring into nothing.
+through the app beats, **steps back for the cooking so the pan is what you hear**, lifts
+for the plate, and fades under the sign-off.
+**Audio summary:** Act 1 is silent on purpose. The first sound is the light sweep at
+8.742s. From there the bed builds, then drops to 0.30 for thirteen seconds of contact
+sounds — four chops, oil, a drop into hot fat, a glaze landing, a toss — before lifting
+for the plate and fading out so the last note rings into nothing.

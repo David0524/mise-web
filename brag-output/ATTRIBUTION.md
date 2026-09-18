@@ -1,14 +1,18 @@
 # Third-party assets in this video
 
-Everything visual comes from this repository: the palette, the Nunito type, the
-`MiseHello` character, the app's own photography (`public/img/`), every recreated
-interface fragment, and the app's own copy. The audio and the animation runtime do not.
+Everything visual is either from this repository or drawn from scratch for this film:
+the palette, the Nunito type, the `MiseHello` character, the app's own copy and interface
+fragments, one of its photographs used as a dim counter surface, and all of the cooking —
+the board, knife, scallion, pan, oil, chicken, glaze, flames, steam and plate are hand-
+authored SVG under GSAP, because there is no footage in this repo. The audio and the
+animation runtime are third-party.
 
 | Asset | Path | Source |
 | --- | --- | --- |
 | Music bed | `composition/assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3` | [ende.app](https://ende.app/en) — "Happy Beats / Business Moves" series, bundled with the `brag` Claude Code plugin |
 | Sound effects | `composition/assets/sfx/*` | [Kenney](https://kenney.nl/) — bundled with the `brag` plugin |
-| Photography (`clay.webp`, `spices.webp`, `dill.webp`) | `composition/assets/img/` | Copied from this repo's own `public/img/` — whatever licence already covers them covers this use |
+| Photography (`clay.webp`; `spices.webp` and `dill.webp` staged but unused in the current cut) | `composition/assets/img/` | Copied from this repo's own `public/img/` — whatever licence already covers them covers this use |
+| All cooking artwork (board, knife, scallion, pan, oil, chicken, glaze, flames, steam, plate, chillies, equipment icons) | inline SVG in `composition/index.html` | Drawn for this film; no third-party asset involved |
 | Nunito (woff2, weights 600/700/800/900) | `composition/assets/fonts/` | Google Fonts — SIL Open Font License 1.1 (the same family `app/layout.js` already loads) |
 | GSAP 3.14.2 | `composition/assets/vendor/gsap.min.js` | GreenSock — free "standard" license for this use; vendored so the render needs no network |
 | `brag` plugin (skill, music, SFX) | — | MIT, © 2026 Shunit Haviv Hakimi |

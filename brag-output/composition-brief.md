@@ -1,149 +1,101 @@
-# Hyperframes Composition Brief: Mise
+# Hyperframes Composition Brief: Mise (v4 — the cooking cut)
 
 ## Objective
 
-Create a short launch-style brag video for Mise, a weekly cooking collaborator that
-plans your week, builds a shopping list around package sizes, and talks you through
-cooking at the stove.
+A one-minute launch film for Mise, a weekly cooking collaborator — staged as one
+Thursday, from an empty counter at 6:12pm to a plate worth photographing.
 
 ## Output
 
 - Composition directory: `brag-output/composition/`
 - Rendered video: `brag-output/brag.mp4`
-- Format: landscape — 1920x1080
-- Duration: 20.0 seconds
+- Format: landscape — 1920x1080, 30fps
+- Duration: 59.47 seconds
 
 ## Source Material
 
 - Project root: `/home/user/mise-web`
-- Primary files read: `README.md`, `app/page.js`, `app/pricing/page.js`,
-  `app/layout.js`, `lib/authStyles.js`, `components/MiseApp.jsx`, `public/textures/`
+- Primary files read: `README.md`, `app/page.js`, `app/pricing/page.js`, `app/layout.js`,
+  `lib/authStyles.js`, `components/MiseApp.jsx`, `public/img/`
 - Product name: Mise
-- Tagline / strongest claim: "Nobody needs a whole bunch of dill for one dish."
-- Key UI or visual moment to recreate: the `MiseHello` chef-hat character SVG on the
-  translucent glass card from `lib/authStyles.js` (`S.card`), and the Shopping tab's
-  list rows plus its plain-language note field
-- Copy that must appear verbatim:
-  - "Nobody needs a whole bunch of dill for one dish." (`app/page.js` h1)
-  - "I don't want a whole bunch of dill" (`components/MiseApp.jsx:5071` placeholder)
-  - "Cooking for one means package sizes are the real problem."
-    (`components/MiseApp.jsx:4426`)
-  - "plans the week, builds the list, talks you through cooking it"
-    (`app/pricing/page.js`, split into three chips)
-  - "a weekly cooking collaborator" (`app/layout.js` metadata title)
-  - "$12/month · cancel anytime" (`app/pricing/page.js`)
+- Copy that must appear verbatim, all of it the app's own:
+  - "Cooking for one means package sizes are the real problem. I'll design around them."
+  - the seven setup step names, and "Step 7 of 7"
+  - all fourteen `RESTRICTIONS` and all thirteen `EQUIPMENT` values
+  - the `SPICE` rungs "None at all" / "A little" / "Medium"
+  - the `ADVENTURE` top rung "Show me something new"
+  - "thursday feels too heavy" and "the glaze was the best part" (real placeholders)
+  - "a weekly cooking collaborator", "$12/month · cancel anytime"
 
 ## Creative Direction
 
-- Tone preset: `polished`
-- Creative direction: quiet premium product film in warm kitchen daylight
-- Interpretation: four scenes, long holds, soft crossfades only. Short-travel motion
-  with `power3.out`; nothing bounces or overshoots. The copy carries the humor, so the
-  direction stays straight-faced — confidence through restraint.
-- Angle: every cooking app ships recipes; Mise's premise is that recipes were never the
-  bottleneck — grocery packaging was. Lead with the product's own funniest and most
-  specific line, then prove it by showing the shopping list actually react to that
-  complaint. The joke is the feature.
-- Hook: the landing-page headline full-frame on the app's own oak paper, then a bunch of
-  dill where all but two sprigs grey out.
-- Outro / punchline: "Cooking for one means package sizes are the real problem." →
-  wordmark, tagline, $12/month.
-- Avoid:
-  - Generic SaaS language
-  - Abstract filler visuals
-  - Unrelated visual redesign
-  - Any food photography — this product's identity is drawn, not photographic
+- Tone: `cinematic` for the cooking, `default` for the app beats, held together by one
+  palette and one light arc
+- What a cooking ad does: food in motion, close and warm, cut to rhythm. What a tech ad
+  does: one idea, the mechanism revealed as something satisfying, a confident payoff.
+  This puts both on one timeline, and gives the app's logic the same physical language as
+  the pan.
+- Every cooking action is DRAWN AND ANIMATED — there is no footage in this repository, so
+  the knife, the oil, the sizzle, the glaze, the flames and the plate are SVG under
+  physics, not stock or stills.
+- Easing is per-object, not global: `back.out(1.5)` plus a squash frame for anything that
+  lands, `power4.in` for the knife coming down, `ease: none` for ballistic particles,
+  `power1.in` for an accelerating pour, `power3.out` reserved for type.
+- Avoid: app screenshots (wordy, and they hide the mechanism), abstract filler, generic
+  SaaS language, anything that moves without a reason.
 
 ## Visual Identity
 
-- Background: `#F6EFE3` pale oak, over `public/textures/oak.webp`, with the project's
-  real `DAYLIGHT` radial-gradient stack from `lib/authStyles.js` layered above it
-- Text: `#1A1B24` ink; `#6E6472` muted; `#573C56` plum
-- Accent: `#B44722` persimmon; `#813318` seated edge; `#EE9265` rose
-- Display font: Nunito 900 / 800 — shipped locally at `assets/fonts/nunito-{800,900}.woff2`
-  with in-file `@font-face` (lint requires this; no CDN font link)
-- Body font: Nunito 600 / 700 — `assets/fonts/nunito-{600,700}.woff2`
-- Visual references from the project:
-  - `MiseHello` SVG, copied path-for-path from `app/page.js`
-  - `S.card` glass: `rgba(255,255,255,.62)` fill, `1px solid rgba(255,255,255,.75)` rim,
-    inset specular top highlight, `0 18px 44px -16px rgba(87,60,86,.28)` shadow, 30px radius
-  - `S.btn` seated edge: `0 2px 0 #813318` plus inset white highlight
-  - Shopping row style: quantity in plum 800, item in ink 600
+- Ground animated in temperature: `#0E0B10` counter → `--paper #F6EFE3` from the light
+  sweep → `--stove #17110F` for the cooking
+- Accent `--hot #B44722` (which is also gochujang-glaze colour); `--rose #EE9265` on dark
+- Food palette: board `#9A6A3C`, pan `#2A2529`/`#4A424C`, oil `#D9A54A`, thigh
+  `#C98A4B`/`#8E5327`, glaze `#8E2F16`, scallion `#4E7A3F`/`#E8EFE2`, flame
+  `#E8481A`→`#FFB347`, plate `#FFFFFF`, rice `#F7F2E6`
+- Nunito 900/800 display, 600/700 body, shipped locally as woff2
 
 ## Storyboard
 
-Use the storyboard in `brag-output/brag-plan.md` as the creative contract.
+Use `brag-output/brag-plan.md` as the creative contract. Eight acts on the music's own bar
+grid, cooking given the largest block:
 
-Scene summary:
-
-1. **The dill problem** — 5.5s — read the hook in full; see two sprigs survive out of a
-   whole bunch
-2. **Meet Mise** — 4.5s — see the real character artwork on the real glass card; read
-   three verbs arriving one at a time
-3. **The list, working** — 5.5s — watch "I don't want a whole bunch of dill" typed into
-   the app's real note field, then watch the dill row rewrite itself to 2 sprigs
-4. **Package sizes** — 4.5s — read the thesis line; see the wordmark and price
+1. **0.000** Thursday, 6:12pm — appliance clock with a blinking colon, three lonely
+   ingredients landing with weight. Silent.
+2. **7.094** The light comes on — warm sweep on a strong cue, ground warms, mise en place.
+3. **11.459** Your kitchen — four plates become one, pans drop onto three nights, three
+   chillies light, thirteen equipment icons pop, fourteen restriction chips cascade.
+4. **22.372** It suggests, you push back — ideas deal in, a line types itself, one idea is
+   rewritten on the cue.
+5. **28.921** Three dinners, one list — eleven tokens fly out and land as nine rows; three
+   scallions are absorbed into one.
+6. **33.286** THE COOKING, six beats of one bar each — chop · oil · sizzle · heat · glaze ·
+   toss.
+7. **46.370** The plate, and what it learned — the dish assembles, then stars, a typed
+   note, and the note flying into next week.
+8. **55.101** Sign-off.
 
 ## Audio
 
-- Audio role: warm bed with sparse, motion-matched accents
-- Audio arc: quiet under the hook → lifts as Mise appears and the verbs tick in →
-  ducks under the typing → one warm resolve on the row rewrite → fades out so the final
-  accent rings into silence
-- Music: `assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.mp3`
-- Music treatment: 0.30 under the hook, 0.42 for the product scenes, ducked to 0.30
-  behind the typing, fade 17.6 → 20.0 to zero
-- Music cue guidance: preset read from
-  `assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.music-cues.json`
-  (tempo 109.96; beat grid ~0.546s). Beat-lock targets: **6.014** (card reveal, strong
-  cue 0.92), **14.733** (row resolve, 0.93), **15.824** (outro line, 0.96). Beat-grid
-  window for the three verb chips: 6.281 / 7.349 / 8.220 — every *other* beat, so each
-  3-word chip clears the reading floor.
-- Audio-reactive treatment: subtle. `assets/music/audio-data.json` (30fps, 16 bands,
-  1800 frames) is extracted and present. Drive the daylight glow's opacity/scale and the
-  glass card's shadow depth from the bass band; keep anything carrying text within a
-  3-6% swing. No waveform bars, no equalizers, no pulsing orbs.
-- Audio-coupled moments:
-  - Scene 1, hook settle (0.824) — warm soft landing
-  - Scene 2, card arrival (6.014) — major reveal, beat-locked
-  - Scene 2, three chips (6.281 / 7.349 / 8.220) — card-like sequential reveal
-  - Scene 3, note field (10.6 → 12.3) — sparse keypresses, roughly every third character
-  - Scene 3, submit (12.5) — simulated user action
-  - Scene 3, row rewrite (13.108) + settle (14.733) — the payoff
-  - Scene 4, thesis line (15.824) — beat-locked
-  - Scene 4, wordmark (18.553) — final accent, rings over the fade
-- SFX selection guidance: warm, low high-frequency-risk files only. Repeated sounds
-  (keypresses) stay at 0.14 gain or below. Nothing bright or clicky more than once.
-- SFX analysis guidance:
-  `/root/.claude/plugins/cache/brag/brag/0.2.2/skills/brag/assets/sfx/sfx-analysis.md`
-  — chosen from its "Safest General Picks": `impact/impactSoft_medium_{001,002,004}.ogg`,
-  `impact/impactSoft_heavy_000.ogg`, `interface/bong_001.ogg`, `ui/click2.ogg`,
-  `keyboard/keypress-*.wav`
-- Exact SFX choice: filenames, timestamps, density, and volume chosen against the
-  implemented animation, as above.
-- Audio files: copied into `brag-output/composition/assets/` (`music/`, `sfx/`, `fonts/`,
-  `textures/`)
+- Music: `assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3` (109.96 BPM),
+  chosen by measuring all five bundled tracks in 5s RMS buckets — the only one that opens
+  genuinely quiet (−21.3 dB) and climbs
+- Cue source: full grid regenerated with the plugin's own `analyze_music_cues.py` over a
+  60s window (the shipped preset only covers 25s) → `assets/music/vol-12-cues-60s.json`
+- Treatment: 0.20 under the dark open → 0.46 through the app beats → **0.30 for the whole
+  cooking block so the contact sounds carry** → 0.42 for the plate → fade out
+- Strong-cue locks: 8.742 · 17.473 · 22.930 · 27.295 · 32.740 · 38.197 · 42.562 · 44.745 ·
+  48.019 · 51.293
+- SFX are contact sounds only: four chops, oil, the drop into hot fat, the glaze, the
+  toss, the plate, the star. Warm, low high-frequency-risk files throughout.
+- Audio-reactive: the pan's heat glow and the steam's drift ride the bass; the warm ground
+  light breathes across the film. Nothing carrying type moves more than 4%.
 
-## Hyperframes Instructions
+## Requirements
 
-Built against the installed domain skills — `hyperframes-core` (composition contract and
-`data-*` timing), `hyperframes-animation` (motion), `hyperframes-creative` (design spec,
-beats, audio-reactive), `hyperframes-keyframes` (seek-safe keyframes), `hyperframes-cli`
-(lint/check/render). This is the `/brag` workflow, not the generic
-`product-launch-video` route, so the intent interview is skipped.
-
-Requirements:
-
-- Show at least one real UI, copy, or visual element from the source project — met three
-  times over (character SVG, glass card, Shopping rows and note field).
-- Keep all text readable in the final render; every read clears the floor in
-  `step-2-plan.md` (short label ≥0.8s settled, sentence ≥0.3s per word).
-- Keep the video within 15-25 seconds — 20.0s.
-- Include the planned music and SFX layer.
-- Beat-lock 3 major moments within ±0.15s and snap the 3 sequential chips to alternating
-  beats within ±0.10s; mark each with `// beat-locked` / `// beat-grid`.
-- Wire at least one visual element to the extracted audio data via per-frame
-  `tl.call()` sampling, not a single tween.
-- Use local assets only — no CDN fonts, no remote media. GSAP loads from the pinned
-  jsDelivr URL the scaffold ships with.
-- Run `npx hyperframes check` before render — brag's single gate.
+- `npx hyperframes check` must pass — brag's single gate.
+- Deterministic only: the sizzle burst is a fixed pool whose position is a pure function
+  of flight time from an index-seeded hash, driven by one `ease: none` tween, so a seek to
+  any moment shows the correct mid-flight frame. No `Math.random`, no clocks.
+- Pours draw via `pathLength` + `strokeDashoffset` rather than `getTotalLength()`, so no
+  DOM measurement is involved and the stream is exact at any seek.
+- Local assets only — no CDN font, no remote media; GSAP is vendored.

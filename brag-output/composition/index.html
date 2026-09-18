@@ -15,7 +15,8 @@
 
       :root {
         --paper: #f6efe3;
-        --dark: #100d12;
+        --night: #0e0b10;
+        --stove: #17110f;
         --ink: #1a1b24;
         --muted: #6e6472;
         --plum: #573c56;
@@ -27,316 +28,378 @@
         --tape: #f0d9d5;
         --tape-ink: #57303a;
         --rule: rgba(87, 60, 86, 0.2);
-        /* on dark */
         --on-dark: #f6efe3;
-        --on-dark-dim: #c5b9c0;
+        --on-dark-dim: #c9bdc4;
+        /* Food, all drawn. Persimmon happens to be exactly gochujang-glaze colour. */
+        --board: #9a6a3c;
+        --board-dk: #7d5430;
+        --pan: #2a2529;
+        --pan-rim: #4a424c;
+        --oil: #d9a54a;
+        --thigh: #c98a4b;
+        --thigh-dk: #8e5327;
+        --glaze: #8e2f16;
+        --scallion: #4e7a3f;
+        --scallion-pale: #e8efe2;
+        --plate: #ffffff;
+        --rice: #f7f2e6;
       }
 
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--dark); }
-      #root {
-        position: relative; width: 100%; height: 100%; overflow: hidden;
-        font-family: "Nunito", sans-serif;
-      }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--night); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Nunito", sans-serif; }
 
-      /* ── Persistent ground. Its colour is tweened from near-black to paper
-         on a strong cue in Act 2: the film changes temperature once, and that
-         change is the story's turn. ─────────────────────────────────────── */
-      #ground { position: absolute; inset: 0; background-color: var(--dark); }
-      #photoground {
+      /* ── Persistent ground: its colour is tweened across the film, so the
+         story's turn is told in temperature. ──────────────────────────────── */
+      #ground { position: absolute; inset: 0; background-color: var(--night); }
+      #counter {
         position: absolute; inset: 0;
         background-image: url("assets/img/clay.webp");
-        background-size: cover; background-position: 50% 35%;
-        opacity: 0.12;
+        background-size: cover; background-position: 50% 40%;
+        opacity: 0.1;
       }
       /* Audio-reactive warm light, present for the whole film. Driven ONLY by
          the per-frame sampler, so no tween contests it. */
       #warmlight {
         position: absolute; left: 960px; top: 540px;
         width: 2200px; height: 1600px; margin-left: -1100px; margin-top: -800px;
-        background-image: radial-gradient(40% 40% at 50% 50%, rgba(238, 146, 101, 0.22), rgba(238, 146, 101, 0) 72%);
+        background-image: radial-gradient(40% 40% at 50% 50%, rgba(238, 146, 101, 0.2), rgba(238, 146, 101, 0) 72%);
         opacity: 0.4;
       }
 
       .clip { position: absolute; inset: 0; }
-
-      /* ── Shared type ──────────────────────────────────────────────────── */
-      .kick {
-        font-weight: 700; font-size: 26px; letter-spacing: 0.22em;
-        text-transform: uppercase; color: var(--hot);
-      }
-      .kick--dark { color: var(--rose); }
-      .say {
-        font-weight: 900; letter-spacing: -0.035em; line-height: 1.04; color: var(--ink);
-      }
+      .kick { font-weight: 700; font-size: 26px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--hot); }
+      .say { font-weight: 900; letter-spacing: -0.035em; line-height: 1.05; color: var(--ink); }
       .say--dark { color: var(--on-dark); }
+      .obj { position: absolute; opacity: 0; }
+      .obj svg { display: block; overflow: visible; }
 
-      /* ══ Act 1 — six o'clock ══════════════════════════════════════════ */
-      #a1 { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-      #a1-clock {
-        font-weight: 900; font-size: 210px; letter-spacing: -0.05em; line-height: 1;
-        color: var(--on-dark); opacity: 0;
+      /* ══ Act 1 — Thursday, 6:12pm ════════════════════════════════════════
+         An appliance display, so the number is unmistakably a clock: dark
+         panel, amber digits, a blinking colon, a PM, and the day beneath. */
+      #clockwrap { position: absolute; left: 660px; top: 236px; width: 600px; opacity: 0; }
+      #clockpanel {
+        position: relative; height: 252px; border-radius: 28px;
+        background: linear-gradient(#171016, #0c0810);
+        border: 1px solid rgba(255, 176, 92, 0.22);
+        box-shadow: inset 0 2px 0 rgba(255, 190, 120, 0.1), inset 0 0 70px rgba(255, 140, 50, 0.13), 0 24px 60px -26px rgba(0, 0, 0, 0.9);
+        display: flex; align-items: center; justify-content: center; gap: 8px;
       }
-      #a1-toks { display: flex; gap: 20px; margin-top: 54px; }
-      .ghosttok {
-        display: block; padding: 16px 30px; border-radius: 999px;
-        border: 1px solid rgba(246, 239, 227, 0.26); background: rgba(246, 239, 227, 0.05);
-        font-weight: 700; font-size: 30px; color: var(--on-dark-dim); white-space: nowrap;
-        opacity: 0;
+      .digit {
+        font-weight: 900; font-size: 148px; line-height: 1; letter-spacing: -0.02em;
+        color: #ffa94d; text-shadow: 0 0 34px rgba(255, 150, 60, 0.6);
+      }
+      #colon { font-weight: 900; font-size: 128px; line-height: 1; color: #ffa94d; text-shadow: 0 0 34px rgba(255, 150, 60, 0.6); margin-top: -12px; }
+      #pm {
+        align-self: flex-start; margin-top: 62px; margin-left: 12px;
+        font-weight: 800; font-size: 42px; letter-spacing: 0.04em;
+        color: #e08b3c; text-shadow: 0 0 22px rgba(255, 150, 60, 0.45);
+      }
+      #clockday {
+        margin-top: 28px; text-align: center;
+        font-weight: 800; font-size: 30px; letter-spacing: 0.4em;
+        text-transform: uppercase; color: var(--on-dark-dim);
       }
       #a1-line {
-        margin-top: 58px; font-weight: 800; font-size: 60px; letter-spacing: -0.03em;
-        color: var(--on-dark-dim); opacity: 0;
+        position: absolute; left: 0; right: 0; top: 790px; text-align: center;
+        font-weight: 800; font-size: 56px; letter-spacing: -0.03em; color: var(--on-dark-dim); opacity: 0;
       }
 
-      /* ══ Act 2 — the light comes on ═══════════════════════════════════ */
-      #a2 { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      /* The three sad things you actually have. */
+      #ing1 { left: 470px; top: 596px; }
+      #ing2 { left: 880px; top: 632px; }
+      #ing3 { left: 1250px; top: 566px; }
+
+      /* ══ Act 2 — the light comes on ═════════════════════════════════════ */
       #a2-sweep {
         position: absolute; top: -200px; left: 0; width: 460px; height: 1480px;
-        background-image: linear-gradient(90deg, rgba(255, 214, 166, 0) 0%, rgba(255, 220, 176, 0.22) 44%, rgba(255, 232, 198, 0.42) 58%, rgba(255, 214, 166, 0) 100%);
-        filter: blur(26px);
-        opacity: 0;
+        background-image: linear-gradient(90deg, rgba(255, 214, 166, 0) 0%, rgba(255, 220, 176, 0.24) 44%, rgba(255, 232, 198, 0.46) 58%, rgba(255, 214, 166, 0) 100%);
+        filter: blur(26px); opacity: 0;
       }
-      #a2-mark { opacity: 0; }
-      #a2-line { margin-top: 34px; font-size: 104px; opacity: 0; }
+      #a2-line {
+        position: absolute; left: 0; right: 0; top: 452px; text-align: center;
+        font-weight: 900; font-size: 104px; letter-spacing: -0.04em; color: var(--on-dark); opacity: 0;
+      }
+      #a2-mark { position: absolute; left: 856px; top: 232px; opacity: 0; }
+      #a2-mise {
+        position: absolute; left: 0; right: 0; top: 792px; text-align: center;
+        font-weight: 700; font-size: 26px; letter-spacing: 0.34em; text-transform: uppercase;
+        color: var(--hot); opacity: 0;
+      }
 
-      /* ══ Act 3 — building the kitchen ═════════════════════════════════
-         One clip, one continuous accumulation. Every group has its own zone
-         so nothing ever has to overlap anything else. ─────────────────── */
-      #a3-head { position: absolute; left: 110px; top: 78px; width: 940px; opacity: 0; }
-      #a3-head .say { font-size: 68px; margin-top: 20px; }
+      /* ══ Act 3 — your kitchen ═══════════════════════════════════════════ */
+      #a3-head { position: absolute; left: 110px; top: 82px; width: 1000px; opacity: 0; }
+      #a3-head .say { font-size: 66px; margin-top: 18px; }
+      .fieldlab { font-weight: 800; font-size: 24px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 
-      #a3-count { position: absolute; left: 110px; top: 300px; width: 490px; opacity: 0; }
-      .fieldlab { font-weight: 800; font-size: 25px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-      #a3-num { font-weight: 900; font-size: 118px; line-height: 1.1; letter-spacing: -0.05em; color: var(--ink); margin-top: 6px; }
-      #a3-conseq { font-weight: 700; font-size: 23px; color: var(--plum); line-height: 1.34; margin-top: 14px; }
+      #a3-plates { position: absolute; left: 110px; top: 306px; width: 560px; opacity: 0; }
+      #a3-platerow { position: relative; height: 104px; margin-top: 16px; }
+      .plateicon { position: absolute; top: 0; opacity: 0; }
+      #a3-conseq { font-weight: 700; font-size: 25px; color: var(--plum); line-height: 1.34; margin-top: 16px; width: 520px; opacity: 0; }
 
-      #a3-days { position: absolute; left: 110px; top: 566px; width: 490px; opacity: 0; }
-      #a3-days .row { display: flex; gap: 8px; margin-top: 12px; }
+      #a3-days { position: absolute; left: 110px; top: 556px; width: 560px; opacity: 0; }
+      #a3-dayrow { display: flex; gap: 9px; margin-top: 14px; }
       .day {
-        display: grid; place-items: center; width: 62px; height: 60px; border-radius: 15px;
+        position: relative; display: flex; flex-direction: column;
+        align-items: center; justify-content: flex-end; padding-bottom: 10px;
+        width: 68px; height: 90px; border-radius: 18px;
         background: var(--sunk); border: 1px solid var(--rule);
-        font-weight: 800; font-size: 21px; color: var(--muted);
+        font-weight: 800; font-size: 22px; color: var(--muted);
       }
-      .day--on { background: var(--hot); border-color: var(--hot-edge); color: #fff; }
+      .day--on { background: rgba(180, 71, 34, 0.12); border-color: var(--hot); color: var(--hot); }
+      .panicon { position: absolute; left: 50%; top: 12px; margin-left: -29px; opacity: 0; }
 
-      #a3-heat { position: absolute; left: 110px; top: 704px; width: 490px; opacity: 0; }
-      .meter { display: flex; gap: 8px; margin-top: 12px; }
-      .meter span { display: block; flex: 1 1 0; height: 26px; border-radius: 8px; background: var(--sunk); border: 1px solid var(--rule); }
-      .meter .on { background: var(--hot); border-color: var(--hot-edge); }
-      #a3-heatlab { font-weight: 800; font-size: 28px; color: var(--hot); margin-top: 11px; }
+      #a3-heat { position: absolute; left: 110px; top: 742px; width: 560px; opacity: 0; }
+      #a3-chilis { display: flex; align-items: flex-end; gap: 14px; margin-top: 12px; height: 104px; }
+      .chili { opacity: 0.22; }
+      #a3-heatlab { font-weight: 800; font-size: 30px; color: var(--hot); margin-top: 12px; }
 
-      #a3-adv { position: absolute; left: 110px; top: 852px; width: 490px; opacity: 0; }
-      #a3-advtrack { position: relative; height: 26px; margin-top: 14px; }
-      #a3-advrail { position: absolute; left: 0; right: 0; top: 11px; height: 4px; border-radius: 2px; background: var(--rule); }
-      .advstop { position: absolute; top: 5px; width: 16px; height: 16px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--rule); }
-      #a3-advknob { position: absolute; top: 0; left: 0; width: 26px; height: 26px; border-radius: 999px; background: var(--hot); box-shadow: 0 2px 0 var(--hot-edge); }
-      #a3-advlab { font-weight: 800; font-size: 28px; color: var(--hot); margin-top: 13px; }
+      #a3-equip { position: absolute; left: 1150px; top: 306px; width: 660px; opacity: 0; }
+      #a3-equipgrid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+      .eq {
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
+        width: 120px; padding: 13px 4px 11px; border-radius: 17px;
+        background: var(--sunk); border: 1px solid var(--rule); opacity: 0;
+      }
+      .eq__l { font-weight: 700; font-size: 13px; color: var(--plum); text-align: center; line-height: 1.15; }
 
-      #a3-chips { position: absolute; left: 642px; top: 306px; width: 424px; opacity: 0; }
-      #a3-chipwrap { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 13px; }
+      #a3-chips { position: absolute; left: 1150px; top: 646px; width: 660px; opacity: 0; }
+      #a3-chipwrap { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
       .rchip {
-        display: block; padding: 9px 15px; border-radius: 999px;
+        display: block; padding: 10px 17px; border-radius: 999px;
         background: var(--sunk); border: 1px solid var(--rule);
-        font-weight: 700; font-size: 17px; color: var(--muted); white-space: nowrap;
-        opacity: 0;
+        font-weight: 700; font-size: 18px; color: var(--muted); white-space: nowrap; opacity: 0;
       }
       .rchip--on { background: rgba(180, 71, 34, 0.13); border-color: var(--hot); color: var(--hot); }
 
-      #a3-photo {
-        position: absolute; left: 1110px; top: 78px; width: 700px; height: 394px;
-        border-radius: 26px; overflow: hidden; opacity: 0;
-        box-shadow: 0 24px 60px -24px rgba(40, 24, 30, 0.5);
-      }
-      #a3-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
-      #a3-photocap {
-        position: absolute; left: 1110px; top: 492px; width: 700px;
-        font-weight: 700; font-size: 24px; color: var(--plum); opacity: 0;
-      }
-
-      #a3-equip { position: absolute; left: 1110px; top: 556px; width: 700px; opacity: 0; }
-      #a3-equipgrid { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 14px; }
-      .eq {
-        display: flex; flex-direction: column; align-items: center; gap: 6px;
-        width: 126px; padding: 13px 4px 11px; border-radius: 17px;
-        background: var(--sunk); border: 1px solid var(--rule); opacity: 0;
-      }
-      .eq__l { font-weight: 700; font-size: 14px; color: var(--plum); text-align: center; line-height: 1.15; }
-
-      /* ── Act 3's closing card ─────────────────────────────────────────── */
       #a3card { display: flex; align-items: center; justify-content: center; }
       #a3card-in {
-        width: 1180px; padding: 62px 70px; border-radius: 34px; text-align: center;
+        width: 1200px; padding: 60px 70px; border-radius: 34px; text-align: center;
         background: #fff; border: 1px solid var(--rule);
-        box-shadow: 0 30px 70px -28px rgba(87, 60, 86, 0.4);
-        opacity: 0;
+        box-shadow: 0 30px 70px -28px rgba(87, 60, 86, 0.4); opacity: 0;
       }
-      #a3card-in .kick { display: block; }
-      #a3card-in h2 { font-weight: 900; font-size: 82px; letter-spacing: -0.04em; color: var(--ink); margin-top: 16px; }
-      #a3card-in p { font-weight: 700; font-size: 34px; color: var(--plum); margin-top: 18px; }
+      #a3card-in h2 { font-weight: 900; font-size: 80px; letter-spacing: -0.04em; color: var(--ink); margin-top: 14px; }
+      #a3card-in p { font-weight: 700; font-size: 32px; color: var(--plum); margin-top: 18px; }
 
-      /* ══ Act 4 — it suggests, you push back ═══════════════════════════ */
-      #a4-say { position: absolute; left: 0; right: 0; top: 108px; text-align: center; opacity: 0; }
-      #a4-say .say { font-size: 84px; }
-      #a4-cards { position: absolute; left: 200px; top: 332px; width: 1520px; height: 300px; }
+      /* ══ Act 4 — it suggests, you push back ═════════════════════════════ */
+      #a4-say { position: absolute; left: 0; right: 0; top: 112px; text-align: center; opacity: 0; }
+      #a4-say .say { font-size: 82px; }
+      #a4-cards { position: absolute; left: 200px; top: 330px; width: 1520px; height: 306px; }
       .dishcard {
-        position: absolute; top: 0; width: 465px; height: 300px;
+        position: absolute; top: 0; width: 465px; height: 306px;
         padding: 34px 32px; border-radius: 26px; background: #fff;
-        border: 1px solid var(--rule); box-shadow: 0 18px 46px -20px rgba(87, 60, 86, 0.3);
-        opacity: 0;
+        border: 1px solid var(--rule); box-shadow: 0 18px 46px -20px rgba(87, 60, 86, 0.3); opacity: 0;
       }
       .dishcard h3 { font-weight: 900; font-size: 36px; line-height: 1.14; letter-spacing: -0.03em; color: var(--ink); }
       .dishcard p { font-weight: 600; font-size: 24px; color: var(--muted); line-height: 1.34; margin-top: 14px; }
       .dishcard .mins { position: absolute; left: 32px; bottom: 30px; font-weight: 800; font-size: 21px; color: var(--plum); }
+      #a4-who { position: absolute; left: 510px; top: 686px; font-weight: 800; font-size: 22px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); opacity: 0; }
       #a4-field {
-        position: absolute; left: 510px; top: 712px; width: 900px;
+        position: absolute; left: 510px; top: 732px; width: 900px;
         display: flex; align-items: center; min-height: 104px; padding: 0 32px;
         border-radius: 22px; background: #fff; border: 1px solid var(--rule);
         box-shadow: 0 10px 30px -16px rgba(87, 60, 86, 0.28); opacity: 0;
       }
       #a4-typed { font-weight: 700; font-size: 40px; color: var(--ink); white-space: pre; }
       #a4-caret { display: inline-block; width: 4px; height: 46px; margin-left: 4px; background: var(--hot); opacity: 0; }
-      #a4-who {
-        position: absolute; left: 510px; top: 666px;
-        font-weight: 800; font-size: 22px; letter-spacing: 0.14em; text-transform: uppercase;
-        color: var(--muted); opacity: 0;
-      }
 
-      /* ══ Act 5 — three dinners, one list ══════════════════════════════ */
-      #a5-say { position: absolute; left: 0; right: 0; top: 938px; text-align: center; opacity: 0; }
-      #a5-say .say { font-size: 62px; }
-      #a5-sources { position: absolute; left: 160px; top: 108px; width: 1600px; display: flex; justify-content: space-between; }
+      /* ══ Act 5 — three dinners, one list ════════════════════════════════ */
+      #a5-say { position: absolute; left: 0; right: 0; top: 946px; text-align: center; opacity: 0; }
+      #a5-say .say { font-size: 60px; }
+      #a5-sources { position: absolute; left: 160px; top: 96px; width: 1600px; display: flex; justify-content: space-between; }
       .srclab {
-        display: block; max-width: 440px; padding: 14px 26px; border-radius: 999px;
-        background: var(--tape); font-weight: 800; font-size: 25px; color: var(--tape-ink);
-        white-space: nowrap; opacity: 0;
+        display: block; padding: 14px 26px; border-radius: 999px; background: var(--tape);
+        font-weight: 800; font-size: 25px; color: var(--tape-ink); white-space: nowrap; opacity: 0;
       }
       #a5-listbox {
-        position: absolute; left: 616px; top: 252px; width: 668px; height: 644px;
-        border-radius: 30px; background: rgba(255, 255, 255, 0.5);
-        border: 1px solid var(--rule); opacity: 0;
+        position: absolute; left: 616px; top: 236px; width: 668px; height: 644px;
+        border-radius: 30px; background: rgba(255, 255, 255, 0.5); border: 1px solid var(--rule); opacity: 0;
       }
-      #a5-count {
-        position: absolute; left: 1360px; top: 258px; width: 300px; opacity: 0;
-      }
+      #a5-count { position: absolute; left: 1360px; top: 246px; width: 300px; opacity: 0; }
       #a5-countn { font-weight: 900; font-size: 112px; line-height: 1.1; letter-spacing: -0.04em; color: var(--hot); }
       #a5-countl { font-weight: 800; font-size: 26px; color: var(--plum); margin-top: 16px; }
       .ftok {
         position: absolute; display: flex; align-items: center; gap: 20px;
         width: 604px; padding: 12px 28px; border-radius: 17px; background: #fff;
         border: 1px solid var(--rule); box-shadow: 0 8px 20px -10px rgba(87, 60, 86, 0.3);
-        font-weight: 700; font-size: 29px; color: var(--ink); white-space: nowrap;
+        font-weight: 700; font-size: 29px; color: var(--ink); white-space: nowrap; opacity: 0;
+      }
+      .ftok b { display: block; flex: 0 0 132px; width: 132px; text-align: right; font-weight: 800; color: var(--plum); font-size: 25px; }
+
+      /* ══ Act 6 — the cooking ════════════════════════════════════════════ */
+      #a6-scrim { position: absolute; inset: 0; background: var(--stove); opacity: 0; }
+      #a6-say { position: absolute; left: 0; right: 0; top: 916px; text-align: center; opacity: 0; }
+      #a6-say .say { font-size: 68px; }
+
+      #board { left: 370px; top: 470px; }
+      #scallion { left: 700px; top: 590px; }
+      #knife { left: 676px; top: 428px; transform-origin: 89% 61%; }
+      #rounds { position: absolute; left: 0; top: 0; }
+      .around {
+        position: absolute; width: 58px; height: 58px; border-radius: 999px;
+        background: var(--scallion-pale); border: 11px solid var(--scallion); opacity: 0;
+      }
+
+      #panstage { position: absolute; left: 960px; top: 588px; transform: scale(1.18); transform-origin: 0 0; }
+      #panwrap { position: absolute; left: -380px; top: -228px; width: 1010px; height: 460px; opacity: 0; transform-origin: 88% 52%; }
+      #panglow {
+        position: absolute; left: -520px; top: -420px; width: 1040px; height: 840px;
+        background-image: radial-gradient(38% 38% at 50% 50%, rgba(255, 168, 78, 0.58), rgba(255, 110, 30, 0) 72%);
         opacity: 0;
       }
-      /* Fixed quantity column so the numbers line up like a list you would
-         actually read in an aisle. */
-      .ftok b {
-        display: block; flex: 0 0 132px; width: 132px; text-align: right;
-        font-weight: 800; color: var(--plum); font-size: 25px;
+      #pan { position: absolute; left: 0; top: 0; }
+      #oilpool { position: absolute; left: 0; top: 0; opacity: 0; }
+      #oilstream { position: absolute; left: 420px; top: 52px; opacity: 0; }
+      #bottle { position: absolute; left: 432px; top: -143px; opacity: 0; transform-origin: 34% 86%; }
+      .thigh { position: absolute; opacity: 0; }
+      #thigh1 { left: 150px; top: 112px; }
+      #thigh2 { left: 322px; top: 196px; }
+      #thigh3 { left: 470px; top: 102px; }
+      #spoon { position: absolute; left: 500px; top: -82px; opacity: 0; transform-origin: 25% 50%; }
+      #glazestream { position: absolute; left: 470px; top: 0px; opacity: 0; }
+      #gloss {
+        position: absolute; left: -200px; top: 40px; width: 300px; height: 400px;
+        background-image: linear-gradient(104deg, rgba(255, 255, 255, 0) 0%, rgba(255, 244, 228, 0.62) 50%, rgba(255, 255, 255, 0) 100%);
+        filter: blur(14px); opacity: 0;
+      }
+      #sizzlefield { position: absolute; left: 380px; top: 210px; width: 0; height: 0; }
+      .sizz { position: absolute; left: 0; top: 0; border-radius: 999px; opacity: 0; will-change: transform, opacity; }
+      #steam {
+        position: absolute; left: 90px; top: -300px; width: 700px; height: 560px;
+        filter: blur(17px); opacity: 0;
+      }
+      .flame { position: absolute; opacity: 0; transform-origin: 50% 100%; }
+      #flame1 { left: 150px; top: -86px; }
+      #flame2 { left: 330px; top: -132px; }
+      #flame3 { left: 520px; top: -74px; }
+
+      #a6-timer { position: absolute; left: 120px; top: 452px; opacity: 0; }
+      #a6-clock { font-weight: 900; font-size: 118px; line-height: 1.1; letter-spacing: -0.04em; color: var(--rose); }
+      #a6-step { font-weight: 800; font-size: 23px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--on-dark-dim); margin-top: 16px; }
+
+      /* ══ Act 7 — the plate, and what it learned ═════════════════════════ */
+      #a7-scrim { position: absolute; inset: 0; background: var(--stove); opacity: 0; }
+      #platestage { position: absolute; left: 960px; top: 498px; transform: scale(1.22); transform-origin: 0 0; }
+      #platewrap { position: absolute; left: -310px; top: -310px; width: 620px; height: 620px; opacity: 0; }
+      #plate { position: absolute; left: 0; top: 0; }
+      #rice { position: absolute; left: 118px; top: 286px; opacity: 0; }
+      #pthigh1 { position: absolute; left: 176px; top: 172px; opacity: 0; }
+      #pthigh2 { position: absolute; left: 288px; top: 246px; opacity: 0; }
+      #pdrizzle { position: absolute; left: 92px; top: 122px; opacity: 0; }
+      #psteam { position: absolute; left: 90px; top: -190px; width: 440px; height: 420px; filter: blur(15px); opacity: 0; }
+      .pround { position: absolute; width: 34px; height: 34px; border-radius: 999px; background: var(--scallion-pale); border: 7px solid var(--scallion); opacity: 0; }
+      #a7-dish {
+        position: absolute; left: 0; right: 0; top: 884px; text-align: center;
+        font-weight: 900; font-size: 52px; letter-spacing: -0.03em; color: var(--on-dark); opacity: 0;
       }
 
-      /* ══ Act 6 — you and the pan ══════════════════════════════════════ */
-      #a6-scrim { position: absolute; inset: 0; background: #17121a; opacity: 0; }
-      #a6-photo {
-        position: absolute; left: 980px; top: 56px; width: 820px; height: 968px;
-        border-radius: 32px; overflow: hidden; opacity: 0;
-        box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.75);
-      }
-      #a6-photoin { position: absolute; inset: 0; }
-      /* Cropped hard into the surface: at native size this fills far more than
-         the panel, so what you see is an intimate, shallow close-up rather than
-         a whole flat tile. */
-      #a6-photoin img {
-        display: block; width: 100%; height: 100%;
-        object-fit: cover; object-position: 38% 22%; transform: scale(1.85);
-      }
-      /* Lit from one side and falling off into the dark, so the panel reads as
-         a pan under a light instead of a bright rectangle. */
-      #a6-vign {
-        position: absolute; inset: 0;
-        background-image:
-          radial-gradient(58% 46% at 42% 58%, rgba(0, 0, 0, 0) 40%, rgba(18, 10, 6, 0.72) 100%),
-          linear-gradient(160deg, rgba(255, 196, 132, 0.16), rgba(20, 10, 6, 0.4) 72%);
-      }
-      #a6-heatglow {
-        position: absolute; left: 50%; top: 62%; width: 900px; height: 900px;
-        margin-left: -450px; margin-top: -450px;
-        background-image: radial-gradient(40% 40% at 50% 50%, rgba(255, 176, 92, 0.5), rgba(255, 120, 40, 0) 70%);
-        opacity: 0.4;
-      }
-      #a6-bloom { position: absolute; inset: 0; background: rgba(255, 206, 150, 0.6); opacity: 0; }
-      /* Blurred well past legibility on purpose: sharp strokes read as drawn
-         squiggles, a heavy blur reads as steam. */
-      #a6-steam {
-        position: absolute; left: 0; top: -80px; width: 100%; height: 680px;
-        filter: blur(16px); opacity: 0.5;
-      }
-      #a6-say { position: absolute; left: 110px; top: 150px; width: 790px; opacity: 0; }
-      #a6-say .say { font-size: 76px; }
-      #a6-timer { position: absolute; left: 110px; top: 430px; opacity: 0; }
-      #a6-clock { font-weight: 900; font-size: 126px; line-height: 1.1; letter-spacing: -0.04em; color: var(--rose); }
-      #a6-timerlab { font-weight: 800; font-size: 24px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--on-dark-dim); margin-top: 18px; }
-      #a6-step {
-        position: absolute; left: 110px; top: 660px; width: 790px;
-        font-weight: 800; font-size: 60px; line-height: 1.2; letter-spacing: -0.025em;
-        color: var(--on-dark); opacity: 0;
-      }
-
-      /* ══ Act 7 — next week starts smarter ════════════════════════════ */
       #a7-say { position: absolute; left: 0; right: 0; top: 118px; text-align: center; opacity: 0; }
-      #a7-say .say { font-size: 80px; }
-      #a7-stars { position: absolute; left: 0; right: 0; top: 340px; display: flex; justify-content: center; gap: 22px; opacity: 0; }
-      #a7-read { position: absolute; left: 0; right: 0; top: 494px; text-align: center; font-weight: 800; font-size: 36px; color: var(--good); opacity: 0; }
+      #a7-say .say { font-size: 76px; }
+      #a7-stars { position: absolute; left: 0; right: 0; top: 330px; display: flex; justify-content: center; gap: 24px; }
+      .star { opacity: 0; }
+      #a7-read { position: absolute; left: 0; right: 0; top: 488px; text-align: center; font-weight: 800; font-size: 36px; color: var(--good); opacity: 0; }
       #a7-note {
-        position: absolute; left: 560px; top: 596px; width: 800px;
+        position: absolute; left: 560px; top: 588px; width: 800px;
         display: flex; align-items: center; min-height: 96px; padding: 0 30px;
         border-radius: 20px; background: #fff; border: 1px solid var(--rule);
         box-shadow: 0 10px 30px -16px rgba(87, 60, 86, 0.28); opacity: 0;
       }
       #a7-typed { font-weight: 700; font-size: 36px; color: var(--ink); white-space: pre; }
       #a7-caret { display: inline-block; width: 4px; height: 42px; margin-left: 4px; background: var(--hot); opacity: 0; }
-      #a7-next {
-        position: absolute; left: 150px; top: 790px; width: 420px; padding: 26px 30px;
-        border-radius: 22px; background: var(--sunk); border: 1px solid var(--rule); opacity: 0;
-      }
+      #a7-next { position: absolute; left: 150px; top: 782px; width: 420px; padding: 26px 30px; border-radius: 22px; background: var(--sunk); border: 1px solid var(--rule); opacity: 0; }
       #a7-next .kick { font-size: 21px; }
       #a7-next p { font-weight: 800; font-size: 29px; color: var(--ink); margin-top: 9px; line-height: 1.22; }
 
-      /* ══ Act 8 — sign-off ═════════════════════════════════════════════ */
+      /* ══ Act 8 — sign-off ═══════════════════════════════════════════════ */
       #a8 { display: flex; align-items: center; justify-content: center; }
       #a8-in { text-align: center; opacity: 0; }
       #a8-line { font-weight: 900; font-size: 84px; letter-spacing: -0.04em; color: var(--ink); }
-      #a8-rule { width: 150px; height: 4px; border-radius: 2px; background: var(--hot); margin: 52px auto; }
+      #a8-rule { width: 150px; height: 4px; border-radius: 2px; background: var(--hot); margin: 48px auto; }
       #a8-mark { display: flex; justify-content: center; filter: drop-shadow(0 12px 24px rgba(87, 60, 86, 0.24)); }
-      #a8-name { font-weight: 900; font-size: 104px; letter-spacing: -0.045em; color: var(--ink); margin-top: 12px; line-height: 1; }
+      #a8-name { font-weight: 900; font-size: 102px; letter-spacing: -0.045em; color: var(--ink); margin-top: 12px; line-height: 1; }
       #a8-tag { font-weight: 600; font-size: 40px; color: var(--muted); margin-top: 12px; }
       #a8-price {
         display: inline-block; font-weight: 700; font-size: 30px; color: var(--hot);
-        margin-top: 28px; padding: 14px 28px; border-radius: 999px;
+        margin-top: 26px; padding: 14px 28px; border-radius: 999px;
         background: rgba(180, 71, 34, 0.09); border: 1px solid rgba(180, 71, 34, 0.3);
       }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="59.5" data-width="1920" data-height="1080">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="59.47" data-width="1920" data-height="1080">
+      <!-- Shared drawing definitions: gradients reused by the food. -->
+      <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+        <defs>
+          <linearGradient id="gThigh" x1="0" y1="0" x2="0.4" y2="1">
+            <stop offset="0" stop-color="#DCA765" /><stop offset="1" stop-color="#B0702F" />
+          </linearGradient>
+          <linearGradient id="gGlaze" x1="0" y1="0" x2="0.3" y2="1">
+            <stop offset="0" stop-color="#C4501F" /><stop offset="0.55" stop-color="#9A3417" /><stop offset="1" stop-color="#752310" />
+          </linearGradient>
+          <linearGradient id="gFlame" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#E8481A" /><stop offset="0.5" stop-color="#FF8A28" /><stop offset="1" stop-color="#FFB347" />
+          </linearGradient>
+          <linearGradient id="gPan" x1="0" y1="0" x2="0.5" y2="1">
+            <stop offset="0" stop-color="#3A343E" /><stop offset="1" stop-color="#201C22" />
+          </linearGradient>
+          <radialGradient id="gRice" cx="0.4" cy="0.3" r="0.8">
+            <stop offset="0" stop-color="#FFFDF6" /><stop offset="1" stop-color="#EDE5D3" />
+          </radialGradient>
+        </defs>
+      </svg>
+
       <div id="ground"></div>
-      <div id="photoground"></div>
+      <div id="counter"></div>
       <div id="warmlight"></div>
 
-      <!-- ══ Act 1 — six o'clock, nothing to cook ══════════════════════ -->
+      <!-- ══ Act 1 — Thursday, 6:12 pm ═════════════════════════════════ -->
       <section class="clip" id="a1" data-start="0" data-duration="7.094" data-track-index="0">
-        <div id="a1-clock">6:12</div>
-        <div id="a1-toks">
-          <span class="ghosttok">half a cabbage</span>
-          <span class="ghosttok">two eggs</span>
-          <span class="ghosttok">one tub of gochujang</span>
+        <div id="clockwrap">
+          <div id="clockpanel">
+            <span class="digit">6</span><span id="colon">:</span><span class="digit" id="mins">12</span><span id="pm">PM</span>
+          </div>
+          <div id="clockday">Thursday</div>
         </div>
-        <div id="a1-line">and no idea what to make.</div>
+
+        <!-- half a cabbage: the cut face, drawn as concentric layers -->
+        <div class="obj" id="ing1">
+          <svg width="230" height="168" viewBox="0 0 230 168" role="img" aria-label="Half a cabbage">
+            <path d="M14 152a101 101 0 0 1 202 0z" fill="#EDF1E4" stroke="#4E7A3F" stroke-width="5" stroke-linejoin="round"/>
+            <path d="M42 152a73 73 0 0 1 146 0" fill="none" stroke="#9DBE86" stroke-width="4"/>
+            <path d="M68 152a47 47 0 0 1 94 0" fill="none" stroke="#9DBE86" stroke-width="4"/>
+            <path d="M92 152a23 23 0 0 1 46 0" fill="none" stroke="#9DBE86" stroke-width="4"/>
+            <path d="M115 152V96" stroke="#C6D9B4" stroke-width="5" stroke-linecap="round"/>
+            <rect x="8" y="150" width="214" height="12" rx="6" fill="#DCE3CF"/>
+          </svg>
+        </div>
+
+        <!-- two eggs -->
+        <div class="obj" id="ing2">
+          <svg width="212" height="132" viewBox="0 0 212 132" role="img" aria-label="Two eggs">
+            <ellipse cx="72" cy="80" rx="52" ry="44" fill="#F3E8D6" stroke="#D8C6AC" stroke-width="4"/>
+            <ellipse cx="58" cy="64" rx="18" ry="12" fill="#FBF5EA" opacity=".85"/>
+            <ellipse cx="146" cy="70" rx="50" ry="42" fill="#EFE0CB" stroke="#D0BDA1" stroke-width="4"/>
+            <ellipse cx="133" cy="55" rx="16" ry="11" fill="#FBF5EA" opacity=".7"/>
+          </svg>
+        </div>
+
+        <!-- a tub of gochujang -->
+        <div class="obj" id="ing3">
+          <svg width="168" height="196" viewBox="0 0 168 196" role="img" aria-label="A tub of gochujang">
+            <rect x="24" y="44" width="120" height="142" rx="16" fill="#B44722" stroke="#752310" stroke-width="4"/>
+            <rect x="12" y="20" width="144" height="34" rx="12" fill="#8E2F16" stroke="#5E1B0C" stroke-width="4"/>
+            <rect x="40" y="86" width="88" height="62" rx="9" fill="#F6EFE3" opacity=".92"/>
+            <path d="M54 108h60M54 124h42" stroke="#8E2F16" stroke-width="7" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <div id="a1-line">and nothing to make with it.</div>
       </section>
 
       <!-- ══ Act 2 — the light comes on ════════════════════════════════ -->
       <section class="clip" id="a2" data-start="7.094" data-duration="4.365" data-track-index="1">
         <div id="a2-sweep"></div>
+        <div id="a2-line">Let&rsquo;s work it out.</div>
         <div id="a2-mark">
           <svg width="208" height="208" viewBox="0 0 64 64" role="img" aria-label="Mise, your sous chef" style="color: #12141c">
             <path d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
@@ -349,48 +412,69 @@
             <path d="M37.2 57.6l10.2 1.1-.5 4.1-10.2-1z" fill="#F0D9D5" stroke="currentColor" stroke-width="1.3"/>
           </svg>
         </div>
-        <div class="say say--dark" id="a2-line">Let&rsquo;s work it out.</div>
+        <div id="a2-mise">Mise en place</div>
       </section>
 
-      <!-- ══ Act 3 — building the kitchen ══════════════════════════════ -->
-      <section class="clip" id="a3" data-start="11.459" data-duration="13.096" data-track-index="2">
+      <!-- ══ Act 3 — your kitchen ══════════════════════════════════════ -->
+      <section class="clip" id="a3" data-start="11.459" data-duration="9.541" data-track-index="2">
         <div id="a3-head">
           <p class="kick">Your kitchen</p>
           <h2 class="say">Seven steps. Every answer changes what it suggests.</h2>
         </div>
 
-        <div id="a3-count">
+        <div id="a3-plates">
           <p class="fieldlab">Cooking for</p>
-          <div id="a3-num">4</div>
-          <p id="a3-conseq">Package sizes are the real problem. I&rsquo;ll design around them.</p>
+          <div id="a3-platerow">
+            <div class="plateicon" id="pl1" style="left: 0"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="#fff" stroke="#DCCFC9" stroke-width="3"/><circle cx="52" cy="52" r="33" fill="none" stroke="#E8DCD6" stroke-width="3"/></svg></div>
+            <div class="plateicon" id="pl2" style="left: 118px"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="#fff" stroke="#DCCFC9" stroke-width="3"/><circle cx="52" cy="52" r="33" fill="none" stroke="#E8DCD6" stroke-width="3"/></svg></div>
+            <div class="plateicon" id="pl3" style="left: 236px"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="#fff" stroke="#DCCFC9" stroke-width="3"/><circle cx="52" cy="52" r="33" fill="none" stroke="#E8DCD6" stroke-width="3"/></svg></div>
+            <div class="plateicon" id="pl4" style="left: 354px"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="#fff" stroke="#DCCFC9" stroke-width="3"/><circle cx="52" cy="52" r="33" fill="none" stroke="#E8DCD6" stroke-width="3"/></svg></div>
+          </div>
+          <p id="a3-conseq">Cooking for one means package sizes are the real problem. I&rsquo;ll design around them.</p>
         </div>
 
         <div id="a3-days">
           <p class="fieldlab">Nights you cook</p>
-          <div class="row">
-            <span class="day" id="dayMo">Mo</span><span class="day" id="dayTu">Tu</span><span class="day" id="dayWe">We</span>
-            <span class="day" id="dayTh">Th</span><span class="day" id="dayFr">Fr</span><span class="day" id="daySa">Sa</span><span class="day" id="daySu">Su</span>
+          <div id="a3-dayrow">
+            <span class="day">Mo</span>
+            <span class="day" id="dayTu"><span class="panicon" id="panTu"><svg width="58" height="30" viewBox="0 0 58 30"><ellipse cx="20" cy="16" rx="17" ry="11" fill="#2A2529"/><rect x="34" y="12" width="22" height="7" rx="3.5" fill="#3A343E"/></svg></span>Tu</span>
+            <span class="day">We</span>
+            <span class="day" id="dayTh"><span class="panicon" id="panTh"><svg width="58" height="30" viewBox="0 0 58 30"><ellipse cx="20" cy="16" rx="17" ry="11" fill="#2A2529"/><rect x="34" y="12" width="22" height="7" rx="3.5" fill="#3A343E"/></svg></span>Th</span>
+            <span class="day">Fr</span>
+            <span class="day" id="daySa"><span class="panicon" id="panSa"><svg width="58" height="30" viewBox="0 0 58 30"><ellipse cx="20" cy="16" rx="17" ry="11" fill="#2A2529"/><rect x="34" y="12" width="22" height="7" rx="3.5" fill="#3A343E"/></svg></span>Sa</span>
+            <span class="day">Su</span>
           </div>
         </div>
 
         <div id="a3-heat">
           <p class="fieldlab">How spicy</p>
-          <div class="meter"><span id="heat1"></span><span id="heat2"></span><span id="heat3"></span><span id="heat4"></span><span id="heat5"></span></div>
+          <div id="a3-chilis">
+            <span class="chili" id="ch1"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
+            <span class="chili" id="ch2"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
+            <span class="chili" id="ch3"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
+            <span class="chili" id="ch4"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
+            <span class="chili" id="ch5"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
+          </div>
           <p id="a3-heatlab">None at all</p>
         </div>
 
-        <div id="a3-adv">
-          <p class="fieldlab">How adventurous</p>
-          <div id="a3-advtrack">
-            <div id="a3-advrail"></div>
-            <span class="advstop" style="left: 5px"></span>
-            <span class="advstop" style="left: 120px"></span>
-            <span class="advstop" style="left: 236px"></span>
-            <span class="advstop" style="left: 352px"></span>
-            <span class="advstop" style="left: 468px"></span>
-            <div id="a3-advknob"></div>
+        <div id="a3-equip">
+          <p class="fieldlab">What you cook with</p>
+          <div id="a3-equipgrid">
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M3 9h18" stroke="#573C56" stroke-width="1.9"/><circle cx="7" cy="6.5" r="1" fill="#573C56"/></svg><span class="eq__l">Oven</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="16" cy="8" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="8" cy="16" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="16" cy="16" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/></svg><span class="eq__l">Stovetop</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><circle cx="10" cy="13" r="6" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M16 9l5-3" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Cast iron</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><ellipse cx="11" cy="14" rx="7" ry="4" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M18 12l4-4" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Nonstick</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><path d="M5 9h14v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M3 7h18" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Big pot</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="4" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 12h6" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Rice cooker</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M6 7v10M18 7v10" stroke="#573C56" stroke-width="1.5"/></svg><span class="eq__l">Sheet pans</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><path d="M8 4h8l-1.5 9h-5z" fill="none" stroke="#573C56" stroke-width="1.9"/><rect x="9" y="15" width="6" height="5" rx="1.5" fill="none" stroke="#573C56" stroke-width="1.9"/></svg><span class="eq__l">Blender</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="6" y="5" width="12" height="14" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 11l6-3" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Processor</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="3" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 9h6M9 13h6" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Air fryer</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><path d="M4 12h16" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/><path d="M7 12a5 5 0 0 1 10 0" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M8 16v3M16 16v3" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Grill</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><rect x="6" y="9" width="8" height="6" rx="1" fill="none" stroke="#573C56" stroke-width="1.5"/><circle cx="18" cy="10" r="1" fill="#573C56"/></svg><span class="eq__l">Microwave</span></span>
+            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><path d="M6 10h12v6a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 7c0-1.5 6-1.5 6 0" fill="none" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Slow cooker</span></span>
           </div>
-          <p id="a3-advlab">Food I already know</p>
         </div>
 
         <div id="a3-chips">
@@ -403,32 +487,10 @@
             <span class="rchip">Kosher</span><span class="rchip">Low salt</span>
           </div>
         </div>
-
-        <div id="a3-photo"><img src="assets/img/spices.webp" alt="" /></div>
-        <p id="a3-photocap">Heat, sweetness, acid, funk &mdash; it plans around what you can actually taste.</p>
-
-        <div id="a3-equip">
-          <p class="fieldlab">What you cook with</p>
-          <div id="a3-equipgrid">
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M3 9h18" stroke="#573C56" stroke-width="1.9"/><circle cx="7" cy="6.5" r="1" fill="#573C56"/></svg><span class="eq__l">Oven</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="16" cy="8" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="8" cy="16" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="16" cy="16" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/></svg><span class="eq__l">Stovetop</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><circle cx="10" cy="13" r="6" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M16 9l5-3" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Cast iron</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><ellipse cx="11" cy="14" rx="7" ry="4" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M18 12l4-4" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Nonstick</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><path d="M5 9h14v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M3 7h18" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Big pot</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="4" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 12h6" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Rice cooker</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M6 7v10M18 7v10" stroke="#573C56" stroke-width="1.5"/></svg><span class="eq__l">Sheet pans</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><path d="M8 4h8l-1.5 9h-5z" fill="none" stroke="#573C56" stroke-width="1.9"/><rect x="9" y="15" width="6" height="5" rx="1.5" fill="none" stroke="#573C56" stroke-width="1.9"/></svg><span class="eq__l">Blender</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><rect x="6" y="5" width="12" height="14" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 11l6-3" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Processor</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="3" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 9h6M9 13h6" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Air fryer</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><path d="M4 12h16" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/><path d="M7 12a5 5 0 0 1 10 0" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M8 16v3M16 16v3" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Grill</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><rect x="6" y="9" width="8" height="6" rx="1" fill="none" stroke="#573C56" stroke-width="1.5"/><circle cx="18" cy="10" r="1" fill="#573C56"/></svg><span class="eq__l">Microwave</span></span>
-            <span class="eq"><svg width="42" height="42" viewBox="0 0 24 24"><path d="M6 10h12v6a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 7c0-1.5 6-1.5 6 0" fill="none" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Slow cooker</span></span>
-          </div>
-        </div>
       </section>
 
-      <!-- ══ Act 3's close — the kitchen, set up ═══════════════════════ -->
-      <section class="clip" id="a3card" data-start="24.555" data-duration="2.183" data-track-index="3">
+      <!-- ══ Act 3's close ═════════════════════════════════════════════ -->
+      <section class="clip" id="a3card" data-start="21.0" data-duration="1.372" data-track-index="3">
         <div id="a3card-in">
           <span class="kick">Step 7 of 7</span>
           <h2>Your kitchen, set up.</h2>
@@ -437,7 +499,7 @@
       </section>
 
       <!-- ══ Act 4 — it suggests, you push back ════════════════════════ -->
-      <section class="clip" id="a4" data-start="26.738" data-duration="8.730" data-track-index="4">
+      <section class="clip" id="a4" data-start="22.372" data-duration="6.549" data-track-index="4">
         <div id="a4-say"><h2 class="say">It suggests. You push back.</h2></div>
         <div id="a4-cards">
           <div class="dishcard" id="dish1" style="left: 0">
@@ -465,8 +527,8 @@
         <div id="a4-field"><span id="a4-typed"></span><span id="a4-caret"></span></div>
       </section>
 
-      <!-- ══ Act 5 — three dinners, one list ══════════════════════════ -->
-      <section class="clip" id="a5" data-start="35.468" data-duration="6.537" data-track-index="5">
+      <!-- ══ Act 5 — three dinners, one list ═══════════════════════════ -->
+      <section class="clip" id="a5" data-start="28.921" data-duration="4.365" data-track-index="5">
         <div id="a5-sources">
           <span class="srclab" id="src1">Gochujang chicken</span>
           <span class="srclab" id="src2">Charred cabbage</span>
@@ -488,47 +550,223 @@
         <div id="a5-say"><h2 class="say">Three dinners. One list. Nothing bought twice.</h2></div>
       </section>
 
-      <!-- ══ Act 6 — you and the pan ══════════════════════════════════ -->
-      <section class="clip" id="a6" data-start="42.005" data-duration="6.548" data-track-index="6">
+      <!-- ══ Act 6 — the cooking ═══════════════════════════════════════
+           Everything here is drawn and animated: there is no footage in this
+           repo, so the knife, the oil, the sizzle, the glaze and the flames
+           are all shapes under physics. -->
+      <section class="clip" id="a6" data-start="33.286" data-duration="13.084" data-track-index="6">
         <div id="a6-scrim"></div>
-        <div id="a6-photo">
-          <div id="a6-photoin" data-layout-allow-overflow><img src="assets/img/clay.webp" alt="" /></div>
-          <div id="a6-vign" data-layout-allow-overflow></div>
-          <div id="a6-heatglow" data-layout-allow-overflow></div>
-          <svg id="a6-steam" data-layout-allow-overflow viewBox="0 0 820 620" fill="none">
-            <path id="stm1" d="M250 600c0-70 34-96 34-160s-38-86-38-146 30-84 30-136" stroke="rgba(255,240,220,.62)" stroke-width="30" stroke-linecap="round"/>
-            <path id="stm2" d="M410 600c0-80 40-104 40-172s-42-92-42-156 34-90 34-146" stroke="rgba(255,240,220,.5)" stroke-width="36" stroke-linecap="round"/>
-            <path id="stm3" d="M560 600c0-64 30-90 30-150s-34-82-34-140 28-78 28-126" stroke="rgba(255,240,220,.44)" stroke-width="26" stroke-linecap="round"/>
-          </svg>
-          <div id="a6-bloom"></div>
-        </div>
         <div id="a6-say"><h2 class="say say--dark">Then it&rsquo;s just you and the pan.</h2></div>
-        <div id="a6-timer"><div id="a6-clock">5:00</div><div id="a6-timerlab">glaze &middot; step 3 of 7</div></div>
-        <p id="a6-step">Spoon the glaze over. Back in for five minutes.</p>
+
+        <!-- ── The board, the scallion and the knife ──────────────────── -->
+        <div class="obj" id="board">
+          <svg width="1180" height="273" viewBox="0 0 1080 250" role="img" aria-label="A cutting board">
+            <rect x="4" y="16" width="1072" height="222" rx="26" fill="#9A6A3C" stroke="#6E4726" stroke-width="5"/>
+            <path d="M60 58h960M60 112h900M60 166h960M60 206h820" stroke="#7D5430" stroke-width="5" stroke-linecap="round" opacity=".55"/>
+            <rect x="4" y="16" width="1072" height="26" rx="13" fill="#B07C48" opacity=".7"/>
+          </svg>
+        </div>
+        <div class="obj" id="scallion">
+          <svg width="600" height="53" viewBox="0 0 520 46" role="img" aria-label="A scallion">
+            <defs><linearGradient id="gScal" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#4A7639"/><stop offset=".58" stop-color="#7FA368"/>
+              <stop offset=".8" stop-color="#D2E1C0"/><stop offset="1" stop-color="#EFF4E8"/>
+            </linearGradient></defs>
+            <rect x="0" y="7" width="520" height="32" rx="16" fill="url(#gScal)" stroke="#3E6330" stroke-width="3"/>
+            <path d="M24 18h470" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity=".28"/>
+          </svg>
+        </div>
+        <div class="obj" id="knife">
+          <svg width="780" height="282" viewBox="0 0 720 260" role="img" aria-label="A chef's knife">
+            <path d="M552 104L150 130C90 138 44 152 26 168c44 18 154 32 274 38 100 5 200 6 252 6z"
+                  fill="#DBDEE4" stroke="#9AA0AC" stroke-width="5" stroke-linejoin="round"/>
+            <path d="M540 120L164 144C110 151 70 162 48 172" fill="none" stroke="#F4F6F9" stroke-width="10" stroke-linecap="round" opacity=".85"/>
+            <path d="M30 170c48 16 156 28 272 34" fill="none" stroke="#B7BCC6" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+            <rect x="546" y="96" width="30" height="124" rx="7" fill="#9AA0AC" stroke="#7E848F" stroke-width="3"/>
+            <rect x="574" y="108" width="134" height="100" rx="26" fill="#3A2A22" stroke="#20140F" stroke-width="5"/>
+            <circle cx="618" cy="158" r="7" fill="#8A7060"/><circle cx="668" cy="158" r="7" fill="#8A7060"/>
+          </svg>
+        </div>
+        <div id="rounds">
+          <div class="around" id="rd1" style="left: 600px; top: 638px"></div>
+          <div class="around" id="rd2" style="left: 664px; top: 664px"></div>
+          <div class="around" id="rd3" style="left: 574px; top: 692px"></div>
+          <div class="around" id="rd4" style="left: 646px; top: 716px"></div>
+        </div>
+
+        <!-- ── The pan, and everything that happens in it ─────────────── -->
+        <div id="panstage">
+        <div id="panglow"></div>
+        <div id="panwrap">
+          <div id="pan">
+            <svg width="1010" height="460" viewBox="0 0 1010 460" role="img" aria-label="A hot pan">
+              <rect x="690" y="206" width="300" height="46" rx="23" fill="#3A343E" stroke="#221D25" stroke-width="4"/>
+              <ellipse cx="380" cy="228" rx="348" ry="205" fill="url(#gPan)" stroke="#4A424C" stroke-width="22"/>
+              <ellipse cx="380" cy="228" rx="322" ry="182" fill="#221D24"/>
+              <ellipse cx="300" cy="150" rx="150" ry="62" fill="#4A424C" opacity=".22"/>
+            </svg>
+          </div>
+          <div class="flame" id="flame1"><svg width="128" height="230" viewBox="0 0 96 150"><path d="M48 148C10 112 14 60 48 2c34 58 38 110 0 146z" fill="url(#gFlame)"/></svg></div>
+          <div class="flame" id="flame2"><svg width="158" height="286" viewBox="0 0 120 190"><path d="M60 188C14 144 18 76 60 2c42 74 46 142 0 186z" fill="url(#gFlame)"/></svg></div>
+          <div class="flame" id="flame3"><svg width="112" height="200" viewBox="0 0 84 132"><path d="M42 130C8 98 12 52 42 2c30 50 34 96 0 128z" fill="url(#gFlame)"/></svg></div>
+          <div id="oilpool">
+            <svg width="1010" height="460" viewBox="0 0 1010 460" aria-hidden="true">
+              <ellipse cx="380" cy="252" rx="250" ry="122" fill="#D9A54A" opacity=".5"/>
+              <ellipse cx="300" cy="206" rx="96" ry="34" fill="#FFE2A0" opacity=".55"/>
+              <ellipse cx="452" cy="288" rx="66" ry="22" fill="#FFE2A0" opacity=".32"/>
+            </svg>
+          </div>
+          <div id="oilstream">
+            <svg width="160" height="270" viewBox="0 0 160 270" aria-hidden="true">
+              <path id="oilpath" pathLength="100" d="M106 8C102 70 78 130 46 188c-12 22-20 34-24 56" fill="none" stroke="#D9A54A" stroke-width="20" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100"/>
+            </svg>
+          </div>
+          <div id="bottle">
+            <svg width="190" height="200" viewBox="0 0 190 200" role="img" aria-label="Oil bottle">
+              <rect x="40" y="56" width="104" height="132" rx="20" fill="#E7C98A" stroke="#A98741" stroke-width="4"/>
+              <rect x="76" y="16" width="32" height="48" rx="10" fill="#C9A863" stroke="#A98741" stroke-width="4"/>
+              <rect x="56" y="96" width="72" height="46" rx="8" fill="#F6EFE3" opacity=".9"/>
+            </svg>
+          </div>
+
+          <div class="thigh" id="thigh1">
+            <svg width="250" height="180" viewBox="0 0 250 180" role="img" aria-label="Chicken thigh">
+              <path d="M24 94C20 44 68 14 122 16c60 2 106 34 108 80 2 46-48 72-106 70C68 164 28 142 24 94z" fill="url(#gThigh)" stroke="#8E5327" stroke-width="6"/>
+              <path d="M62 66c26-16 74-20 110-4" fill="none" stroke="#9C6231" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+              <path d="M74 118c30 12 70 10 98-6" fill="none" stroke="#9C6231" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+            </svg>
+          </div>
+          <div class="thigh" id="thigh2">
+            <svg width="250" height="180" viewBox="0 0 250 180" role="img" aria-label="Chicken thigh">
+              <path d="M24 94C20 44 68 14 122 16c60 2 106 34 108 80 2 46-48 72-106 70C68 164 28 142 24 94z" fill="url(#gThigh)" stroke="#8E5327" stroke-width="6"/>
+              <path d="M62 66c26-16 74-20 110-4" fill="none" stroke="#9C6231" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+              <path d="M74 118c30 12 70 10 98-6" fill="none" stroke="#9C6231" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+            </svg>
+          </div>
+          <div class="thigh" id="thigh3">
+            <svg width="250" height="180" viewBox="0 0 250 180" role="img" aria-label="Chicken thigh">
+              <path d="M24 94C20 44 68 14 122 16c60 2 106 34 108 80 2 46-48 72-106 70C68 164 28 142 24 94z" fill="url(#gThigh)" stroke="#8E5327" stroke-width="6"/>
+              <path d="M62 66c26-16 74-20 110-4" fill="none" stroke="#9C6231" stroke-width="7" stroke-linecap="round" opacity=".7"/>
+              <path d="M74 118c30 12 70 10 98-6" fill="none" stroke="#9C6231" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+            </svg>
+          </div>
+          <!-- Glaze coats, one per thigh, revealed in sequence when the pour lands. -->
+          <div class="thigh" id="gl1" style="left: 150px; top: 112px">
+            <svg width="250" height="180" viewBox="0 0 250 180" aria-hidden="true">
+              <path d="M24 94C20 44 68 14 122 16c60 2 106 34 108 80 2 46-48 72-106 70C68 164 28 142 24 94z" fill="url(#gGlaze)" stroke="#5E1B0C" stroke-width="6"/>
+              <path d="M58 60c30-14 78-16 116 0" fill="none" stroke="#E08B3C" stroke-width="8" stroke-linecap="round" opacity=".5"/>
+            </svg>
+          </div>
+          <div class="thigh" id="gl2" style="left: 322px; top: 196px">
+            <svg width="250" height="180" viewBox="0 0 250 180" aria-hidden="true">
+              <path d="M24 94C20 44 68 14 122 16c60 2 106 34 108 80 2 46-48 72-106 70C68 164 28 142 24 94z" fill="url(#gGlaze)" stroke="#5E1B0C" stroke-width="6"/>
+              <path d="M58 60c30-14 78-16 116 0" fill="none" stroke="#E08B3C" stroke-width="8" stroke-linecap="round" opacity=".5"/>
+            </svg>
+          </div>
+          <div class="thigh" id="gl3" style="left: 470px; top: 102px">
+            <svg width="250" height="180" viewBox="0 0 250 180" aria-hidden="true">
+              <path d="M24 94C20 44 68 14 122 16c60 2 106 34 108 80 2 46-48 72-106 70C68 164 28 142 24 94z" fill="url(#gGlaze)" stroke="#5E1B0C" stroke-width="6"/>
+              <path d="M58 60c30-14 78-16 116 0" fill="none" stroke="#E08B3C" stroke-width="8" stroke-linecap="round" opacity=".5"/>
+            </svg>
+          </div>
+
+          <div id="spoon">
+            <svg width="260" height="130" viewBox="0 0 260 130" role="img" aria-label="A spoon of glaze">
+              <ellipse cx="66" cy="66" rx="60" ry="42" fill="#C9CDD6" stroke="#8F959F" stroke-width="5"/>
+              <ellipse cx="66" cy="66" rx="44" ry="28" fill="#8E2F16"/>
+              <rect x="118" y="54" width="132" height="24" rx="12" fill="#C9CDD6" stroke="#8F959F" stroke-width="5"/>
+            </svg>
+          </div>
+          <div id="glazestream">
+            <svg width="200" height="210" viewBox="0 0 200 210" aria-hidden="true">
+              <path id="glazepath" pathLength="100" d="M96 10C92 58 70 98 42 138c-12 18-18 30-22 52" fill="none" stroke="#8E2F16" stroke-width="38" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100"/>
+            </svg>
+          </div>
+          <div id="gloss"></div>
+
+          <div id="sizzlefield"></div>
+          <svg id="steam" viewBox="0 0 700 560" fill="none" aria-hidden="true">
+            <path id="stm1" d="M190 540c0-70 34-96 34-160s-38-86-38-146 30-84 30-136" stroke="rgba(255,240,220,.6)" stroke-width="34" stroke-linecap="round"/>
+            <path id="stm2" d="M350 540c0-80 40-104 40-172s-42-92-42-156 34-90 34-146" stroke="rgba(255,240,220,.5)" stroke-width="40" stroke-linecap="round"/>
+            <path id="stm3" d="M510 540c0-64 30-90 30-150s-34-82-34-140 28-78 28-126" stroke="rgba(255,240,220,.42)" stroke-width="30" stroke-linecap="round"/>
+          </svg>
+
+        </div>
+        </div>
+
+        <div id="a6-timer"><div id="a6-clock">5:00</div><div id="a6-step">Step 3 of 7 &middot; glaze</div></div>
       </section>
 
-      <!-- ══ Act 7 — next week starts smarter ════════════════════════ -->
-      <section class="clip" id="a7" data-start="48.553" data-duration="6.548" data-track-index="7">
+      <!-- ══ Act 7 — the plate, and what it learned ════════════════════ -->
+      <section class="clip" id="a7" data-start="46.370" data-duration="8.731" data-track-index="7">
+        <div id="a7-scrim"></div>
+        <div id="platestage">
+        <div id="platewrap">
+          <div id="plate">
+            <svg width="620" height="620" viewBox="0 0 620 620" role="img" aria-label="A finished plate">
+              <circle cx="310" cy="310" r="300" fill="#FFFFFF" stroke="#E2D8D2" stroke-width="6"/>
+              <circle cx="310" cy="310" r="240" fill="none" stroke="#EFE6E1" stroke-width="5"/>
+            </svg>
+          </div>
+          <div id="rice">
+            <svg width="384" height="219" viewBox="0 0 316 180" role="img" aria-label="Rice">
+              <path d="M12 168c6-70 62-112 146-112s142 42 146 112z" fill="url(#gRice)" stroke="#DED3BE" stroke-width="5"/>
+              <path d="M62 132c14-8 30-6 42 2M142 114c16-8 34-4 46 6M216 134c12-10 28-10 40-2" stroke="#E4DAC6" stroke-width="6" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+          <div id="pthigh1">
+            <svg width="220" height="158" viewBox="0 0 250 180" aria-hidden="true">
+              <path d="M24 94C20 44 68 14 122 16c60 2 106 34 108 80 2 46-48 72-106 70C68 164 28 142 24 94z" fill="url(#gGlaze)" stroke="#5E1B0C" stroke-width="6"/>
+              <path d="M58 60c30-14 78-16 116 0" fill="none" stroke="#E08B3C" stroke-width="8" stroke-linecap="round" opacity=".5"/>
+            </svg>
+          </div>
+          <div id="pthigh2">
+            <svg width="200" height="144" viewBox="0 0 250 180" aria-hidden="true">
+              <path d="M24 94C20 44 68 14 122 16c60 2 106 34 108 80 2 46-48 72-106 70C68 164 28 142 24 94z" fill="url(#gGlaze)" stroke="#5E1B0C" stroke-width="6"/>
+              <path d="M58 60c30-14 78-16 116 0" fill="none" stroke="#E08B3C" stroke-width="8" stroke-linecap="round" opacity=".5"/>
+            </svg>
+          </div>
+          <div class="pround" id="pr1" style="left: 206px; top: 208px"></div>
+          <div class="pround" id="pr2" style="left: 300px; top: 176px"></div>
+          <div class="pround" id="pr3" style="left: 372px; top: 226px"></div>
+          <div class="pround" id="pr4" style="left: 246px; top: 300px"></div>
+          <div class="pround" id="pr5" style="left: 352px; top: 322px"></div>
+          <div class="pround" id="pr6" style="left: 176px; top: 268px"></div>
+          <div id="pdrizzle">
+            <svg width="436" height="170" viewBox="0 0 436 170" aria-hidden="true">
+              <path id="drizpath" pathLength="100"
+                    d="M8 62C56 16 92 104 140 58 188 12 224 100 272 54 320 8 356 96 404 52c12-11 20-15 26-16"
+                    fill="none" stroke="#8E2F16" stroke-width="9" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100"/>
+            </svg>
+          </div>
+          <svg id="psteam" viewBox="0 0 440 420" fill="none" aria-hidden="true">
+            <path id="pst1" d="M130 410c0-56 28-76 28-126s-30-68-30-116 24-66 24-108" stroke="rgba(255,236,206,.7)" stroke-width="30" stroke-linecap="round"/>
+            <path id="pst2" d="M260 410c0-64 32-82 32-136s-34-72-34-124 28-70 28-114" stroke="rgba(255,236,206,.58)" stroke-width="34" stroke-linecap="round"/>
+          </svg>
+        </div>
+        </div>
+        <div id="a7-dish">Gochujang-glazed chicken thighs</div>
+
         <div id="a7-say"><h2 class="say">And next week starts smarter.</h2></div>
         <div id="a7-stars">
-          <svg class="star" width="82" height="82" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#DCD2CC"/></svg>
-          <svg class="star" width="82" height="82" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#DCD2CC"/></svg>
-          <svg class="star" width="82" height="82" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#DCD2CC"/></svg>
-          <svg class="star" width="82" height="82" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#DCD2CC"/></svg>
-          <svg class="star" width="82" height="82" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#DCD2CC"/></svg>
+          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg></span>
+          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg></span>
+          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg></span>
+          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg></span>
+          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#DCD2CC"/></svg></span>
         </div>
         <p id="a7-read">Really good</p>
         <div id="a7-note"><span id="a7-typed"></span><span id="a7-caret"></span></div>
         <div id="a7-next"><span class="kick">Next week</span><p>More glaze. Less work on a Thursday.</p></div>
       </section>
 
-      <!-- ══ Act 8 — sign-off ═════════════════════════════════════════ -->
-      <section class="clip" id="a8" data-start="55.101" data-duration="4.399" data-track-index="8">
+      <!-- ══ Act 8 — sign-off ══════════════════════════════════════════ -->
+      <section class="clip" id="a8" data-start="55.101" data-duration="4.369" data-track-index="8">
         <div id="a8-in">
           <div id="a8-line">Cook something you&rsquo;re proud of.</div>
           <div id="a8-rule"></div>
           <div id="a8-mark">
-            <svg width="120" height="120" viewBox="0 0 64 64" role="img" aria-label="Mise" style="color: #12141c">
+            <svg width="164" height="164" viewBox="0 0 64 64" role="img" aria-label="Mise" style="color: #12141c">
               <path d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
               <path d="M17 24h28.6v4.2H17z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
               <path d="M20 28.4h23c0 8.6-.9 13.4-4.2 16.2-2 1.7-4.3 2.3-7.3 2.3s-5.3-.6-7.3-2.3C20.9 41.8 20 37 20 28.4z" fill="#FFFFFF" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
@@ -546,332 +784,534 @@
       </section>
 
       <!-- ══ Audio ═════════════════════════════════════════════════════
-           vol-12 (109.96 BPM, 117.4s). Chosen by measuring all five bundled
-           tracks in 5s RMS buckets: it is the only one that opens genuinely
+           vol-12 (109.96 BPM, 117.4s): measured across all five bundled
+           tracks in 5s RMS buckets, it is the only one that opens genuinely
            quiet (-21.3 dB) and climbs, which is this film's arc. -->
-      <audio id="bgm" src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3" data-start="0" data-duration="59.5" data-track-index="10"></audio>
+      <audio id="bgm" src="assets/music/happy-beats-business-moves-vol-12-by-ende-dot-app.mp3" data-start="0" data-duration="59.47" data-track-index="20"></audio>
 
-      <!-- Act 1 is deliberately silent. The first sound in the film is the
-           light sweep. Accents land only where something happens. -->
-      <audio id="sfxSweep" src="assets/sfx/impactSoft_heavy_000.ogg" data-start="8.742" data-duration="0.505" data-volume="0.4" data-track-index="11"></audio>
-      <audio id="sfxEquip" src="assets/sfx/impactSoft_medium_001.ogg" data-start="22.93" data-duration="0.183" data-volume="0.34" data-track-index="11"></audio>
-      <audio id="sfxCard" src="assets/sfx/impactSoft_medium_004.ogg" data-start="24.555" data-duration="0.147" data-volume="0.42" data-track-index="11"></audio>
-      <audio id="sfxRewrite" src="assets/sfx/impactSoft_medium_002.ogg" data-start="32.74" data-duration="0.135" data-volume="0.36" data-track-index="11"></audio>
-      <audio id="sfxSnap" src="assets/sfx/impactSoft_medium_004.ogg" data-start="38.197" data-duration="0.147" data-volume="0.38" data-track-index="11"></audio>
-      <audio id="sfxGlaze" src="assets/sfx/impactSoft_heavy_000.ogg" data-start="44.745" data-duration="0.505" data-volume="0.34" data-track-index="11"></audio>
+      <!-- Act 1 is silent on purpose. Everything after lands on contact. -->
+      <audio id="sfxSweep" src="assets/sfx/impactSoft_heavy_000.ogg" data-start="8.742" data-duration="0.505" data-volume="0.4" data-track-index="21"></audio>
+      <audio id="sfxEquip" src="assets/sfx/impactSoft_medium_001.ogg" data-start="17.473" data-duration="0.183" data-volume="0.34" data-track-index="21"></audio>
+      <audio id="sfxCard" src="assets/sfx/impactSoft_medium_004.ogg" data-start="21.0" data-duration="0.147" data-volume="0.42" data-track-index="21"></audio>
+      <audio id="sfxRewrite" src="assets/sfx/impactSoft_medium_002.ogg" data-start="27.295" data-duration="0.135" data-volume="0.36" data-track-index="21"></audio>
+      <audio id="sfxSnap" src="assets/sfx/impactSoft_medium_004.ogg" data-start="32.74" data-duration="0.147" data-volume="0.38" data-track-index="21"></audio>
+      <!-- Four chops. Warm, low high-frequency-risk files: a knife on a board
+           should thud, not click. -->
+      <audio id="sfxChop1" src="assets/sfx/impactSoft_medium_002.ogg" data-start="33.7" data-duration="0.135" data-volume="0.44" data-track-index="21"></audio>
+      <audio id="sfxChop2" src="assets/sfx/impactSoft_medium_002.ogg" data-start="34.1" data-duration="0.135" data-volume="0.44" data-track-index="21"></audio>
+      <audio id="sfxChop3" src="assets/sfx/impactSoft_medium_002.ogg" data-start="34.5" data-duration="0.135" data-volume="0.44" data-track-index="21"></audio>
+      <audio id="sfxChop4" src="assets/sfx/impactSoft_medium_002.ogg" data-start="34.9" data-duration="0.135" data-volume="0.44" data-track-index="21"></audio>
+      <audio id="sfxOil" src="assets/sfx/impactSoft_medium_001.ogg" data-start="35.9" data-duration="0.183" data-volume="0.3" data-track-index="21"></audio>
+      <audio id="sfxDrop" src="assets/sfx/impactSoft_heavy_000.ogg" data-start="38.197" data-duration="0.505" data-volume="0.5" data-track-index="21"></audio>
+      <audio id="sfxGlaze" src="assets/sfx/impactSoft_heavy_000.ogg" data-start="42.562" data-duration="0.505" data-volume="0.44" data-track-index="21"></audio>
+      <audio id="sfxToss" src="assets/sfx/impactSoft_medium_004.ogg" data-start="44.745" data-duration="0.147" data-volume="0.42" data-track-index="21"></audio>
+      <audio id="sfxPlate" src="assets/sfx/impactSoft_medium_004.ogg" data-start="46.9" data-duration="0.147" data-volume="0.4" data-track-index="21"></audio>
 
-      <audio id="sfxDay1" src="assets/sfx/bong_001.ogg" data-start="13.642" data-duration="0.122" data-volume="0.2" data-track-index="12"></audio>
-      <audio id="sfxDay2" src="assets/sfx/bong_001.ogg" data-start="14.199" data-duration="0.122" data-volume="0.2" data-track-index="12"></audio>
-      <audio id="sfxDay3" src="assets/sfx/bong_001.ogg" data-start="14.733" data-duration="0.122" data-volume="0.2" data-track-index="12"></audio>
-      <audio id="sfxLock1" src="assets/sfx/bong_001.ogg" data-start="20.19" data-duration="0.122" data-volume="0.24" data-track-index="12"></audio>
-      <audio id="sfxLock2" src="assets/sfx/bong_001.ogg" data-start="21.281" data-duration="0.122" data-volume="0.24" data-track-index="12"></audio>
-      <audio id="sfxStar" src="assets/sfx/bong_001.ogg" data-start="51.293" data-duration="0.122" data-volume="0.3" data-track-index="12"></audio>
-      <audio id="sfxSign" src="assets/sfx/bong_001.ogg" data-start="55.5" data-duration="0.122" data-volume="0.3" data-track-index="12"></audio>
+      <audio id="sfxPan1" src="assets/sfx/bong_001.ogg" data-start="14.199" data-duration="0.122" data-volume="0.22" data-track-index="22"></audio>
+      <audio id="sfxPan2" src="assets/sfx/bong_001.ogg" data-start="14.733" data-duration="0.122" data-volume="0.22" data-track-index="22"></audio>
+      <audio id="sfxPan3" src="assets/sfx/bong_001.ogg" data-start="15.29" data-duration="0.122" data-volume="0.22" data-track-index="22"></audio>
+      <audio id="sfxLock1" src="assets/sfx/bong_001.ogg" data-start="19.35" data-duration="0.122" data-volume="0.24" data-track-index="22"></audio>
+      <audio id="sfxLock2" src="assets/sfx/bong_001.ogg" data-start="19.95" data-duration="0.122" data-volume="0.24" data-track-index="22"></audio>
+      <audio id="sfxDriz" src="assets/sfx/bong_001.ogg" data-start="48.019" data-duration="0.122" data-volume="0.3" data-track-index="22"></audio>
+      <audio id="sfxStar" src="assets/sfx/bong_001.ogg" data-start="51.293" data-duration="0.122" data-volume="0.3" data-track-index="22"></audio>
+      <audio id="sfxSign" src="assets/sfx/bong_001.ogg" data-start="55.5" data-duration="0.122" data-volume="0.3" data-track-index="22"></audio>
 
-      <audio id="sfxKa1" src="assets/sfx/keypress-003.wav" data-start="29.6" data-duration="0.25" data-volume="0.12" data-track-index="13"></audio>
-      <audio id="sfxKa2" src="assets/sfx/keypress-007.wav" data-start="30.0" data-duration="0.25" data-volume="0.12" data-track-index="13"></audio>
-      <audio id="sfxKa3" src="assets/sfx/keypress-011.wav" data-start="30.4" data-duration="0.25" data-volume="0.12" data-track-index="13"></audio>
-      <audio id="sfxKa4" src="assets/sfx/keypress-015.wav" data-start="30.8" data-duration="0.25" data-volume="0.12" data-track-index="13"></audio>
-      <audio id="sfxKa5" src="assets/sfx/keypress-019.wav" data-start="31.2" data-duration="0.25" data-volume="0.12" data-track-index="13"></audio>
-      <audio id="sfxKb1" src="assets/sfx/keypress-003.wav" data-start="51.8" data-duration="0.25" data-volume="0.12" data-track-index="13"></audio>
-      <audio id="sfxKb2" src="assets/sfx/keypress-011.wav" data-start="52.1" data-duration="0.25" data-volume="0.12" data-track-index="13"></audio>
+      <audio id="sfxKa1" src="assets/sfx/keypress-003.wav" data-start="24.8" data-duration="0.25" data-volume="0.12" data-track-index="23"></audio>
+      <audio id="sfxKa2" src="assets/sfx/keypress-007.wav" data-start="25.2" data-duration="0.25" data-volume="0.12" data-track-index="23"></audio>
+      <audio id="sfxKa3" src="assets/sfx/keypress-011.wav" data-start="25.6" data-duration="0.25" data-volume="0.12" data-track-index="23"></audio>
+      <audio id="sfxKa4" src="assets/sfx/keypress-015.wav" data-start="26.0" data-duration="0.25" data-volume="0.12" data-track-index="23"></audio>
+      <audio id="sfxKb1" src="assets/sfx/keypress-003.wav" data-start="52.7" data-duration="0.25" data-volume="0.12" data-track-index="23"></audio>
+      <audio id="sfxKb2" src="assets/sfx/keypress-011.wav" data-start="53.0" data-duration="0.25" data-volume="0.12" data-track-index="23"></audio>
 
-      <audio id="sfxTok1" src="assets/sfx/click2.ogg" data-start="36.014" data-duration="0.055" data-volume="0.2" data-track-index="14"></audio>
-      <audio id="sfxTok2" src="assets/sfx/click2.ogg" data-start="36.559" data-duration="0.055" data-volume="0.2" data-track-index="14"></audio>
-      <audio id="sfxTok3" src="assets/sfx/click2.ogg" data-start="37.105" data-duration="0.055" data-volume="0.2" data-track-index="14"></audio>
-      <audio id="sfxTok4" src="assets/sfx/click2.ogg" data-start="37.651" data-duration="0.055" data-volume="0.2" data-track-index="14"></audio>
+      <audio id="sfxTok1" src="assets/sfx/click2.ogg" data-start="29.5" data-duration="0.055" data-volume="0.2" data-track-index="24"></audio>
+      <audio id="sfxTok2" src="assets/sfx/click2.ogg" data-start="30.0" data-duration="0.055" data-volume="0.2" data-track-index="24"></audio>
+      <audio id="sfxTok3" src="assets/sfx/click2.ogg" data-start="30.5" data-duration="0.055" data-volume="0.2" data-track-index="24"></audio>
+      <audio id="sfxTok4" src="assets/sfx/click2.ogg" data-start="31.0" data-duration="0.055" data-volume="0.2" data-track-index="24"></audio>
     </div>
 
     <script src="audio-data.js"></script>
     <script>
-      /* Mise — the story cut. 59.5s, 1920x1080.
-         Music: vol-12, tempo 109.96, beat grid 0.5457s, bar 2.183s, 4-bar
-         phrase 8.73s. Full-track cues regenerated with the plugin's own
-         analyze_music_cues.py over a 60s window (the shipped preset only
-         covers 25s) -> assets/music/vol-12-cues-60s.json.
+      /* Mise — the cooking cut. 59.47s, 1920x1080.
+         Music: vol-12, tempo 109.96, beat grid 0.5457s, bar 2.183s. Full-track
+         cues regenerated with the plugin's own analyze_music_cues.py over a 60s
+         window -> assets/music/vol-12-cues-60s.json.
 
          Act boundaries are all bar lines:
-           7.094 · 11.459 · 24.555 · 26.738 · 35.468 · 42.005 · 48.553 · 55.101
-         Strong-cue locks: 8.742 · 17.473 · 22.930 · 32.740 · 38.197 · 44.745 · 51.293 */
+           7.094 · 11.459 · 21.0 · 22.372 · 28.921 · 33.286 · 46.370 · 55.101
+         Cooking beats, one bar each:
+           33.286 chop · 35.468 oil · 37.639 sizzle · 39.822 heat ·
+           42.005 glaze · 44.188 toss
+         Strong-cue locks: 8.742 · 17.473 · 22.930 · 27.295 · 32.740 · 38.197 ·
+           42.562 · 44.745 · 48.019 · 51.293 */
 
       const tl = gsap.timeline({ paused: true });
-      const E = "power3.out";
+      const E = "power3.out";          // type and considered moves
       const EIO = "power2.inOut";
+      const LAND = "back.out(1.5)";    // anything with weight that arrives
+      const LANDP = "back.out(1.8)";   // playful landings
 
-      /* ══ Act 1 — six o'clock ═══════════════════════════════════════════
-         Slow, dim, and almost silent. The only motion is a clock digit and
-         three things drifting up out of an empty fridge. */
-      tl.fromTo("#a1-clock", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.3, ease: E }, 0.5);
-      // beat-grid: 2.728 / 3.821 / 4.911
-      tl.fromTo("#a1-toks .ghosttok:nth-child(1)", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.8, ease: E }, 2.728);
-      tl.fromTo("#a1-toks .ghosttok:nth-child(2)", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.8, ease: E }, 3.821);
-      tl.fromTo("#a1-toks .ghosttok:nth-child(3)", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.8, ease: E }, 4.911);
-      tl.fromTo("#a1-line", { opacity: 0 }, { opacity: 1, duration: 0.7, ease: EIO }, 4.4);
-      // The clock ticks. Set on the way in, reset earlier on the timeline so a
-      // backwards scrub undoes it.
-      tl.call(function () { setClock("6:12"); }, [], 0);
-      tl.call(function () { setClock("6:13"); }, [], 4.4);
-      tl.to(["#a1-clock", "#a1-toks", "#a1-line"], { opacity: 0, duration: 0.5, ease: "power2.in" }, 6.59);
+      /* Squash on impact: one short scale pair, applied after a landing tween.
+         Real objects deform when they hit something; without this the drops
+         read as sliding, not landing. */
+      function squash(target, at, amt) {
+        const a = amt || 0.14;
+        tl.to(target, { scaleY: 1 - a, scaleX: 1 + a * 0.7, duration: 0.09, ease: "power2.out" }, at);
+        tl.to(target, { scaleY: 1, scaleX: 1, duration: 0.3, ease: LANDP }, at + 0.09);
+      }
 
-      /* ══ Act 2 — the light comes on ════════════════════════════════════
-         beat-locked: 8.742s (strongCue 0.99). The sweep crosses and the whole
-         film changes temperature behind it — the story's turn, told in colour
-         rather than copy. */
+      /* ══ Act 1 — Thursday, 6:12 pm ══════════════════════════════════════
+         An appliance display rather than a bare numeral, so there is no doubt
+         it is a clock: amber digits, a blinking colon, a PM, the day. */
+      tl.fromTo("#clockwrap", { opacity: 0, y: 26, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 1.1, ease: E }, 0.45);
+      // The colon blinks on a finite cycle — a clock's one unmistakable tell.
+      tl.to("#colon", { opacity: 0.16, duration: 0.3, repeat: 9, yoyo: true, ease: "none" }, 1.5);
+      tl.call(function () { setMins("12"); }, [], 0);
+      tl.call(function () { setMins("13"); }, [], 4.37);
+
+      // The three things you actually have, landing with weight one per beat.
+      const INGS = [["#ing1", 4.911, -14], ["#ing2", 5.457, 9], ["#ing3", 6.003, -8]];
+      INGS.forEach(function (ing) {
+        const id = ing[0], at = ing[1], rot = ing[2];
+        tl.fromTo(id, { opacity: 0, y: -190, rotation: rot * 1.6 }, { opacity: 1, y: 0, rotation: rot, duration: 0.5, ease: "power2.in" }, at);
+        squash(id, at + 0.5, 0.16);
+        // Settle-rock: the follow-through that makes it feel dropped.
+        tl.to(id, { rotation: rot * 0.3, duration: 0.42, ease: "power1.inOut" }, at + 0.8);
+      });
+      tl.fromTo("#a1-line", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, 6.2);
+      tl.to(["#clockwrap", "#ing1", "#ing2", "#ing3", "#a1-line"], { opacity: 0, duration: 0.42, ease: "power2.in" }, 6.67);
+
+      /* ══ Act 2 — the light comes on ═════════════════════════════════════
+         beat-locked: 8.742s (strongCue 0.99). The line says its piece on the
+         dark at full contrast and clears as the sweep arrives, so no type ever
+         sits on the mid-tone. */
+      tl.fromTo("#a2-line", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 7.25);
+      tl.to("#a2-line", { opacity: 0, duration: 0.4, ease: "power2.in" }, 8.9);
       tl.fromTo("#a2-sweep", { opacity: 0, x: -700 }, { opacity: 1, x: 900, duration: 1.15, ease: "power1.inOut" }, 8.742);
       tl.to("#a2-sweep", { opacity: 0, x: 2100, duration: 0.85, ease: "power1.in" }, 9.91);
       tl.to("#ground", { backgroundColor: "#f6efe3", duration: 1.35, ease: EIO }, 8.742);
-      tl.to("#photoground", { opacity: 0, duration: 1.4, ease: EIO }, 8.742);
-      // The line speaks on the dark, where paper-on-#100D12 is full contrast,
-      // and clears as the sweep arrives — so it is never on the mid-tone.
-      tl.fromTo("#a2-line", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 7.25);
-      tl.to("#a2-line", { opacity: 0, duration: 0.42, ease: "power2.in" }, 9.0);
-      // The mark is white with a dark outline, so it reads on both grounds and
-      // can ride the whole turn. It holds alone on the warm paper afterwards.
-      tl.fromTo("#a2-mark", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 1.1, ease: E }, 8.742);
-      tl.to("#a2-mark", { opacity: 0, duration: 0.42, ease: "power2.in" }, 11.04);
+      tl.to("#counter", { opacity: 0, duration: 1.2, ease: EIO }, 8.742);
+      // The mark is white with a dark outline, so it reads on both grounds.
+      tl.fromTo("#a2-mark", { opacity: 0, scale: 0.78, rotation: -8 }, { opacity: 1, scale: 1, rotation: 0, duration: 1.0, ease: LAND }, 8.9);
+      tl.fromTo("#a2-mise", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 9.9);
+      tl.to(["#a2-mark", "#a2-mise"], { opacity: 0, duration: 0.4, ease: "power2.in" }, 11.06);
 
-      /* ══ Act 3 — building the kitchen ══════════════════════════════════
-         15 seconds of one continuous assembly. Everything that arrives stays,
-         each group in its own zone, so the frame genuinely fills up. This is
-         the act v2 flattened into a single screenshot of a stepper. */
+      /* ══ Act 3 — your kitchen ═══════════════════════════════════════════
+         Built as objects under physics, not form fields: plates slide, pans
+         drop, chillies light. */
       tl.fromTo("#a3-head", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 11.459);
 
-      // Headcount counts down to one, and the app's real consequence follows.
-      tl.fromTo("#a3-count", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.55, ease: E }, 11.459);
-      const head = { n: 4 };
-      tl.to(
-        head,
-        { n: 1, duration: 0.9, ease: "power2.inOut",
-          onUpdate: function () { document.getElementById("a3-num").textContent = String(Math.round(head.n)); } },
-        12.0,
-      );
-      tl.fromTo("#a3-conseq", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: EIO }, 12.9);
+      // Four plates slide in, then three slide back out — "cooking for one".
+      tl.fromTo("#a3-plates", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 11.459);
+      ["#pl1", "#pl2", "#pl3", "#pl4"].forEach(function (id, i) {
+        tl.fromTo(id, { opacity: 0, x: 130 }, { opacity: 1, x: 0, duration: 0.46, ease: LAND }, 11.6 + i * 0.13);
+      });
+      tl.to("#pl4", { opacity: 0, x: 150, duration: 0.42, ease: "power2.in" }, 12.55);
+      tl.to("#pl3", { opacity: 0, x: 150, duration: 0.42, ease: "power2.in" }, 12.68);
+      tl.to("#pl2", { opacity: 0, x: 150, duration: 0.42, ease: "power2.in" }, 12.81);
+      tl.fromTo("#a3-conseq", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 13.1);
 
-      // beat-grid: the three nights light at 13.642 / 14.199 / 14.733
-      tl.fromTo("#a3-days", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 13.108);
-      tl.to("#dayTu", { backgroundColor: "#b44722", borderColor: "#813318", color: "#ffffff", duration: 0.26, ease: E }, 13.642);
-      tl.to("#dayTh", { backgroundColor: "#b44722", borderColor: "#813318", color: "#ffffff", duration: 0.26, ease: E }, 14.199);
-      tl.to("#daySa", { backgroundColor: "#b44722", borderColor: "#813318", color: "#ffffff", duration: 0.26, ease: E }, 14.733);
+      // Little pans drop onto the nights you cook. Each one squashes on landing.
+      tl.fromTo("#a3-days", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 13.642);
+      const NIGHTS = [["#panTu", "#dayTu", 14.199], ["#panTh", "#dayTh", 14.733], ["#panSa", "#daySa", 15.29]];
+      NIGHTS.forEach(function (n) {
+        const pan = n[0], day = n[1], at = n[2];
+        tl.fromTo(pan, { opacity: 0, y: -80, rotation: -18 }, { opacity: 1, y: 0, rotation: 0, duration: 0.34, ease: "power2.in" }, at);
+        squash(pan, at + 0.34, 0.2);
+        tl.to(day, { backgroundColor: "rgba(180,71,34,0.12)", borderColor: "#b44722", color: "#b44722", duration: 0.28, ease: E }, at + 0.34);
+      });
 
-      // The heat meter climbs, its label stepping through the app's real rungs.
-      tl.fromTo("#a3-heat", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 15.29);
-      tl.to("#heat1", { backgroundColor: "#b44722", borderColor: "#813318", duration: 0.2 }, 15.836);
-      tl.call(function () { setHeat("A little"); }, [], 15.836);
-      tl.to("#heat2", { backgroundColor: "#b44722", borderColor: "#813318", duration: 0.2 }, 16.109);
-      tl.to("#heat3", { backgroundColor: "#b44722", borderColor: "#813318", duration: 0.2 }, 16.382);
-      tl.call(function () { setHeat("Medium"); }, [], 16.382);
+      // Chillies light in sequence; the label steps through the app's real rungs.
+      tl.fromTo("#a3-heat", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 15.836);
+      tl.to("#ch1", { opacity: 1, scale: 1.14, duration: 0.2, ease: E }, 16.11);
+      tl.to("#ch1", { scale: 1, duration: 0.26, ease: LANDP }, 16.31);
+      tl.call(function () { setHeat("A little"); }, [], 16.11);
+      tl.to("#ch2", { opacity: 1, scale: 1.14, duration: 0.2, ease: E }, 16.38);
+      tl.to("#ch2", { scale: 1, duration: 0.26, ease: LANDP }, 16.58);
+      tl.to("#ch3", { opacity: 1, scale: 1.14, duration: 0.2, ease: E }, 16.65);
+      tl.to("#ch3", { scale: 1, duration: 0.26, ease: LANDP }, 16.85);
+      tl.call(function () { setHeat("Medium"); }, [], 16.65);
 
-      // beat-locked: 17.473s (strongCue 0.99) — the adventure dial lands on the
-      // app's real top rung.
-      tl.fromTo("#a3-adv", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 16.927);
-      tl.fromTo("#a3-advknob", { x: 0 }, { x: 463, duration: 0.85, ease: "power2.inOut" }, 17.473);
-      tl.call(function () { setAdv("Show me something new"); }, [], 18.1);
+      // beat-locked: 17.473s (strongCue 0.99) — thirteen real equipment icons
+      // pop into a grid. Icons, not text, so a 0.07s cascade is free to outrun
+      // the reading floor.
+      tl.fromTo("#a3-equip", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 17.473);
+      for (let i = 0; i < 13; i++) {
+        tl.fromTo("#a3-equipgrid .eq:nth-child(" + (i + 1) + ")", { opacity: 0, scale: 0.62 }, { opacity: 1, scale: 1, duration: 0.42, ease: LANDP }, 17.473 + i * 0.07);
+      }
 
-      // The photograph anchors the act so it is not all interface.
-      tl.fromTo("#a3-photo", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.85, ease: E }, 18.564);
-      tl.fromTo("#a3-photocap", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: EIO }, 19.2);
-
-      // beat-grid: fourteen real restriction chips, two per beat from 19.656.
-      // Two lock; the rest settle dim. The cascade is the complexity.
-      tl.fromTo("#a3-chips", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EIO }, 19.656);
+      // beat-grid: fourteen real restriction chips, two per beat from 18.564.
+      tl.fromTo("#a3-chips", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 18.564);
       for (let i = 0; i < 14; i++) {
         tl.fromTo(
           "#a3-chipwrap .rchip:nth-child(" + (i + 1) + ")",
-          { opacity: 0, x: 26 },
-          { opacity: 1, x: 0, duration: 0.42, ease: E },
-          19.656 + Math.floor(i / 2) * 0.5457 + (i % 2) * 0.14,
+          { opacity: 0, x: 24 },
+          { opacity: 1, x: 0, duration: 0.4, ease: E },
+          18.564 + Math.floor(i / 3) * 0.3 + (i % 3) * 0.09,
         );
       }
-      tl.to("#chipPork", { backgroundColor: "rgba(180,71,34,0.13)", borderColor: "#b44722", color: "#b44722", duration: 0.3, ease: E }, 20.19);
-      tl.to("#chipNut", { backgroundColor: "rgba(180,71,34,0.13)", borderColor: "#b44722", color: "#b44722", duration: 0.3, ease: E }, 21.281);
+      tl.to("#chipPork", { backgroundColor: "rgba(180,71,34,0.13)", borderColor: "#b44722", color: "#b44722", scale: 1.08, duration: 0.24, ease: E }, 19.35);
+      tl.to("#chipPork", { scale: 1, duration: 0.3, ease: LANDP }, 19.59);
+      tl.to("#chipNut", { backgroundColor: "rgba(180,71,34,0.13)", borderColor: "#b44722", color: "#b44722", scale: 1.08, duration: 0.24, ease: E }, 19.95);
+      tl.to("#chipNut", { scale: 1, duration: 0.3, ease: LANDP }, 20.19);
 
-      // beat-locked: 22.930s (strongCue 1.00) — thirteen real equipment icons
-      // snap into a grid. Icons, not text, so the 0.09s cascade is free to
-      // outrun the reading floor.
-      tl.fromTo("#a3-equip", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EIO }, 22.93);
-      for (let i = 0; i < 13; i++) {
-        tl.fromTo(
-          "#a3-equipgrid .eq:nth-child(" + (i + 1) + ")",
-          { opacity: 0, scale: 0.72 },
-          { opacity: 1, scale: 1, duration: 0.36, ease: E },
-          22.93 + i * 0.09,
-        );
-      }
-
-      // Everything contracts toward centre and the act closes on a card, so
-      // the cut on 24.555 reads as a collapse rather than an edit.
-      tl.to("#a3", { scale: 0.9, opacity: 0, duration: 0.42, ease: "power2.in" }, 24.135);
+      // Everything contracts toward centre so the cut to the card reads as a
+      // collapse rather than an edit.
+      tl.to("#a3", { scale: 0.9, opacity: 0, duration: 0.4, ease: "power2.in" }, 20.6);
 
       /* ══ Act 3's close ════════════════════════════════════════════════ */
-      tl.fromTo("#a3card-in", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.75, ease: E }, 24.555);
-      tl.to("#a3card-in", { opacity: 0, duration: 0.36, ease: "power2.in" }, 26.38);
+      tl.fromTo("#a3card-in", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.6, ease: LAND }, 21.0);
+      tl.to("#a3card-in", { opacity: 0, duration: 0.3, ease: "power2.in" }, 22.07);
 
-      /* ══ Act 4 — it suggests, you push back ═══════════════════════════
-         beat-locked: 32.740s (strongCue 1.00) — the middle idea rewrites
-         itself in answer to what was typed. */
-      tl.fromTo("#a4-say", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 26.738);
-      // beat-grid: the three ideas deal in at 27.295 / 27.841 / 28.386
-      tl.fromTo("#dish1", { opacity: 0, y: 40, rotation: -3 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: E }, 27.295);
-      tl.fromTo("#dish2", { opacity: 0, y: 40, rotation: 2 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: E }, 27.841);
-      tl.fromTo("#dish3", { opacity: 0, y: 40, rotation: -2 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: E }, 28.386);
+      /* ══ Act 4 — it suggests, you push back ═════════════════════════════
+         beat-locked: 22.930s (1.00) the ideas deal; 27.295s (0.99) the middle
+         one is rewritten in answer to what was typed. */
+      tl.fromTo("#a4-say", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 22.372);
+      tl.fromTo("#dish1", { opacity: 0, y: 60, rotation: -7 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: LAND }, 22.93);
+      tl.fromTo("#dish2", { opacity: 0, y: 60, rotation: 6 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: LAND }, 23.34);
+      tl.fromTo("#dish3", { opacity: 0, y: 60, rotation: -5 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: LAND }, 23.75);
 
-      // The typed line. Driven off a tweened counter so it is exact at any
-      // seek position rather than depending on wall time.
       const NOTE_A = "thursday feels too heavy";
       const typedA = document.getElementById("a4-typed");
       const cA = { n: 0 };
-      tl.fromTo("#a4-who", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 29.2);
-      tl.fromTo("#a4-field", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: E }, 29.2);
-      tl.set("#a4-caret", { opacity: 1 }, 29.45);
-      tl.to(cA, { n: NOTE_A.length, duration: 1.85, ease: "none",
-        onUpdate: function () { typedA.textContent = NOTE_A.slice(0, Math.round(cA.n)); } }, 29.5);
-      tl.to("#a4-caret", { opacity: 0.15, duration: 0.28, repeat: 2, yoyo: true, ease: "none" }, 31.4);
-      tl.set("#a4-caret", { opacity: 0 }, 32.3);
+      tl.fromTo("#a4-who", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 24.4);
+      tl.fromTo("#a4-field", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: E }, 24.4);
+      tl.set("#a4-caret", { opacity: 1 }, 24.65);
+      tl.to(cA, { n: NOTE_A.length, duration: 1.7, ease: "none",
+        onUpdate: function () { typedA.textContent = NOTE_A.slice(0, Math.round(cA.n)); } }, 24.7);
+      tl.to("#a4-caret", { opacity: 0.15, duration: 0.26, repeat: 2, yoyo: true, ease: "none" }, 26.5);
+      tl.set("#a4-caret", { opacity: 0 }, 27.1);
 
-      // The answer: the middle card lifts out and a different dish comes back.
-      tl.set("#dish2b", { opacity: 0 }, 26.738);
-      tl.to("#dish2", { opacity: 0, y: -34, rotation: -4, duration: 0.42, ease: "power2.in" }, 32.74);
-      tl.fromTo("#dish2b", { opacity: 0, y: 34, rotation: 3 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: E }, 32.96);
-      tl.to(["#a4-say", "#a4-cards", "#a4-field", "#a4-who"], { opacity: 0, duration: 0.42, ease: "power2.in" }, 35.05);
+      tl.set("#dish2b", { opacity: 0 }, 22.372);
+      tl.to("#dish2", { opacity: 0, y: -70, rotation: -12, duration: 0.42, ease: "power2.in" }, 27.295);
+      tl.fromTo("#dish2b", { opacity: 0, y: 70, rotation: 8 }, { opacity: 1, y: 0, rotation: 0, duration: 0.66, ease: LAND }, 27.5);
+      tl.to(["#a4-say", "#a4-cards", "#a4-field", "#a4-who"], { opacity: 0, duration: 0.4, ease: "power2.in" }, 28.52);
 
-      /* ══ Act 5 — three dinners, one list ══════════════════════════════
-         Eleven ingredient tokens fly out of three dishes and land as nine
-         rows: three scallions collide and merge into one line. The dedup is
-         the feature, so the dedup is what the animation shows.
-         beat-locked: 38.197s (strongCue 0.99) — the finished list snaps. */
-      tl.fromTo("#src1", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 35.468);
-      tl.fromTo("#src2", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 35.604);
-      tl.fromTo("#src3", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 35.74);
-      tl.fromTo("#a5-listbox", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.5, ease: E }, 35.74);
-      tl.fromTo("#a5-count", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EIO }, 35.74);
+      /* ══ Act 5 — three dinners, one list ════════════════════════════════
+         Eleven tokens fly out of three dishes and land as nine rows; three
+         scallions collide and merge. The dedup is the feature, so the dedup is
+         what the animation shows.
+         beat-locked: 32.740s (1.00) the finished list snaps. */
+      tl.fromTo("#src1", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 28.921);
+      tl.fromTo("#src2", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 29.05);
+      tl.fromTo("#src3", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 29.18);
+      tl.fromTo("#a5-listbox", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.5, ease: E }, 29.18);
+      tl.fromTo("#a5-count", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EIO }, 29.18);
 
-      // Each token starts at its dish's label and flies to its row slot. The
-      // token IS the row — nothing is duplicated or faked.
       const SRC_X = { 1: 300, 2: 905, 3: 1520 };
       const TOKS = [
         ["#ft1", 1, 0], ["#ft2", 1, 1], ["#ft3", 1, 2],
         ["#ft4", 2, 3], ["#ft5", 2, 4],
         ["#ft6", 3, 5], ["#ft7", 3, 6], ["#ft8", 3, 7],
-        ["#ftS1", 1, 8], ["#ftS2", 2, 8], ["#ftS3", 3, 8],
+        ["#ftS1", 1, 8],
       ];
-      const ROW_X = 648;
-      const ROW_Y0 = 292;
-      const ROW_H = 64;
+      const ROW_X = 648, ROW_Y0 = 276, ROW_H = 64;
       const counter = { n: 0 };
       for (let i = 0; i < TOKS.length; i++) {
-        const [id, src, row] = TOKS[i];
-        const t = 35.74 + i * 0.1818; // three tokens per beat, on the grid
+        const id = TOKS[i][0], src = TOKS[i][1], row = TOKS[i][2];
+        const at = 29.18 + i * 0.165;
         gsap.set(id, { left: ROW_X, top: ROW_Y0 + row * ROW_H });
         tl.fromTo(
           id,
-          { opacity: 0, x: SRC_X[src] - ROW_X, y: 130 - (ROW_Y0 + row * ROW_H), scale: 0.82 },
-          { opacity: 1, x: 0, y: 0, scale: 1, duration: 0.72, ease: "power2.inOut" },
-          t,
+          { opacity: 0, x: SRC_X[src] - ROW_X, y: 118 - (ROW_Y0 + row * ROW_H), scale: 0.8, rotation: (i % 2 ? 7 : -7) },
+          { opacity: 1, x: 0, y: 0, scale: 1, rotation: 0, duration: 0.66, ease: "power2.inOut" },
+          at,
         );
       }
-      // The counter ticks as they land and stops at the real item count.
-      tl.to(counter, { n: 9, duration: 1.9, ease: "power1.out",
-        onUpdate: function () { document.getElementById("a5-countn").textContent = String(Math.round(counter.n)); } }, 36.2);
+      tl.to(counter, { n: 9, duration: 1.7, ease: "power1.out",
+        onUpdate: function () { document.getElementById("a5-countn").textContent = String(Math.round(counter.n)); } }, 29.6);
+      // The two duplicates arrive and are absorbed: they fade and shrink into
+      // the row they are merging with, so they are never a second and third
+      // readable "scallions" line sitting on top of the first.
+      [["#ftS2", 2, 31.95], ["#ftS3", 3, 32.2]].forEach(function (d) {
+        const id = d[0], src = d[1], at = d[2];
+        gsap.set(id, { left: ROW_X, top: ROW_Y0 + 8 * ROW_H });
+        tl.fromTo(
+          id,
+          { opacity: 0, x: SRC_X[src] - ROW_X, y: 118 - (ROW_Y0 + 8 * ROW_H), scale: 0.8 },
+          { opacity: 0.85, x: 0, y: 0, scale: 1, duration: 0.62, ease: "power2.inOut" },
+          at,
+        );
+        tl.to(id, { opacity: 0, scale: 0.6, duration: 0.28, ease: "power2.in" }, at + 0.4);
+      });
+      tl.call(function () { setScallions("1 bunch"); }, [], 32.74);
+      tl.fromTo("#ftS1", { scale: 1 }, { scale: 1.08, duration: 0.18, ease: E }, 32.74);
+      tl.to("#ftS1", { scale: 1, duration: 0.34, ease: LANDP }, 32.94);
+      tl.fromTo("#a5-say", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.55, ease: E }, 31.4);
+      tl.to("#a5", { opacity: 0, duration: 0.36, ease: "power2.in" }, 32.93);
 
-      // The merge: two of the three scallion tokens fold into the first, and
-      // its quantity becomes what you would actually buy.
-      tl.to(["#ftS2", "#ftS3"], { opacity: 0, scale: 0.7, duration: 0.34, ease: "power2.in" }, 37.9);
-      tl.call(function () { setScallions("1 bunch"); }, [], 38.197);
-      tl.fromTo("#ftS1", { scale: 1 }, { scale: 1.06, duration: 0.2, ease: E }, 38.197);
-      tl.to("#ftS1", { scale: 1, duration: 0.34, ease: E }, 38.42);
-      tl.fromTo("#a5-say", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, 38.74);
-      tl.to("#a5", { opacity: 0, duration: 0.42, ease: "power2.in" }, 41.58);
+      /* ══════════════════════════════════════════════════════════════════
+         ACT 6 — THE COOKING
+         Six beats, one bar each, everything drawn and under physics.
+         ══════════════════════════════════════════════════════════════════ */
+      tl.fromTo("#a6-scrim", { opacity: 0 }, { opacity: 1, duration: 0.22, ease: EIO }, 33.286);
+      tl.fromTo("#a6-say", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 33.5);
 
-      /* ══ Act 6 — you and the pan ══════════════════════════════════════
-         The appetite scene: the app's own terracotta photograph, a real
-         push-in that never stops, steam that drifts on the bass, and a timer
-         that actually runs.
-         beat-locked: 44.745s (strongCue 1.00) — the glaze goes on. */
-      tl.fromTo("#a6-scrim", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: EIO }, 42.005);
-      tl.fromTo("#a6-photo", { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.8, ease: E }, 42.005);
-      // Ken Burns on the inner wrapper, so the timed panel itself is untouched.
-      tl.fromTo("#a6-photoin", { scale: 1 }, { scale: 1.06, duration: 6.5, ease: "none" }, 42.005);
-      tl.fromTo("#a6-say", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: E }, 42.55);
-      tl.fromTo("#a6-timer", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 43.1);
-      tl.fromTo("#a6-step", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: E }, 43.65);
-      // The glaze: a warm bloom crosses the pan on the cue.
-      tl.fromTo("#a6-bloom", { opacity: 0 }, { opacity: 0.5, duration: 0.3, ease: "power2.out" }, 44.745);
-      tl.to("#a6-bloom", { opacity: 0, duration: 1.1, ease: "power2.in" }, 45.045);
-      // The timer runs for real, off a tweened counter.
+      /* ── Beat 1 · 33.286 · CHOP ─────────────────────────────────────────
+         The board slides in and settles; the knife comes down four times on a
+         steady 0.4s chop rhythm — deliberately NOT beat-locked, because real
+         chopping keeps its own tempo and snapping it to 0.55s beats made it
+         read as a metronome rather than a cook. Each chop jolts the board and
+         throws a round onto a pile. */
+      tl.fromTo("#board", { opacity: 0, y: 130, rotation: 2 }, { opacity: 1, y: 0, rotation: 0, duration: 0.6, ease: LAND }, 33.286);
+      tl.fromTo("#scallion", { opacity: 0, y: -60, rotation: -6 }, { opacity: 1, y: 0, rotation: 0, duration: 0.42, ease: "power2.in" }, 33.42);
+      squash("#scallion", 33.84, 0.22);
+      tl.fromTo("#knife", { opacity: 0, x: 250, rotation: 48 }, { opacity: 1, x: 0, rotation: 33, duration: 0.5, ease: E }, 33.35);
+
+      const CHOPS = [33.7, 34.1, 34.5, 34.9];
+      const ROUND_IDS = ["#rd1", "#rd2", "#rd3", "#rd4"];
+      CHOPS.forEach(function (at, i) {
+        // Down hard, up easy — the asymmetry is what makes it read as a chop.
+        tl.to("#knife", { rotation: 0, duration: 0.13, ease: "power4.in" }, at - 0.13);
+        tl.to("#knife", { rotation: 33, duration: 0.24, ease: "power2.out" }, at + 0.04);
+        // The board takes the hit.
+        tl.to("#board", { y: 5, duration: 0.05, ease: "power2.out" }, at);
+        tl.to("#board", { y: 0, duration: 0.18, ease: LANDP }, at + 0.05);
+        // A round flies off onto the pile.
+        tl.fromTo(
+          ROUND_IDS[i],
+          { opacity: 0, x: 120, y: -74, scale: 0.7, rotation: 0 },
+          { opacity: 1, x: 0, y: 0, scale: 1, rotation: 150 + i * 40, duration: 0.5, ease: "power2.out" },
+          at,
+        );
+        // The scallion gets shorter by one round each time.
+        tl.to("#scallion", { x: 42 * (i + 1), duration: 0.14, ease: "power2.out" }, at);
+      });
+
+      // The board and knife clear left as the pan comes in.
+      tl.to(["#board", "#scallion", "#knife"], { opacity: 0, x: -420, duration: 0.5, ease: "power2.in" }, 35.1);
+      tl.to("#rounds", { opacity: 0, duration: 0.4, ease: "power2.in" }, 35.2);
+
+      /* ── Beat 2 · 35.468 · OIL ──────────────────────────────────────────
+         The pan arrives with weight, a bottle tips, and oil draws itself down
+         via pathLength/strokeDashoffset — no DOM measurement, so it is exact
+         at any seek. */
+      tl.fromTo("#panwrap", { opacity: 0, x: 380, y: 40, rotation: 4 }, { opacity: 1, x: 0, y: 0, rotation: 0, duration: 0.72, ease: LAND }, 35.468);
+      tl.fromTo("#panglow", { opacity: 0 }, { opacity: 1, duration: 1.2, ease: EIO }, 35.7);
+      tl.fromTo("#bottle", { opacity: 0, y: -130, rotation: 0 }, { opacity: 1, y: 0, rotation: 0, duration: 0.4, ease: E }, 35.75);
+      tl.to("#bottle", { rotation: 46, duration: 0.42, ease: "power2.inOut" }, 36.18);
+      tl.set("#oilstream", { opacity: 1 }, 36.46);
+      tl.fromTo("#oilpath", { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 0.5, ease: "power1.in" }, 36.46);
+      tl.fromTo("#oilpool", { opacity: 0, scale: 0.3, transformOrigin: "38% 55%" }, { opacity: 1, scale: 1, duration: 0.8, ease: "power2.out" }, 36.6);
+      tl.to("#oilpath", { strokeDashoffset: -100, duration: 0.4, ease: "power1.out" }, 37.0);
+      tl.to("#bottle", { rotation: 0, duration: 0.34, ease: "power2.inOut" }, 37.0);
+      tl.to("#bottle", { opacity: 0, y: -130, duration: 0.4, ease: "power2.in" }, 37.3);
+      tl.set("#oilstream", { opacity: 0 }, 37.4);
+
+      /* ── Beat 3 · 37.639 · SIZZLE ───────────────────────────────────────
+         beat-locked: 38.197s (strongCue 0.99) — the thighs hit the oil, squash
+         on impact, and a ballistic sizzle burst fires. */
+      const THIGH_DROPS = [["#thigh1", 37.9], ["#thigh2", 38.197], ["#thigh3", 38.45]];
+      THIGH_DROPS.forEach(function (t) {
+        const id = t[0], at = t[1];
+        tl.fromTo(id, { opacity: 0, y: -330, rotation: -12, scale: 0.9 }, { opacity: 1, y: 0, rotation: 0, scale: 1, duration: 0.34, ease: "power3.in" }, at);
+        squash(id, at + 0.34, 0.18);
+      });
+      tl.fromTo("#steam", { opacity: 0 }, { opacity: 1, duration: 1.4, ease: EIO }, 38.4);
+
+      /* ── Beat 4 · 39.822 · HEAT ─────────────────────────────────────────
+         Nothing new enters. The shot breathes: the pan micro-rocks, steam and
+         glow ride the bass (below), and the timer runs for real. */
+      tl.fromTo("#a6-timer", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 39.822);
+      tl.to("#panwrap", { rotation: -1.6, duration: 1.1, ease: "sine.inOut" }, 39.9);
+      tl.to("#panwrap", { rotation: 1.2, duration: 1.2, ease: "sine.inOut" }, 41.0);
+      tl.to("#panwrap", { rotation: 0, duration: 0.8, ease: "sine.inOut" }, 42.2);
+
+      /* ── Beat 5 · 42.005 · GLAZE ────────────────────────────────────────
+         The money shot. A spoon tilts in, a thick stream draws itself down
+         accelerating, and beat-locked to 42.562 (1.00) it lands: each thigh
+         takes its glaze coat in sequence and a gloss highlight sweeps across. */
+      tl.fromTo("#spoon", { opacity: 0, x: 260, y: -50, rotation: 14 }, { opacity: 1, x: 0, y: 0, rotation: 0, duration: 0.42, ease: E }, 42.005);
+      tl.to("#spoon", { rotation: -40, duration: 0.36, ease: "power2.in" }, 42.44);
+      tl.set("#glazestream", { opacity: 1 }, 42.56);
+      tl.fromTo("#glazepath", { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 0.42, ease: "power1.in" }, 42.56);
+      // The coats land one after another as the stream is moved across.
+      tl.fromTo("#gl1", { opacity: 0 }, { opacity: 1, duration: 0.34, ease: EIO }, 42.562);
+      tl.fromTo("#gl2", { opacity: 0 }, { opacity: 1, duration: 0.34, ease: EIO }, 42.78);
+      tl.fromTo("#gl3", { opacity: 0 }, { opacity: 1, duration: 0.34, ease: EIO }, 43.0);
+      tl.to("#glazestream", { x: 150, duration: 0.7, ease: "power1.inOut" }, 42.562);
+      tl.to("#glazepath", { strokeDashoffset: -100, duration: 0.4, ease: "power1.out" }, 43.24);
+      tl.to("#spoon", { rotation: 6, duration: 0.3, ease: "power2.out" }, 43.3);
+      tl.to("#spoon", { opacity: 0, x: 260, y: -50, duration: 0.42, ease: "power2.in" }, 43.5);
+      tl.set("#glazestream", { opacity: 0 }, 43.7);
+      // Gloss: a blurred highlight crossing the glazed thighs.
+      tl.fromTo("#gloss", { opacity: 0, x: 0 }, { opacity: 1, x: 420, duration: 0.5, ease: "power1.inOut" }, 43.1);
+      tl.to("#gloss", { opacity: 0, x: 980, duration: 0.6, ease: "power1.in" }, 43.6);
+
+      /* ── Beat 6 · 44.188 · TOSS ─────────────────────────────────────────
+         beat-locked: 44.745s (1.00). The pan tips and comes back, the thighs
+         lift and land, and three flame licks answer at the pan edge. */
+      tl.to("#a6-say", { opacity: 0, duration: 0.34, ease: "power2.in" }, 44.36);
+      tl.to("#panwrap", { rotation: -10, duration: 0.3, ease: "power2.out" }, 44.745);
+      tl.to("#panwrap", { rotation: 2.5, duration: 0.42, ease: "power2.inOut" }, 45.045);
+      tl.to("#panwrap", { rotation: 0, duration: 0.42, ease: LANDP }, 45.465);
+      ["#thigh1", "#thigh2", "#thigh3", "#gl1", "#gl2", "#gl3"].forEach(function (id, i) {
+        tl.to(id, { y: -78 - (i % 3) * 16, rotation: -16 + (i % 3) * 11, duration: 0.3, ease: "power2.out" }, 44.745);
+        tl.to(id, { y: 0, rotation: 0, duration: 0.46, ease: "power2.in" }, 45.045);
+        squash(id, 45.505, 0.13);
+      });
+      [["#flame1", 44.78], ["#flame2", 44.86], ["#flame3", 44.94]].forEach(function (f) {
+        tl.fromTo(f[0], { opacity: 0, scaleY: 0.2, scaleX: 0.7 }, { opacity: 0.95, scaleY: 1, scaleX: 1, duration: 0.26, ease: "power2.out" }, f[1]);
+        tl.to(f[0], { opacity: 0, scaleY: 0.4, duration: 0.5, ease: "power2.in" }, f[1] + 0.3);
+      });
+
+      // The pan clears as the plate takes over.
+      tl.to(["#panwrap", "#panglow", "#a6-timer"], { opacity: 0, duration: 0.48, ease: "power2.in" }, 45.88);
+
+      /* ── The timer, running for real off a tweened counter ───────────── */
       const clockEl6 = document.getElementById("a6-clock");
       const c6 = { s: 300 };
       tl.to(c6, { s: 294, duration: 6.0, ease: "none",
         onUpdate: function () {
           const t = Math.ceil(c6.s), ss = t % 60;
           clockEl6.textContent = Math.floor(t / 60) + ":" + (ss < 10 ? "0" : "") + ss;
-        } }, 42.3);
-      tl.to(["#a6-say", "#a6-timer", "#a6-step", "#a6-photo"], { opacity: 0, duration: 0.45, ease: "power2.in" }, 48.1);
-      tl.to("#a6-scrim", { opacity: 0, duration: 0.45, ease: "power2.in" }, 48.1);
+        } }, 39.9);
 
-      /* ══ Act 7 — next week starts smarter ════════════════════════════
-         beat-grid: the stars fill at 49.656 / 50.202 / 50.747 / 51.293, the
-         fourth beat-locked to the strong cue (1.00). */
-      tl.fromTo("#a7-say", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 48.75);
-      tl.fromTo("#a7-stars", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: EIO }, 49.1);
-      const STARS = [49.656, 50.202, 50.747, 51.293];
+      /* ══ Act 7 — the plate, and what it learned ═════════════════════════
+         The payoff. Each piece lands with weight, and the scallion rounds are
+         the same rounds that came off the board in beat 1.
+         beat-locked: 48.019s (1.00) the drizzle; 51.293s (1.00) the 4th star. */
+      tl.set("#a7-scrim", { opacity: 1 }, 46.37);
+      tl.fromTo("#platewrap", { opacity: 0, scale: 0.86, y: 40 }, { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: LAND }, 46.37);
+      tl.fromTo("#rice", { opacity: 0, y: -60, scale: 0.8 }, { opacity: 1, y: 0, scale: 1, duration: 0.46, ease: LAND }, 46.9);
+      tl.fromTo("#pthigh1", { opacity: 0, y: -140, rotation: -14 }, { opacity: 1, y: 0, rotation: -6, duration: 0.4, ease: "power3.in" }, 47.1);
+      squash("#pthigh1", 47.5, 0.16);
+      tl.fromTo("#pthigh2", { opacity: 0, y: -140, rotation: 12 }, { opacity: 1, y: 0, rotation: 7, duration: 0.4, ease: "power3.in" }, 47.36);
+      squash("#pthigh2", 47.76, 0.16);
+      ["#pr1", "#pr2", "#pr3", "#pr4", "#pr5", "#pr6"].forEach(function (id, i) {
+        tl.fromTo(id, { opacity: 0, y: -90, scale: 0.5, rotation: 0 }, { opacity: 1, y: 0, scale: 1, rotation: 120 + i * 30, duration: 0.44, ease: "power2.out" }, 47.6 + i * 0.07);
+      });
+      tl.set("#pdrizzle", { opacity: 1 }, 48.019);
+      tl.fromTo("#drizpath", { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 0.6, ease: "power1.inOut" }, 48.019);
+      tl.fromTo("#psteam", { opacity: 0 }, { opacity: 1, duration: 1.0, ease: EIO }, 48.3);
+      tl.fromTo("#a7-dish", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, 48.5);
+      // The plate holds with only steam moving — the frame the film is for.
+      tl.to(["#platewrap", "#a7-dish"], { opacity: 0, duration: 0.5, ease: "power2.in" }, 50.0);
+      tl.to("#a7-scrim", { opacity: 0, duration: 0.6, ease: EIO }, 50.0);
+      tl.set("#psteam", { opacity: 0 }, 50.6);
+
+      // The learning beat, back on paper.
+      tl.fromTo("#a7-say", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, 50.3);
+      const STARS = [50.202, 50.747, 51.293, 51.838];
       for (let i = 0; i < 4; i++) {
-        tl.to("#a7-stars .star:nth-child(" + (i + 1) + ") path", { fill: "#B44722", duration: 0.26, ease: "power2.out" }, STARS[i]);
+        tl.fromTo("#a7-stars .star:nth-child(" + (i + 1) + ")", { opacity: 0, scale: 0.3, rotation: -28 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.42, ease: LANDP }, STARS[i]);
       }
-      tl.fromTo("#a7-read", { opacity: 0 }, { opacity: 1, duration: 0.34, ease: EIO }, 51.45);
+      tl.fromTo("#a7-stars .star:nth-child(5)", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 52.0);
+      tl.fromTo("#a7-read", { opacity: 0 }, { opacity: 1, duration: 0.34, ease: EIO }, 52.2);
 
       const NOTE_B = "the glaze was the best part";
       const typedB = document.getElementById("a7-typed");
       const cB = { n: 0 };
-      tl.fromTo("#a7-note", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 51.45);
-      tl.set("#a7-caret", { opacity: 1 }, 51.6);
-      tl.to(cB, { n: NOTE_B.length, duration: 0.85, ease: "none",
-        onUpdate: function () { typedB.textContent = NOTE_B.slice(0, Math.round(cB.n)); } }, 51.6);
-      tl.set("#a7-caret", { opacity: 0 }, 52.5);
+      tl.fromTo("#a7-note", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 52.4);
+      tl.set("#a7-caret", { opacity: 1 }, 52.6);
+      tl.to(cB, { n: NOTE_B.length, duration: 0.8, ease: "none",
+        onUpdate: function () { typedB.textContent = NOTE_B.slice(0, Math.round(cB.n)); } }, 52.6);
+      tl.set("#a7-caret", { opacity: 0 }, 53.5);
+      tl.fromTo("#a7-next", { opacity: 0 }, { opacity: 0.45, duration: 0.4, ease: EIO }, 53.5);
+      tl.to("#a7-note", { x: -390, y: 208, scale: 0.42, opacity: 0, duration: 0.6, ease: "power2.inOut" }, 54.0);
+      tl.to("#a7-next", { opacity: 1, scale: 1.04, duration: 0.3, ease: E }, 54.45);
+      tl.to("#a7-next", { scale: 1, duration: 0.32, ease: LANDP }, 54.75);
+      tl.to(["#a7-say", "#a7-stars", "#a7-read", "#a7-next"], { opacity: 0, duration: 0.38, ease: "power2.in" }, 54.72);
 
-      // What was learned travels: the note flies into next week's card.
-      tl.fromTo("#a7-next", { opacity: 0 }, { opacity: 0.45, duration: 0.4, ease: EIO }, 52.7);
-      tl.to("#a7-note", { x: -390, y: 200, scale: 0.42, opacity: 0, duration: 0.62, ease: "power2.inOut" }, 54.3);
-      tl.to("#a7-next", { opacity: 1, duration: 0.4, ease: E }, 54.75);
-      tl.to(["#a7-say", "#a7-stars", "#a7-read", "#a7-next"], { opacity: 0, duration: 0.4, ease: "power2.in" }, 54.7);
-
-      /* ══ Act 8 — sign-off ═════════════════════════════════════════════
-         The track has no strong cue after 55s, so this lands quietly rather
-         than on a faked hit. One block, arriving together and holding. */
+      /* ══ Act 8 — sign-off ═══════════════════════════════════════════════
+         No strong cue exists after 55s, so this lands quietly rather than on a
+         faked hit. */
       tl.fromTo("#a8-in", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.9, ease: E }, 55.4);
 
-      /* ══ Music level ══════════════════════════════════════════════════
-         Almost absent under the dark open — the silence is the point — then
-         building with the assembly, thinner for the pan, faded under the end. */
+      /* ══ Music level ════════════════════════════════════════════════════
+         Almost absent under the dark open, building with the app beats, then
+         STEPPED DOWN for the whole cooking block so the chops, the oil and the
+         glaze are what you hear — then up for the plate and out under the end. */
       tl.set("#bgm", { volume: 0.2 }, 0);
-      tl.to("#bgm", { volume: 0.4, duration: 1.6, ease: "power1.inOut" }, 8.742);
-      tl.to("#bgm", { volume: 0.46, duration: 1.4, ease: "power1.inOut" }, 11.459);
-      tl.to("#bgm", { volume: 0.34, duration: 1.0, ease: "power1.inOut" }, 42.005);
-      tl.to("#bgm", { volume: 0.42, duration: 0.9, ease: "power1.inOut" }, 48.553);
-      tl.to("#bgm", { volume: 0, duration: 2.9, ease: "power1.in" }, 56.6);
+      tl.to("#bgm", { volume: 0.4, duration: 1.5, ease: "power1.inOut" }, 8.742);
+      tl.to("#bgm", { volume: 0.46, duration: 1.3, ease: "power1.inOut" }, 11.459);
+      tl.to("#bgm", { volume: 0.3, duration: 0.7, ease: "power1.inOut" }, 33.286);
+      tl.to("#bgm", { volume: 0.42, duration: 1.0, ease: "power1.inOut" }, 46.37);
+      tl.to("#bgm", { volume: 0, duration: 2.9, ease: "power1.in" }, 56.57);
 
-      /* ══ Helpers ══════════════════════════════════════════════════════
-         Kept as functions so the reset calls above can undo a state change on
-         a backwards scrub. */
-      function setClock(v) { const e = document.getElementById("a1-clock"); if (e) e.textContent = v; }
+      /* ══ Helpers ════════════════════════════════════════════════════════
+         Functions so the reset calls can undo a state change on a back-scrub. */
+      function setMins(v) { const e = document.getElementById("mins"); if (e) e.textContent = v; }
       function setHeat(v) { const e = document.getElementById("a3-heatlab"); if (e) e.textContent = v; }
-      function setAdv(v) { const e = document.getElementById("a3-advlab"); if (e) e.textContent = v; }
       function setScallions(v) { const e = document.getElementById("ftS1q"); if (e) e.textContent = v; }
       tl.call(function () { setHeat("None at all"); }, [], 11.459);
-      tl.call(function () { setAdv("Food I already know"); }, [], 11.459);
-      tl.call(function () { setScallions("1"); }, [], 35.468);
+      tl.call(function () { setScallions("1"); }, [], 28.921);
 
-      /* ══ Audio-reactive ═══════════════════════════════════════════════
+      /* ══ Sizzle: a deterministic ballistic burst ════════════════════════
+         A fixed pool built once at setup; every particle's position is a pure
+         function of flight time from an index-seeded hash, driven by one
+         ease:"none" tween — so a seek to any moment shows the correct
+         mid-flight frame. No Math.random anywhere. */
+      const prand = function (n) {
+        const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+        return x - Math.floor(x);
+      };
+      const sizzParts = [];
+      (function buildSizzle() {
+        const field = document.getElementById("sizzlefield");
+        if (!field) return;
+        const shades = ["#FFD98A", "#FFB35C", "#E8C98F"];
+        for (let i = 0; i < 26; i++) {
+          const el = document.createElement("div");
+          el.className = "sizz";
+          const size = 7 + prand(i * 3 + 1) * 12;
+          el.style.width = size + "px";
+          el.style.height = size + "px";
+          el.style.background = shades[i % shades.length];
+          field.appendChild(el);
+          const ang = -Math.PI / 2 + (prand(i * 5 + 2) * 2 - 1) * 1.05;
+          const spd = 210 + prand(i * 7 + 3) * 420;
+          sizzParts.push({
+            el: el,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            x0: (prand(i * 13 + 5) * 2 - 1) * 240,
+            y0: (prand(i * 17 + 6) * 2 - 1) * 70,
+          });
+        }
+      })();
+
+      function sizzleBurst(at, dur, gravity, scale) {
+        const drive = { T: 0 };
+        tl.set(drive, { T: 0 }, at);
+        tl.to(
+          drive,
+          {
+            T: 1,
+            duration: dur,
+            ease: "none",
+            onUpdate: function () {
+              const t = drive.T * dur;
+              const fade = Math.min(1, (1 - drive.T) / 0.42);
+              for (let i = 0; i < sizzParts.length; i++) {
+                const p = sizzParts[i];
+                const x = p.x0 + p.vx * scale * t;
+                const y = p.y0 + p.vy * scale * t + 0.5 * gravity * t * t;
+                p.el.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
+                p.el.style.opacity = drive.T === 0 ? "0" : String(fade * 0.9);
+              }
+            },
+          },
+          at,
+        );
+      }
+      // The big one when the thighs hit the oil, and a smaller answer when the
+      // glaze lands in a hot pan.
+      sizzleBurst(38.197, 1.5, 900, 1.0);
+      sizzleBurst(42.562, 1.2, 950, 0.62);
+
+      /* ══ Audio-reactive ════════════════════════════════════════════════
          Per-frame sampling via tl.call — a single tween would not react at
          all. Only non-text elements respond: the warm ground light across the
-         whole film, and at the stove the heat glow and the steam's drift.
-         Nothing carrying type is touched. */
+         whole film, and at the stove the pan's heat glow and the steam's
+         drift. Anything carrying type is left alone. */
       (function attachReactive() {
         if (typeof AUDIO_DATA === "undefined" || !AUDIO_DATA.frames) return;
         const warm = document.getElementById("warmlight");
-        const glow = document.getElementById("a6-heatglow");
+        const glow = document.getElementById("panglow");
         const steam = [document.getElementById("stm1"), document.getElementById("stm2"), document.getElementById("stm3")];
+        const psteam = [document.getElementById("pst1"), document.getElementById("pst2")];
         const fps = AUDIO_DATA.fps;
-        const total = Math.min(AUDIO_DATA.totalFrames, Math.ceil(59.5 * fps));
+        const total = Math.min(AUDIO_DATA.totalFrames, Math.ceil(59.47 * fps));
         for (let f = 0; f < total; f++) {
           const fr = AUDIO_DATA.frames[f];
           if (!fr) continue;
@@ -881,16 +1321,21 @@
           tl.call(
             (function (b, m, e, k) {
               return function () {
-                warm.style.opacity = (0.3 + b * 0.34).toFixed(4);
+                warm.style.opacity = (0.3 + b * 0.32).toFixed(4);
                 warm.style.transform = "scale(" + (1 + e * 0.06).toFixed(4) + ")";
                 if (glow) {
-                  glow.style.opacity = (0.28 + b * 0.42).toFixed(4);
-                  glow.style.transform = "scale(" + (0.94 + b * 0.16).toFixed(4) + ")";
+                  glow.style.transform = "scale(" + (0.92 + b * 0.2).toFixed(4) + ")";
+                  glow.style.filter = "brightness(" + (0.9 + b * 0.5).toFixed(3) + ")";
                 }
                 for (let s = 0; s < steam.length; s++) {
                   if (!steam[s]) continue;
-                  const drift = Math.sin(k * 0.11 + s * 2.1) * (10 + m * 26);
-                  steam[s].style.transform = "translate(" + drift.toFixed(2) + "px," + (-k * 0.9 % 40).toFixed(2) + "px)";
+                  const d = Math.sin(k * 0.1 + s * 2.1) * (12 + m * 30);
+                  steam[s].style.transform = "translate(" + d.toFixed(2) + "px," + (-k * 1.1 % 46).toFixed(2) + "px)";
+                }
+                for (let s = 0; s < psteam.length; s++) {
+                  if (!psteam[s]) continue;
+                  const d2 = Math.sin(k * 0.09 + s * 1.7) * (10 + m * 22);
+                  psteam[s].style.transform = "translate(" + d2.toFixed(2) + "px," + (-k * 0.9 % 40).toFixed(2) + "px)";
                 }
               };
             })(bass, mid, energy, f),
