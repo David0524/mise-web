@@ -1,20 +1,25 @@
-# Brag Plan: Mise (v4 — the cooking cut)
+# Brag Plan: Mise (v5 — the device-bounce cut)
 
-Supersedes v3 (`0c55111`). v3 told a story but had no cooking in it: the "pan" was a
-photograph of a clay surface, nothing sizzled, chopped or poured, and the whole film was
-interface fragments on flat paper. It was restrained where it needed to be appetising.
+Supersedes v4 (`452a2e3`), which the user approved. Three changes on top of it:
 
-Three things drive this version:
-1. **Real cooking, animated.** There is no footage in this repo, so every cooking action
-   is drawn and animated — a knife chopping scallions into rounds that fly, oil pouring
-   and shimmering, thighs dropping into a hot pan with a ballistic sizzle burst, a glaze
-   stream drawing itself down and coating, a pan tossing with flame licks, a finished
-   plate assembling piece by piece. 13 seconds of it, at the centre of the film.
-2. **Motion everywhere else too.** Springy landings, squash on impact, things reacting to
-   each other, overshoot. v3's uniform `power3.out` read as tasteful and cold.
-3. **The clock is unmistakably a clock.** v3 opened on a bare "6:12" that read as a
-   number. It is now an appliance display — dark panel, amber seven-segment digits, a
-   **blinking colon**, a "PM", and "THURSDAY" beneath it.
+1. **The customization is simplified.** v4 spent eleven seconds on five stacked groups of
+   form fields — plates, day tiles, chillies, thirteen equipment icons, fourteen
+   restriction chips. It is now **one question and the answer it arrives at**, shown as
+   two real app screens, followed by one abstract graphic that *represents* the rest of
+   the complexity instead of enumerating it: one dot per answer on a ring, collapsing
+   into a single point. "Seven answers. One kitchen."
+2. **The film bounces between full-bleed graphics and the app held in a phone.** Four
+   device beats alternate with the graphic acts, so the product is repeatedly the literal
+   hero of the frame rather than something the graphics describe.
+3. **More tech-forward.** Apple's move: the device dead-hero on a seamless studio sweep,
+   one short line of type beside it, and a long decelerating settle with no overshoot —
+   the product is placed, not thrown. OpenAI's move: radical reduction, one idea per
+   frame, and the "thinking" shown as abstract geometry rather than a list. Bounce and
+   squash are now reserved for the cooking, where weight is the point.
+
+Carried over from v4 and unchanged: all of the cooking is drawn and animated (there is no
+footage in this repo), and the opening clock is an appliance display with a blinking colon
+so the number is unmistakably a time.
 
 ## What is this app?
 
@@ -47,10 +52,14 @@ track measures −21 dB here and has no strong cues before 8.7s, so the open get
   from near-black to paper, and the three lonely ingredients lift off the counter and
   arrange themselves into a neat row — *mise en place*, which is what the app is named
   after, made literal.
-- **Building the kitchen, animated as objects rather than a form.** Four plates slide in
-  and three slide back out, leaving one. Little pans drop onto Tue / Thu / Sat. Three of
-  five chillies light red. Fourteen real restriction chips cascade while two lock.
-  Thirteen real equipment icons pop into a grid on a strong cue.
+- **The customization, reduced to a question and an answer.** Two real app screens on the
+  device: "How many people are you cooking for?" with the app's own consequence line, then
+  "Your kitchen, set up" with its three recap lines landing one per beat. Beside it, one
+  line: "It starts by asking."
+- **The resolve.** Twenty-four dots arrive on a ring like a dial sweep, a hairline circle
+  draws around them, and then every dot folds into one persimmon point. "Seven answers.
+  One kitchen." The complexity is represented rather than enumerated — which is what made
+  the old five-group form worth deleting.
 - **Pushing back.** Three ideas deal in with rotation; *"thursday feels too heavy"* types
   itself; the middle idea flips away and a different dish lands in its place on the
   strongest cue in the act.
@@ -76,15 +85,38 @@ rating it → next week is better.**
 
 ## Tone
 
-- Preset: `cinematic` for the cooking, `default` (playful, clean, postable) for the app
-  beats — the two are held together by one palette and one light arc
-- Creative direction: a warm cooking ad with a tech ad's spine — appetite first, mechanism
-  second, and every object obeys physics
-- Interpretation: eight acts on the music's own bar grid, cooking given the largest
-  block. Easing is chosen per object rather than globally: `back.out(1.5)` and a squash
-  frame for anything that lands, `power4.in` for the knife coming down, `ease: none` for
-  ballistic particles (the physics lives in the formula), `power1.in` for an accelerating
-  pour, and `power3.out` kept for type so the copy stays classy while the food is playful.
+- Preset: `cinematic` for the cooking, `polished` for the device and graphic beats — held
+  together by one palette and one light arc
+- Creative direction: a warm cooking ad with a tech ad's spine, cut so the product is
+  repeatedly the literal hero of the frame
+- Interpretation: twelve segments on the music's own bar grid, cooking still the largest
+  block. **Easing is per-register.** The device and graphic beats use a long decelerating
+  `power4.out` with no overshoot — Apple's "placed, not thrown", and the correction to
+  v4, where bounce was applied everywhere. `back.out(1.5)` plus a squash frame is now
+  reserved for the cooking, where weight is the point; `power4.in` for the knife coming
+  down, `ease: none` for ballistic particles, `power1.in` for an accelerating pour,
+  `power3.out` for type.
+
+## Structure — the bounce
+
+| | | | |
+|---|---|---|---|
+| A1 | **graphic** | 0.000 | Thursday, 6:12pm — the clock and three lonely ingredients |
+| A2 | **graphic** | 7.094 | The light comes on |
+| A3 | **device** | 11.459 | The customization: one question, then the answer |
+| A4 | **graphic** | 17.473 | The resolve — "Seven answers. One kitchen." |
+| A5 | **device** | 22.372 | It suggests. You push back. |
+| A6 | **graphic** | 28.921 | Three dinners. One list. |
+| A7 | **graphic** | 33.286 | Cooking — chop, oil, sizzle |
+| A8 | **device** | 39.822 | The app is what tells you to glaze, mid-cook |
+| A9 | **graphic** | 42.005 | Cooking — glaze, toss |
+| A10 | **graphic** | 46.370 | The plate |
+| A11 | **device** | 50.736 | And it remembers |
+| A12 | **graphic** | 55.101 | Sign-off |
+
+Every boundary is a bar line on the music's own grid. The device beat at 39.822 is the
+narrative hinge of the cooking: the phone says "spoon the glaze over", and then you watch
+it happen.
 
 ## Format: landscape — 1920x1080
 ## Duration: 59.47 seconds

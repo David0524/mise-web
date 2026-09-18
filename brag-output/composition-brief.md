@@ -1,4 +1,4 @@
-# Hyperframes Composition Brief: Mise (v4 — the cooking cut)
+# Hyperframes Composition Brief: Mise (v5 — the device-bounce cut)
 
 ## Objective
 
@@ -38,9 +38,13 @@ Thursday, from an empty counter at 6:12pm to a plate worth photographing.
 - Every cooking action is DRAWN AND ANIMATED — there is no footage in this repository, so
   the knife, the oil, the sizzle, the glaze, the flames and the plate are SVG under
   physics, not stock or stills.
-- Easing is per-object, not global: `back.out(1.5)` plus a squash frame for anything that
-  lands, `power4.in` for the knife coming down, `ease: none` for ballistic particles,
-  `power1.in` for an accelerating pour, `power3.out` reserved for type.
+- Easing is per-register: the device and graphic beats use a long decelerating
+  `power4.out` settle with NO overshoot — Apple's "placed, not thrown". `back.out(1.5)`
+  plus a squash frame is reserved for the cooking, where weight is the point. `power4.in`
+  for the knife coming down, `ease: none` for ballistic particles, `power1.in` for an
+  accelerating pour, `power3.out` for type.
+- The device is held right of centre on a seamless studio sweep with one short line of
+  type beside it; the app UI inside is real, at real phone scale (472x988 screen).
 - Avoid: app screenshots (wordy, and they hide the mechanism), abstract filler, generic
   SaaS language, anything that moves without a reason.
 
@@ -56,23 +60,29 @@ Thursday, from an empty counter at 6:12pm to a plate worth photographing.
 
 ## Storyboard
 
-Use `brag-output/brag-plan.md` as the creative contract. Eight acts on the music's own bar
-grid, cooking given the largest block:
+Use `brag-output/brag-plan.md` as the creative contract. Twelve segments on the music's own
+bar grid, alternating full-bleed graphics with the app held in a phone, cooking still given
+the largest block:
 
-1. **0.000** Thursday, 6:12pm — appliance clock with a blinking colon, three lonely
-   ingredients landing with weight. Silent.
-2. **7.094** The light comes on — warm sweep on a strong cue, ground warms, mise en place.
-3. **11.459** Your kitchen — four plates become one, pans drop onto three nights, three
-   chillies light, thirteen equipment icons pop, fourteen restriction chips cascade.
-4. **22.372** It suggests, you push back — ideas deal in, a line types itself, one idea is
-   rewritten on the cue.
-5. **28.921** Three dinners, one list — eleven tokens fly out and land as nine rows; three
-   scallions are absorbed into one.
-6. **33.286** THE COOKING, six beats of one bar each — chop · oil · sizzle · heat · glaze ·
-   toss.
-7. **46.370** The plate, and what it learned — the dish assembles, then stars, a typed
-   note, and the note flying into next week.
-8. **55.101** Sign-off.
+1. **0.000** GRAPHIC — Thursday, 6:12pm; appliance clock with a blinking colon, three
+   lonely ingredients landing with weight. Silent.
+2. **7.094** GRAPHIC — the light comes on; warm sweep on a strong cue, mise en place.
+3. **11.459** DEVICE — the customization, simplified to one question ("How many people are
+   you cooking for?") and the answer it arrives at ("Your kitchen, set up"), beside the
+   line "It starts by asking."
+4. **17.473** GRAPHIC — the resolve; 24 dots arrive on a ring like a dial sweep, then fold
+   into one point. "Seven answers. One kitchen."
+5. **22.372** DEVICE — Brainstorm; "thursday feels too heavy" types into the app's own
+   field and the second idea is rewritten on the cue.
+6. **28.921** GRAPHIC — three dinners, one list; eleven tokens land as nine rows, three
+   scallions absorbed into one.
+7. **33.286** GRAPHIC — cooking: chop · oil · sizzle.
+8. **39.822** DEVICE — stove mode, over the recessed pan: the app is what tells you to
+   glaze, with its timer running.
+9. **42.005** GRAPHIC — cooking: glaze · toss.
+10. **46.370** GRAPHIC — the plate.
+11. **50.736** DEVICE — the rating; stars, the real chips, a typed note. "And it remembers."
+12. **55.101** GRAPHIC — sign-off.
 
 ## Audio
 

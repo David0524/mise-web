@@ -205,7 +205,7 @@
 
       /* ══ Act 5 — three dinners, one list ════════════════════════════════ */
       #a5-say { position: absolute; left: 0; right: 0; top: 946px; text-align: center; opacity: 0; }
-      #a5-say .say { font-size: 60px; }
+      #a5-say .say { font-size: 78px; }
       #a5-sources { position: absolute; left: 160px; top: 96px; width: 1600px; display: flex; justify-content: space-between; }
       .srclab {
         display: block; padding: 14px 26px; border-radius: 999px; background: var(--tape);
@@ -273,9 +273,6 @@
       #flame2 { left: 330px; top: -132px; }
       #flame3 { left: 520px; top: -74px; }
 
-      #a6-timer { position: absolute; left: 120px; top: 452px; opacity: 0; }
-      #a6-clock { font-weight: 900; font-size: 118px; line-height: 1.1; letter-spacing: -0.04em; color: var(--rose); }
-      #a6-step { font-weight: 800; font-size: 23px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--on-dark-dim); margin-top: 16px; }
 
       /* ══ Act 7 — the plate, and what it learned ═════════════════════════ */
       #a7-scrim { position: absolute; inset: 0; background: var(--stove); opacity: 0; }
@@ -310,6 +307,140 @@
       #a7-next .kick { font-size: 21px; }
       #a7-next p { font-weight: 800; font-size: 29px; color: var(--ink); margin-top: 9px; line-height: 1.22; }
 
+      /* ══ The device ══════════════════════════════════════════════════════
+         Held dead centre on a seamless studio sweep — the product is the only
+         object in frame, which is the point of the alternation. */
+      #phonebg {
+        position: absolute; inset: 0; opacity: 0;
+        background-image:
+          radial-gradient(58% 46% at 50% 38%, #FBF7EF, rgba(251, 247, 239, 0) 72%),
+          linear-gradient(180deg, #F2EADE 0%, #E6DCCC 62%, #DCD0BE 100%);
+      }
+      /* Recesses whatever is behind the device without hiding it, so the phone
+         can sit in front of the pan during the cooking. */
+      #phonedim { position: absolute; inset: 0; background: rgba(10, 6, 5, 0.74); opacity: 0; }
+      #device {
+        position: absolute; left: 1094px; top: 32px; width: 500px; height: 1016px;
+        border-radius: 62px; opacity: 0;
+        background: linear-gradient(148deg, #6A6270 0%, #2A2530 34%, #1B1720 62%, #554D5C 100%);
+        box-shadow: 0 60px 110px -34px rgba(24, 12, 8, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+      #drim {
+        position: absolute; inset: 0; border-radius: 62px; opacity: 0.85;
+        background-image: linear-gradient(140deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0) 68%, rgba(255, 255, 255, 0.2));
+      }
+      #dscreen {
+        position: absolute; left: 14px; top: 14px; width: 472px; height: 988px;
+        border-radius: 50px; overflow: hidden; background: #FAF5F4;
+      }
+      #disland {
+        position: absolute; left: 50%; top: 26px; width: 112px; height: 30px;
+        margin-left: -56px; border-radius: 15px; background: #0A0810; z-index: 9;
+      }
+      .scr { inset: 0; background: #FAF5F4; }
+      .scr--dark { background: #1E1A21; }
+
+      /* ── App chrome, at phone scale ─────────────────────────────────── */
+      .sb { display: flex; align-items: center; justify-content: space-between; padding: 18px 30px 0; font-weight: 800; font-size: 18px; color: #1A1B24; }
+      .sb--d { color: #F6EFE3; }
+      .sbi { display: flex; align-items: flex-end; gap: 6px; }
+      .phead { display: flex; align-items: center; padding: 62px 24px 14px; }
+      .phead__t { font-weight: 900; font-size: 27px; letter-spacing: -0.02em; color: #1A1B24; }
+      .phead__dot { margin-left: auto; width: 36px; height: 36px; border-radius: 999px; background: #F4EBE9; border: 1px solid var(--rule); }
+      .pbody { padding: 0 24px; }
+      /* Short onboarding screens sit centred, not stacked at the top. */
+      .pbody--mid { padding-top: 104px; }
+      .pcard {
+        background: #fff; border-radius: 22px; padding: 22px 22px 24px; margin-bottom: 14px;
+        box-shadow: 0 1px 2px rgba(30, 20, 30, 0.04), 0 8px 22px -10px rgba(87, 60, 86, 0.18);
+      }
+      .pcard h2 { font-weight: 800; font-size: 27px; line-height: 1.18; letter-spacing: -0.022em; color: #1A1B24; }
+      .pcard h3 { font-weight: 900; font-size: 25px; line-height: 1.16; letter-spacing: -0.022em; color: #1A1B24; }
+      .pcard p { font-weight: 600; font-size: 19px; color: #6E6472; line-height: 1.38; margin-top: 9px; }
+      .plead { font-weight: 600; font-size: 18px; color: #6E6472; margin-top: 8px; }
+      .phint { font-weight: 600; font-size: 17px; color: #6E6472; line-height: 1.42; margin-top: 14px; }
+      .psec { font-weight: 900; font-size: 21px; color: #1A1B24; margin: 0 0 12px; }
+      .pbtn {
+        display: block; text-align: center; padding: 17px; border-radius: 17px;
+        background: var(--hot); color: #fff; font-weight: 800; font-size: 20px;
+        box-shadow: 0 2px 0 var(--hot-edge), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+      }
+      .pbtn--sm { display: inline-block; padding: 11px 18px; font-size: 17px; border-radius: 13px; }
+      .pbtn--g { background: transparent; color: var(--hot); box-shadow: none; border: 1px solid var(--rule); }
+      .pbtn--od { background: transparent; color: #F6EFE3; border: 1px solid rgba(246, 239, 227, 0.3); box-shadow: none; }
+      .pacts { display: flex; gap: 9px; margin-top: 15px; }
+      .pdish h3 { font-size: 23px; }
+      .pdish p { font-size: 18px; margin-top: 7px; }
+      .pfield {
+        display: flex; align-items: center; min-height: 74px; padding: 0 20px; border-radius: 17px;
+        background: #fff; border: 1px solid var(--rule); font-weight: 700; font-size: 25px; color: #1A1B24;
+      }
+      .pfield--sm { min-height: 62px; margin-top: 16px; font-size: 20px; background: #F4EBE9; }
+      #pcaret, #pcaret2 { display: inline-block; width: 3px; height: 28px; margin-left: 3px; background: var(--hot); opacity: 0; }
+      .prog { padding: 58px 24px 16px; }
+      .prog__segs { display: flex; gap: 5px; }
+      .prog__segs span { display: block; flex: 1 1 0; height: 6px; border-radius: 3px; background: var(--rule); }
+      .prog__segs span.on { background: var(--hot); }
+      .prog__t { display: flex; justify-content: space-between; margin-top: 10px; font-weight: 700; font-size: 16px; color: #6E6472; }
+      .prog__n { color: var(--hot); }
+      .stepper { display: flex; align-items: center; justify-content: center; gap: 24px; margin: 20px 0 4px; }
+      .stepper__b { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px; background: #F4EBE9; border: 1px solid var(--rule); font-weight: 800; font-size: 28px; color: var(--plum); }
+      .stepper__n { font-weight: 900; font-size: 52px; line-height: 1.1; color: #1A1B24; min-width: 64px; text-align: center; }
+      .recap { list-style: none; margin-top: 18px; }
+      .recap li { display: flex; align-items: flex-start; gap: 13px; font-weight: 700; font-size: 20px; color: #1A1B24; line-height: 1.34; padding: 9px 0; opacity: 0; }
+      .tick { display: block; flex: 0 0 26px; width: 26px; height: 26px; border-radius: 999px; background: rgba(47, 107, 84, 0.16); border: 2px solid var(--good); margin-top: 2px; }
+      .pstars { display: flex; gap: 8px; margin-top: 14px; }
+      .pstar { opacity: 0; }
+      .pread { font-weight: 800; font-size: 20px; color: var(--good); margin-top: 10px; opacity: 0; }
+      .pchips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .pchip { display: block; padding: 9px 15px; border-radius: 999px; background: #F4EBE9; border: 1px solid var(--rule); font-weight: 700; font-size: 17px; color: var(--plum); }
+      .pchip--on { background: rgba(180, 71, 34, 0.13); border-color: var(--hot); color: var(--hot); }
+      .tabbar {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 96px;
+        display: flex; align-items: flex-start; padding-top: 13px;
+        background: rgba(255, 255, 255, 0.94); border-top: 1px solid var(--rule);
+      }
+      .tab { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+      .tab__l { font-weight: 700; font-size: 12px; color: #6E6472; }
+      .tab--on .tab__l { color: var(--hot); }
+      .tab svg { display: block; }
+      /* Stove mode, on the device */
+      .ctop { display: flex; align-items: center; justify-content: space-between; padding: 58px 24px 0; }
+      .cmuted { font-weight: 800; font-size: 16px; color: #B3A6AE; }
+      .cvox { font-weight: 800; font-size: 16px; color: var(--rose); }
+      .ctitle { text-align: center; }
+      .ctitle strong { display: block; font-weight: 900; font-size: 18px; color: #F6EFE3; }
+      .ctitle span { font-weight: 600; font-size: 14px; color: #B3A6AE; }
+      .ctimer { display: flex; align-items: baseline; gap: 12px; margin: 22px 24px 0; padding: 14px 20px; border-radius: 18px; background: rgba(238, 146, 101, 0.16); border: 1px solid rgba(238, 146, 101, 0.4); }
+      .ctimer__c { font-weight: 900; font-size: 36px; line-height: 1.1; color: var(--rose); }
+      .ctimer__l { font-weight: 700; font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; color: #B3A6AE; }
+      .cbody { padding: 26px 24px 0; }
+      .ckick { font-weight: 800; font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: #B3A6AE; }
+      .cbar { height: 7px; border-radius: 4px; background: rgba(246, 239, 227, 0.18); margin-top: 11px; overflow: hidden; }
+      .cbar span { display: block; width: 43%; height: 100%; border-radius: 4px; background: var(--rose); }
+      .cstep { font-weight: 800; font-size: 31px; line-height: 1.24; letter-spacing: -0.02em; color: #F6EFE3; margin-top: 24px; }
+      .cnav { display: flex; gap: 11px; margin-top: 26px; }
+      .cnav .pbtn { flex: 1 1 0; }
+
+      /* One short line beside the device, per device beat. */
+      .dsay {
+        left: 150px; top: 0; width: 830px; height: 1080px;
+        display: flex; flex-direction: column; justify-content: center;
+      }
+      .dsay h2 { font-weight: 900; font-size: 92px; line-height: 1.04; letter-spacing: -0.04em; color: var(--ink); }
+      .dsay .kick { display: block; margin-bottom: 26px; }
+
+      /* ══ The resolve — one dot per answer, collapsing to a point ═════════ */
+      #ringstage { position: absolute; left: 960px; top: 486px; }
+      #ringdots { position: absolute; left: 0; top: 0; }
+      .rdot { position: absolute; left: 0; top: 0; width: 19px; height: 19px; margin: -9.5px 0 0 -9.5px; border-radius: 999px; background: var(--plum); opacity: 0; }
+      #ringline { position: absolute; left: -380px; top: -380px; opacity: 0; }
+      #ringcore {
+        position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; border-radius: 999px;
+        background: var(--hot); box-shadow: 0 0 0 20px rgba(180, 71, 34, 0.1); opacity: 0;
+      }
+      #ring-say { position: absolute; left: 0; right: 0; top: 790px; text-align: center; opacity: 0; }
+      #ring-say .say { font-size: 96px; line-height: 1.04; }
       /* ══ Act 8 — sign-off ═══════════════════════════════════════════════ */
       #a8 { display: flex; align-items: center; justify-content: center; }
       #a8-in { text-align: center; opacity: 0; }
@@ -415,116 +546,20 @@
         <div id="a2-mise">Mise en place</div>
       </section>
 
-      <!-- ══ Act 3 — your kitchen ══════════════════════════════════════ -->
-      <section class="clip" id="a3" data-start="11.459" data-duration="9.541" data-track-index="2">
-        <div id="a3-head">
-          <p class="kick">Your kitchen</p>
-          <h2 class="say">Seven steps. Every answer changes what it suggests.</h2>
+      <!-- ══ The resolve — what all those answers add up to ═══════════
+           Replaces the old five-group form. The complexity is represented
+           rather than enumerated: one dot per answer on a ring, collapsing
+           into a single point. -->
+      <section class="clip" id="aring" data-start="17.473" data-duration="4.899" data-track-index="2">
+        <div id="ringstage">
+          <div id="ringdots"></div>
+          <svg id="ringline" width="760" height="760" viewBox="0 0 760 760" aria-hidden="true">
+            <circle id="ringpath" cx="380" cy="380" r="332" pathLength="100" fill="none"
+                    stroke="rgba(87,60,86,.28)" stroke-width="2" stroke-dasharray="100" stroke-dashoffset="100"/>
+          </svg>
+          <div id="ringcore"></div>
         </div>
-
-        <div id="a3-plates">
-          <p class="fieldlab">Cooking for</p>
-          <div id="a3-platerow">
-            <div class="plateicon" id="pl1" style="left: 0"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="#fff" stroke="#DCCFC9" stroke-width="3"/><circle cx="52" cy="52" r="33" fill="none" stroke="#E8DCD6" stroke-width="3"/></svg></div>
-            <div class="plateicon" id="pl2" style="left: 118px"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="#fff" stroke="#DCCFC9" stroke-width="3"/><circle cx="52" cy="52" r="33" fill="none" stroke="#E8DCD6" stroke-width="3"/></svg></div>
-            <div class="plateicon" id="pl3" style="left: 236px"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="#fff" stroke="#DCCFC9" stroke-width="3"/><circle cx="52" cy="52" r="33" fill="none" stroke="#E8DCD6" stroke-width="3"/></svg></div>
-            <div class="plateicon" id="pl4" style="left: 354px"><svg width="104" height="104" viewBox="0 0 104 104"><circle cx="52" cy="52" r="48" fill="#fff" stroke="#DCCFC9" stroke-width="3"/><circle cx="52" cy="52" r="33" fill="none" stroke="#E8DCD6" stroke-width="3"/></svg></div>
-          </div>
-          <p id="a3-conseq">Cooking for one means package sizes are the real problem. I&rsquo;ll design around them.</p>
-        </div>
-
-        <div id="a3-days">
-          <p class="fieldlab">Nights you cook</p>
-          <div id="a3-dayrow">
-            <span class="day">Mo</span>
-            <span class="day" id="dayTu"><span class="panicon" id="panTu"><svg width="58" height="30" viewBox="0 0 58 30"><ellipse cx="20" cy="16" rx="17" ry="11" fill="#2A2529"/><rect x="34" y="12" width="22" height="7" rx="3.5" fill="#3A343E"/></svg></span>Tu</span>
-            <span class="day">We</span>
-            <span class="day" id="dayTh"><span class="panicon" id="panTh"><svg width="58" height="30" viewBox="0 0 58 30"><ellipse cx="20" cy="16" rx="17" ry="11" fill="#2A2529"/><rect x="34" y="12" width="22" height="7" rx="3.5" fill="#3A343E"/></svg></span>Th</span>
-            <span class="day">Fr</span>
-            <span class="day" id="daySa"><span class="panicon" id="panSa"><svg width="58" height="30" viewBox="0 0 58 30"><ellipse cx="20" cy="16" rx="17" ry="11" fill="#2A2529"/><rect x="34" y="12" width="22" height="7" rx="3.5" fill="#3A343E"/></svg></span>Sa</span>
-            <span class="day">Su</span>
-          </div>
-        </div>
-
-        <div id="a3-heat">
-          <p class="fieldlab">How spicy</p>
-          <div id="a3-chilis">
-            <span class="chili" id="ch1"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
-            <span class="chili" id="ch2"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
-            <span class="chili" id="ch3"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
-            <span class="chili" id="ch4"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
-            <span class="chili" id="ch5"><svg width="56" height="98" viewBox="0 0 56 98"><path d="M30 20c11 0 18 12 17 28-2 24-13 42-23 42S6 74 8 52C10 32 19 20 30 20z" fill="#B44722" stroke="#752310" stroke-width="4"/><path d="M30 20c0-8 6-12 14-11" fill="none" stroke="#4E7A3F" stroke-width="6" stroke-linecap="round"/></svg></span>
-          </div>
-          <p id="a3-heatlab">None at all</p>
-        </div>
-
-        <div id="a3-equip">
-          <p class="fieldlab">What you cook with</p>
-          <div id="a3-equipgrid">
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M3 9h18" stroke="#573C56" stroke-width="1.9"/><circle cx="7" cy="6.5" r="1" fill="#573C56"/></svg><span class="eq__l">Oven</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="16" cy="8" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="8" cy="16" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/><circle cx="16" cy="16" r="3" fill="none" stroke="#573C56" stroke-width="1.9"/></svg><span class="eq__l">Stovetop</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><circle cx="10" cy="13" r="6" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M16 9l5-3" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Cast iron</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><ellipse cx="11" cy="14" rx="7" ry="4" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M18 12l4-4" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Nonstick</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><path d="M5 9h14v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M3 7h18" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Big pot</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="4" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 12h6" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Rice cooker</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M6 7v10M18 7v10" stroke="#573C56" stroke-width="1.5"/></svg><span class="eq__l">Sheet pans</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><path d="M8 4h8l-1.5 9h-5z" fill="none" stroke="#573C56" stroke-width="1.9"/><rect x="9" y="15" width="6" height="5" rx="1.5" fill="none" stroke="#573C56" stroke-width="1.9"/></svg><span class="eq__l">Blender</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="6" y="5" width="12" height="14" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 11l6-3" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/></svg><span class="eq__l">Processor</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="3" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 9h6M9 13h6" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Air fryer</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><path d="M4 12h16" stroke="#573C56" stroke-width="1.9" stroke-linecap="round"/><path d="M7 12a5 5 0 0 1 10 0" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M8 16v3M16 16v3" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Grill</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="#573C56" stroke-width="1.9"/><rect x="6" y="9" width="8" height="6" rx="1" fill="none" stroke="#573C56" stroke-width="1.5"/><circle cx="18" cy="10" r="1" fill="#573C56"/></svg><span class="eq__l">Microwave</span></span>
-            <span class="eq"><svg width="40" height="40" viewBox="0 0 24 24"><path d="M6 10h12v6a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3z" fill="none" stroke="#573C56" stroke-width="1.9"/><path d="M9 7c0-1.5 6-1.5 6 0" fill="none" stroke="#573C56" stroke-width="1.7" stroke-linecap="round"/></svg><span class="eq__l">Slow cooker</span></span>
-          </div>
-        </div>
-
-        <div id="a3-chips">
-          <p class="fieldlab">What to avoid</p>
-          <div id="a3-chipwrap">
-            <span class="rchip">Vegetarian</span><span class="rchip">Vegan</span><span class="rchip">Pescatarian</span>
-            <span class="rchip" id="chipPork">No pork</span><span class="rchip">No red meat</span><span class="rchip">Gluten-free</span>
-            <span class="rchip">Dairy-free</span><span class="rchip">Egg-free</span><span class="rchip">Soy-free</span>
-            <span class="rchip" id="chipNut">Nut allergy</span><span class="rchip">Shellfish allergy</span><span class="rchip">Halal</span>
-            <span class="rchip">Kosher</span><span class="rchip">Low salt</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- ══ Act 3's close ═════════════════════════════════════════════ -->
-      <section class="clip" id="a3card" data-start="21.0" data-duration="1.372" data-track-index="3">
-        <div id="a3card-in">
-          <span class="kick">Step 7 of 7</span>
-          <h2>Your kitchen, set up.</h2>
-          <p>Cooking for one &middot; three nights &middot; medium heat &middot; no pork, no nuts</p>
-        </div>
-      </section>
-
-      <!-- ══ Act 4 — it suggests, you push back ════════════════════════ -->
-      <section class="clip" id="a4" data-start="22.372" data-duration="6.549" data-track-index="4">
-        <div id="a4-say"><h2 class="say">It suggests. You push back.</h2></div>
-        <div id="a4-cards">
-          <div class="dishcard" id="dish1" style="left: 0">
-            <h3>Gochujang-glazed chicken thighs</h3>
-            <p>Roasted hard, glazed at the end so the sugar catches without burning.</p>
-            <span class="mins">About 35 minutes</span>
-          </div>
-          <div class="dishcard" id="dish2" data-layout-allow-overlap style="left: 527px">
-            <h3>Slow lamb shoulder, all afternoon</h3>
-            <p>Four hours in a low oven, barely any work, but it owns the day.</p>
-            <span class="mins">About 4 hours</span>
-          </div>
-          <div class="dishcard" id="dish2b" data-layout-allow-overlap style="left: 527px">
-            <h3>Charred cabbage, brown butter</h3>
-            <p>Seared flat-side down until black at the edges, finished in nutty butter.</p>
-            <span class="mins">About 25 minutes</span>
-          </div>
-          <div class="dishcard" id="dish3" style="left: 1055px">
-            <h3>Cold rice, crisped hard</h3>
-            <p>Tuesday&rsquo;s rice, fried until it crackles, with scallions through it.</p>
-            <span class="mins">About 15 minutes</span>
-          </div>
-        </div>
-        <p id="a4-who">You</p>
-        <div id="a4-field"><span id="a4-typed"></span><span id="a4-caret"></span></div>
+        <div id="ring-say"><h2 class="say">Seven answers.<br />One kitchen.</h2></div>
       </section>
 
       <!-- ══ Act 5 — three dinners, one list ═══════════════════════════ -->
@@ -547,7 +582,7 @@
         <span class="ftok" data-layout-allow-overlap id="ftS1"><b id="ftS1q">1</b>scallions</span>
         <span class="ftok" data-layout-allow-overlap id="ftS2"><b>1</b>scallions</span>
         <span class="ftok" data-layout-allow-overlap id="ftS3"><b>1</b>scallions</span>
-        <div id="a5-say"><h2 class="say">Three dinners. One list. Nothing bought twice.</h2></div>
+        <div id="a5-say"><h2 class="say">Three dinners. One list.</h2></div>
       </section>
 
       <!-- ══ Act 6 — the cooking ═══════════════════════════════════════
@@ -694,11 +729,10 @@
         </div>
         </div>
 
-        <div id="a6-timer"><div id="a6-clock">5:00</div><div id="a6-step">Step 3 of 7 &middot; glaze</div></div>
       </section>
 
       <!-- ══ Act 7 — the plate, and what it learned ════════════════════ -->
-      <section class="clip" id="a7" data-start="46.370" data-duration="8.731" data-track-index="7">
+      <section class="clip" id="a7" data-start="46.370" data-duration="4.366" data-track-index="7">
         <div id="a7-scrim"></div>
         <div id="platestage">
         <div id="platewrap">
@@ -747,17 +781,6 @@
         </div>
         <div id="a7-dish">Gochujang-glazed chicken thighs</div>
 
-        <div id="a7-say"><h2 class="say">And next week starts smarter.</h2></div>
-        <div id="a7-stars">
-          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg></span>
-          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg></span>
-          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg></span>
-          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg></span>
-          <span class="star"><svg width="84" height="84" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#DCD2CC"/></svg></span>
-        </div>
-        <p id="a7-read">Really good</p>
-        <div id="a7-note"><span id="a7-typed"></span><span id="a7-caret"></span></div>
-        <div id="a7-next"><span class="kick">Next week</span><p>More glaze. Less work on a Thursday.</p></div>
       </section>
 
       <!-- ══ Act 8 — sign-off ══════════════════════════════════════════ -->
@@ -782,6 +805,141 @@
           <div><span id="a8-price">$12/month &middot; cancel anytime</span></div>
         </div>
       </section>
+
+
+      <!-- ══ The device ════════════════════════════════════════════════
+           The film alternates between full-bleed graphics and the real app
+           held in a phone. The chassis and its studio sweep are persistent and
+           faded in for each of the four device beats; the screens inside are
+           ordinary clips with their own windows. -->
+      <div id="phonebg"></div>
+      <div id="phonedim"></div>
+      <div id="device">
+        <div id="dscreen">
+          <div id="disland"></div>
+
+          <!-- Device beat 1a — one question, asked plainly -->
+          <section class="clip scr" id="s-setup1" data-start="11.459" data-duration="2.183" data-track-index="10">
+            <div class="sb"><span>9:41</span><span class="sbi">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div class="prog">
+              <div class="prog__segs"><span class="on"></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+              <p class="prog__t"><span>Step 1 of 7</span><span class="prog__n">Who&rsquo;s eating</span></p>
+            </div>
+            <div class="pbody pbody--mid">
+              <div class="pcard">
+                <h2>How many people are you cooking for?</h2>
+                <p class="plead">This changes more than portion size.</p>
+                <div class="stepper"><span class="stepper__b">-</span><span class="stepper__n">1</span><span class="stepper__b">+</span></div>
+                <p class="phint">Cooking for one means package sizes are the real problem. I&rsquo;ll design around them.</p>
+              </div>
+              <div class="pbtn">Next</div>
+            </div>
+          </section>
+
+          <!-- Device beat 1b — and the answer it arrives at -->
+          <section class="clip scr" id="s-setup2" data-start="13.642" data-duration="3.831" data-track-index="11">
+            <div class="sb"><span>9:41</span><span class="sbi">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div class="prog">
+              <div class="prog__segs"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span></div>
+              <p class="prog__t"><span>Step 7 of 7</span><span class="prog__n">Your kitchen, set up</span></p>
+            </div>
+            <div class="pbody pbody--mid">
+              <div class="pcard">
+                <h2>Your kitchen, set&nbsp;up.</h2>
+                <ul class="recap">
+                  <li id="rc1"><span class="tick"></span>Cooking for one</li>
+                  <li id="rc2"><span class="tick"></span>Tuesday &middot; Thursday &middot; Saturday</li>
+                  <li id="rc3"><span class="tick"></span>Medium heat &middot; no pork, no nuts</li>
+                </ul>
+              </div>
+              <div class="pbtn">Start the week</div>
+            </div>
+          </section>
+
+          <!-- Device beat 2 — it suggests, you push back -->
+          <section class="clip scr" id="s-ideas" data-start="22.372" data-duration="6.549" data-track-index="12">
+            <div class="sb"><span>9:41</span><span class="sbi">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div class="phead"><span class="phead__t">Brainstorm</span><span class="phead__dot"></span></div>
+            <div class="pbody">
+              <p class="psec">Pick the ones you want</p>
+              <div class="pcard pdish"><h3>Gochujang-glazed chicken thighs</h3><p>Roasted hard, glazed at the end.</p>
+                <div class="pacts"><span class="pbtn pbtn--sm" id="addBtn">Add it</span><span class="pbtn pbtn--sm pbtn--g">Something else</span></div></div>
+              <div class="pcard pdish" id="pdish2"><h3 id="pdish2t">Slow lamb shoulder, all afternoon</h3><p id="pdish2b">Four hours in a low oven.</p>
+                <div class="pacts"><span class="pbtn pbtn--sm">Add it</span><span class="pbtn pbtn--sm pbtn--g">Something else</span></div></div>
+              <div class="pfield"><span id="ptyped"></span><span id="pcaret"></span></div>
+            </div>
+            <nav class="tabbar"><span class="tab tab--on"><svg width="23" height="23" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#B44722" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#B44722"/></svg><span class="tab__l">Brainstorm</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#6E6472" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span></nav>
+          </section>
+
+          <!-- Device beat 3 — the app is what tells you to glaze -->
+          <section class="clip scr scr--dark" id="s-stove" data-start="39.822" data-duration="2.183" data-track-index="13">
+            <div class="sb sb--d"><span>9:41</span><span class="sbi">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#F6EFE3"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#F6EFE3"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#F6EFE3"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#F6EFE3"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#F6EFE3"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#F6EFE3"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#F6EFE3"/></svg>
+            </span></div>
+            <div class="ctop"><span class="cmuted">Leave</span><span class="ctitle"><strong>Gochujang chicken</strong><span>for 1</span></span><span class="cvox">Voice on</span></div>
+            <div class="ctimer"><span class="ctimer__c" id="pclock">4:12</span><span class="ctimer__l">glaze</span></div>
+            <div class="cbody">
+              <p class="ckick">Step 3 of 7</p>
+              <div class="cbar"><span></span></div>
+              <p class="cstep">Spoon the glaze over. Back in for five minutes.</p>
+              <div class="cnav"><span class="pbtn pbtn--od">Back</span><span class="pbtn">Next step</span></div>
+            </div>
+          </section>
+
+          <!-- Device beat 4 — and it remembers -->
+          <section class="clip scr" id="s-rate" data-start="50.736" data-duration="4.365" data-track-index="14">
+            <div class="sb"><span>9:41</span><span class="sbi">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+            <div class="phead"><span class="phead__t">How was it?</span><span class="phead__dot"></span></div>
+            <div class="pbody">
+              <div class="pcard">
+                <h3 style="font-size: 23px">Gochujang-glazed chicken thighs</h3>
+                <div class="pstars">
+                  <svg class="pstar" width="52" height="52" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg>
+                  <svg class="pstar" width="52" height="52" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg>
+                  <svg class="pstar" width="52" height="52" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg>
+                  <svg class="pstar" width="52" height="52" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#B44722"/></svg>
+                  <svg class="pstar" width="52" height="52" viewBox="0 0 24 24"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z" fill="#DCD2CC"/></svg>
+                </div>
+                <p class="pread">Really good</p>
+                <p class="psec" style="margin-top: 18px">Anything off about it?</p>
+                <div class="pchips"><span class="pchip pchip--on">Nailed it</span><span class="pchip">Tasted flat</span><span class="pchip">Wanted crunch</span></div>
+                <div class="pfield pfield--sm"><span id="ptyped2"></span><span id="pcaret2"></span></div>
+              </div>
+              <div class="pbtn">Save this</div>
+            </div>
+            <nav class="tabbar"><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#6E6472" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#6E6472"/></svg><span class="tab__l">Brainstorm</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span><span class="tab tab--on"><svg width="23" height="23" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#B44722" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#B44722" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#6E6472" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#6E6472" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span></nav>
+          </section>
+        </div>
+        <div id="drim"></div>
+      </div>
+
+      <!-- One line beside the device, per device beat. -->
+      <section class="clip dsay" id="dsay1" data-start="11.459" data-duration="6.014" data-track-index="15">
+        <span class="kick">Your kitchen</span>
+        <h2>It starts by asking.</h2>
+      </section>
+      <section class="clip dsay" id="dsay2" data-start="22.372" data-duration="6.549" data-track-index="16">
+        <span class="kick">Ideas</span>
+        <h2>It suggests.<br />You push back.</h2>
+      </section>
+      <section class="clip dsay" id="dsay3" data-start="50.736" data-duration="4.365" data-track-index="17">
+        <span class="kick">Afterwards</span>
+        <h2>And it remembers.</h2>
+      </section>
+
 
       <!-- ══ Audio ═════════════════════════════════════════════════════
            vol-12 (109.96 BPM, 117.4s): measured across all five bundled
@@ -895,97 +1053,122 @@
       tl.fromTo("#a2-mise", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 9.9);
       tl.to(["#a2-mark", "#a2-mise"], { opacity: 0, duration: 0.4, ease: "power2.in" }, 11.06);
 
-      /* ══ Act 3 — your kitchen ═══════════════════════════════════════════
-         Built as objects under physics, not form fields: plates slide, pans
-         drop, chillies light. */
-      tl.fromTo("#a3-head", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 11.459);
-
-      // Four plates slide in, then three slide back out — "cooking for one".
-      tl.fromTo("#a3-plates", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 11.459);
-      ["#pl1", "#pl2", "#pl3", "#pl4"].forEach(function (id, i) {
-        tl.fromTo(id, { opacity: 0, x: 130 }, { opacity: 1, x: 0, duration: 0.46, ease: LAND }, 11.6 + i * 0.13);
+      /* ══ DEVICE BEATS ═══════════════════════════════════════════════════
+         The film alternates between full-bleed graphics and the real app held
+         in a phone. Four device beats, each entering on a bar line with a long
+         decelerating settle and no overshoot — the product is placed, not
+         thrown:
+           11.459 → 17.473  the customization, in two screens
+           22.372 → 28.921  it suggests, you push back
+           39.822 → 42.005  the app is what tells you to glaze, mid-cook
+           50.736 → 55.101  and it remembers
+         The customization used to be five stacked groups of form fields. It is
+         now one question and the answer it arrives at; the complexity lives in
+         the graphic that follows rather than being enumerated here. */
+      const DEVICE_BEATS = [
+        [11.459, 17.473, "light"],
+        [22.372, 28.921, "light"],
+        [39.822, 42.005, "dim"],
+        [50.736, 55.101, "light"],
+      ];
+      DEVICE_BEATS.forEach(function (b) {
+        const inAt = b[0], outAt = b[1], bg = b[2];
+        tl.fromTo("#device", { opacity: 0, scale: 0.94, y: 26 }, { opacity: 1, scale: 1, y: 0, duration: 0.85, ease: "power4.out" }, inAt);
+        tl.to("#device", { opacity: 0, scale: 0.97, duration: 0.4, ease: "power2.in" }, outAt - 0.4);
+        if (bg === "light") {
+          tl.fromTo("#phonebg", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: EIO }, inAt);
+          tl.to("#phonebg", { opacity: 0, duration: 0.4, ease: EIO }, outAt - 0.4);
+        } else {
+          // Mid-cook the pan stays visible behind the phone, just recessed.
+          tl.fromTo("#phonedim", { opacity: 0 }, { opacity: 1, duration: 0.34, ease: EIO }, inAt);
+          tl.to("#phonedim", { opacity: 0, duration: 0.34, ease: EIO }, outAt - 0.34);
+        }
       });
-      tl.to("#pl4", { opacity: 0, x: 150, duration: 0.42, ease: "power2.in" }, 12.55);
-      tl.to("#pl3", { opacity: 0, x: 150, duration: 0.42, ease: "power2.in" }, 12.68);
-      tl.to("#pl2", { opacity: 0, x: 150, duration: 0.42, ease: "power2.in" }, 12.81);
-      tl.fromTo("#a3-conseq", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 13.1);
 
-      // Little pans drop onto the nights you cook. Each one squashes on landing.
-      tl.fromTo("#a3-days", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 13.642);
-      const NIGHTS = [["#panTu", "#dayTu", 14.199], ["#panTh", "#dayTh", 14.733], ["#panSa", "#daySa", 15.29]];
-      NIGHTS.forEach(function (n) {
-        const pan = n[0], day = n[1], at = n[2];
-        tl.fromTo(pan, { opacity: 0, y: -80, rotation: -18 }, { opacity: 1, y: 0, rotation: 0, duration: 0.34, ease: "power2.in" }, at);
-        squash(pan, at + 0.34, 0.2);
-        tl.to(day, { backgroundColor: "rgba(180,71,34,0.12)", borderColor: "#b44722", color: "#b44722", duration: 0.28, ease: E }, at + 0.34);
-      });
+      /* ── Device beat 1 · the customization, simplified ──────────────────
+         One question, then the answer. The recap lines land one per beat. */
+      tl.fromTo("#rc1", { opacity: 0, x: 18 }, { opacity: 1, x: 0, duration: 0.5, ease: "power4.out" }, 14.2);
+      tl.fromTo("#rc2", { opacity: 0, x: 18 }, { opacity: 1, x: 0, duration: 0.5, ease: "power4.out" }, 14.75);
+      tl.fromTo("#rc3", { opacity: 0, x: 18 }, { opacity: 1, x: 0, duration: 0.5, ease: "power4.out" }, 15.3);
 
-      // Chillies light in sequence; the label steps through the app's real rungs.
-      tl.fromTo("#a3-heat", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: E }, 15.836);
-      tl.to("#ch1", { opacity: 1, scale: 1.14, duration: 0.2, ease: E }, 16.11);
-      tl.to("#ch1", { scale: 1, duration: 0.26, ease: LANDP }, 16.31);
-      tl.call(function () { setHeat("A little"); }, [], 16.11);
-      tl.to("#ch2", { opacity: 1, scale: 1.14, duration: 0.2, ease: E }, 16.38);
-      tl.to("#ch2", { scale: 1, duration: 0.26, ease: LANDP }, 16.58);
-      tl.to("#ch3", { opacity: 1, scale: 1.14, duration: 0.2, ease: E }, 16.65);
-      tl.to("#ch3", { scale: 1, duration: 0.26, ease: LANDP }, 16.85);
-      tl.call(function () { setHeat("Medium"); }, [], 16.65);
-
-      // beat-locked: 17.473s (strongCue 0.99) — thirteen real equipment icons
-      // pop into a grid. Icons, not text, so a 0.07s cascade is free to outrun
-      // the reading floor.
-      tl.fromTo("#a3-equip", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 17.473);
-      for (let i = 0; i < 13; i++) {
-        tl.fromTo("#a3-equipgrid .eq:nth-child(" + (i + 1) + ")", { opacity: 0, scale: 0.62 }, { opacity: 1, scale: 1, duration: 0.42, ease: LANDP }, 17.473 + i * 0.07);
+      /* ══ The resolve ════════════════════════════════════════════════════
+         One dot per answer on a ring, arriving like a dial sweep, then folding
+         into a single point. The complexity is represented rather than listed —
+         which is what made the old five-group form worth deleting.
+         beat-locked: 20.190s (bar) the collapse; 21.05s the core lands. */
+      const RDOTS = 24;
+      (function buildRing() {
+        const host = document.getElementById("ringdots");
+        if (!host) return;
+        for (let i = 0; i < RDOTS; i++) {
+          const el = document.createElement("div");
+          el.className = "rdot";
+          el.id = "rdot" + i;
+          host.appendChild(el);
+        }
+      })();
+      for (let i = 0; i < RDOTS; i++) {
+        const a = (i / RDOTS) * Math.PI * 2 - Math.PI / 2;
+        const rx = Math.cos(a) * 332, ry = Math.sin(a) * 332;
+        tl.fromTo("#rdot" + i, { opacity: 0, x: rx * 0.82, y: ry * 0.82, scale: 0.5 },
+                  { opacity: 1, x: rx, y: ry, scale: 1, duration: 0.7, ease: "power3.out" }, 17.6 + i * 0.045);
+        tl.to("#rdot" + i, { x: 0, y: 0, scale: 0.34, opacity: 0, duration: 0.86, ease: "power3.inOut" }, 20.19 + i * 0.008);
       }
+      tl.set("#ringline", { opacity: 1 }, 17.6);
+      tl.fromTo("#ringpath", { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 1.5, ease: "power2.inOut" }, 17.6);
+      tl.to("#ringline", { opacity: 0, duration: 0.5, ease: EIO }, 20.4);
+      tl.fromTo("#ringcore", { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1, duration: 0.7, ease: "power4.out" }, 21.05);
+      tl.fromTo("#ring-say", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.8, ease: "power4.out" }, 18.2);
+      tl.to(["#ring-say", "#ringcore"], { opacity: 0, duration: 0.36, ease: "power2.in" }, 22.0);
 
-      // beat-grid: fourteen real restriction chips, two per beat from 18.564.
-      tl.fromTo("#a3-chips", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 18.564);
-      for (let i = 0; i < 14; i++) {
-        tl.fromTo(
-          "#a3-chipwrap .rchip:nth-child(" + (i + 1) + ")",
-          { opacity: 0, x: 24 },
-          { opacity: 1, x: 0, duration: 0.4, ease: E },
-          18.564 + Math.floor(i / 3) * 0.3 + (i % 3) * 0.09,
-        );
-      }
-      tl.to("#chipPork", { backgroundColor: "rgba(180,71,34,0.13)", borderColor: "#b44722", color: "#b44722", scale: 1.08, duration: 0.24, ease: E }, 19.35);
-      tl.to("#chipPork", { scale: 1, duration: 0.3, ease: LANDP }, 19.59);
-      tl.to("#chipNut", { backgroundColor: "rgba(180,71,34,0.13)", borderColor: "#b44722", color: "#b44722", scale: 1.08, duration: 0.24, ease: E }, 19.95);
-      tl.to("#chipNut", { scale: 1, duration: 0.3, ease: LANDP }, 20.19);
-
-      // Everything contracts toward centre so the cut to the card reads as a
-      // collapse rather than an edit.
-      tl.to("#a3", { scale: 0.9, opacity: 0, duration: 0.4, ease: "power2.in" }, 20.6);
-
-      /* ══ Act 3's close ════════════════════════════════════════════════ */
-      tl.fromTo("#a3card-in", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.6, ease: LAND }, 21.0);
-      tl.to("#a3card-in", { opacity: 0, duration: 0.3, ease: "power2.in" }, 22.07);
-
-      /* ══ Act 4 — it suggests, you push back ═════════════════════════════
-         beat-locked: 22.930s (1.00) the ideas deal; 27.295s (0.99) the middle
-         one is rewritten in answer to what was typed. */
-      tl.fromTo("#a4-say", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 22.372);
-      tl.fromTo("#dish1", { opacity: 0, y: 60, rotation: -7 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: LAND }, 22.93);
-      tl.fromTo("#dish2", { opacity: 0, y: 60, rotation: 6 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: LAND }, 23.34);
-      tl.fromTo("#dish3", { opacity: 0, y: 60, rotation: -5 }, { opacity: 1, y: 0, rotation: 0, duration: 0.62, ease: LAND }, 23.75);
-
+      /* ── Device beat 2 · it suggests, you push back ─────────────────────
+         The line types into the app's own field, then the second idea is
+         rewritten in answer to it.
+         beat-locked: 27.295s (strongCue 0.99) the rewrite. */
       const NOTE_A = "thursday feels too heavy";
-      const typedA = document.getElementById("a4-typed");
+      const typedA = document.getElementById("ptyped");
       const cA = { n: 0 };
-      tl.fromTo("#a4-who", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 24.4);
-      tl.fromTo("#a4-field", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.45, ease: E }, 24.4);
-      tl.set("#a4-caret", { opacity: 1 }, 24.65);
-      tl.to(cA, { n: NOTE_A.length, duration: 1.7, ease: "none",
-        onUpdate: function () { typedA.textContent = NOTE_A.slice(0, Math.round(cA.n)); } }, 24.7);
-      tl.to("#a4-caret", { opacity: 0.15, duration: 0.26, repeat: 2, yoyo: true, ease: "none" }, 26.5);
-      tl.set("#a4-caret", { opacity: 0 }, 27.1);
+      tl.set("#pcaret", { opacity: 1 }, 24.2);
+      tl.to(cA, { n: NOTE_A.length, duration: 1.6, ease: "none",
+        onUpdate: function () { typedA.textContent = NOTE_A.slice(0, Math.round(cA.n)); } }, 24.3);
+      tl.to("#pcaret", { opacity: 0.15, duration: 0.26, repeat: 2, yoyo: true, ease: "none" }, 26.0);
+      tl.set("#pcaret", { opacity: 0 }, 26.8);
+      tl.call(function () { setIdea(false); }, [], 22.372);
+      tl.to("#pdish2", { opacity: 0, y: -22, duration: 0.3, ease: "power2.in" }, 27.295);
+      tl.call(function () { setIdea(true); }, [], 27.6);
+      tl.fromTo("#pdish2", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.62, ease: "power4.out", immediateRender: false }, 27.6);
+      function setIdea(swapped) {
+        const t = document.getElementById("pdish2t"), b2 = document.getElementById("pdish2b");
+        if (!t || !b2) return;
+        t.textContent = swapped ? "Charred cabbage, brown butter" : "Slow lamb shoulder, all afternoon";
+        b2.textContent = swapped ? "Seared until black at the edges." : "Four hours in a low oven.";
+      }
 
-      tl.set("#dish2b", { opacity: 0 }, 22.372);
-      tl.to("#dish2", { opacity: 0, y: -70, rotation: -12, duration: 0.42, ease: "power2.in" }, 27.295);
-      tl.fromTo("#dish2b", { opacity: 0, y: 70, rotation: 8 }, { opacity: 1, y: 0, rotation: 0, duration: 0.66, ease: LAND }, 27.5);
-      tl.to(["#a4-say", "#a4-cards", "#a4-field", "#a4-who"], { opacity: 0, duration: 0.4, ease: "power2.in" }, 28.52);
+      /* ── Device beat 3 · the app tells you to glaze ─────────────────────
+         Its timer runs for real, off a tweened counter. */
+      const pclockEl = document.getElementById("pclock");
+      const pc = { s: 252 };
+      tl.to(pc, { s: 250, duration: 2.1, ease: "none",
+        onUpdate: function () {
+          const t = Math.ceil(pc.s), ss = t % 60;
+          pclockEl.textContent = Math.floor(t / 60) + ":" + (ss < 10 ? "0" : "") + ss;
+        } }, 39.9);
 
+      /* ── Device beat 4 · and it remembers ───────────────────────────────
+         beat-locked: 51.293s (strongCue 1.00) the second star. */
+      const PSTARS = [50.9, 51.293, 51.66, 52.02];
+      for (let i = 0; i < 4; i++) {
+        tl.fromTo("#s-rate .pstar:nth-child(" + (i + 1) + ")", { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.4, ease: "power4.out" }, PSTARS[i]);
+      }
+      tl.fromTo("#s-rate .pstar:nth-child(5)", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 52.3);
+      tl.fromTo("#s-rate .pread", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 52.4);
+      const NOTE_B = "the glaze was the best part";
+      const typedB = document.getElementById("ptyped2");
+      const cB = { n: 0 };
+      tl.set("#pcaret2", { opacity: 1 }, 52.7);
+      tl.to(cB, { n: NOTE_B.length, duration: 0.85, ease: "none",
+        onUpdate: function () { typedB.textContent = NOTE_B.slice(0, Math.round(cB.n)); } }, 52.7);
+      tl.set("#pcaret2", { opacity: 0 }, 53.7);
       /* ══ Act 5 — three dinners, one list ════════════════════════════════
          Eleven tokens fly out of three dishes and land as nine rows; three
          scallions collide and merge. The dedup is the feature, so the dedup is
@@ -1111,10 +1294,13 @@
       /* ── Beat 4 · 39.822 · HEAT ─────────────────────────────────────────
          Nothing new enters. The shot breathes: the pan micro-rocks, steam and
          glow ride the bass (below), and the timer runs for real. */
-      tl.fromTo("#a6-timer", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: E }, 39.822);
       tl.to("#panwrap", { rotation: -1.6, duration: 1.1, ease: "sine.inOut" }, 39.9);
       tl.to("#panwrap", { rotation: 1.2, duration: 1.2, ease: "sine.inOut" }, 41.0);
       tl.to("#panwrap", { rotation: 0, duration: 0.8, ease: "sine.inOut" }, 42.2);
+
+      // The device takes the frame for one bar; the headline steps aside.
+      tl.to("#a6-say", { opacity: 0, duration: 0.3, ease: "power2.in" }, 39.55);
+      tl.to("#a6-say", { opacity: 1, duration: 0.4, ease: EIO }, 42.1);
 
       /* ── Beat 5 · 42.005 · GLAZE ────────────────────────────────────────
          The money shot. A spoon tilts in, a thick stream draws itself down
@@ -1155,63 +1341,30 @@
       });
 
       // The pan clears as the plate takes over.
-      tl.to(["#panwrap", "#panglow", "#a6-timer"], { opacity: 0, duration: 0.48, ease: "power2.in" }, 45.88);
+      tl.to(["#panwrap", "#panglow"], { opacity: 0, duration: 0.48, ease: "power2.in" }, 45.88);
 
-      /* ── The timer, running for real off a tweened counter ───────────── */
-      const clockEl6 = document.getElementById("a6-clock");
-      const c6 = { s: 300 };
-      tl.to(c6, { s: 294, duration: 6.0, ease: "none",
-        onUpdate: function () {
-          const t = Math.ceil(c6.s), ss = t % 60;
-          clockEl6.textContent = Math.floor(t / 60) + ":" + (ss < 10 ? "0" : "") + ss;
-        } }, 39.9);
-
-      /* ══ Act 7 — the plate, and what it learned ═════════════════════════
-         The payoff. Each piece lands with weight, and the scallion rounds are
-         the same rounds that came off the board in beat 1.
-         beat-locked: 48.019s (1.00) the drizzle; 51.293s (1.00) the 4th star. */
+      /* ══ Act 7 — the plate ══════════════════════════════════════════════
+         The payoff, full-bleed. Each piece lands with weight, and the scallion
+         rounds are the same rounds that came off the board in the chop.
+         beat-locked: 48.019s (strongCue 1.00) the drizzle. */
       tl.set("#a7-scrim", { opacity: 1 }, 46.37);
-      tl.fromTo("#platewrap", { opacity: 0, scale: 0.86, y: 40 }, { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: LAND }, 46.37);
-      tl.fromTo("#rice", { opacity: 0, y: -60, scale: 0.8 }, { opacity: 1, y: 0, scale: 1, duration: 0.46, ease: LAND }, 46.9);
+      tl.fromTo("#platewrap", { opacity: 0, scale: 0.88, y: 34 }, { opacity: 1, scale: 1, y: 0, duration: 0.7, ease: LAND }, 46.37);
+      tl.fromTo("#rice", { opacity: 0, y: -54, scale: 0.82 }, { opacity: 1, y: 0, scale: 1, duration: 0.46, ease: LAND }, 46.9);
       tl.fromTo("#pthigh1", { opacity: 0, y: -140, rotation: -14 }, { opacity: 1, y: 0, rotation: -6, duration: 0.4, ease: "power3.in" }, 47.1);
       squash("#pthigh1", 47.5, 0.16);
       tl.fromTo("#pthigh2", { opacity: 0, y: -140, rotation: 12 }, { opacity: 1, y: 0, rotation: 7, duration: 0.4, ease: "power3.in" }, 47.36);
       squash("#pthigh2", 47.76, 0.16);
       ["#pr1", "#pr2", "#pr3", "#pr4", "#pr5", "#pr6"].forEach(function (id, i) {
-        tl.fromTo(id, { opacity: 0, y: -90, scale: 0.5, rotation: 0 }, { opacity: 1, y: 0, scale: 1, rotation: 120 + i * 30, duration: 0.44, ease: "power2.out" }, 47.6 + i * 0.07);
+        tl.fromTo(id, { opacity: 0, y: -84, scale: 0.5, rotation: 0 }, { opacity: 1, y: 0, scale: 1, rotation: 120 + i * 30, duration: 0.44, ease: "power2.out" }, 47.6 + i * 0.07);
       });
       tl.set("#pdrizzle", { opacity: 1 }, 48.019);
       tl.fromTo("#drizpath", { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 0.6, ease: "power1.inOut" }, 48.019);
       tl.fromTo("#psteam", { opacity: 0 }, { opacity: 1, duration: 1.0, ease: EIO }, 48.3);
-      tl.fromTo("#a7-dish", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, 48.5);
-      // The plate holds with only steam moving — the frame the film is for.
-      tl.to(["#platewrap", "#a7-dish"], { opacity: 0, duration: 0.5, ease: "power2.in" }, 50.0);
-      tl.to("#a7-scrim", { opacity: 0, duration: 0.6, ease: EIO }, 50.0);
-      tl.set("#psteam", { opacity: 0 }, 50.6);
-
-      // The learning beat, back on paper.
-      tl.fromTo("#a7-say", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: E }, 50.3);
-      const STARS = [50.202, 50.747, 51.293, 51.838];
-      for (let i = 0; i < 4; i++) {
-        tl.fromTo("#a7-stars .star:nth-child(" + (i + 1) + ")", { opacity: 0, scale: 0.3, rotation: -28 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.42, ease: LANDP }, STARS[i]);
-      }
-      tl.fromTo("#a7-stars .star:nth-child(5)", { opacity: 0 }, { opacity: 1, duration: 0.3, ease: EIO }, 52.0);
-      tl.fromTo("#a7-read", { opacity: 0 }, { opacity: 1, duration: 0.34, ease: EIO }, 52.2);
-
-      const NOTE_B = "the glaze was the best part";
-      const typedB = document.getElementById("a7-typed");
-      const cB = { n: 0 };
-      tl.fromTo("#a7-note", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.4, ease: E }, 52.4);
-      tl.set("#a7-caret", { opacity: 1 }, 52.6);
-      tl.to(cB, { n: NOTE_B.length, duration: 0.8, ease: "none",
-        onUpdate: function () { typedB.textContent = NOTE_B.slice(0, Math.round(cB.n)); } }, 52.6);
-      tl.set("#a7-caret", { opacity: 0 }, 53.5);
-      tl.fromTo("#a7-next", { opacity: 0 }, { opacity: 0.45, duration: 0.4, ease: EIO }, 53.5);
-      tl.to("#a7-note", { x: -390, y: 208, scale: 0.42, opacity: 0, duration: 0.6, ease: "power2.inOut" }, 54.0);
-      tl.to("#a7-next", { opacity: 1, scale: 1.04, duration: 0.3, ease: E }, 54.45);
-      tl.to("#a7-next", { scale: 1, duration: 0.32, ease: LANDP }, 54.75);
-      tl.to(["#a7-say", "#a7-stars", "#a7-read", "#a7-next"], { opacity: 0, duration: 0.38, ease: "power2.in" }, 54.72);
-
+      tl.fromTo("#a7-dish", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6, ease: "power4.out" }, 48.5);
+      // It holds with only steam moving — the frame the whole film is for.
+      tl.to(["#platewrap", "#a7-dish"], { opacity: 0, duration: 0.44, ease: "power2.in" }, 50.28);
+      tl.to("#a7-scrim", { opacity: 0, duration: 0.5, ease: EIO }, 50.28);
+      tl.set("#psteam", { opacity: 0 }, 50.8);
       /* ══ Act 8 — sign-off ═══════════════════════════════════════════════
          No strong cue exists after 55s, so this lands quietly rather than on a
          faked hit. */
