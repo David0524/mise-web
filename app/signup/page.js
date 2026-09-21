@@ -20,8 +20,21 @@ export default function SignupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Couldn't create your account.");
+      /* Never parse blindly. A route that crashes returns a 500 with an EMPTY
+         body, and res.json() on that throws "Unexpected end of JSON input" —
+         which is what the person saw instead of anything about what actually
+         went wrong. Read the text first, then try to parse it. */
+      const raw = await res.text();
+      let data = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch (_) { data = {}; }
+      if (!res.ok) {
+        throw new Error(
+          data.error ||
+          (res.status >= 500
+            ? "The server is having trouble right now. Try again in a moment."
+            : "Couldn't create your account.")
+        );
+      }
       // /app itself checks entitlement server-side and redirects to /pricing if
       // needed — deferring to that one place means this works correctly whether
       // the paywall is on or off, without duplicating the logic here.
