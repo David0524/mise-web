@@ -1,0 +1,1436 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Mise — hype</title>
+    <!-- GSAP 3.14.2, vendored: the render browser has no trusted path to the CDN. -->
+    <script src="assets/vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Nunito"; font-style: normal; font-weight: 700; font-display: block; src: url("assets/fonts/nunito-700.woff2") format("woff2"); }
+      @font-face { font-family: "Nunito"; font-style: normal; font-weight: 800; font-display: block; src: url("assets/fonts/nunito-800.woff2") format("woff2"); }
+      @font-face { font-family: "Nunito"; font-style: normal; font-weight: 900; font-display: block; src: url("assets/fonts/nunito-900.woff2") format("woff2"); }
+
+      :root {
+        --night: #0e0b10;
+        --paper: #f6efe3;
+        --ink: #1a1b24;
+        --hot: #b44722;
+        --hot-edge: #813318;
+        --rose: #ee9265;
+        --amber: #ffa53d;
+        --plum: #573c56;
+        --muted: #6e6472;
+        --good: #2f6b54;
+        --rule: rgba(87, 60, 86, 0.2);
+        --dim: #c9bdc4;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--night); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Nunito", sans-serif; background: var(--night); }
+
+      /* ── Scenes: one full-bleed layer each. Scene 1 is visible at t=0; the
+         rest start at opacity 0 and the transitions hand off between them. ── */
+      .scene { position: absolute; inset: 0; overflow: hidden; }
+      .scene + .scene { opacity: 0; visibility: hidden; }
+      .bg-night { background: var(--night); }
+      .bg-paper {
+        background-image:
+          radial-gradient(60% 50% at 30% 34%, #fbf7ef, rgba(251, 247, 239, 0) 70%),
+          linear-gradient(180deg, #f4ecdf 0%, #eadfce 100%);
+      }
+      .bg-hot {
+        background-image:
+          radial-gradient(70% 60% at 50% 40%, #c65128, rgba(198, 81, 40, 0) 72%),
+          linear-gradient(180deg, #b44722, #9e3b1b);
+      }
+      /* The warm light that rides the bass on the dark scenes. */
+      .warm {
+        position: absolute; left: -260px; top: -300px; width: 2440px; height: 1680px;
+        background-image: radial-gradient(34% 34% at 50% 50%, rgba(238, 146, 101, 0.3), rgba(238, 146, 101, 0) 70%);
+        opacity: 0.4; will-change: transform, opacity;
+      }
+      .ghost {
+        position: absolute; left: -40px; right: -40px; font-weight: 900; font-size: 420px;
+        line-height: 1; letter-spacing: -0.05em; white-space: nowrap; text-transform: uppercase;
+        color: rgba(246, 239, 227, 0.04); pointer-events: none;
+      }
+      .bg-paper .ghost { color: rgba(87, 60, 86, 0.05); }
+      .bg-hot .ghost { color: rgba(14, 11, 16, 0.08); }
+
+      /* Slam type. */
+      .slam {
+        position: absolute; font-weight: 900; line-height: 1.04; letter-spacing: -0.035em;
+        text-transform: uppercase; white-space: nowrap; opacity: 0; will-change: transform, opacity;
+      }
+      .center { left: 0; right: 0; text-align: center; }
+
+      #flash { position: absolute; inset: 0; background: #fff6ea; opacity: 0; z-index: 50; pointer-events: none; }
+
+      /* ── S1 · the hook ─────────────────────────────────────────────── */
+      #clock { position: absolute; left: 0; right: 0; top: 108px; display: flex; flex-direction: column; align-items: center; opacity: 0; }
+      #clockpanel {
+        display: flex; align-items: flex-start; gap: 16px; padding: 22px 60px 26px;
+        border-radius: 28px; background: #07050a; border: 2px solid rgba(255, 165, 61, 0.22);
+        box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.8), 0 30px 60px rgba(0, 0, 0, 0.5);
+      }
+      #clocknum { font-weight: 900; font-size: 150px; line-height: 1.1; color: var(--amber); text-shadow: 0 0 24px rgba(255, 150, 40, 0.55); font-variant-numeric: tabular-nums; }
+      #clockpm { font-weight: 900; font-size: 44px; line-height: 1.1; margin-top: 26px; color: var(--amber); text-shadow: 0 0 16px rgba(255, 150, 40, 0.5); }
+      #clockday { margin-top: 22px; font-weight: 800; font-size: 30px; letter-spacing: 0.4em; color: var(--dim); }
+      #nop { top: 560px; font-size: 250px; color: var(--paper); }
+      #nopr { top: 560px; font-size: 250px; color: var(--rose); }
+
+      /* ── S2 · the reveal ───────────────────────────────────────────── */
+      #meet { top: 190px; font-size: 64px; letter-spacing: 0.3em; color: var(--paper); }
+      #namerow { position: absolute; left: 0; right: 0; top: 344px; display: flex; justify-content: center; align-items: center; gap: 36px; }
+      #namemark { width: 250px; height: 250px; opacity: 0; }
+      #name { position: relative; font-weight: 900; font-size: 360px; line-height: 1.1; letter-spacing: -0.05em; color: var(--paper); opacity: 0; }
+      #collab { top: 790px; font-size: 60px; letter-spacing: -0.01em; text-transform: none; color: var(--paper); }
+
+      /* ── S3 / S4 · the app, held ───────────────────────────────────── */
+      .col { position: absolute; left: 120px; top: 0; width: 1060px; height: 1080px; }
+      .kick { position: absolute; left: 0; font-weight: 900; font-size: 116px; line-height: 1.04; letter-spacing: -0.04em; text-transform: uppercase; white-space: nowrap; color: var(--hot); opacity: 0; }
+      .sticker {
+        position: absolute; left: 0; display: inline-block; padding: 12px 34px 16px; border-radius: 24px;
+        background: var(--ink); color: var(--paper); font-weight: 900; font-size: 76px; line-height: 1.1;
+        letter-spacing: -0.03em; text-transform: uppercase; white-space: nowrap; opacity: 0;
+        box-shadow: 0 18px 30px -12px rgba(26, 27, 36, 0.5);
+      }
+      .sticker--hot { background: var(--hot); }
+      .line { position: absolute; left: 0; font-weight: 900; font-size: 108px; line-height: 1.06; letter-spacing: -0.04em; text-transform: uppercase; white-space: nowrap; color: var(--ink); opacity: 0; }
+      .line--hot { color: var(--hot); }
+      #devstage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; opacity: 0; }
+      .scr { position: absolute; inset: 0; background: #FAF5F4; }
+      #scrB { opacity: 0; visibility: hidden; }
+      #device {
+        position: absolute; left: 1094px; top: 32px; width: 500px; height: 1016px;
+        border-radius: 62px; opacity: 0;
+        background: linear-gradient(148deg, #6A6270 0%, #2A2530 34%, #1B1720 62%, #554D5C 100%);
+        box-shadow: 0 60px 110px -34px rgba(24, 12, 8, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      }
+      #drim {
+        position: absolute; inset: 0; border-radius: 62px; opacity: 0.85;
+        background-image: linear-gradient(140deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0) 68%, rgba(255, 255, 255, 0.2));
+      }
+      #dscreen {
+        position: absolute; left: 14px; top: 14px; width: 472px; height: 988px;
+        border-radius: 50px; overflow: hidden; background: #FAF5F4;
+      }
+      #disland {
+        position: absolute; left: 50%; top: 26px; width: 112px; height: 30px;
+        margin-left: -56px; border-radius: 15px; background: #0A0810; z-index: 9;
+      }
+      .scr { inset: 0; background: #FAF5F4; }
+      .scr--dark { background: #1E1A21; }
+
+      /* ── App chrome, at phone scale ─────────────────────────────────── */
+      .sb { display: flex; align-items: center; justify-content: space-between; padding: 18px 30px 0; font-weight: 800; font-size: 18px; color: #1A1B24; }
+      .sb--d { color: #F6EFE3; }
+      .sbi { display: flex; align-items: flex-end; gap: 6px; }
+      .phead { display: flex; align-items: center; padding: 62px 24px 14px; }
+      .phead__t { font-weight: 900; font-size: 27px; letter-spacing: -0.02em; color: #1A1B24; }
+      .phead__dot { margin-left: auto; width: 36px; height: 36px; border-radius: 999px; background: #F4EBE9; border: 1px solid var(--rule); }
+      .pbody { padding: 0 24px; }
+      /* Short onboarding screens sit centred, not stacked at the top. */
+      .pbody--mid { padding-top: 104px; }
+      .pcard {
+        background: #fff; border-radius: 22px; padding: 22px 22px 24px; margin-bottom: 14px;
+        box-shadow: 0 1px 2px rgba(30, 20, 30, 0.04), 0 8px 22px -10px rgba(87, 60, 86, 0.18);
+      }
+      .pcard h2 { font-weight: 800; font-size: 27px; line-height: 1.18; letter-spacing: -0.022em; color: #1A1B24; }
+      .pcard h3 { font-weight: 900; font-size: 25px; line-height: 1.16; letter-spacing: -0.022em; color: #1A1B24; }
+      .pcard p { font-weight: 600; font-size: 19px; color: #5F5563; line-height: 1.38; margin-top: 9px; }
+      .plead { font-weight: 600; font-size: 18px; color: #5F5563; margin-top: 8px; }
+      .phint { font-weight: 600; font-size: 17px; color: #5F5563; line-height: 1.42; margin-top: 14px; }
+      .psec { font-weight: 900; font-size: 21px; color: #1A1B24; margin: 0 0 12px; }
+      .pbtn {
+        display: block; text-align: center; padding: 17px; border-radius: 17px;
+        background: var(--hot); color: #fff; font-weight: 800; font-size: 20px;
+        box-shadow: 0 2px 0 var(--hot-edge), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+      }
+      .pbtn--sm { display: inline-block; padding: 11px 18px; font-size: 17px; border-radius: 13px; }
+      .pbtn--g { background: transparent; color: var(--hot); box-shadow: none; border: 1px solid var(--rule); }
+      .pbtn--od { background: transparent; color: #F6EFE3; border: 1px solid rgba(246, 239, 227, 0.3); box-shadow: none; }
+      .pacts { display: flex; gap: 9px; margin-top: 15px; }
+      .pdish h3 { font-size: 23px; }
+      .pdish p { font-size: 18px; margin-top: 7px; }
+      .pfield {
+        display: flex; align-items: center; min-height: 74px; padding: 0 20px; border-radius: 17px;
+        background: #fff; border: 1px solid var(--rule); font-weight: 700; font-size: 25px; color: #1A1B24;
+      }
+      .pfield--sm { min-height: 62px; margin-top: 16px; font-size: 20px; background: #F4EBE9; }
+      #pcaret, #pcaret2 { display: inline-block; width: 3px; height: 28px; margin-left: 3px; background: var(--hot); opacity: 0; }
+      .prog { padding: 58px 24px 16px; }
+      .prog__segs { display: flex; gap: 5px; }
+      .prog__segs span { display: block; flex: 1 1 0; height: 6px; border-radius: 3px; background: var(--rule); }
+      .prog__segs span.on { background: var(--hot); }
+      .prog__t { display: flex; justify-content: space-between; margin-top: 10px; font-weight: 700; font-size: 16px; color: #5F5563; }
+      .prog__n { color: var(--hot); }
+      .stepper { display: flex; align-items: center; justify-content: center; gap: 24px; margin: 20px 0 4px; }
+      .stepper__b { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px; background: #F4EBE9; border: 1px solid var(--rule); font-weight: 800; font-size: 28px; color: var(--plum); }
+      .stepper__n { font-weight: 900; font-size: 52px; line-height: 1.1; color: #1A1B24; min-width: 64px; text-align: center; }
+      .recap { list-style: none; margin-top: 18px; }
+      .recap li { display: flex; align-items: flex-start; gap: 13px; font-weight: 700; font-size: 20px; color: #1A1B24; line-height: 1.34; padding: 9px 0; opacity: 0; }
+      .tick { display: block; flex: 0 0 26px; width: 26px; height: 26px; border-radius: 999px; background: rgba(47, 107, 84, 0.16); border: 2px solid var(--good); margin-top: 2px; }
+      .pstars { display: flex; gap: 8px; margin-top: 14px; }
+      .pstar { opacity: 0; }
+      .pread { font-weight: 800; font-size: 20px; color: var(--good); margin-top: 10px; opacity: 0; }
+      .pchips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .pchip { display: block; padding: 9px 15px; border-radius: 999px; background: #F4EBE9; border: 1px solid var(--rule); font-weight: 700; font-size: 17px; color: var(--plum); }
+      .pchip--on { background: rgba(180, 71, 34, 0.13); border-color: var(--hot); color: var(--hot); }
+      /* ── The personalization screen: the app's real option sets, cascaded. ── */
+      .pchips--tight { gap: 7px; }
+      .pchips--tight .pchip { padding: 7px 12px; font-size: 15px; }
+      .rv { opacity: 0; }
+      .psec--gap { margin-top: 26px; }
+      .peq { display: flex; flex-wrap: wrap; gap: 7px; }
+      .peqi {
+        display: block; padding: 7px 12px; border-radius: 12px;
+        background: #F4EBE9; border: 1px solid var(--rule);
+        font-weight: 700; font-size: 15px; color: var(--plum);
+      }
+      .peqi--on { background: rgba(47, 107, 84, 0.12); border-color: var(--good); color: #235240; }
+      .pscale { display: flex; gap: 6px; margin-top: 4px; }
+      .pscale .rung { display: block; flex: 1 1 0; height: 13px; border-radius: 999px; background: #EDE2DE; }
+      .pscalelab { display: flex; justify-content: space-between; gap: 10px; margin-top: 9px; }
+      .pscalelab span { font-weight: 700; font-size: 15px; color: var(--muted); }
+      .pscalelab span:last-child { color: var(--hot); text-align: right; }
+      .tabbar {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 96px;
+        display: flex; align-items: flex-start; padding-top: 13px;
+        background: rgba(255, 255, 255, 0.94); border-top: 1px solid var(--rule);
+      }
+      .tab { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+      .tab__l { font-weight: 700; font-size: 12px; color: #5F5563; }
+      .tab--on .tab__l { color: var(--hot); }
+      .tab svg { display: block; }
+      /* Stove mode, on the device */
+      .ctop { display: flex; align-items: center; justify-content: space-between; padding: 58px 24px 0; }
+      .cmuted { font-weight: 800; font-size: 16px; color: #B3A6AE; }
+      .cvox { font-weight: 800; font-size: 16px; color: var(--rose); }
+      .ctitle { text-align: center; }
+      .ctitle strong { display: block; font-weight: 900; font-size: 18px; color: #F6EFE3; }
+      .ctitle span { font-weight: 600; font-size: 14px; color: #B3A6AE; }
+      .ctimer { display: flex; align-items: baseline; gap: 12px; margin: 22px 24px 0; padding: 14px 20px; border-radius: 18px; background: rgba(238, 146, 101, 0.16); border: 1px solid rgba(238, 146, 101, 0.4); }
+      .ctimer__c { font-weight: 900; font-size: 36px; line-height: 1.1; color: var(--rose); }
+      .ctimer__l { font-weight: 700; font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; color: #B3A6AE; }
+      .cbody { padding: 26px 24px 0; }
+      .ckick { font-weight: 800; font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: #B3A6AE; }
+      .cbar { height: 7px; border-radius: 4px; background: rgba(246, 239, 227, 0.18); margin-top: 11px; overflow: hidden; }
+      .cbar span { display: block; width: 43%; height: 100%; border-radius: 4px; background: var(--rose); }
+      .cstep { font-weight: 800; font-size: 31px; line-height: 1.24; letter-spacing: -0.02em; color: #F6EFE3; margin-top: 24px; }
+      .cnav { display: flex; gap: 11px; margin-top: 26px; }
+      .cnav .pbtn { flex: 1 1 0; }
+      /* Held right of centre in this cut; the stage owns its entrance. */
+      #device { left: 1300px; opacity: 1; }
+      /* Label-size persimmon and muted text, darkened to clear 4.5:1 on the app's tints. */
+      .scr { --muted: #5F5563; }
+      .scr .prog__n, .scr .pscalelab span:last-child, .scr .tab--on .tab__l, .scr .pbtn--g, .scr .pchip--on { color: #9A3A1B; }
+
+
+      /* ── S5 · the list ─────────────────────────────────────────────── */
+      #listhead { left: 120px; top: 78px; font-size: 130px; color: var(--paper); }
+      #listcard {
+        position: absolute; left: 120px; top: 290px; width: 800px; height: 660px; border-radius: 34px;
+        background: #fbf6ee; box-shadow: 0 40px 80px -30px rgba(40, 10, 0, 0.6); opacity: 0;
+      }
+      .row {
+        position: absolute; left: 40px; width: 720px; height: 60px; display: flex; align-items: center; gap: 22px;
+        border-bottom: 2px solid rgba(87, 60, 86, 0.12); font-weight: 800; font-size: 36px; color: var(--ink); opacity: 0;
+      }
+      .row b { display: inline-block; min-width: 150px; text-align: right; font-weight: 900; color: var(--hot); }
+      #cnt { position: absolute; left: 1060px; top: 200px; width: 760px; text-align: center; font-weight: 900; font-size: 400px; line-height: 1.1; letter-spacing: -0.05em; color: var(--paper); font-variant-numeric: tabular-nums; opacity: 0; }
+      #cntl { top: 780px; left: 1060px; width: 760px; text-align: center; font-size: 64px; letter-spacing: 0.02em; color: var(--paper); }
+
+      /* ── S6 · the cooking ──────────────────────────────────────────── */
+      #board { left: 370px; top: 470px; filter: drop-shadow(0 20px 26px rgba(0, 0, 0, 0.55)); }
+      #scallion { left: 700px; top: 590px; }
+      #knife { left: 676px; top: 428px; transform-origin: 89% 61%; filter: drop-shadow(0 16px 20px rgba(0, 0, 0, 0.5)); }
+      #rounds { position: absolute; left: 0; top: 0; }
+      /* A cut round: a pale wet face, a green wall, and one inner ring. */
+      .around {
+        position: absolute; width: 58px; height: 58px; border-radius: 999px;
+        background: radial-gradient(80% 80% at 38% 32%, #E2EDCF, #AFC497 86%);
+        border: 10px solid #446B2D; opacity: 0;
+        box-shadow: 0 5px 11px rgba(0, 0, 0, 0.45);
+      }
+
+      #panstage { position: absolute; left: 960px; top: 588px; transform: scale(1.18); transform-origin: 0 0; }
+      #panwrap { position: absolute; left: -380px; top: -228px; width: 1010px; height: 460px; opacity: 0; transform-origin: 88% 52%; }
+      #panglow {
+        position: absolute; left: -520px; top: -420px; width: 1040px; height: 840px;
+        background-image: radial-gradient(38% 38% at 50% 50%, rgba(255, 168, 78, 0.58), rgba(255, 110, 30, 0) 72%);
+        opacity: 0;
+      }
+      #pan { position: absolute; left: 0; top: 0; }
+      #oilpool { position: absolute; left: 0; top: 0; opacity: 0; }
+      #oilstream { position: absolute; left: 420px; top: 52px; opacity: 0; }
+      #bottle { position: absolute; left: 432px; top: -143px; opacity: 0; transform-origin: 34% 86%; }
+      .thigh { position: absolute; opacity: 0; filter: drop-shadow(0 14px 16px rgba(20, 8, 2, 0.6)); }
+      #thigh1 { left: 150px; top: 112px; }
+      #thigh2 { left: 322px; top: 196px; }
+      #thigh3 { left: 470px; top: 102px; }
+      #spoon { position: absolute; left: 500px; top: -82px; opacity: 0; transform-origin: 25% 50%; }
+      #glazestream { position: absolute; left: 470px; top: 0px; opacity: 0; }
+      #gloss {
+        position: absolute; left: -200px; top: 40px; width: 300px; height: 400px;
+        background-image: linear-gradient(104deg, rgba(255, 255, 255, 0) 0%, rgba(255, 244, 228, 0.62) 50%, rgba(255, 255, 255, 0) 100%);
+        filter: blur(14px); opacity: 0;
+      }
+      #sizzlefield { position: absolute; left: 380px; top: 210px; width: 0; height: 0; }
+      .sizz { position: absolute; left: 0; top: 0; border-radius: 999px; opacity: 0; will-change: transform, opacity; }
+      #steam {
+        position: absolute; left: 90px; top: -300px; width: 700px; height: 560px;
+        filter: blur(17px); opacity: 0;
+      }
+      .flame { position: absolute; opacity: 0; transform-origin: 50% 100%; }
+      #flame1 { left: 150px; top: -86px; }
+      #flame2 { left: 330px; top: -132px; }
+      #flame3 { left: 520px; top: -74px; }
+
+
+      #platestage { position: absolute; left: 960px; top: 498px; transform: scale(1.22); transform-origin: 0 0; }
+      #platewrap { position: absolute; left: -310px; top: -310px; width: 620px; height: 620px; opacity: 0; }
+      #plate { position: absolute; left: 0; top: 0; }
+      #rice { position: absolute; left: 118px; top: 286px; opacity: 0; filter: drop-shadow(0 8px 12px rgba(60, 40, 20, 0.3)); }
+      #pthigh1 { position: absolute; left: 176px; top: 172px; opacity: 0; filter: drop-shadow(0 12px 16px rgba(50, 20, 6, 0.42)); }
+      #pthigh2 { position: absolute; left: 288px; top: 246px; opacity: 0; filter: drop-shadow(0 12px 16px rgba(50, 20, 6, 0.42)); }
+      #pdrizzle { position: absolute; left: 92px; top: 152px; opacity: 0; }
+      #psteam { position: absolute; left: 90px; top: -190px; width: 440px; height: 420px; filter: blur(15px); opacity: 0; }
+      .pround {
+        position: absolute; width: 30px; height: 30px; border-radius: 999px;
+        background: radial-gradient(80% 80% at 38% 32%, #DFEACB, #A9BE91 86%);
+        border: 6px solid #446B2D; opacity: 0;
+        box-shadow: 0 3px 7px rgba(0, 0, 0, 0.28);
+      }
+      .obj { position: absolute; }
+      .obj svg { display: block; overflow: visible; }
+      #boardset { position: absolute; inset: 0; }
+      #panset { position: absolute; inset: 0; opacity: 0; visibility: hidden; }
+      #panstage { left: 1040px; top: 560px; }
+      #oilpool { opacity: 1; }
+      #cookhead { top: 900px; font-size: 96px; color: var(--paper); }
+      #stepcard {
+        position: absolute; left: 80px; top: 90px; width: 600px; padding: 30px 34px 34px; border-radius: 34px;
+        background: #1e1a21; border: 1px solid rgba(246, 239, 227, 0.12);
+        box-shadow: 0 40px 70px -24px rgba(0, 0, 0, 0.7); opacity: 0;
+      }
+      #stepcard .ckick { font-size: 20px; }
+      #stepcard .cstep { margin-top: 20px; font-size: 52px; line-height: 1.12; }
+      #stepcard .ctimer { margin: 24px 0 0; }
+      #stepcard .ctimer__c { font-size: 52px; }
+      #stepcard .ctimer__l { font-size: 20px; }
+
+      /* ── S7 · nailed it ────────────────────────────────────────────── */
+      #s7 #platestage { left: 610px; top: 560px; transform: scale(1.14); }
+      #s7 #platewrap { opacity: 0; }
+      #s7 #rice, #s7 #pthigh1, #s7 #pthigh2, #s7 .pround, #s7 #pdrizzle { opacity: 1; }
+      #s7 #drizpath, #s7 #drizgloss { stroke-dashoffset: 0; }
+      #stars { position: absolute; left: 1150px; top: 250px; display: flex; gap: 18px; }
+      .star { width: 118px; height: 118px; opacity: 0; }
+      #nailed { left: 1150px; top: 430px; font-size: 150px; color: var(--paper); }
+      #nchip {
+        position: absolute; left: 1150px; top: 660px; padding: 16px 34px; border-radius: 999px;
+        background: rgba(238, 146, 101, 0.16); border: 2px solid var(--rose); color: var(--rose);
+        font-weight: 900; font-size: 44px; opacity: 0;
+      }
+
+      /* ── S8 · the sign-off ─────────────────────────────────────────── */
+      #omark { position: absolute; left: 50%; top: 120px; width: 190px; height: 190px; margin-left: -95px; opacity: 0; }
+      #oname { top: 300px; font-size: 330px; letter-spacing: -0.05em; color: var(--paper); text-transform: none; }
+      #opitch { top: 700px; font-size: 48px; letter-spacing: -0.01em; text-transform: none; font-weight: 800; color: var(--dim); }
+      #oprice {
+        position: absolute; left: 50%; top: 820px; width: 560px; margin-left: -280px; text-align: center;
+        padding: 18px 0; border-radius: 999px; background: rgba(238, 146, 101, 0.14);
+        border: 2px solid rgba(238, 146, 101, 0.55); color: var(--rose); font-weight: 900; font-size: 38px; opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="25" data-width="1920" data-height="1080">
+      <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+        <defs>
+          <!-- Food is lit from the upper left throughout: a radial body gradient,
+               a weighted underside, and two speculars per piece. -->
+          <radialGradient id="gThigh" cx="0.34" cy="0.24" r="0.88">
+            <stop offset="0" stop-color="#F2C67E" /><stop offset="0.36" stop-color="#DCA35A" />
+            <stop offset="0.72" stop-color="#AE6A2C" /><stop offset="1" stop-color="#7E451B" />
+          </radialGradient>
+          <radialGradient id="gGlaze" cx="0.32" cy="0.22" r="0.9">
+            <stop offset="0" stop-color="#E2742C" /><stop offset="0.32" stop-color="#C2491A" />
+            <stop offset="0.72" stop-color="#94300F" /><stop offset="1" stop-color="#651B07" />
+          </radialGradient>
+          <radialGradient id="gSheen" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#FFFFFF" stop-opacity="1" />
+            <stop offset="0.45" stop-color="#FFF6E6" stop-opacity="0.52" />
+            <stop offset="1" stop-color="#FFF0D8" stop-opacity="0" />
+          </radialGradient>
+          <linearGradient id="gSpec" x1="0" y1="0" x2="0.15" y2="1">
+            <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9" />
+            <stop offset="0.55" stop-color="#FFF3DC" stop-opacity="0.24" />
+            <stop offset="1" stop-color="#FFFFFF" stop-opacity="0" />
+          </linearGradient>
+          <linearGradient id="gFlame" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#C93208" /><stop offset="0.3" stop-color="#E8481A" />
+            <stop offset="0.66" stop-color="#FF8A28" /><stop offset="1" stop-color="#FFC25C" />
+          </linearGradient>
+          <linearGradient id="gFlameCore" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#FF7A1E" stop-opacity="0.3" />
+            <stop offset="0.55" stop-color="#FFB347" stop-opacity="0.6" />
+            <stop offset="1" stop-color="#FFE9AE" stop-opacity="0.7" />
+          </linearGradient>
+          <radialGradient id="gPan" cx="0.44" cy="0.3" r="0.78">
+            <stop offset="0" stop-color="#443C49" /><stop offset="0.55" stop-color="#2C262E" />
+            <stop offset="1" stop-color="#171319" />
+          </radialGradient>
+          <radialGradient id="gPanIn" cx="0.42" cy="0.26" r="0.82">
+            <stop offset="0" stop-color="#312A34" /><stop offset="0.62" stop-color="#211C26" />
+            <stop offset="1" stop-color="#120E16" />
+          </radialGradient>
+          <radialGradient id="gOil" cx="0.36" cy="0.3" r="0.72">
+            <stop offset="0" stop-color="#F7C664" stop-opacity="0.6" />
+            <stop offset="0.5" stop-color="#C98B2A" stop-opacity="0.44" />
+            <stop offset="0.86" stop-color="#7E5314" stop-opacity="0.28" />
+            <stop offset="1" stop-color="#5A3A0C" stop-opacity="0" />
+          </radialGradient>
+          <linearGradient id="gBoard" x1="0" y1="0" x2="0.25" y2="1">
+            <stop offset="0" stop-color="#B98453" /><stop offset="0.45" stop-color="#9E6C3D" />
+            <stop offset="1" stop-color="#7B5028" />
+          </linearGradient>
+          <radialGradient id="gPlate" cx="0.36" cy="0.28" r="0.82">
+            <stop offset="0" stop-color="#FFFFFF" /><stop offset="0.68" stop-color="#F8F3F0" />
+            <stop offset="1" stop-color="#E8DED8" />
+          </radialGradient>
+          <radialGradient id="gRice" cx="0.36" cy="0.24" r="0.86">
+            <stop offset="0" stop-color="#FFFEFA" /><stop offset="0.62" stop-color="#F3EBD9" />
+            <stop offset="1" stop-color="#DFD2B7" />
+          </radialGradient>
+          <radialGradient id="gCabbage" cx="0.4" cy="0.78" r="0.9">
+            <stop offset="0" stop-color="#FBFCF4" /><stop offset="0.6" stop-color="#EAF0DE" />
+            <stop offset="1" stop-color="#C6D6B4" />
+          </radialGradient>
+          <radialGradient id="gEgg" cx="0.34" cy="0.26" r="0.86">
+            <stop offset="0" stop-color="#FDF7EC" /><stop offset="0.6" stop-color="#F0E3CD" />
+            <stop offset="1" stop-color="#D2BC9C" />
+          </radialGradient>
+          <linearGradient id="gTub" x1="0" y1="0" x2="0.35" y2="1">
+            <stop offset="0" stop-color="#CE5A2C" /><stop offset="0.55" stop-color="#B44722" />
+            <stop offset="1" stop-color="#8A3315" />
+          </linearGradient>
+          <radialGradient id="gScalFace" cx="0.36" cy="0.3" r="0.8">
+            <stop offset="0" stop-color="#FFFFFF" /><stop offset="1" stop-color="#D8E5C8" />
+          </radialGradient>
+          <clipPath id="cSil"><path d="M28 94C28 58 56 30 96 20 130 11 168 16 196 36 220 53 232 74 230 98 228 124 208 145 178 157 148 169 112 168 84 156 52 142 28 122 28 94Z"/></clipPath>
+          <g id="artThigh">
+            <path d="M28 94C28 58 56 30 96 20 130 11 168 16 196 36 220 53 232 74 230 98 228 124 208 145 178 157 148 169 112 168 84 156 52 142 28 122 28 94Z" fill="url(#gThigh)"/>
+            <g clip-path="url(#cSil)">
+              <ellipse cx="132" cy="166" rx="112" ry="54" fill="#6A350F" opacity="0.48"/>
+              <ellipse cx="56" cy="138" rx="58" ry="38" fill="#7A431A" opacity="0.28"/>
+              <ellipse cx="145.5" cy="66.7" rx="18.3" ry="13.6" fill="#4B2308" opacity="0.19" transform="rotate(-35 145.5 66.7)"/>
+              <ellipse cx="85.4" cy="70.6" rx="18.4" ry="14.2" fill="#4B2308" opacity="0.18" transform="rotate(25 85.4 70.6)"/>
+              <ellipse cx="117.6" cy="115.7" rx="21.6" ry="12.5" fill="#4B2308" opacity="0.1" transform="rotate(6 117.6 115.7)"/>
+              <ellipse cx="137.7" cy="83.8" rx="26.6" ry="18.5" fill="#4B2308" opacity="0.17" transform="rotate(-3 137.7 83.8)"/>
+              <ellipse cx="116.5" cy="77.7" rx="24.6" ry="13.5" fill="#4B2308" opacity="0.18" transform="rotate(21 116.5 77.7)"/>
+              <ellipse cx="151.7" cy="44.1" rx="18.0" ry="14.7" fill="#4B2308" opacity="0.16" transform="rotate(-7 151.7 44.1)"/>
+              <ellipse cx="69.1" cy="87.7" rx="19.3" ry="11.1" fill="#4B2308" opacity="0.11" transform="rotate(-35 69.1 87.7)"/>
+              <ellipse cx="90.6" cy="126.6" rx="17.1" ry="12.1" fill="#4B2308" opacity="0.15" transform="rotate(33 90.6 126.6)"/>
+              <ellipse cx="116.0" cy="69.3" rx="3.6" ry="2.8" fill="#2F1404" opacity="0.19" transform="rotate(39 116.0 69.3)"/>
+              <ellipse cx="84.7" cy="51.3" rx="4.3" ry="2.6" fill="#2F1404" opacity="0.23" transform="rotate(-2 84.7 51.3)"/>
+              <ellipse cx="170.9" cy="56.4" rx="4.0" ry="2.3" fill="#2F1404" opacity="0.22" transform="rotate(6 170.9 56.4)"/>
+              <ellipse cx="171.3" cy="53.3" rx="5.1" ry="2.9" fill="#2F1404" opacity="0.23" transform="rotate(-1 171.3 53.3)"/>
+              <ellipse cx="67.7" cy="72.0" rx="5.1" ry="2.7" fill="#2F1404" opacity="0.27" transform="rotate(-21 67.7 72.0)"/>
+              <ellipse cx="111.4" cy="57.6" rx="3.7" ry="3.0" fill="#2F1404" opacity="0.29" transform="rotate(6 111.4 57.6)"/>
+              <ellipse cx="60.3" cy="83.9" rx="5.5" ry="3.7" fill="#2F1404" opacity="0.25" transform="rotate(41 60.3 83.9)"/>
+              <ellipse cx="177.9" cy="71.9" rx="5.1" ry="2.9" fill="#2F1404" opacity="0.2" transform="rotate(24 177.9 71.9)"/>
+              <ellipse cx="165.1" cy="71.2" rx="5.5" ry="2.8" fill="#2F1404" opacity="0.27" transform="rotate(43 165.1 71.2)"/>
+              <ellipse cx="116.2" cy="87.7" rx="5.0" ry="4.2" fill="#2F1404" opacity="0.21" transform="rotate(41 116.2 87.7)"/>
+              <ellipse cx="78.4" cy="106.0" rx="4.8" ry="2.6" fill="#2F1404" opacity="0.18" transform="rotate(-29 78.4 106.0)"/>
+              <ellipse cx="170.2" cy="88.3" rx="6.3" ry="4.0" fill="#2F1404" opacity="0.21" transform="rotate(4 170.2 88.3)"/>
+              <path d="M62 66c26-16 74-20 108-6" fill="none" stroke="#E9BE84" stroke-width="5" stroke-linecap="round" opacity="0.26"/>
+              <path d="M74 114c30 12 70 10 96-6" fill="none" stroke="#8A521F" stroke-width="6" stroke-linecap="round" opacity="0.3"/>
+              <ellipse cx="96" cy="54" rx="62" ry="26" fill="url(#gSheen)" opacity="0.5" transform="rotate(-14 96 54)"/>
+              <ellipse cx="78" cy="46" rx="20" ry="9" fill="url(#gSheen)" opacity="0.55" transform="rotate(-18 78 46)"/>
+            </g>
+            <path d="M28 94C28 58 56 30 96 20 130 11 168 16 196 36 220 53 232 74 230 98 228 124 208 145 178 157 148 169 112 168 84 156 52 142 28 122 28 94Z" fill="none" stroke="#6C3813" stroke-width="5" stroke-linejoin="round"/>
+          </g>
+          <g id="artGlaze">
+            <path d="M28 94C28 58 56 30 96 20 130 11 168 16 196 36 220 53 232 74 230 98 228 124 208 145 178 157 148 169 112 168 84 156 52 142 28 122 28 94Z" fill="url(#gGlaze)"/>
+            <g clip-path="url(#cSil)">
+              <ellipse cx="134" cy="168" rx="112" ry="56" fill="#4C1505" opacity="0.5"/>
+              <ellipse cx="54" cy="142" rx="58" ry="38" fill="#5E1D08" opacity="0.3"/>
+              <ellipse cx="83.9" cy="60.6" rx="16.1" ry="9.4" fill="#3E1104" opacity="0.19" transform="rotate(-23 83.9 60.6)"/>
+              <ellipse cx="172.5" cy="110.0" rx="21.8" ry="12.9" fill="#3E1104" opacity="0.22" transform="rotate(19 172.5 110.0)"/>
+              <ellipse cx="156.0" cy="68.4" rx="12.6" ry="9.1" fill="#3E1104" opacity="0.17" transform="rotate(-15 156.0 68.4)"/>
+              <ellipse cx="137.2" cy="82.1" rx="15.4" ry="10.4" fill="#3E1104" opacity="0.16" transform="rotate(-7 137.2 82.1)"/>
+              <ellipse cx="160.2" cy="106.5" rx="16.6" ry="10.7" fill="#3E1104" opacity="0.2" transform="rotate(16 160.2 106.5)"/>
+              <ellipse cx="115.2" cy="136.9" rx="20.1" ry="11.3" fill="#3E1104" opacity="0.13" transform="rotate(-23 115.2 136.9)"/>
+              <ellipse cx="177.0" cy="114.3" rx="14.5" ry="8.8" fill="#3E1104" opacity="0.22" transform="rotate(-31 177.0 114.3)"/>
+              <ellipse cx="139.0" cy="40.8" rx="19.5" ry="15.1" fill="#3E1104" opacity="0.19" transform="rotate(31 139.0 40.8)"/>
+              <ellipse cx="98" cy="56" rx="66" ry="28" fill="url(#gSheen)" opacity="0.62" transform="rotate(-13 98 56)"/>
+              <ellipse cx="80" cy="47" rx="22" ry="9" fill="url(#gSheen)" opacity="0.7" transform="rotate(-16 80 47)"/>
+              <path d="M60 116c30 11 68 8 94-8" fill="none" stroke="#E2732B" stroke-width="6" stroke-linecap="round" opacity="0.24"/>
+              <ellipse cx="187.6" cy="49.6" rx="4.0" ry="2.1" fill="#F6EACE" opacity="0.61" transform="rotate(-38 187.6 49.6)"/>
+              <ellipse cx="125.2" cy="85.1" rx="3.2" ry="2.2" fill="#F6EACE" opacity="0.51" transform="rotate(-34 125.2 85.1)"/>
+              <ellipse cx="148.5" cy="46.7" rx="3.6" ry="2.9" fill="#F6EACE" opacity="0.66" transform="rotate(39 148.5 46.7)"/>
+              <ellipse cx="176.4" cy="117.6" rx="3.0" ry="2.3" fill="#F6EACE" opacity="0.59" transform="rotate(-10 176.4 117.6)"/>
+              <ellipse cx="155.0" cy="137.0" rx="4.3" ry="3.0" fill="#F6EACE" opacity="0.66" transform="rotate(-22 155.0 137.0)"/>
+              <ellipse cx="94.3" cy="71.6" rx="4.4" ry="2.5" fill="#F6EACE" opacity="0.58" transform="rotate(16 94.3 71.6)"/>
+              <ellipse cx="165.9" cy="49.3" rx="3.1" ry="1.9" fill="#F6EACE" opacity="0.56" transform="rotate(-15 165.9 49.3)"/>
+              <ellipse cx="207.1" cy="70.0" rx="2.9" ry="2.1" fill="#F6EACE" opacity="0.42" transform="rotate(-40 207.1 70.0)"/>
+            </g>
+            <path d="M28 94C28 58 56 30 96 20 130 11 168 16 196 36 220 53 232 74 230 98 228 124 208 145 178 157 148 169 112 168 84 156 52 142 28 122 28 94Z" fill="none" stroke="#571907" stroke-width="5" stroke-linejoin="round"/>
+          </g>
+        </defs>
+      </svg>
+      <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+        <defs>
+          <g id="chef">
+            <path d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z" fill="#FFFFFF" stroke="#12141C" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M17 24h28.6v4.2H17z" fill="#FFFFFF" stroke="#12141C" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M20 28.4h23c0 8.6-.9 13.4-4.2 16.2-2 1.7-4.3 2.3-7.3 2.3s-5.3-.6-7.3-2.3C20.9 41.8 20 37 20 28.4z" fill="#FFFFFF" stroke="#12141C" stroke-width="2.2" stroke-linejoin="round"/>
+            <circle cx="27.1" cy="37.4" r="1.85" fill="#12141C"/><circle cx="36.3" cy="37.4" r="1.85" fill="#12141C"/>
+            <path d="M28 41.8c1.6 2.1 5.5 2.1 7.1 0" stroke="#12141C" stroke-width="2.1" fill="none" stroke-linecap="round"/>
+            <path d="M25.6 46.8l6.4 5.2 6.4-5.2 3.1 1.5-9.5 7.4-9.5-7.4z" fill="#B44722" stroke="#12141C" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="M13 64c1.4-6.6 7-10.6 13.6-11.9L32 56l5.4-3.9C44 53.4 49.6 57.4 51 64z" fill="#FFFFFF" stroke="#12141C" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M37.2 57.6l10.2 1.1-.5 4.1-10.2-1z" fill="#F0D9D5" stroke="#12141C" stroke-width="1.3"/>
+          </g>
+          <path id="starp" d="M12 2.6l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5L12 17.5l-5.8 3.05 1.1-6.5-4.7-4.6 6.5-.95z"/>
+        </defs>
+      </svg>
+
+      <!-- ══ S1 · 0.00 → 3.18 · the hook ══════════════════════════════════ -->
+      <div class="scene bg-night" id="s1">
+        <div class="warm"></div>
+        <div id="clock">
+          <div id="clockpanel"><span id="clocknum">6:12</span><span id="clockpm">PM</span></div>
+          <div id="clockday">THURSDAY</div>
+        </div>
+        <div class="slam center" id="nop" data-layout-allow-overlap>No plan.</div>
+        <div class="slam center" id="nopr" data-layout-allow-overlap>No problem.</div>
+      </div>
+
+      <!-- ══ S2 · 3.18 → 5.28 · the reveal ════════════════════════════════ -->
+      <div class="scene bg-hot" id="s2">
+        <div class="slam center" id="meet">Meet</div>
+        <div id="namerow">
+          <svg id="namemark" viewBox="0 0 64 64" role="img" aria-label="Mise"><use href="#chef"/></svg>
+          <div id="name">Mise.</div>
+        </div>
+        <div class="slam center" id="collab">a weekly cooking collaborator</div>
+      </div>
+
+      <!-- ══ S3 + S4 · 5.28 → 13.70 · the app, held in the hand ═════════ -->
+      <div class="scene bg-paper" id="s34">
+        <div class="col" id="col3">
+          <div class="kick" id="k3" style="top: 150px">Plans the week.</div>
+          <div class="sticker" id="st1" style="top: 380px">Cooking for 1</div>
+          <div class="sticker sticker--hot" id="st2" style="top: 530px">No pork. No nuts.</div>
+          <div class="sticker" id="st3" style="top: 680px">Medium heat</div>
+        </div>
+        <div class="col" id="col4">
+          <div class="line" id="l41" style="top: 250px">It pitches.</div>
+          <div class="line line--hot" id="l42" style="top: 420px">You push back.</div>
+          <div class="line" id="l43" style="top: 590px">It listens.</div>
+        </div>
+        <div id="devstage">
+          <div id="device">
+            <div id="dscreen">
+              <div id="disland"></div>
+              <div class="scr" id="scrA">
+                <div class="sb"><span>9:41</span><span class="sbi">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+                <div class="prog">
+              <div class="prog__segs"><span class="on"></span><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span><span></span></div>
+              <p class="prog__t"><span>Step 4 of 7</span><span class="prog__n">How you eat</span></p>
+            </div>
+            <div class="pbody">
+              <div class="pcard">
+                <p class="psec">Anything you don&rsquo;t eat?</p>
+                <div class="pchips pchips--tight">
+                <span class="pchip rv" id="rx1">Vegetarian</span>
+                <span class="pchip rv" id="rx2">Vegan</span>
+                <span class="pchip rv" id="rx3">Pescatarian</span>
+                <span class="pchip rv pchip--on" id="rx4">No pork</span>
+                <span class="pchip rv" id="rx5">No red meat</span>
+                <span class="pchip rv" id="rx6">Gluten-free</span>
+                <span class="pchip rv" id="rx7">Dairy-free</span>
+                <span class="pchip rv" id="rx8">Egg-free</span>
+                <span class="pchip rv" id="rx9">Soy-free</span>
+                <span class="pchip rv pchip--on" id="rx10">Nut allergy</span>
+                <span class="pchip rv" id="rx11">Shellfish allergy</span>
+                <span class="pchip rv" id="rx12">Halal</span>
+                <span class="pchip rv" id="rx13">Kosher</span>
+                <span class="pchip rv" id="rx14">Low salt</span>
+                </div>
+                <p class="psec psec--gap">What&rsquo;s in your kitchen?</p>
+                <div class="peq">
+                <span class="peqi rv peqi--on" id="eq1">Oven</span>
+                <span class="peqi rv peqi--on" id="eq2">Stovetop</span>
+                <span class="peqi rv peqi--on" id="eq3">Cast iron pan</span>
+                <span class="peqi rv peqi--on" id="eq4">Nonstick pan</span>
+                <span class="peqi rv peqi--on" id="eq5">Big pot</span>
+                <span class="peqi rv peqi--on" id="eq6">Rice cooker</span>
+                <span class="peqi rv peqi--on" id="eq7">Sheet pans</span>
+                <span class="peqi rv peqi--on" id="eq8">Blender</span>
+                <span class="peqi rv peqi--on" id="eq9">Food processor</span>
+                <span class="peqi rv peqi--on" id="eq10">Air fryer</span>
+                <span class="peqi rv" id="eq11">Grill</span>
+                <span class="peqi rv peqi--on" id="eq12">Microwave</span>
+                <span class="peqi rv" id="eq13">Slow cooker</span>
+                </div>
+                <p class="psec psec--gap">How much heat?</p>
+                <div class="pscale"><span class="rung" id="hr1"></span><span class="rung" id="hr2"></span><span class="rung" id="hr3"></span><span class="rung" id="hr4"></span><span class="rung" id="hr5"></span></div>
+                <div class="pscalelab"><span>None at all</span><span id="hlab">Medium</span></div>
+                <p class="psec psec--gap">How adventurous?</p>
+                <div class="pscale"><span class="rung" id="ar1"></span><span class="rung" id="ar2"></span><span class="rung" id="ar3"></span><span class="rung" id="ar4"></span><span class="rung" id="ar5"></span></div>
+                <div class="pscalelab"><span>Food I already know</span><span id="alab">Show me something new</span></div>
+              </div>
+            </div>
+              </div>
+              <div class="scr" id="scrB">
+                <div class="sb"><span>9:41</span><span class="sbi">
+              <svg width="20" height="14" viewBox="0 0 20 14"><rect x="0" y="9" width="3" height="5" rx="1" fill="#1A1B24"/><rect x="5" y="6" width="3" height="8" rx="1" fill="#1A1B24"/><rect x="10" y="3" width="3" height="11" rx="1" fill="#1A1B24"/><rect x="15" y="0" width="3" height="14" rx="1" fill="#1A1B24"/></svg>
+              <svg width="24" height="13" viewBox="0 0 24 13"><rect x="0.5" y="0.5" width="19" height="12" rx="3.5" fill="none" stroke="#1A1B24"/><rect x="2" y="2" width="15" height="9" rx="2" fill="#1A1B24"/><rect x="21" y="4" width="2.5" height="5" rx="1.2" fill="#1A1B24"/></svg>
+            </span></div>
+                <div class="phead"><span class="phead__t">Brainstorm</span><span class="phead__dot"></span></div>
+            <div class="pbody">
+              <p class="psec">Pick the ones you want</p>
+              <div class="pcard pdish"><h3>Gochujang-glazed chicken thighs</h3><p>Roasted hard, glazed at the end.</p>
+                <div class="pacts"><span class="pbtn pbtn--sm" id="addBtn">Add it</span><span class="pbtn pbtn--sm pbtn--g">Something else</span></div></div>
+              <div class="pcard pdish" id="pdish2"><h3 id="pdish2t">Slow lamb shoulder, all afternoon</h3><p id="pdish2b">Four hours in a low oven.</p>
+                <div class="pacts"><span class="pbtn pbtn--sm">Add it</span><span class="pbtn pbtn--sm pbtn--g">Something else</span></div></div>
+              <div class="pfield"><span id="ptyped"></span><span id="pcaret"></span></div>
+            </div>
+            <nav class="tabbar"><span class="tab tab--on"><svg width="23" height="23" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="#B44722" stroke-width="2.2"/><circle cx="12" cy="12" r="2.6" fill="#B44722"/></svg><span class="tab__l">Brainstorm</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3" fill="none" stroke="#5F5563" stroke-width="2.2"/><path d="M3.5 9.5h17" stroke="#5F5563" stroke-width="2.2"/></svg><span class="tab__l">My Week</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><path d="M5 7h14l-1.4 12H6.4z" fill="none" stroke="#5F5563" stroke-width="2.2"/><path d="M9 7a3 3 0 0 1 6 0" fill="none" stroke="#5F5563" stroke-width="2.2"/></svg><span class="tab__l">Shopping</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><path d="M4 18h16" stroke="#5F5563" stroke-width="2.2"/><path d="M6 18a6 6 0 0 1 12 0" fill="none" stroke="#5F5563" stroke-width="2.2"/></svg><span class="tab__l">Cooking</span></span><span class="tab"><svg width="23" height="23" viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="13" rx="2.5" fill="none" stroke="#5F5563" stroke-width="2.2"/><path d="M8.5 10.5h7" stroke="#5F5563" stroke-width="2.2"/></svg><span class="tab__l">Leftovers</span></span></nav>
+              </div>
+            </div>
+            <div id="drim"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ S5 · 13.70 → 15.62 · builds the list ════════════════════════ -->
+      <div class="scene bg-hot" id="s5">
+        <div class="slam" id="listhead">Builds the list.</div>
+        <div id="listcard">
+          <div class="row" id="r1" style="top: 40px"><b>6</b>chicken thighs</div>
+          <div class="row" id="r2" style="top: 102px"><b>2 tbsp</b>gochujang</div>
+          <div class="row" id="r3" style="top: 164px"><b>1 tbsp</b>honey</div>
+          <div class="row" id="r4" style="top: 226px"><b>1</b>napa cabbage</div>
+          <div class="row" id="r5" style="top: 288px"><b>80 g</b>butter</div>
+          <div class="row" id="r6" style="top: 350px"><b>400 g</b>rice</div>
+          <div class="row" id="r7" style="top: 412px"><b>2</b>eggs</div>
+          <div class="row" id="r8" style="top: 474px"><b>1 tsp</b>sesame oil</div>
+          <div class="row" id="r9" style="top: 536px" data-layout-allow-overlap><b id="r9q">3</b>scallions</div>
+          <div class="row" id="r9b" style="top: 536px" data-layout-allow-overlap><b>1</b>scallions</div>
+          <div class="row" id="r9c" style="top: 536px" data-layout-allow-overlap><b>1</b>scallions</div>
+        </div>
+        <div id="cnt">11</div>
+        <div class="slam" id="cntl">items to buy</div>
+      </div>
+
+      <!-- ══ S6 · 15.62 → 20.02 · talks you through it ═══════════════════ -->
+      <div class="scene bg-night" id="s6">
+        <div class="warm"></div>
+        <div id="boardset">
+          <div class="obj" id="board">
+          <svg width="1180" height="273" viewBox="0 0 1080 250" role="img" aria-label="A cutting board">
+            <clipPath id="cBoard"><rect x="4" y="16" width="1072" height="222" rx="26"/></clipPath>
+            <rect x="4" y="16" width="1072" height="222" rx="26" fill="url(#gBoard)"/>
+            <g clip-path="url(#cBoard)">
+              <path d="M65.0 45.6C365.0 41.0 695.7 50.1 995.7 43.7" stroke="#77492A" stroke-width="3.9" stroke-linecap="round" opacity="0.39" fill="none"/>
+              <path d="M52.9 65.5C352.9 64.7 725.3 66.4 1025.3 65.2" stroke="#77492A" stroke-width="2.7" stroke-linecap="round" opacity="0.42" fill="none"/>
+              <path d="M46.1 85.3C346.1 81.8 708.2 88.9 1008.2 83.9" stroke="#77492A" stroke-width="2.7" stroke-linecap="round" opacity="0.26" fill="none"/>
+              <path d="M62.0 106.7C362.0 107.3 704.5 106.1 1004.5 107.0" stroke="#77492A" stroke-width="2.8" stroke-linecap="round" opacity="0.45" fill="none"/>
+              <path d="M61.8 128.0C361.8 131.8 696.2 124.2 996.2 129.5" stroke="#77492A" stroke-width="4.2" stroke-linecap="round" opacity="0.3" fill="none"/>
+              <path d="M50.6 147.0C350.6 150.6 699.2 143.4 999.2 148.5" stroke="#77492A" stroke-width="3.6" stroke-linecap="round" opacity="0.44" fill="none"/>
+              <path d="M68.7 171.6C368.7 174.9 735.0 168.3 1035.0 172.9" stroke="#77492A" stroke-width="3.2" stroke-linecap="round" opacity="0.39" fill="none"/>
+              <path d="M61.3 190.1C361.3 187.2 737.4 193.0 1037.4 188.9" stroke="#77492A" stroke-width="3.1" stroke-linecap="round" opacity="0.37" fill="none"/>
+              <path d="M87.1 208.8C387.1 209.6 692.8 207.9 992.8 209.1" stroke="#77492A" stroke-width="3.7" stroke-linecap="round" opacity="0.41" fill="none"/>
+              <ellipse cx="888.1" cy="152.0" rx="11.6" ry="1.7" fill="#6B3F21" opacity="0.24"/>
+              <ellipse cx="118.6" cy="120.0" rx="24.5" ry="2.8" fill="#6B3F21" opacity="0.25"/>
+              <ellipse cx="597.8" cy="187.3" rx="25.3" ry="3.1" fill="#6B3F21" opacity="0.24"/>
+              <ellipse cx="506.4" cy="114.0" rx="24.3" ry="2.9" fill="#6B3F21" opacity="0.15"/>
+              <ellipse cx="818.7" cy="158.1" rx="17.2" ry="2.5" fill="#6B3F21" opacity="0.27"/>
+              <ellipse cx="128.3" cy="195.1" rx="16.4" ry="1.8" fill="#6B3F21" opacity="0.27"/>
+              <ellipse cx="452.4" cy="138.8" rx="13.0" ry="2.5" fill="#6B3F21" opacity="0.3"/>
+              <ellipse cx="465.2" cy="186.8" rx="17.1" ry="2.6" fill="#6B3F21" opacity="0.22"/>
+              <ellipse cx="699.8" cy="198.3" rx="15.5" ry="3.0" fill="#6B3F21" opacity="0.16"/>
+              <ellipse cx="186.9" cy="73.0" rx="10.2" ry="2.8" fill="#6B3F21" opacity="0.15"/>
+              <ellipse cx="742.5" cy="145.4" rx="21.4" ry="2.7" fill="#6B3F21" opacity="0.19"/>
+              <ellipse cx="548.9" cy="191.8" rx="22.7" ry="2.6" fill="#6B3F21" opacity="0.25"/>
+              <ellipse cx="783.8" cy="204.8" rx="14.1" ry="2.6" fill="#6B3F21" opacity="0.24"/>
+              <ellipse cx="979.9" cy="182.2" rx="22.1" ry="1.8" fill="#6B3F21" opacity="0.24"/>
+              <ellipse cx="851.6" cy="104.4" rx="23.7" ry="2.3" fill="#6B3F21" opacity="0.18"/>
+              <ellipse cx="400.1" cy="50.1" rx="12.9" ry="2.2" fill="#6B3F21" opacity="0.22"/>
+              <rect x="4" y="16" width="1072" height="15" fill="#D2A06C" opacity="0.5"/>
+              <rect x="4" y="205" width="1072" height="33" fill="#5E3A1C" opacity="0.4"/>
+              <ellipse cx="240" cy="70" rx="330" ry="90" fill="#E4BE8C" opacity="0.13"/>
+            </g>
+            <rect x="4" y="16" width="1072" height="222" rx="26" fill="none" stroke="#66401F" stroke-width="5"/>
+          </svg>
+        </div>
+        <div class="obj" id="scallion">
+          <svg width="600" height="53" viewBox="0 0 520 46" role="img" aria-label="A scallion">
+            <defs><linearGradient id="gScal" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#4A7639"/><stop offset=".58" stop-color="#7FA368"/>
+              <stop offset=".8" stop-color="#D2E1C0"/><stop offset="1" stop-color="#EFF4E8"/>
+            </linearGradient></defs>
+            <rect x="0" y="7" width="520" height="32" rx="16" fill="url(#gScal)"/>
+            <path d="M20 15h300" stroke="#DFEBD0" stroke-width="5" stroke-linecap="round" opacity="0.3"/>
+            <path d="M26 32h420" stroke="#2A4720" stroke-width="6" stroke-linecap="round" opacity="0.3"/>
+            <path d="M112 11v24M186 12v22M262 11v24M330 12v22" stroke="#2E4C22" stroke-width="2.5" opacity="0.34"/>
+            <ellipse cx="498" cy="23" rx="18" ry="15" fill="#FBFDF7"/>
+            <path d="M508 16l12-5M510 23h14M508 30l12 5" stroke="#E3EAD8" stroke-width="2.5" stroke-linecap="round"/>
+            <rect x="0" y="7" width="520" height="32" rx="16" fill="none" stroke="#3A5C2C" stroke-width="3"/>
+          </svg>
+        </div>
+        <div class="obj" id="knife">
+          <svg width="780" height="282" viewBox="0 0 720 260" role="img" aria-label="A chef's knife">
+            <path d="M552 104L150 130C90 138 44 152 26 168c44 18 154 32 274 38 100 5 200 6 252 6z"
+                  fill="#DBDEE4" stroke="#9AA0AC" stroke-width="5" stroke-linejoin="round"/>
+            <path d="M540 120L164 144C110 151 70 162 48 172" fill="none" stroke="#F4F6F9" stroke-width="10" stroke-linecap="round" opacity=".85"/>
+            <path d="M30 170c48 16 156 28 272 34" fill="none" stroke="#B7BCC6" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+            <rect x="546" y="96" width="30" height="124" rx="7" fill="#9AA0AC" stroke="#7E848F" stroke-width="3"/>
+            <rect x="574" y="108" width="134" height="100" rx="26" fill="#3A2A22" stroke="#20140F" stroke-width="5"/>
+            <circle cx="618" cy="158" r="7" fill="#8A7060"/><circle cx="668" cy="158" r="7" fill="#8A7060"/>
+          </svg>
+        </div>
+        <div id="rounds">
+          <div class="around" id="rd1" style="left: 600px; top: 638px"></div>
+          <div class="around" id="rd2" style="left: 664px; top: 664px"></div>
+          <div class="around" id="rd3" style="left: 574px; top: 692px"></div>
+          <div class="around" id="rd4" style="left: 646px; top: 716px"></div>
+        </div>
+        </div>
+        <div id="panset">
+          <div id="panstage">
+        <div id="panglow"></div>
+        <div id="panwrap">
+          <div id="pan">
+            <svg width="1010" height="460" viewBox="0 0 1010 460" role="img" aria-label="A hot pan">
+              <rect x="690" y="206" width="300" height="46" rx="23" fill="#39333D" stroke="#201B23" stroke-width="4"/>
+              <rect x="700" y="212" width="272" height="10" rx="5" fill="#6A6070" opacity="0.4"/>
+              <ellipse cx="380" cy="240" rx="352" ry="208" fill="#120E15" opacity="0.6"/>
+              <ellipse cx="380" cy="228" rx="348" ry="205" fill="url(#gPan)" stroke="#4A424C" stroke-width="22"/>
+              <path d="M32 228a348 205 0 0 1 348-205" fill="none" stroke="#8E8397" stroke-width="9" stroke-linecap="round" opacity="0.5"/>
+              <path d="M728 228a348 205 0 0 1-348 205" fill="none" stroke="#0E0A12" stroke-width="10" stroke-linecap="round" opacity="0.45"/>
+              <ellipse cx="380" cy="228" rx="322" ry="182" fill="url(#gPanIn)"/>
+              <ellipse cx="300" cy="146" rx="176" ry="66" fill="#6A6070" opacity="0.16"/>
+              <ellipse cx="470" cy="330" rx="200" ry="62" fill="#08060B" opacity="0.3"/>
+            </svg>
+          </div>
+          <div class="flame" id="flame1"><svg width="128" height="230" viewBox="0 0 96 150"><path d="M48 148C10 112 14 60 48 2c34 58 38 110 0 146z" fill="url(#gFlame)"/><path d="M48 138C36 114 37 82 48 52c11 30 12 62 0 86z" fill="url(#gFlameCore)"/></svg></div>
+          <div class="flame" id="flame2"><svg width="158" height="286" viewBox="0 0 120 190"><path d="M60 188C14 144 18 76 60 2c42 74 46 142 0 186z" fill="url(#gFlame)"/><path d="M60 174C46 146 47 104 60 62c13 42 14 84 0 112z" fill="url(#gFlameCore)"/></svg></div>
+          <div class="flame" id="flame3"><svg width="112" height="200" viewBox="0 0 84 132"><path d="M42 130C8 98 12 52 42 2c30 50 34 96 0 128z" fill="url(#gFlame)"/><path d="M42 120C32 98 33 72 42 44c9 28 10 54 0 76z" fill="url(#gFlameCore)"/></svg></div>
+          <div id="oilpool">
+            <svg width="1010" height="460" viewBox="0 0 1010 460" aria-hidden="true">
+              <ellipse cx="372" cy="258" rx="232" ry="106" fill="url(#gOil)" opacity="0.55"/>
+              <ellipse cx="368" cy="260" rx="196" ry="86" fill="url(#gOil)"/>
+              <ellipse cx="316" cy="228" rx="86" ry="26" fill="url(#gSheen)" opacity="0.3" transform="rotate(-8 316 228)"/>
+              <ellipse cx="249.5" cy="224.1" rx="42.2" ry="6.8" fill="#FFE9B6" opacity="0.17" transform="rotate(-11 249.5 224.1)"/>
+              <ellipse cx="356.5" cy="241.6" rx="32.1" ry="6.7" fill="#FFE9B6" opacity="0.26" transform="rotate(-19 356.5 241.6)"/>
+              <ellipse cx="252.7" cy="226.8" rx="44.7" ry="9.2" fill="#FFE9B6" opacity="0.25" transform="rotate(-20 252.7 226.8)"/>
+              <ellipse cx="387.2" cy="218.1" rx="41.4" ry="9.6" fill="#FFE9B6" opacity="0.17" transform="rotate(7 387.2 218.1)"/>
+            </svg>
+          </div>
+          <div id="oilstream">
+            <svg width="160" height="270" viewBox="0 0 160 270" aria-hidden="true">
+              <path id="oilpath" pathLength="100" d="M106 8C102 70 78 130 46 188c-12 22-20 34-24 56" fill="none" stroke="#D9A54A" stroke-width="20" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100"/>
+            </svg>
+          </div>
+          <div id="bottle">
+            <svg width="190" height="200" viewBox="0 0 190 200" role="img" aria-label="Oil bottle">
+              <rect x="40" y="56" width="104" height="132" rx="20" fill="#E7C98A" stroke="#A98741" stroke-width="4"/>
+              <rect x="76" y="16" width="32" height="48" rx="10" fill="#C9A863" stroke="#A98741" stroke-width="4"/>
+              <rect x="56" y="96" width="72" height="46" rx="8" fill="#F6EFE3" opacity=".9"/>
+            </svg>
+          </div>
+
+          <div class="thigh" id="thigh1">
+            <svg width="250" height="180" viewBox="0 0 250 180" role="img" aria-label="Chicken thigh">
+              <use href="#artThigh"/>
+            </svg>
+          </div>
+          <div class="thigh" id="thigh2">
+            <svg width="250" height="180" viewBox="0 0 250 180" role="img" aria-label="Chicken thigh">
+              <use href="#artThigh"/>
+            </svg>
+          </div>
+          <div class="thigh" id="thigh3">
+            <svg width="250" height="180" viewBox="0 0 250 180" role="img" aria-label="Chicken thigh">
+              <use href="#artThigh"/>
+            </svg>
+          </div>
+          <!-- Glaze coats, one per thigh, revealed in sequence when the pour lands. -->
+          <div class="thigh" id="gl1" style="left: 150px; top: 112px">
+            <svg width="250" height="180" viewBox="0 0 250 180" aria-hidden="true">
+              <use href="#artGlaze"/>
+            </svg>
+          </div>
+          <div class="thigh" id="gl2" style="left: 322px; top: 196px">
+            <svg width="250" height="180" viewBox="0 0 250 180" aria-hidden="true">
+              <use href="#artGlaze"/>
+            </svg>
+          </div>
+          <div class="thigh" id="gl3" style="left: 470px; top: 102px">
+            <svg width="250" height="180" viewBox="0 0 250 180" aria-hidden="true">
+              <use href="#artGlaze"/>
+            </svg>
+          </div>
+
+          <div id="spoon">
+            <svg width="260" height="130" viewBox="0 0 260 130" role="img" aria-label="A spoon of glaze">
+              <ellipse cx="66" cy="66" rx="60" ry="42" fill="#C9CDD6" stroke="#8F959F" stroke-width="5"/>
+              <ellipse cx="66" cy="66" rx="44" ry="28" fill="#8E2F16"/>
+              <rect x="118" y="54" width="132" height="24" rx="12" fill="#C9CDD6" stroke="#8F959F" stroke-width="5"/>
+            </svg>
+          </div>
+          <div id="glazestream">
+            <svg width="200" height="210" viewBox="0 0 200 210" aria-hidden="true">
+              <path id="glazepath" pathLength="100" d="M96 10C92 58 70 98 42 138c-12 18-18 30-22 52" fill="none" stroke="#8E2F16" stroke-width="38" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100"/>
+            </svg>
+          </div>
+          <div id="gloss"></div>
+
+          <div id="sizzlefield"></div>
+          <svg id="steam" viewBox="0 0 700 560" fill="none" aria-hidden="true">
+            <path id="stm1" d="M190 540c0-70 34-96 34-160s-38-86-38-146 30-84 30-136" stroke="rgba(255,240,220,.6)" stroke-width="34" stroke-linecap="round"/>
+            <path id="stm2" d="M350 540c0-80 40-104 40-172s-42-92-42-156 34-90 34-146" stroke="rgba(255,240,220,.5)" stroke-width="40" stroke-linecap="round"/>
+            <path id="stm3" d="M510 540c0-64 30-90 30-150s-34-82-34-140 28-78 28-126" stroke="rgba(255,240,220,.42)" stroke-width="30" stroke-linecap="round"/>
+          </svg>
+          </div>
+          </div>
+          <div id="stepcard">
+            <p class="ckick">Step 3 of 7 &middot; Gochujang chicken</p>
+            <div class="cbar"><span></span></div>
+            <p class="cstep">Spoon the glaze over.</p>
+            <div class="ctimer"><span class="ctimer__c" id="pclock">4:12</span><span class="ctimer__l">glaze</span></div>
+          </div>
+          <div class="slam center" id="cookhead">Talks you through it.</div>
+        </div>
+      </div>
+
+      <!-- ══ S7 · 20.02 → 22.12 · nailed it ══════════════════════════════ -->
+      <div class="scene bg-night" id="s7">
+        <div class="warm"></div>
+        <div id="platestage">
+        <div id="platewrap">
+          <div id="plate">
+            <svg width="620" height="620" viewBox="0 0 620 620" role="img" aria-label="A finished plate">
+              <ellipse cx="310" cy="322" rx="300" ry="298" fill="#2A1F1A" opacity="0.5"/>
+              <circle cx="310" cy="310" r="300" fill="url(#gPlate)"/>
+              <path d="M10 310a300 300 0 0 1 300-300" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity="0.8"/>
+              <path d="M610 310a300 300 0 0 1-300 300" fill="none" stroke="#CFC2BB" stroke-width="8" stroke-linecap="round" opacity="0.6"/>
+              <circle cx="310" cy="310" r="240" fill="none" stroke="#E6DAD4" stroke-width="5"/>
+              <circle cx="310" cy="310" r="226" fill="#FFFFFF" opacity="0.55"/>
+            </svg>
+          </div>
+          <div id="rice">
+            <svg width="384" height="219" viewBox="0 0 316 180" role="img" aria-label="Rice">
+              <clipPath id="cRice"><path d="M14 158C20 116 46 86 84 66 108 53 132 46 158 46c28 0 54 9 78 24 36 23 60 52 68 90-18 13-68 20-146 20S32 171 14 158Z"/></clipPath>
+              <path d="M14 158C20 116 46 86 84 66 108 53 132 46 158 46c28 0 54 9 78 24 36 23 60 52 68 90-18 13-68 20-146 20S32 171 14 158Z" fill="url(#gRice)"/>
+              <g clip-path="url(#cRice)">
+                <ellipse cx="244" cy="176" rx="132" ry="52" fill="#C4B393" opacity="0.4"/>
+                <ellipse cx="92" cy="92" rx="72" ry="34" fill="url(#gSheen)" opacity="0.5" transform="rotate(-20 92 92)"/>
+                <ellipse cx="202.3" cy="122.9" rx="9.3" ry="2.8" fill="#BCAB86" opacity="0.48" transform="rotate(34 202.3 122.9)"/>
+                <ellipse cx="201.3" cy="121.3" rx="9.3" ry="2.8" fill="#FFFFFF" opacity="0.7" transform="rotate(34 201.3 121.3)"/>
+                <ellipse cx="139.8" cy="123.1" rx="7.7" ry="3.1" fill="#BCAB86" opacity="0.46" transform="rotate(-57 139.8 123.1)"/>
+                <ellipse cx="138.8" cy="121.5" rx="7.7" ry="3.1" fill="#EFE6CE" opacity="0.69" transform="rotate(-57 138.8 121.5)"/>
+                <ellipse cx="197.0" cy="116.6" rx="7.4" ry="3.8" fill="#BCAB86" opacity="0.33" transform="rotate(57 197.0 116.6)"/>
+                <ellipse cx="196.0" cy="115.0" rx="7.4" ry="3.8" fill="#FFFFFF" opacity="0.83" transform="rotate(57 196.0 115.0)"/>
+                <ellipse cx="134.7" cy="93.3" rx="11.3" ry="3.8" fill="#BCAB86" opacity="0.36" transform="rotate(4 134.7 93.3)"/>
+                <ellipse cx="133.7" cy="91.7" rx="11.3" ry="3.8" fill="#FFFFFF" opacity="0.86" transform="rotate(4 133.7 91.7)"/>
+                <ellipse cx="137.9" cy="114.2" rx="9.9" ry="3.7" fill="#BCAB86" opacity="0.35" transform="rotate(13 137.9 114.2)"/>
+                <ellipse cx="136.9" cy="112.6" rx="9.9" ry="3.7" fill="#FFFFFF" opacity="0.87" transform="rotate(13 136.9 112.6)"/>
+                <ellipse cx="104.9" cy="94.6" rx="6.5" ry="3.3" fill="#BCAB86" opacity="0.41" transform="rotate(-50 104.9 94.6)"/>
+                <ellipse cx="103.9" cy="93.0" rx="6.5" ry="3.3" fill="#EFE6CE" opacity="0.62" transform="rotate(-50 103.9 93.0)"/>
+                <ellipse cx="110.3" cy="92.1" rx="8.9" ry="3.2" fill="#BCAB86" opacity="0.34" transform="rotate(29 110.3 92.1)"/>
+                <ellipse cx="109.3" cy="90.5" rx="8.9" ry="3.2" fill="#EFE6CE" opacity="0.73" transform="rotate(29 109.3 90.5)"/>
+                <ellipse cx="121.1" cy="162.4" rx="9.1" ry="3.4" fill="#BCAB86" opacity="0.33" transform="rotate(36 121.1 162.4)"/>
+                <ellipse cx="120.1" cy="160.8" rx="9.1" ry="3.4" fill="#EFE6CE" opacity="0.59" transform="rotate(36 120.1 160.8)"/>
+                <ellipse cx="163.2" cy="155.3" rx="8.6" ry="3.7" fill="#BCAB86" opacity="0.48" transform="rotate(8 163.2 155.3)"/>
+                <ellipse cx="162.2" cy="153.7" rx="8.6" ry="3.7" fill="#FFFFFF" opacity="0.89" transform="rotate(8 162.2 153.7)"/>
+                <ellipse cx="158.8" cy="78.5" rx="11.2" ry="3.9" fill="#BCAB86" opacity="0.45" transform="rotate(44 158.8 78.5)"/>
+                <ellipse cx="157.8" cy="76.9" rx="11.2" ry="3.9" fill="#FFFFFF" opacity="0.65" transform="rotate(44 157.8 76.9)"/>
+                <ellipse cx="280.4" cy="161.1" rx="9.0" ry="2.8" fill="#BCAB86" opacity="0.44" transform="rotate(-22 280.4 161.1)"/>
+                <ellipse cx="279.4" cy="159.5" rx="9.0" ry="2.8" fill="#EFE6CE" opacity="0.64" transform="rotate(-22 279.4 159.5)"/>
+                <ellipse cx="107.1" cy="90.5" rx="7.5" ry="3.3" fill="#BCAB86" opacity="0.46" transform="rotate(-31 107.1 90.5)"/>
+                <ellipse cx="106.1" cy="88.9" rx="7.5" ry="3.3" fill="#FFFFFF" opacity="0.68" transform="rotate(-31 106.1 88.9)"/>
+                <ellipse cx="112.6" cy="110.7" rx="11.4" ry="3.7" fill="#BCAB86" opacity="0.48" transform="rotate(37 112.6 110.7)"/>
+                <ellipse cx="111.6" cy="109.1" rx="11.4" ry="3.7" fill="#FFFFFF" opacity="0.91" transform="rotate(37 111.6 109.1)"/>
+                <ellipse cx="233.4" cy="109.0" rx="7.4" ry="3.5" fill="#BCAB86" opacity="0.42" transform="rotate(-54 233.4 109.0)"/>
+                <ellipse cx="232.4" cy="107.4" rx="7.4" ry="3.5" fill="#EFE6CE" opacity="0.72" transform="rotate(-54 232.4 107.4)"/>
+                <ellipse cx="173.1" cy="138.1" rx="9.2" ry="3.2" fill="#BCAB86" opacity="0.3" transform="rotate(-31 173.1 138.1)"/>
+                <ellipse cx="172.1" cy="136.5" rx="9.2" ry="3.2" fill="#FFFFFF" opacity="0.9" transform="rotate(-31 172.1 136.5)"/>
+                <ellipse cx="230.1" cy="143.4" rx="7.3" ry="3.6" fill="#BCAB86" opacity="0.4" transform="rotate(32 230.1 143.4)"/>
+                <ellipse cx="229.1" cy="141.8" rx="7.3" ry="3.6" fill="#FFFFFF" opacity="0.87" transform="rotate(32 229.1 141.8)"/>
+                <ellipse cx="164.8" cy="127.3" rx="9.0" ry="2.6" fill="#BCAB86" opacity="0.45" transform="rotate(-44 164.8 127.3)"/>
+                <ellipse cx="163.8" cy="125.7" rx="9.0" ry="2.6" fill="#FFFFFF" opacity="0.55" transform="rotate(-44 163.8 125.7)"/>
+                <ellipse cx="142.5" cy="74.6" rx="6.6" ry="3.0" fill="#BCAB86" opacity="0.39" transform="rotate(41 142.5 74.6)"/>
+                <ellipse cx="141.5" cy="73.0" rx="6.6" ry="3.0" fill="#EFE6CE" opacity="0.83" transform="rotate(41 141.5 73.0)"/>
+                <ellipse cx="219.7" cy="161.8" rx="9.8" ry="3.3" fill="#BCAB86" opacity="0.37" transform="rotate(57 219.7 161.8)"/>
+                <ellipse cx="218.7" cy="160.2" rx="9.8" ry="3.3" fill="#EFE6CE" opacity="0.59" transform="rotate(57 218.7 160.2)"/>
+                <ellipse cx="179.2" cy="96.3" rx="9.9" ry="2.9" fill="#BCAB86" opacity="0.43" transform="rotate(1 179.2 96.3)"/>
+                <ellipse cx="178.2" cy="94.7" rx="9.9" ry="2.9" fill="#FFFFFF" opacity="0.55" transform="rotate(1 178.2 94.7)"/>
+                <ellipse cx="63.3" cy="142.3" rx="8.1" ry="3.6" fill="#BCAB86" opacity="0.34" transform="rotate(-18 63.3 142.3)"/>
+                <ellipse cx="62.3" cy="140.7" rx="8.1" ry="3.6" fill="#EFE6CE" opacity="0.78" transform="rotate(-18 62.3 140.7)"/>
+                <ellipse cx="179.4" cy="89.6" rx="11.0" ry="3.8" fill="#BCAB86" opacity="0.47" transform="rotate(12 179.4 89.6)"/>
+                <ellipse cx="178.4" cy="88.0" rx="11.0" ry="3.8" fill="#EFE6CE" opacity="0.91" transform="rotate(12 178.4 88.0)"/>
+                <ellipse cx="193.8" cy="88.4" rx="11.4" ry="2.9" fill="#BCAB86" opacity="0.5" transform="rotate(55 193.8 88.4)"/>
+                <ellipse cx="192.8" cy="86.8" rx="11.4" ry="2.9" fill="#EFE6CE" opacity="0.75" transform="rotate(55 192.8 86.8)"/>
+                <ellipse cx="223.7" cy="147.4" rx="6.5" ry="3.5" fill="#BCAB86" opacity="0.43" transform="rotate(-20 223.7 147.4)"/>
+                <ellipse cx="222.7" cy="145.8" rx="6.5" ry="3.5" fill="#FFFFFF" opacity="0.92" transform="rotate(-20 222.7 145.8)"/>
+                <ellipse cx="194.4" cy="133.5" rx="8.5" ry="3.2" fill="#BCAB86" opacity="0.35" transform="rotate(15 194.4 133.5)"/>
+                <ellipse cx="193.4" cy="131.9" rx="8.5" ry="3.2" fill="#FFFFFF" opacity="0.94" transform="rotate(15 193.4 131.9)"/>
+                <ellipse cx="112.8" cy="106.6" rx="9.9" ry="3.1" fill="#BCAB86" opacity="0.32" transform="rotate(41 112.8 106.6)"/>
+                <ellipse cx="111.8" cy="105.0" rx="9.9" ry="3.1" fill="#FFFFFF" opacity="0.91" transform="rotate(41 111.8 105.0)"/>
+                <ellipse cx="84.6" cy="151.8" rx="9.9" ry="2.8" fill="#BCAB86" opacity="0.34" transform="rotate(55 84.6 151.8)"/>
+                <ellipse cx="83.6" cy="150.2" rx="9.9" ry="2.8" fill="#FFFFFF" opacity="0.76" transform="rotate(55 83.6 150.2)"/>
+                <ellipse cx="210.5" cy="138.1" rx="8.4" ry="2.7" fill="#BCAB86" opacity="0.41" transform="rotate(-9 210.5 138.1)"/>
+                <ellipse cx="209.5" cy="136.5" rx="8.4" ry="2.7" fill="#FFFFFF" opacity="0.59" transform="rotate(-9 209.5 136.5)"/>
+                <ellipse cx="236.8" cy="156.9" rx="6.9" ry="3.7" fill="#BCAB86" opacity="0.42" transform="rotate(-58 236.8 156.9)"/>
+                <ellipse cx="235.8" cy="155.3" rx="6.9" ry="3.7" fill="#FFFFFF" opacity="0.6" transform="rotate(-58 235.8 155.3)"/>
+                <ellipse cx="153.5" cy="123.2" rx="8.6" ry="3.7" fill="#BCAB86" opacity="0.37" transform="rotate(-29 153.5 123.2)"/>
+                <ellipse cx="152.5" cy="121.6" rx="8.6" ry="3.7" fill="#FFFFFF" opacity="0.71" transform="rotate(-29 152.5 121.6)"/>
+                <ellipse cx="166.2" cy="118.0" rx="9.1" ry="3.2" fill="#BCAB86" opacity="0.45" transform="rotate(48 166.2 118.0)"/>
+                <ellipse cx="165.2" cy="116.4" rx="9.1" ry="3.2" fill="#FFFFFF" opacity="0.72" transform="rotate(48 165.2 116.4)"/>
+                <ellipse cx="139.5" cy="118.0" rx="9.1" ry="3.0" fill="#BCAB86" opacity="0.39" transform="rotate(53 139.5 118.0)"/>
+                <ellipse cx="138.5" cy="116.4" rx="9.1" ry="3.0" fill="#FFFFFF" opacity="0.93" transform="rotate(53 138.5 116.4)"/>
+                <ellipse cx="129.7" cy="111.6" rx="8.9" ry="3.6" fill="#BCAB86" opacity="0.33" transform="rotate(39 129.7 111.6)"/>
+                <ellipse cx="128.7" cy="110.0" rx="8.9" ry="3.6" fill="#FFFFFF" opacity="0.71" transform="rotate(39 128.7 110.0)"/>
+                <ellipse cx="120.3" cy="87.6" rx="7.6" ry="3.3" fill="#BCAB86" opacity="0.37" transform="rotate(13 120.3 87.6)"/>
+                <ellipse cx="119.3" cy="86.0" rx="7.6" ry="3.3" fill="#FFFFFF" opacity="0.6" transform="rotate(13 119.3 86.0)"/>
+                <ellipse cx="176.8" cy="142.5" rx="6.6" ry="2.7" fill="#BCAB86" opacity="0.48" transform="rotate(-10 176.8 142.5)"/>
+                <ellipse cx="175.8" cy="140.9" rx="6.6" ry="2.7" fill="#FFFFFF" opacity="0.67" transform="rotate(-10 175.8 140.9)"/>
+                <ellipse cx="181.3" cy="129.3" rx="7.3" ry="3.4" fill="#BCAB86" opacity="0.39" transform="rotate(22 181.3 129.3)"/>
+                <ellipse cx="180.3" cy="127.7" rx="7.3" ry="3.4" fill="#FFFFFF" opacity="0.69" transform="rotate(22 180.3 127.7)"/>
+                <ellipse cx="69.7" cy="112.0" rx="8.1" ry="3.5" fill="#BCAB86" opacity="0.41" transform="rotate(-31 69.7 112.0)"/>
+                <ellipse cx="68.7" cy="110.4" rx="8.1" ry="3.5" fill="#FFFFFF" opacity="0.83" transform="rotate(-31 68.7 110.4)"/>
+                <ellipse cx="106.6" cy="125.6" rx="8.5" ry="2.6" fill="#BCAB86" opacity="0.46" transform="rotate(-13 106.6 125.6)"/>
+                <ellipse cx="105.6" cy="124.0" rx="8.5" ry="2.6" fill="#FFFFFF" opacity="0.58" transform="rotate(-13 105.6 124.0)"/>
+                <ellipse cx="88.4" cy="103.6" rx="8.1" ry="2.8" fill="#BCAB86" opacity="0.32" transform="rotate(-42 88.4 103.6)"/>
+                <ellipse cx="87.4" cy="102.0" rx="8.1" ry="2.8" fill="#FFFFFF" opacity="0.67" transform="rotate(-42 87.4 102.0)"/>
+                <ellipse cx="171.8" cy="98.6" rx="8.7" ry="3.0" fill="#BCAB86" opacity="0.32" transform="rotate(28 171.8 98.6)"/>
+                <ellipse cx="170.8" cy="97.0" rx="8.7" ry="3.0" fill="#EFE6CE" opacity="0.78" transform="rotate(28 170.8 97.0)"/>
+                <ellipse cx="276.6" cy="150.8" rx="10.1" ry="3.9" fill="#BCAB86" opacity="0.47" transform="rotate(-21 276.6 150.8)"/>
+                <ellipse cx="275.6" cy="149.2" rx="10.1" ry="3.9" fill="#FFFFFF" opacity="0.55" transform="rotate(-21 275.6 149.2)"/>
+                <ellipse cx="242.4" cy="163.2" rx="6.5" ry="2.8" fill="#BCAB86" opacity="0.3" transform="rotate(11 242.4 163.2)"/>
+                <ellipse cx="241.4" cy="161.6" rx="6.5" ry="2.8" fill="#EFE6CE" opacity="0.84" transform="rotate(11 241.4 161.6)"/>
+                <ellipse cx="197.6" cy="133.3" rx="11.1" ry="4.0" fill="#BCAB86" opacity="0.34" transform="rotate(-30 197.6 133.3)"/>
+                <ellipse cx="196.6" cy="131.7" rx="11.1" ry="4.0" fill="#FFFFFF" opacity="0.61" transform="rotate(-30 196.6 131.7)"/>
+                <ellipse cx="183.0" cy="86.7" rx="10.5" ry="3.8" fill="#BCAB86" opacity="0.41" transform="rotate(23 183.0 86.7)"/>
+                <ellipse cx="182.0" cy="85.1" rx="10.5" ry="3.8" fill="#EFE6CE" opacity="0.58" transform="rotate(23 182.0 85.1)"/>
+                <ellipse cx="155.5" cy="107.8" rx="10.6" ry="3.1" fill="#BCAB86" opacity="0.39" transform="rotate(-14 155.5 107.8)"/>
+                <ellipse cx="154.5" cy="106.2" rx="10.6" ry="3.1" fill="#EFE6CE" opacity="0.91" transform="rotate(-14 154.5 106.2)"/>
+                <ellipse cx="94.0" cy="136.9" rx="9.6" ry="3.4" fill="#BCAB86" opacity="0.34" transform="rotate(-33 94.0 136.9)"/>
+                <ellipse cx="93.0" cy="135.3" rx="9.6" ry="3.4" fill="#FFFFFF" opacity="0.71" transform="rotate(-33 93.0 135.3)"/>
+                <ellipse cx="210.5" cy="82.6" rx="8.3" ry="3.7" fill="#BCAB86" opacity="0.34" transform="rotate(18 210.5 82.6)"/>
+                <ellipse cx="209.5" cy="81.0" rx="8.3" ry="3.7" fill="#EFE6CE" opacity="0.79" transform="rotate(18 209.5 81.0)"/>
+                <ellipse cx="159.2" cy="141.6" rx="6.5" ry="3.1" fill="#BCAB86" opacity="0.38" transform="rotate(52 159.2 141.6)"/>
+                <ellipse cx="158.2" cy="140.0" rx="6.5" ry="3.1" fill="#EFE6CE" opacity="0.74" transform="rotate(52 158.2 140.0)"/>
+                <ellipse cx="254.3" cy="114.2" rx="9.1" ry="3.3" fill="#BCAB86" opacity="0.43" transform="rotate(16 254.3 114.2)"/>
+                <ellipse cx="253.3" cy="112.6" rx="9.1" ry="3.3" fill="#EFE6CE" opacity="0.84" transform="rotate(16 253.3 112.6)"/>
+                <ellipse cx="216.1" cy="137.9" rx="10.7" ry="3.9" fill="#BCAB86" opacity="0.33" transform="rotate(39 216.1 137.9)"/>
+                <ellipse cx="215.1" cy="136.3" rx="10.7" ry="3.9" fill="#FFFFFF" opacity="0.56" transform="rotate(39 215.1 136.3)"/>
+                <ellipse cx="273.8" cy="156.9" rx="8.8" ry="3.4" fill="#BCAB86" opacity="0.47" transform="rotate(-49 273.8 156.9)"/>
+                <ellipse cx="272.8" cy="155.3" rx="8.8" ry="3.4" fill="#EFE6CE" opacity="0.94" transform="rotate(-49 272.8 155.3)"/>
+                <ellipse cx="87.4" cy="123.0" rx="8.6" ry="2.8" fill="#BCAB86" opacity="0.43" transform="rotate(-14 87.4 123.0)"/>
+                <ellipse cx="86.4" cy="121.4" rx="8.6" ry="2.8" fill="#EFE6CE" opacity="0.59" transform="rotate(-14 86.4 121.4)"/>
+                <ellipse cx="217.5" cy="131.8" rx="11.4" ry="2.7" fill="#BCAB86" opacity="0.38" transform="rotate(-4 217.5 131.8)"/>
+                <ellipse cx="216.5" cy="130.2" rx="11.4" ry="2.7" fill="#FFFFFF" opacity="0.73" transform="rotate(-4 216.5 130.2)"/>
+                <ellipse cx="138.5" cy="137.9" rx="10.9" ry="4.0" fill="#BCAB86" opacity="0.49" transform="rotate(-16 138.5 137.9)"/>
+                <ellipse cx="137.5" cy="136.3" rx="10.9" ry="4.0" fill="#FFFFFF" opacity="0.71" transform="rotate(-16 137.5 136.3)"/>
+                <ellipse cx="219.2" cy="136.8" rx="9.5" ry="3.1" fill="#BCAB86" opacity="0.48" transform="rotate(15 219.2 136.8)"/>
+                <ellipse cx="218.2" cy="135.2" rx="9.5" ry="3.1" fill="#FFFFFF" opacity="0.65" transform="rotate(15 218.2 135.2)"/>
+                <ellipse cx="247.8" cy="131.8" rx="7.3" ry="3.7" fill="#BCAB86" opacity="0.46" transform="rotate(2 247.8 131.8)"/>
+                <ellipse cx="246.8" cy="130.2" rx="7.3" ry="3.7" fill="#FFFFFF" opacity="0.58" transform="rotate(2 246.8 130.2)"/>
+                <ellipse cx="95.9" cy="146.3" rx="9.9" ry="3.1" fill="#BCAB86" opacity="0.48" transform="rotate(-1 95.9 146.3)"/>
+                <ellipse cx="94.9" cy="144.7" rx="9.9" ry="3.1" fill="#FFFFFF" opacity="0.86" transform="rotate(-1 94.9 144.7)"/>
+                <ellipse cx="138.6" cy="88.2" rx="9.5" ry="3.8" fill="#BCAB86" opacity="0.41" transform="rotate(14 138.6 88.2)"/>
+                <ellipse cx="137.6" cy="86.6" rx="9.5" ry="3.8" fill="#FFFFFF" opacity="0.9" transform="rotate(14 137.6 86.6)"/>
+                <ellipse cx="209.7" cy="166.4" rx="10.5" ry="3.2" fill="#BCAB86" opacity="0.4" transform="rotate(-8 209.7 166.4)"/>
+                <ellipse cx="208.7" cy="164.8" rx="10.5" ry="3.2" fill="#FFFFFF" opacity="0.78" transform="rotate(-8 208.7 164.8)"/>
+                <ellipse cx="179.4" cy="141.0" rx="7.6" ry="3.7" fill="#BCAB86" opacity="0.34" transform="rotate(-35 179.4 141.0)"/>
+                <ellipse cx="178.4" cy="139.4" rx="7.6" ry="3.7" fill="#EFE6CE" opacity="0.6" transform="rotate(-35 178.4 139.4)"/>
+                <ellipse cx="256.3" cy="139.1" rx="7.4" ry="3.4" fill="#BCAB86" opacity="0.37" transform="rotate(-28 256.3 139.1)"/>
+                <ellipse cx="255.3" cy="137.5" rx="7.4" ry="3.4" fill="#EFE6CE" opacity="0.8" transform="rotate(-28 255.3 137.5)"/>
+                <ellipse cx="59.3" cy="139.4" rx="10.3" ry="3.7" fill="#BCAB86" opacity="0.49" transform="rotate(20 59.3 139.4)"/>
+                <ellipse cx="58.3" cy="137.8" rx="10.3" ry="3.7" fill="#FFFFFF" opacity="0.67" transform="rotate(20 58.3 137.8)"/>
+                <ellipse cx="239.6" cy="136.1" rx="11.4" ry="3.0" fill="#BCAB86" opacity="0.33" transform="rotate(49 239.6 136.1)"/>
+                <ellipse cx="238.6" cy="134.5" rx="11.4" ry="3.0" fill="#FFFFFF" opacity="0.66" transform="rotate(49 238.6 134.5)"/>
+                <ellipse cx="259.1" cy="126.6" rx="10.0" ry="2.7" fill="#BCAB86" opacity="0.32" transform="rotate(36 259.1 126.6)"/>
+                <ellipse cx="258.1" cy="125.0" rx="10.0" ry="2.7" fill="#FFFFFF" opacity="0.63" transform="rotate(36 258.1 125.0)"/>
+                <ellipse cx="84.0" cy="152.8" rx="11.3" ry="3.7" fill="#BCAB86" opacity="0.37" transform="rotate(8 84.0 152.8)"/>
+                <ellipse cx="83.0" cy="151.2" rx="11.3" ry="3.7" fill="#FFFFFF" opacity="0.64" transform="rotate(8 83.0 151.2)"/>
+                <ellipse cx="144.4" cy="108.4" rx="11.0" ry="3.6" fill="#BCAB86" opacity="0.48" transform="rotate(-7 144.4 108.4)"/>
+                <ellipse cx="143.4" cy="106.8" rx="11.0" ry="3.6" fill="#FFFFFF" opacity="0.62" transform="rotate(-7 143.4 106.8)"/>
+                <ellipse cx="185.9" cy="130.1" rx="9.7" ry="3.5" fill="#BCAB86" opacity="0.31" transform="rotate(41 185.9 130.1)"/>
+                <ellipse cx="184.9" cy="128.5" rx="9.7" ry="3.5" fill="#EFE6CE" opacity="0.87" transform="rotate(41 184.9 128.5)"/>
+                <ellipse cx="133.8" cy="125.2" rx="7.1" ry="3.0" fill="#BCAB86" opacity="0.38" transform="rotate(1 133.8 125.2)"/>
+                <ellipse cx="132.8" cy="123.6" rx="7.1" ry="3.0" fill="#FFFFFF" opacity="0.57" transform="rotate(1 132.8 123.6)"/>
+                <ellipse cx="56.4" cy="141.9" rx="9.5" ry="2.9" fill="#BCAB86" opacity="0.49" transform="rotate(-21 56.4 141.9)"/>
+                <ellipse cx="55.4" cy="140.3" rx="9.5" ry="2.9" fill="#FFFFFF" opacity="0.78" transform="rotate(-21 55.4 140.3)"/>
+                <ellipse cx="200.7" cy="109.7" rx="7.5" ry="3.0" fill="#BCAB86" opacity="0.37" transform="rotate(4 200.7 109.7)"/>
+                <ellipse cx="199.7" cy="108.1" rx="7.5" ry="3.0" fill="#FFFFFF" opacity="0.77" transform="rotate(4 199.7 108.1)"/>
+                <ellipse cx="231.0" cy="131.8" rx="11.0" ry="2.6" fill="#BCAB86" opacity="0.44" transform="rotate(56 231.0 131.8)"/>
+                <ellipse cx="230.0" cy="130.2" rx="11.0" ry="2.6" fill="#FFFFFF" opacity="0.79" transform="rotate(56 230.0 130.2)"/>
+                <ellipse cx="62.3" cy="158.5" rx="9.9" ry="3.6" fill="#BCAB86" opacity="0.46" transform="rotate(-39 62.3 158.5)"/>
+                <ellipse cx="61.3" cy="156.9" rx="9.9" ry="3.6" fill="#FFFFFF" opacity="0.93" transform="rotate(-39 61.3 156.9)"/>
+                <ellipse cx="221.4" cy="130.7" rx="6.8" ry="3.0" fill="#BCAB86" opacity="0.45" transform="rotate(47 221.4 130.7)"/>
+                <ellipse cx="220.4" cy="129.1" rx="6.8" ry="3.0" fill="#FFFFFF" opacity="0.91" transform="rotate(47 220.4 129.1)"/>
+                <ellipse cx="75.9" cy="117.5" rx="9.6" ry="3.7" fill="#BCAB86" opacity="0.45" transform="rotate(-40 75.9 117.5)"/>
+                <ellipse cx="74.9" cy="115.9" rx="9.6" ry="3.7" fill="#FFFFFF" opacity="0.86" transform="rotate(-40 74.9 115.9)"/>
+                <ellipse cx="76.5" cy="123.3" rx="10.6" ry="2.8" fill="#BCAB86" opacity="0.36" transform="rotate(-36 76.5 123.3)"/>
+                <ellipse cx="75.5" cy="121.7" rx="10.6" ry="2.8" fill="#EFE6CE" opacity="0.94" transform="rotate(-36 75.5 121.7)"/>
+                <ellipse cx="77.4" cy="167.2" rx="10.4" ry="2.7" fill="#BCAB86" opacity="0.47" transform="rotate(6 77.4 167.2)"/>
+                <ellipse cx="76.4" cy="165.6" rx="10.4" ry="2.7" fill="#FFFFFF" opacity="0.68" transform="rotate(6 76.4 165.6)"/>
+                <ellipse cx="184.8" cy="107.2" rx="7.9" ry="3.3" fill="#BCAB86" opacity="0.45" transform="rotate(-2 184.8 107.2)"/>
+                <ellipse cx="183.8" cy="105.6" rx="7.9" ry="3.3" fill="#FFFFFF" opacity="0.79" transform="rotate(-2 183.8 105.6)"/>
+                <ellipse cx="217.5" cy="133.1" rx="7.1" ry="4.0" fill="#BCAB86" opacity="0.45" transform="rotate(22 217.5 133.1)"/>
+                <ellipse cx="216.5" cy="131.5" rx="7.1" ry="4.0" fill="#FFFFFF" opacity="0.9" transform="rotate(22 216.5 131.5)"/>
+              </g>
+              <ellipse cx="158" cy="176" rx="150" ry="16" fill="#B9A98A" opacity="0.3"/>
+              <path d="M14 158C20 116 46 86 84 66 108 53 132 46 158 46c28 0 54 9 78 24 36 23 60 52 68 90-18 13-68 20-146 20S32 171 14 158Z" fill="none" stroke="#D0C2A5" stroke-width="3"/>
+              <ellipse cx="42.1" cy="122.9" rx="9.4" ry="2.8" fill="#F7F1E0" opacity="0.84" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(5 42.1 122.9)"/>
+              <ellipse cx="69.7" cy="96.4" rx="8.4" ry="3.7" fill="#F7F1E0" opacity="0.93" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(-54 69.7 96.4)"/>
+              <ellipse cx="97.3" cy="77.4" rx="9.2" ry="3.5" fill="#F7F1E0" opacity="0.84" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(54 97.3 77.4)"/>
+              <ellipse cx="124.9" cy="66.8" rx="9.2" ry="3.0" fill="#F7F1E0" opacity="0.95" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(16 124.9 66.8)"/>
+              <ellipse cx="152.5" cy="65.0" rx="7.3" ry="3.3" fill="#F7F1E0" opacity="0.98" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(-1 152.5 65.0)"/>
+              <ellipse cx="180.1" cy="67.4" rx="8.5" ry="3.2" fill="#F7F1E0" opacity="0.77" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(33 180.1 67.4)"/>
+              <ellipse cx="207.7" cy="69.0" rx="8.8" ry="3.5" fill="#F7F1E0" opacity="0.88" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(-57 207.7 69.0)"/>
+              <ellipse cx="235.3" cy="89.5" rx="7.7" ry="3.0" fill="#F7F1E0" opacity="0.8" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(18 235.3 89.5)"/>
+              <ellipse cx="262.9" cy="111.1" rx="7.8" ry="3.0" fill="#F7F1E0" opacity="0.78" stroke="#D3C6A9" stroke-width="1.4" transform="rotate(60 262.9 111.1)"/>
+            </svg>
+          </div>
+          <div id="pthigh1">
+            <svg width="220" height="158" viewBox="0 0 250 180" aria-hidden="true">
+              <use href="#artGlaze"/>
+            </svg>
+          </div>
+          <div id="pthigh2">
+            <svg width="200" height="144" viewBox="0 0 250 180" aria-hidden="true">
+              <use href="#artGlaze"/>
+            </svg>
+          </div>
+          <div class="pround" id="pr1" style="left: 206px; top: 208px"></div>
+          <div class="pround" id="pr2" style="left: 300px; top: 176px"></div>
+          <div class="pround" id="pr3" style="left: 372px; top: 226px"></div>
+          <div class="pround" id="pr4" style="left: 246px; top: 300px"></div>
+          <div class="pround" id="pr5" style="left: 352px; top: 322px"></div>
+          <div class="pround" id="pr6" style="left: 258px; top: 232px"></div>
+          <div id="pdrizzle">
+            <svg width="436" height="170" viewBox="0 0 436 170" aria-hidden="true">
+              <path id="drizpath" pathLength="100"
+                    d="M8 62C56 16 92 104 140 58 188 12 224 100 272 54 320 8 356 96 404 52c12-11 20-15 26-16"
+                    fill="none" stroke="#7E250F" stroke-width="6" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100"/>
+              <path id="drizgloss" pathLength="100"
+                    d="M8 59C56 13 92 101 140 55 188 9 224 97 272 51 320 5 356 93 404 49c12-11 20-15 26-16"
+                    fill="none" stroke="#DE7A33" stroke-width="2" stroke-linecap="round" stroke-dasharray="100" stroke-dashoffset="100" opacity="0.8"/>
+            </svg>
+          </div>
+          <svg id="psteam" viewBox="0 0 440 420" fill="none" aria-hidden="true">
+            <path id="pst1" d="M130 410c0-56 28-76 28-126s-30-68-30-116 24-66 24-108" stroke="rgba(255,236,206,.7)" stroke-width="30" stroke-linecap="round"/>
+            <path id="pst2" d="M260 410c0-64 32-82 32-136s-34-72-34-124 28-70 28-114" stroke="rgba(255,236,206,.58)" stroke-width="34" stroke-linecap="round"/>
+          </svg>
+        </div>
+        </div>
+        <div id="stars">
+          <svg class="star" viewBox="0 0 24 24" aria-hidden="true"><use href="#starp" fill="#EE9265"/></svg>
+          <svg class="star" viewBox="0 0 24 24" aria-hidden="true"><use href="#starp" fill="#EE9265"/></svg>
+          <svg class="star" viewBox="0 0 24 24" aria-hidden="true"><use href="#starp" fill="#EE9265"/></svg>
+          <svg class="star" viewBox="0 0 24 24" aria-hidden="true"><use href="#starp" fill="#EE9265"/></svg>
+          <svg class="star" viewBox="0 0 24 24" aria-hidden="true"><use href="#starp" fill="#3A2E36"/></svg>
+        </div>
+        <div class="slam" id="nailed">Nailed it.</div>
+        <div id="nchip">Nailed it</div>
+      </div>
+
+      <!-- ══ S8 · 22.12 → 25.00 · the sign-off ═══════════════════════════ -->
+      <div class="scene bg-night" id="s8">
+        <div class="warm"></div>
+        <svg id="omark" viewBox="0 0 64 64" role="img" aria-label="Mise"><use href="#chef"/></svg>
+        <div class="slam center" id="oname">Mise</div>
+        <div class="slam center" id="opitch">plans the week, builds the list, talks you through cooking it</div>
+        <div id="oprice">$12/month &middot; cancel anytime</div>
+      </div>
+
+      <div id="flash"></div>
+
+      <!-- ══ Audio ══ vol-9 bed; every contact sound on its own lane. SFX gains are
+           the real levels. The delivered soundtrack is mixed from these tags by ../mix.py:
+           the render mix itself plays 8.5 dB under them and compresses the hits. -->
+      <audio id="bgm" src="assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3" data-start="0" data-duration="25" data-volume="1" data-track-index="20"></audio>
+      <audio id="sfx01" src="assets/sfx/impact/impactPunch_heavy_000.ogg" data-start="1.07" data-duration="0.649" data-volume="0.75" data-track-index="21"></audio> <!-- NO PLAN. -->
+      <audio id="sfx02" src="assets/sfx/impact/impactPunch_heavy_001.ogg" data-start="2.12" data-duration="0.536" data-volume="0.75" data-track-index="22"></audio> <!-- NO PROBLEM. -->
+      <audio id="sfx03" src="assets/sfx/interface/glitch_002.ogg" data-start="3.18" data-duration="0.030" data-volume="0.45" data-track-index="23"></audio> <!-- flash -->
+      <audio id="sfx04" src="assets/sfx/impact/impactBell_heavy_004.ogg" data-start="3.70" data-duration="0.301" data-volume="0.80" data-track-index="24"></audio> <!-- MISE, beat-locked 3.70 -->
+      <audio id="sfx05" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="3.70" data-duration="0.147" data-volume="0.70" data-track-index="25"></audio> <!-- MISE body -->
+      <audio id="sfx06" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="5.22" data-duration="0.147" data-volume="0.65" data-track-index="26"></audio> <!-- zoom cut -->
+      <audio id="sfx07" src="assets/sfx/impact/impactPunch_medium_002.ogg" data-start="5.36" data-duration="0.541" data-volume="0.60" data-track-index="27"></audio> <!-- PLANS THE WEEK. -->
+      <audio id="sfx08" src="assets/sfx/interface/click_003.ogg" data-start="5.72" data-duration="0.010" data-volume="0.50" data-track-index="28"></audio> <!-- chip cascade -->
+      <audio id="sfx09" src="assets/sfx/interface/click_003.ogg" data-start="6.30" data-duration="0.010" data-volume="0.50" data-track-index="29"></audio> <!-- tool cascade -->
+      <audio id="sfx10" src="assets/sfx/impact/impactPunch_medium_000.ogg" data-start="6.34" data-duration="0.431" data-volume="0.75" data-track-index="30"></audio> <!-- sticker 1 -->
+      <audio id="sfx11" src="assets/sfx/impact/impactPunch_medium_004.ogg" data-start="7.40" data-duration="0.543" data-volume="0.75" data-track-index="31"></audio> <!-- sticker 2 -->
+      <audio id="sfx12" src="assets/sfx/impact/impactPunch_heavy_003.ogg" data-start="8.44" data-duration="0.474" data-volume="0.72" data-track-index="32"></audio> <!-- sticker 3 -->
+      <audio id="sfx13" src="assets/sfx/casino/card-slide-1.ogg" data-start="9.44" data-duration="0.601" data-volume="0.50" data-track-index="33"></audio> <!-- screen push -->
+      <audio id="sfx14" src="assets/sfx/impact/impactPunch_medium_002.ogg" data-start="9.60" data-duration="0.541" data-volume="0.60" data-track-index="34"></audio> <!-- IT PITCHES. -->
+      <audio id="sfx15" src="assets/sfx/impact/impactPunch_medium_000.ogg" data-start="10.54" data-duration="0.431" data-volume="0.70" data-track-index="35"></audio> <!-- YOU PUSH BACK. -->
+      <audio id="sfx16" src="assets/sfx/casino/card-slide-1.ogg" data-start="12.52" data-duration="0.601" data-volume="0.45" data-track-index="36"></audio> <!-- the rewrite -->
+      <audio id="sfx17" src="assets/sfx/impact/impactPunch_heavy_000.ogg" data-start="12.65" data-duration="0.649" data-volume="0.70" data-track-index="37"></audio> <!-- IT LISTENS., beat-locked 12.65 -->
+      <audio id="sfx18" src="assets/sfx/interface/click_003.ogg" data-start="13.20" data-duration="0.010" data-volume="0.60" data-track-index="38"></audio> <!-- Add it -->
+      <audio id="sfx19" src="assets/sfx/interface/glitch_002.ogg" data-start="13.62" data-duration="0.030" data-volume="0.45" data-track-index="39"></audio> <!-- flash -->
+      <audio id="sfx20" src="assets/sfx/impact/impactPunch_heavy_001.ogg" data-start="13.70" data-duration="0.536" data-volume="0.75" data-track-index="40"></audio> <!-- BUILDS THE LIST. -->
+      <audio id="sfx21" src="assets/sfx/casino/chips-stack-1.ogg" data-start="13.95" data-duration="0.287" data-volume="0.55" data-track-index="41"></audio> <!-- tokens -->
+      <audio id="sfx22" src="assets/sfx/casino/chips-stack-1.ogg" data-start="14.25" data-duration="0.287" data-volume="0.55" data-track-index="42"></audio> <!-- tokens -->
+      <audio id="sfx23" src="assets/sfx/casino/chip-lay-1.ogg" data-start="14.76" data-duration="0.172" data-volume="0.80" data-track-index="43"></audio> <!-- merge to 9 -->
+      <audio id="sfx24" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="15.54" data-duration="0.147" data-volume="0.65" data-track-index="44"></audio> <!-- zoom cut -->
+      <audio id="sfx25" src="assets/sfx/impact/impactWood_medium_000.ogg" data-start="15.81" data-duration="0.333" data-volume="0.85" data-track-index="45"></audio> <!-- chop -->
+      <audio id="sfx26" src="assets/sfx/impact/impactWood_medium_001.ogg" data-start="16.34" data-duration="0.333" data-volume="0.85" data-track-index="46"></audio> <!-- chop -->
+      <audio id="sfx27" src="assets/sfx/impact/impactMetal_heavy_000.ogg" data-start="16.86" data-duration="0.168" data-volume="0.85" data-track-index="47"></audio> <!-- THE DROP -->
+      <audio id="sfx28" src="assets/sfx/impact/impactSoft_heavy_003.ogg" data-start="16.86" data-duration="0.544" data-volume="0.80" data-track-index="48"></audio> <!-- THE DROP body -->
+      <audio id="sfx29" src="assets/sfx/casino/card-slide-1.ogg" data-start="18.44" data-duration="0.601" data-volume="0.50" data-track-index="49"></audio> <!-- step card -->
+      <audio id="sfx30" src="assets/sfx/impact/impactSoft_heavy_003.ogg" data-start="18.92" data-duration="0.544" data-volume="0.55" data-track-index="50"></audio> <!-- glaze lands -->
+      <audio id="sfx31" src="assets/sfx/impact/impactWood_light_002.ogg" data-start="19.48" data-duration="0.266" data-volume="0.70" data-track-index="51"></audio> <!-- toss -->
+      <audio id="sfx32" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="19.94" data-duration="0.147" data-volume="0.65" data-track-index="52"></audio> <!-- zoom cut -->
+      <audio id="sfx33" src="assets/sfx/impact/impactGlass_light_001.ogg" data-start="20.28" data-duration="0.210" data-volume="0.55" data-track-index="53"></audio> <!-- star -->
+      <audio id="sfx34" src="assets/sfx/impact/impactGlass_light_002.ogg" data-start="20.54" data-duration="0.210" data-volume="0.55" data-track-index="54"></audio> <!-- star -->
+      <audio id="sfx35" src="assets/sfx/impact/impactGlass_light_003.ogg" data-start="20.80" data-duration="0.210" data-volume="0.55" data-track-index="55"></audio> <!-- star -->
+      <audio id="sfx36" src="assets/sfx/impact/impactPunch_medium_004.ogg" data-start="21.06" data-duration="0.543" data-volume="0.70" data-track-index="56"></audio> <!-- NAILED IT. -->
+      <audio id="sfx37" src="assets/sfx/casino/chips-collide-1.ogg" data-start="21.30" data-duration="0.259" data-volume="0.65" data-track-index="57"></audio> <!-- the chip -->
+      <audio id="sfx38" src="assets/sfx/impact/impactPunch_heavy_003.ogg" data-start="22.12" data-duration="0.474" data-volume="0.80" data-track-index="58"></audio> <!-- MISE -->
+      <audio id="sfx39" src="assets/sfx/impact/impactBell_heavy_000.ogg" data-start="23.17" data-duration="1.480" data-volume="0.75" data-track-index="59"></audio> <!-- pitch line, beat-locked 23.17, rings out -->
+      <audio id="sfx40" src="assets/sfx/interface/click_003.ogg" data-start="23.70" data-duration="0.010" data-volume="0.50" data-track-index="60"></audio> <!-- price -->
+      <audio id="key1" src="assets/sfx/keyboard/keypress-003.wav" data-start="10.70" data-duration="0.25" data-volume="0.45" data-track-index="70"></audio>
+      <audio id="key2" src="assets/sfx/keyboard/keypress-007.wav" data-start="10.85" data-duration="0.25" data-volume="0.45" data-track-index="71"></audio>
+      <audio id="key3" src="assets/sfx/keyboard/keypress-011.wav" data-start="11.00" data-duration="0.25" data-volume="0.45" data-track-index="72"></audio>
+      <audio id="key4" src="assets/sfx/keyboard/keypress-015.wav" data-start="11.15" data-duration="0.25" data-volume="0.45" data-track-index="73"></audio>
+      <audio id="key5" src="assets/sfx/keyboard/keypress-019.wav" data-start="11.30" data-duration="0.25" data-volume="0.45" data-track-index="74"></audio>
+      <audio id="key6" src="assets/sfx/keyboard/keypress-023.wav" data-start="11.45" data-duration="0.25" data-volume="0.45" data-track-index="75"></audio>
+      <audio id="key7" src="assets/sfx/keyboard/keypress-027.wav" data-start="11.60" data-duration="0.25" data-volume="0.45" data-track-index="76"></audio>
+      <audio id="key8" src="assets/sfx/keyboard/keypress-031.wav" data-start="11.75" data-duration="0.25" data-volume="0.45" data-track-index="77"></audio>
+    </div>
+
+    <script src="audio-data.js"></script>
+    <script>
+      /* ══ Mise — hype cut ═══════════════════════════════════════════════
+         One paused timeline. Music: vol-9, 114.84 BPM, beat = 0.5225s.
+         Grid used here: 1.07 2.12 3.18 3.70 5.28 6.34 7.40 8.44 9.50 10.54
+         12.65 13.70 14.76 15.81 16.34 16.86 18.44 19.48 20.02 … 22.12 23.17.
+         Strong-cue locks (preset strongCues):
+           beat-locked: 3.70s  (1.00) MISE lands
+           beat-locked: 12.65s (1.00) the idea is rewritten
+           beat-locked: 23.17s (0.99) the pitch line lands under the logo
+         The drop at 16.86 is a grid beat confirmed by RMS (-18.8 dB at 16.0,
+         -15.0 dB at 17.0); the cooking lands on it. */
+      const tl = gsap.timeline({ paused: true });
+      const P4 = "power4.out", EX = "expo.out", CI = "circ.out";
+      const LANDP = "back.out(1.8)";
+
+      function squash(target, at, amt) {
+        const a = amt || 0.14;
+        tl.to(target, { scaleY: 1 - a, scaleX: 1 + a * 0.7, duration: 0.08, ease: "power2.out" }, at);
+        tl.to(target, { scaleY: 1, scaleX: 1, duration: 0.28, ease: LANDP }, at + 0.08);
+      }
+      // Zoom-through: the outgoing scene rushes past camera as the next one
+      // arrives from behind. The motion is the exit — nothing fades out first.
+      function zoomThrough(oldSel, newSel, T) {
+        tl.to(oldSel, { scale: 1.4, autoAlpha: 0, filter: "blur(10px)", duration: 0.22, ease: "power3.in" }, T);
+        tl.fromTo(newSel, { scale: 0.82, autoAlpha: 0, filter: "blur(10px)" },
+          { scale: 1, autoAlpha: 1, filter: "blur(0px)", duration: 0.3, ease: P4 }, T + 0.08);
+      }
+      // A flash frame: the accent transition, used on the three biggest cuts.
+      function flash(T, peak) {
+        tl.set("#flash", { opacity: peak }, T);
+        tl.to("#flash", { opacity: 0, duration: 0.3, ease: "power2.out" }, T + 0.04);
+      }
+      function slamIn(sel, at, extra) {
+        const from = Object.assign({ opacity: 0, scale: 1.6, filter: "blur(14px)" }, extra && extra.from);
+        const to = Object.assign({ opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.32, ease: P4 }, extra && extra.to);
+        tl.fromTo(sel, from, to, at);
+      }
+
+      /* ══ S1 · 0.00 → 3.18 · the hook ═══════════════════════════════════ */
+      tl.fromTo("#clock", { opacity: 0, scale: 1.1 }, { opacity: 1, scale: 1, duration: 0.4, ease: P4 }, 0.04);
+      // The colon blinks, so the number reads as a clock and not a score.
+      tl.to("#clocknum", { opacity: 0.82, duration: 0.02, ease: "none" }, 0.55);
+      tl.to("#clocknum", { opacity: 1, duration: 0.02, ease: "none" }, 0.8);
+      // beat-grid: 1.07 NO PLAN.
+      slamIn("#nop", 1.07, { from: { rotation: -3 }, to: { rotation: -3 } });
+      tl.to("#clock", { y: -14, duration: 0.08, ease: "power2.out" }, 1.07);
+      tl.to("#clock", { y: 0, duration: 0.3, ease: LANDP }, 1.16);
+      // beat-grid: 2.12 — NO PROBLEM. shoves it off the frame (reactive displacement).
+      tl.to("#nop", { x: -1700, rotation: -12, duration: 0.3, ease: "power3.in" }, 2.1);
+      tl.fromTo("#nopr", { opacity: 0, x: 1700, rotation: 8 }, { opacity: 1, x: 0, rotation: 2, duration: 0.36, ease: EX }, 2.12);
+
+      /* ══ S2 · 3.18 → 5.28 · the reveal ═════════════════════════════════ */
+      zoomThrough("#s1", "#s2", 3.1);
+      flash(3.18, 0.7);
+      tl.fromTo("#meet", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.3, ease: CI }, 3.3);
+      // beat-locked: 3.70s
+      tl.fromTo("#name", { opacity: 0, scale: 2.3, filter: "blur(20px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.34, ease: P4 }, 3.7);
+      tl.fromTo("#namemark", { opacity: 0, scale: 0, rotation: -35 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.5, ease: "back.out(2)" }, 3.84);
+      tl.fromTo("#collab", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.36, ease: P4 }, 3.95);
+
+      /* ══ S3 · 5.28 → 9.50 · PLANS THE WEEK ═════════════════════════════ */
+      zoomThrough("#s2", "#s34", 5.2);
+      tl.fromTo("#k3", { opacity: 0, x: -300 }, { opacity: 1, x: 0, duration: 0.4, ease: EX }, 5.36);
+      tl.fromTo("#devstage", { opacity: 0, x: 760, rotation: 9 }, { opacity: 1, x: 0, rotation: 0, duration: 0.55, ease: EX }, 5.4);
+      // The app's real option sets cascade. These are accents, not reads, so
+      // they may run faster than the beat; the stickers carry the reading.
+      for (let i = 1; i <= 14; i++) {
+        tl.fromTo("#rx" + i, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.24, ease: P4 }, 5.72 + (i - 1) * 0.032);
+      }
+      for (let i = 1; i <= 13; i++) {
+        tl.fromTo("#eq" + i, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.24, ease: P4 }, 6.3 + (i - 1) * 0.03);
+      }
+      [1, 2, 3].forEach(function (n, i) {
+        tl.set("#hr" + n, { backgroundColor: "#EDE2DE" }, 5.28);
+        tl.to("#hr" + n, { backgroundColor: "#B44722", duration: 0.14, ease: "none" }, 6.9 + i * 0.07);
+      });
+      [1, 2, 3, 4].forEach(function (n, i) {
+        tl.set("#ar" + n, { backgroundColor: "#EDE2DE" }, 5.28);
+        tl.to("#ar" + n, { backgroundColor: "#B44722", duration: 0.14, ease: "none" }, 7.25 + i * 0.06);
+      });
+      tl.fromTo("#hlab", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, 7.1);
+      tl.fromTo("#alab", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, 7.5);
+      // beat-grid (every other beat, since these are reads): 6.34 / 7.40 / 8.44.
+      // Each arrives on a different axis, then the full stack holds together.
+      tl.fromTo("#st1", { opacity: 0, scale: 1.8, rotation: 0 }, { opacity: 1, scale: 1, rotation: -3, duration: 0.3, ease: P4 }, 6.34);
+      tl.fromTo("#st2", { opacity: 0, x: -420, rotation: -9 }, { opacity: 1, x: 0, rotation: 2, duration: 0.34, ease: EX }, 7.4);
+      tl.fromTo("#st3", { opacity: 0, y: 130, rotation: 10 }, { opacity: 1, y: 0, rotation: -1.5, duration: 0.38, ease: CI }, 8.44);
+      [6.34, 7.4, 8.44].forEach(function (t) {
+        tl.to("#device", { y: -12, duration: 0.07, ease: "power2.out" }, t);
+        tl.to("#device", { y: 0, duration: 0.3, ease: LANDP }, t + 0.07);
+      });
+
+      /* ══ S4 · 9.50 → 13.70 · it pitches, you push back ═════════════════ */
+      // Push: the old column is shoved up and out as the screen slides over.
+      tl.to("#col3", { y: -200, autoAlpha: 0, duration: 0.26, ease: "power3.in" }, 9.44);
+      tl.to("#scrA", { x: -472, duration: 0.32, ease: "power3.inOut" }, 9.44);
+      tl.fromTo("#scrB", { autoAlpha: 1, x: 472 }, { autoAlpha: 1, x: 0, duration: 0.32, ease: "power3.inOut", immediateRender: false }, 9.44);
+      tl.set("#scrA", { autoAlpha: 0 }, 9.78);
+      slamIn("#l41", 9.52);
+      tl.fromTo("#l42", { opacity: 0, x: -380 }, { opacity: 1, x: 0, duration: 0.34, ease: EX }, 10.54);
+      // The app's own placeholder, typed into the app's own field.
+      const NOTE = "thursday feels too heavy";
+      const typed = document.getElementById("ptyped");
+      const ty = { n: 0 };
+      tl.set("#pcaret", { opacity: 1 }, 10.6);
+      tl.to(ty, { n: NOTE.length, duration: 1.2, ease: "none",
+        onUpdate: function () { if (typed) typed.textContent = NOTE.slice(0, Math.round(ty.n)); } }, 10.7);
+      tl.set("#pcaret", { opacity: 0 }, 12.2);
+      // beat-locked: 12.65s — the second idea is rewritten in answer.
+      function setIdea(swapped) {
+        const t = document.getElementById("pdish2t"), b = document.getElementById("pdish2b");
+        if (!t || !b) return;
+        t.textContent = swapped ? "Charred cabbage, brown butter" : "Slow lamb shoulder, all afternoon";
+        b.textContent = swapped ? "Seared until black at the edges." : "Four hours in a low oven.";
+      }
+      tl.call(function () { setIdea(false); }, [], 9.44);
+      tl.to("#pdish2", { opacity: 0, x: -60, duration: 0.12, ease: "power2.in" }, 12.52);
+      tl.call(function () { setIdea(true); }, [], 12.65);
+      tl.fromTo("#pdish2", { opacity: 0, x: 90 }, { opacity: 1, x: 0, duration: 0.34, ease: EX, immediateRender: false }, 12.65);
+      tl.fromTo("#l43", { opacity: 0, y: 100, rotation: 6 }, { opacity: 1, y: 0, rotation: 0, duration: 0.4, ease: CI }, 12.65);
+      // And you add it: a tactile press on the new card's button.
+      tl.to("#pdish2 .pbtn", { scale: 0.88, duration: 0.07, ease: "none" }, 13.2);
+      tl.to("#pdish2 .pbtn", { scale: 1, duration: 0.3, ease: "back.out(3)" }, 13.27);
+
+      /* ══ S5 · 13.70 → 15.58 · BUILDS THE LIST ══════════════════════════ */
+      zoomThrough("#s34", "#s5", 13.62);
+      flash(13.7, 0.55);
+      slamIn("#listhead", 13.7);
+      tl.fromTo("#listcard", { opacity: 0, y: 90, rotation: -2 }, { opacity: 1, y: 0, rotation: 0, duration: 0.4, ease: EX }, 13.72);
+      // Tokens from three dinners rain onto the list. Accents, 0.055s apart.
+      const ROWS = ["#r1", "#r2", "#r3", "#r4", "#r5", "#r6", "#r7", "#r8", "#r9", "#r9b", "#r9c"];
+      ROWS.forEach(function (id, i) {
+        const dx = i === 9 ? 18 : i === 10 ? 36 : 0;
+        tl.fromTo(id, { opacity: 0, y: -520, rotation: (i % 2 ? 7 : -7) },
+          { opacity: 1, y: 0, x: dx, rotation: 0, duration: 0.26, ease: "power2.in" }, 13.8 + i * 0.055);
+      });
+      // Eleven arrive, three are scallions: they merge into one row, and the
+      // count drops from 11 to the 9 you actually buy. beat-grid: 14.76.
+      function setQ(v) { const e = document.getElementById("r9q"); if (e) e.textContent = v; }
+      tl.call(function () { setQ("1"); }, [], 13.62);
+      tl.to(["#r9b", "#r9c"], { x: 0, opacity: 0, scale: 0.9, duration: 0.18, ease: "power2.in" }, 14.62);
+      tl.call(function () { setQ("3"); }, [], 14.76);
+      squash("#r9", 14.76, 0.22);
+      const cntEl = document.getElementById("cnt");
+      const cv = { v: 0 };
+      function drawCnt() { if (cntEl) cntEl.textContent = String(Math.round(cv.v)); }
+      tl.fromTo("#cnt", { opacity: 0, scale: 1.4 }, { opacity: 1, scale: 1, duration: 0.3, ease: P4 }, 13.8);
+      tl.to(cv, { v: 11, duration: 0.62, ease: "none", onUpdate: drawCnt }, 13.8);
+      tl.to(cv, { v: 9, duration: 0.1, ease: "none", onUpdate: drawCnt }, 14.76);
+      tl.fromTo("#cnt", { scale: 1.3 }, { scale: 1, duration: 0.34, ease: P4, immediateRender: false }, 14.76);
+      tl.fromTo("#cntl", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.3, ease: P4 }, 13.95);
+
+      /* ══ S6 · 15.58 → 20.02 · TALKS YOU THROUGH IT ═════════════════════ */
+      zoomThrough("#s5", "#s6", 15.54);
+      tl.set("#knife", { rotation: 33 }, 15.5);
+      // beat-grid: two chops, 15.81 and 16.34. Down hard, up easy.
+      [[15.81, "#rd1"], [16.34, "#rd2"]].forEach(function (c, i) {
+        const at = c[0];
+        tl.to("#knife", { rotation: 0, duration: 0.11, ease: "power4.in" }, at - 0.11);
+        tl.to("#knife", { rotation: 33, duration: 0.2, ease: "power2.out" }, at + 0.02);
+        tl.to("#board", { y: 6, duration: 0.05, ease: "power2.out" }, at);
+        tl.to("#board", { y: 0, duration: 0.18, ease: LANDP }, at + 0.05);
+        tl.fromTo(c[1], { opacity: 0, x: 120, y: -74, scale: 0.7, rotation: 0 },
+          { opacity: 1, x: 0, y: 0, scale: 1, rotation: 160 + i * 50, duration: 0.42, ease: "power2.out" }, at);
+        tl.to("#scallion", { x: 42 * (i + 1), duration: 0.12, ease: "power2.out" }, at);
+      });
+      // The hole: the knife lifts and holds for the empty bar before the drop.
+      tl.to("#knife", { rotation: 44, duration: 0.3, ease: "power2.out" }, 16.4);
+      // Hard cut into the pan, with the thighs already falling.
+      tl.set("#boardset", { autoAlpha: 0 }, 16.72);
+      tl.set("#panset", { autoAlpha: 1 }, 16.72);
+      tl.set("#panwrap", { opacity: 1 }, 16.72);
+      flash(16.72, 0.9);
+      // THE DROP — 16.86. They hit the oil, squash, and the fat jumps.
+      [["#thigh1", 16.72], ["#thigh2", 16.76], ["#thigh3", 16.8]].forEach(function (t) {
+        tl.fromTo(t[0], { opacity: 1, y: -380, rotation: -14 }, { opacity: 1, y: 0, rotation: 0, duration: 0.14, ease: "power3.in" }, t[1]);
+        squash(t[0], t[1] + 0.14, 0.2);
+      });
+      tl.to("#panwrap", { keyframes: [
+        { x: -8, duration: 0.04 }, { x: 7, duration: 0.05 }, { x: -4, duration: 0.05 }, { x: 0, duration: 0.08 }
+      ], ease: "none" }, 16.86);
+      [["#flame1", 16.9], ["#flame2", 16.94], ["#flame3", 16.98]].forEach(function (f) {
+        tl.fromTo(f[0], { opacity: 0, scaleY: 0.2, scaleX: 0.7 }, { opacity: 0.95, scaleY: 1, scaleX: 1, duration: 0.24, ease: "power2.out" }, f[1]);
+        tl.to(f[0], { opacity: 0.88, scaleY: 0.82, duration: 0.6, ease: "power2.inOut" }, f[1] + 0.3);
+      });
+      tl.fromTo("#steam", { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power2.inOut" }, 17.0);
+      slamIn("#cookhead", 16.86);
+      // 18.44 — the app says what to do next, and you do it.
+      tl.fromTo("#stepcard", { opacity: 0, x: -540 }, { opacity: 1, x: 0, duration: 0.4, ease: EX }, 18.44);
+      const pclockEl = document.getElementById("pclock");
+      const pc = { s: 252 };
+      tl.to(pc, { s: 249, duration: 1.5, ease: "none", onUpdate: function () {
+        const t = Math.ceil(pc.s), ss = t % 60;
+        if (pclockEl) pclockEl.textContent = Math.floor(t / 60) + ":" + (ss < 10 ? "0" : "") + ss;
+      } }, 18.5);
+      tl.fromTo("#spoon", { opacity: 0, x: 260, y: -50, rotation: 14 }, { opacity: 1, x: 0, y: 0, rotation: 0, duration: 0.24, ease: P4 }, 18.5);
+      tl.to("#spoon", { rotation: -40, duration: 0.16, ease: "power2.in" }, 18.75);
+      tl.set("#glazestream", { opacity: 1 }, 18.84);
+      tl.fromTo("#glazepath", { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 0.2, ease: "power1.in" }, 18.84);
+      tl.fromTo("#gl1", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, 18.92);
+      tl.fromTo("#gl2", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, 19.04);
+      tl.fromTo("#gl3", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, 19.16);
+      tl.to("#glazestream", { x: 150, duration: 0.36, ease: "power1.inOut" }, 18.92);
+      tl.to("#glazepath", { strokeDashoffset: -100, duration: 0.14, ease: "power1.out" }, 19.28);
+      tl.to("#spoon", { opacity: 0, x: 260, y: -50, duration: 0.2, ease: "power2.in" }, 19.3);
+      tl.set("#glazestream", { opacity: 0 }, 19.42);
+      // The gloss sweep stays inside the pan's rim so it never lights the dark around it.
+      tl.fromTo("#gloss", { opacity: 0, x: 330 }, { opacity: 0.9, x: 520, duration: 0.3, ease: "power1.inOut" }, 19.12);
+      tl.to("#gloss", { opacity: 0, x: 640, duration: 0.3, ease: "power1.in" }, 19.42);
+      // 19.48 — the toss.
+      tl.to("#panwrap", { rotation: -10, duration: 0.18, ease: "power2.out" }, 19.48);
+      tl.to("#panwrap", { rotation: 2.5, duration: 0.2, ease: "power2.inOut" }, 19.66);
+      tl.to("#panwrap", { rotation: 0, duration: 0.14, ease: LANDP }, 19.86);
+      ["#thigh1", "#thigh2", "#thigh3", "#gl1", "#gl2", "#gl3"].forEach(function (id, i) {
+        tl.to(id, { y: -80 - (i % 3) * 16, rotation: -16 + (i % 3) * 11, duration: 0.18, ease: "power2.out" }, 19.48);
+        tl.to(id, { y: 0, rotation: 0, duration: 0.22, ease: "power2.in" }, 19.66);
+      });
+      ["#flame1", "#flame2", "#flame3"].forEach(function (id, i) {
+        tl.to(id, { opacity: 1, scaleY: 1.25, duration: 0.16, ease: "power2.out" }, 19.5 + i * 0.04);
+      });
+
+      /* ══ S7 · 20.02 → 22.12 · nailed it ════════════════════════════════ */
+      zoomThrough("#s6", "#s7", 19.94);
+      tl.fromTo("#s7 #platewrap", { opacity: 0, scale: 0.5, rotation: -120 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.5, ease: EX }, 20.02);
+      tl.fromTo("#s7 #psteam", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.inOut" }, 20.3);
+      // beat-grid: stars on 20.28 / 20.54 / 20.80 / 21.06 (accents, one per beat).
+      const STAR_T = [20.28, 20.54, 20.8, 21.06];
+      const stars = document.querySelectorAll("#stars .star");
+      tl.set(stars, { opacity: 0 }, 0);
+      STAR_T.forEach(function (t, i) {
+        tl.fromTo(stars[i], { opacity: 0, scale: 2.2, rotation: -40 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.28, ease: "back.out(2)" }, t);
+      });
+      tl.fromTo(stars[4], { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, 21.2);
+      slamIn("#nailed", 21.06, { from: { x: 300 }, to: { x: 0 } });
+      tl.fromTo("#nchip", { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.36, ease: "back.out(2.2)" }, 21.3);
+
+      /* ══ S8 · 22.12 → 25.00 · the sign-off ═════════════════════════════ */
+      tl.to("#s7", { autoAlpha: 0, scale: 1.12, duration: 0.1, ease: "power2.in" }, 22.02);
+      tl.set("#s8", { autoAlpha: 1 }, 22.12);
+      tl.fromTo("#oname", { opacity: 0, scale: 2.4, filter: "blur(24px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.36, ease: P4 }, 22.12);
+      tl.fromTo("#omark", { opacity: 0, y: -60, scale: 0.3 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(2)" }, 22.3);
+      // beat-locked: 23.17s — the app's own pitch line lands.
+      tl.fromTo("#opitch", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: P4 }, 23.17);
+      tl.fromTo("#oprice", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.6)" }, 23.7);
+
+      /* ══ Sizzle: a deterministic ballistic burst ════════════════════════
+         Fixed pool, index-seeded hash, one ease:"none" driver per burst whose
+         onUpdate is a pure function of flight time. No Math.random. */
+      const prand = function (n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+      const sizz = [];
+      (function build() {
+        const field = document.getElementById("sizzlefield");
+        if (!field) return;
+        const shades = ["#FFD98A", "#FFB35C", "#E8C98F"];
+        for (let i = 0; i < 34; i++) {
+          const el = document.createElement("div");
+          el.className = "sizz";
+          const size = 7 + prand(i * 3 + 1) * 13;
+          el.style.width = size + "px"; el.style.height = size + "px";
+          el.style.background = shades[i % shades.length];
+          field.appendChild(el);
+          const ang = -Math.PI / 2 + (prand(i * 5 + 2) * 2 - 1) * 1.1;
+          const spd = 240 + prand(i * 7 + 3) * 480;
+          sizz.push({ el: el, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+            x0: (prand(i * 13 + 5) * 2 - 1) * 240, y0: (prand(i * 17 + 6) * 2 - 1) * 70 });
+        }
+      })();
+      function burst(at, dur, gravity, scale) {
+        const d = { T: 0 };
+        tl.set(d, { T: 0 }, at);
+        tl.to(d, { T: 1, duration: dur, ease: "none", onUpdate: function () {
+          const t = d.T * dur, fade = Math.min(1, (1 - d.T) / 0.42);
+          for (let i = 0; i < sizz.length; i++) {
+            const p = sizz[i];
+            const x = p.x0 + p.vx * scale * t, y = p.y0 + p.vy * scale * t + 0.5 * gravity * t * t;
+            p.el.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)";
+            p.el.style.opacity = d.T === 0 ? "0" : String(fade * 0.9);
+          }
+        } }, at);
+      }
+      burst(16.86, 1.4, 900, 1.0);
+      burst(19.5, 0.46, 950, 0.7);
+
+      /* ══ Audio-reactive ════════════════════════════════════════════════
+         Per-frame sampling of pre-extracted bands (3 bands, 30fps). Only
+         non-text layers respond: the warm light on the dark scenes, and the
+         pan's heat glow once the pan is hot. */
+      (function react() {
+        const A = window.AUDIO_DATA;
+        if (!A) return;
+        const warms = document.querySelectorAll(".warm");
+        const glow = document.getElementById("panglow");
+        for (let f = 0; f < A.totalFrames; f++) {
+          tl.call((function (b, t) { return function () {
+            const bass = b[0];
+            for (let i = 0; i < warms.length; i++) {
+              warms[i].style.opacity = String((0.26 + bass * 0.5).toFixed(3));
+              warms[i].style.transform = "scale(" + (1 + bass * 0.07).toFixed(3) + ")";
+            }
+            if (glow) glow.style.opacity = t >= 16.86 ? String((0.5 + bass * 0.5).toFixed(3)) : "0";
+          }; })(A.bands[f], f / A.fps), [], f / A.fps);
+        }
+      })();
+
+      /* ══ Music ═════════════════════════════════════════════════════════
+         These are the EFFECTIVE levels. The render mix plays every lane
+         8.5 dB under its authored gain and flattens the hits, so the delivered
+         soundtrack is mixed from this composition's own <audio> tags by
+         ../mix.py, which mirrors these three moves exactly (BED_AUTOMATION). */
+      tl.set("#bgm", { volume: 0.5 }, 0);
+      // The hole before the drop, then back to full on the hit.
+      tl.to("#bgm", { volume: 0.2, duration: 0.2, ease: "power1.in" }, 16.34);
+      tl.to("#bgm", { volume: 0.5, duration: 0.04, ease: "none" }, 16.82);
+      tl.to("#bgm", { volume: 0, duration: 0.8, ease: "power1.in" }, 24.2);
+
+      window.__timelines["main"] = tl;
+
+    </script>
+  </body>
+</html>
