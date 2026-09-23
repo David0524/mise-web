@@ -1,0 +1,158 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="fonts/fonts.css" rel="stylesheet">
+<style>
+:root{--paper:#FAF5F4;--brick:#B44722;--rose:#EE9265;--plum:#573C56;--navy:#12141C;--tape:#F0D9D5;--good:#2F6B54;--muted:#6E6472}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:var(--paper);font-family:Nunito,sans-serif;color:var(--navy)}
+#stage{position:absolute;inset:0;overflow:hidden}
+.bg{position:absolute;inset:0}
+.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55}
+.L{position:absolute;will-change:transform,opacity}
+.phone{position:absolute;width:444px;height:928px;border-radius:66px;background:#15161c;padding:14px;
+  box-shadow:0 50px 90px -30px rgba(60,30,40,.45),0 0 0 2px #2b2c33 inset,0 0 0 1px rgba(255,255,255,.08)}
+.phone .scr{width:416px;height:900px;border-radius:52px;overflow:hidden;position:relative;background:#fff}
+.phone .scr img{width:416px;height:900px;display:block}
+.phone .isl{position:absolute;left:50%;top:26px;width:118px;height:34px;margin-left:-59px;border-radius:20px;background:#0b0b0e;z-index:2}
+.kick{font-weight:900;letter-spacing:.22em;font-size:22px;color:var(--brick);text-transform:uppercase}
+.h{font-weight:900;font-size:92px;line-height:.98;letter-spacing:-.035em}
+.sub{font-weight:700;font-size:32px;line-height:1.35;color:var(--muted);max-width:640px}
+.chip{position:absolute;padding:14px 26px;border-radius:999px;background:#fff;font-weight:800;font-size:28px;
+  box-shadow:0 18px 40px -16px rgba(87,60,86,.35);white-space:nowrap}
+.hand{font-family:Caveat,cursive;font-weight:700}
+.bub{position:absolute;padding:22px 30px;border-radius:30px;font-weight:800;font-size:30px;line-height:1.3;max-width:520px;
+  box-shadow:0 24px 50px -20px rgba(0,0,0,.4)}
+.w{display:inline-block;will-change:transform,opacity}
+</style></head><body><div id="stage"></div>
+<script>
+const MISE = (s)=>`<svg width="${s}" height="${s}" viewBox="0 0 64 64"><path d="M17 24c-3.4 0-5.6-2.6-4.8-5.6.6-2.3 3-3.4 5-2.7.2-3.2 2.9-5.5 6.2-5.2 1.3-2.9 4.6-4.3 7.8-3.3 2.4-2.2 6.3-1.9 8.3.7 2.6-.8 5.4.6 6.3 3.1 2.2-.4 4.3 1 4.7 3.2.5 2.8-1.7 5.4-4.9 5.4z" fill="#fff" stroke="#12141C" stroke-width="2.2" stroke-linejoin="round"/><path d="M17 24h28.6v4.2H17z" fill="#fff" stroke="#12141C" stroke-width="2.2" stroke-linejoin="round"/><path d="M20 28.4h23c0 8.6-.9 13.4-4.2 16.2-2 1.7-4.3 2.3-7.3 2.3s-5.3-.6-7.3-2.3C20.9 41.8 20 37 20 28.4z" fill="#fff" stroke="#12141C" stroke-width="2.2" stroke-linejoin="round"/><g fill="#12141C"><circle cx="27.1" cy="37.4" r="1.85"/><circle cx="36.3" cy="37.4" r="1.85"/></g><path d="M28 41.8c1.6 2.1 5.5 2.1 7.1 0" stroke="#12141C" stroke-width="2.1" fill="none" stroke-linecap="round"/><path d="M25.6 46.8l6.4 5.2 6.4-5.2 3.1 1.5-9.5 7.4-9.5-7.4z" fill="#B44722" stroke="#12141C" stroke-width="1.7" stroke-linejoin="round"/><path d="M13 64c1.4-6.6 7-10.6 13.6-11.9L32 56l5.4-3.9C44 53.4 49.6 57.4 51 64z" fill="#fff" stroke="#12141C" stroke-width="2.2" stroke-linejoin="round"/><path d="M37.2 57.6l10.2 1.1-.5 4.1-10.2-1z" fill="#F0D9D5" stroke="#12141C" stroke-width="1.3"/></svg>`;
+const REC_MAX = window.REC_MAX || 2216;
+const cl=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const eo=(x)=>1-Math.pow(1-cl(x),3);            // ease out cubic
+const eio=(x)=>{x=cl(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2};
+const back=(x)=>{x=cl(x);const c=1.70158,c3=c+1;return 1+c3*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const prog=(t,a,d)=>cl((t-a)/d);
+const recSrc=(sec)=>`rec/${String(cl(Math.floor(sec*30)+1,1,REC_MAX)).padStart(5,'0')}.jpg`;
+const st=document.getElementById('stage');
+function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild}
+// in/out helper: returns {o, y} for element that enters at a, leaves at b
+function io(t,a,b,dIn=.5,dOut=.35){const i=eo(prog(t,a,dIn)), o=eio(prog(t,b-dOut,dOut));return {v:i*(1-o),i,o}}
+function words(text,cls=''){return text.split(' ').map(w=>`<span class="w ${cls}">${w}</span>`).join(' ')}
+function animWords(node,t,a,step=.07,dur=.45,rise=50){[...node.querySelectorAll('.w')].forEach((w,k)=>{const p=back(prog(t,a+k*step,dur));const q=eo(prog(t,a+k*step,dur*.6));w.style.transform=`translateY(${(1-p)*rise}px)`;w.style.opacity=q})}
+function phoneHTML(){return `<div class="phone L"><div class="scr"><img></div></div>`}
+let pending=[];
+function setImg(img,src){ if(img.getAttribute('src')!==src){img.setAttribute('src',src); pending.push(img.decode().catch(()=>{}));} }
+
+/* ---------- scene builders: each returns a draw(t) ---------- */
+const scenes=[];
+function scene(a,b,build){const root=el(`<div class="L" style="inset:0"></div>`);st.appendChild(root);const draw=build(root);scenes.push({a,b,root,draw})}
+
+// background
+const bg=el(`<div class="bg"><div class="blob" id="b1" style="width:900px;height:900px;background:#F4C9B5"></div><div class="blob" id="b2" style="width:800px;height:800px;background:#E9D4E6"></div><div class="L" id="tint" style="inset:0"></div></div>`);
+st.appendChild(bg);
+const BGS=[[0,'#FAF5F4'],[29.7,'#FAF5F4'],[30,'#3E2B3D'],[37.7,'#3E2B3D'],[38,'#B44722'],[41.7,'#B44722'],[42,'#FAF5F4']];
+function lerpC(c1,c2,k){const p=(c)=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16));const A=p(c1),B=p(c2);return `rgb(${A.map((v,i)=>Math.round(v+(B[i]-v)*k)).join(',')})`}
+function drawBg(t){let c=BGS[0][1];for(let i=0;i<BGS.length-1;i++){if(t>=BGS[i][0]&&t<=BGS[i+1][0]){c=lerpC(BGS[i][1],BGS[i+1][1],eio((t-BGS[i][0])/(BGS[i+1][0]-BGS[i][0])))}}if(t>BGS.at(-1)[0])c=BGS.at(-1)[1];
+  document.getElementById('tint').style.background='transparent';document.body.style.background=c;bg.style.background=c;
+  const b1=document.getElementById('b1'),b2=document.getElementById('b2');
+  const dark=(t>30&&t<42)?.25:.55;b1.style.opacity=dark;b2.style.opacity=dark;
+  b1.style.transform=`translate(${-200+Math.sin(t*.35)*160}px,${-250+Math.cos(t*.27)*120}px)`;
+  b2.style.transform=`translate(${1300+Math.cos(t*.3)*170}px,${500+Math.sin(t*.4)*140}px)`}
+
+/* S1 hook 0-4 */
+scene(0,4,(r)=>{
+  r.innerHTML=`<div class="L" id="dill" style="left:1150px;top:170px;width:620px;height:740px;border-radius:48px;overflow:hidden;box-shadow:0 60px 100px -40px rgba(60,40,20,.5)"><img src="dill.webp" style="width:100%;height:100%;object-fit:cover"></div>
+  <div class="L h" id="t1" style="left:170px;top:290px;font-size:118px;width:1000px">${words('Nobody needs')}<br>${words('a whole bunch')}<br>${words('of')} <span class="w" style="color:var(--brick)">dill.</span></div>
+  <div class="L hand" id="t2" style="left:180px;top:720px;font-size:64px;color:var(--brick)"></div>`;
+  const dill=r.querySelector('#dill'),t1=r.querySelector('#t1'),t2=r.querySelector('#t2');
+  return (t)=>{const a=io(t,.0,4,.9,.4);const s=1.12-.12*eo(prog(t,0,1.2))+ .03*prog(t,1.2,3);
+    dill.style.opacity=a.v;dill.style.transform=`translateX(${(1-a.i)*120}px) scale(${s}) rotate(${2-2*eo(prog(t,0,1))}deg)`;
+    animWords(t1,t,.25,.12,.5,70);t1.style.opacity=1-a.o;t1.style.transform=`translateY(${-a.o*60}px)`;
+    const txt='(for one dish)';const n=Math.floor(cl((t-2.2)/.6)*txt.length);t2.textContent=txt.slice(0,n);t2.style.opacity=1-a.o;
+    // single-word flourish on "dill" at 1.4
+    const dw=t1.querySelectorAll('.w');const last=dw[dw.length-1];const pop=prog(t,1.45,.35);last.style.transform+=` scale(${1+Math.sin(pop*Math.PI)*.12})`;}
+});
+/* S2 meet 4-8 */
+scene(4,8,(r)=>{
+  r.innerHTML=`<div class="L" id="av" style="left:760px;top:120px">${MISE(400)}</div>
+  <div class="L h" id="m1" style="left:0;width:1920px;top:560px;text-align:center;font-size:150px">${words('Meet')} <span class="w" style="color:var(--brick)">Mise.</span></div>
+  <div class="L sub" id="m2" style="left:0;width:1920px;max-width:none;top:760px;text-align:center;font-size:42px;color:var(--plum)">${words('Your sous chef for the week.')}</div>
+  <div class="chip" id="c1" style="left:380px;top:250px">🗓 plans the week</div>
+  <div class="chip" id="c2" style="left:1300px;top:210px">🛒 shops smart</div>
+  <div class="chip" id="c3" style="left:1330px;top:420px">🍳 cooks with you</div>`;
+  const av=r.querySelector('#av'),m1=r.querySelector('#m1'),m2=r.querySelector('#m2'),cs=['#c1','#c2','#c3'].map(q=>r.querySelector(q));
+  return (t)=>{const out=eio(prog(t,7.6,.4));
+    const p=back(prog(t,4.0,.6));av.style.transform=`translateY(${(1-p)*300 + Math.sin(t*3)*8}px) scale(${.6+.4*p}) rotate(${Math.sin(t*2.2)*3}deg)`;av.style.opacity=eo(prog(t,4,.25))*(1-out);
+    animWords(m1,t,4.3,.18,.5,80);m1.style.opacity=1-out;animWords(m2,t,5.0,.06,.45,30);m2.style.opacity=1-out;
+    cs.forEach((c,k)=>{const q=back(prog(t,6+k*.5,.45));c.style.opacity=eo(prog(t,6+k*.5,.2))*(1-out);c.style.transform=`scale(${.5+.5*q}) translateY(${Math.sin(t*2+k)*8}px) rotate(${[-4,3,-2][k]}deg)`});
+    r.style.transform=`scale(${1+out*.15})`;}
+});
+/* phone feature scenes */
+function feature({a,b,side,kicker,head,sub,clips,chips=[],extra}){
+  scene(a,b,(r)=>{
+    const px= side==='right'?1250:230, tx= side==='right'?170:820;
+    r.innerHTML=`${phoneHTML()}<div class="L" id="tx" style="left:${tx}px;top:300px;width:900px">
+      <div class="kick">${kicker}</div><div class="h" style="margin:26px 0 30px">${head.map(l=>words(l)).join('<br>')}</div><div class="sub">${words(sub)}</div></div>
+      ${chips.map((c,k)=>`<div class="chip" data-k="${k}" style="left:${c.x}px;top:${c.y}px;${c.style||''}">${c.t}</div>`).join('')}`;
+    const ph=r.querySelector('.phone'),img=ph.querySelector('img'),tx_=r.querySelector('#tx');
+    ph.style.left=px+'px';ph.style.top='76px';
+    const dark=a>=30&&a<38; if(dark){tx_.querySelector('.h').style.color='#fff';tx_.querySelector('.sub').style.color='#E5D3DF';tx_.querySelector('.kick').style.color='#EE9265'}
+    const chipEls=[...r.querySelectorAll('.chip')];
+    const ex=extra?extra(r):null;
+    return (t)=>{const s=io(t,a,b,.6,.4);
+      ph.style.opacity=eo(prog(t,a,.3))*(1-s.o);
+      ph.style.transform=`translateY(${(1-back(prog(t,a,.7)))*700 - s.o*80}px) rotate(${(side==='right'?1:-1)*(3-3*eo(prog(t,a,.9)))}deg) scale(${1-.04*s.o})`;
+      // clip mapping
+      let sec=clips[0].r; for(const c of clips){ if(t>=a+c.at){ sec=c.r+(t-a-c.at)*c.sp } }
+      setImg(img,recSrc(sec));
+      animWords(tx_.querySelector('.h'),t,a+.25,.08,.5,60);animWords(tx_.querySelector('.sub'),t,a+.6,.03,.4,24);
+      tx_.querySelector('.kick').style.opacity=eo(prog(t,a+.15,.3));
+      tx_.style.opacity=1-s.o;tx_.style.transform=`translateY(${-s.o*40}px)`;
+      chipEls.forEach((c,k)=>{const ca=a+chips[k].at;const q=back(prog(t,ca,.45));c.style.opacity=eo(prog(t,ca,.2))*(1-s.o);c.style.transform=`scale(${.4+.6*q}) rotate(${chips[k].rot||0}deg) translateY(${Math.sin(t*2.4+k)*6}px)`});
+      if(ex)ex(t,s);
+    }
+  });
+}
+feature({a:8,b:14,side:'right',kicker:'01 · Your kitchen',head:['Tell her','how you cook.'],sub:"Who's eating, how spicy, what you actually own. Every answer changes the plan.",
+  clips:[{at:0,r:6.6,sp:2.15}],chips:[{t:'👥 2 people',x:1060,y:250,at:1.0,rot:-5},{t:'🌶 Medium heat',x:1620,y:420,at:2.0,rot:4},{t:'🍳 Cast iron',x:1050,y:760,at:3.2,rot:-3}]});
+feature({a:14,b:20,side:'left',kicker:'02 · This week',head:['A week worth','cooking.'],sub:'Five real dishes built on one spine — one tub of miso, four very different dinners.',
+  clips:[{at:0,r:21.3,sp:2.0}],chips:[{t:'white miso',x:560,y:190,at:2.6,rot:-6,style:'background:#3C3F63;color:#fff'},{t:'eggplant',x:130,y:640,at:3.0,rot:5,style:'background:#573C56;color:#fff'}]});
+feature({a:20,b:24,side:'right',kicker:'03 · The order',head:['What spoils first,','goes first.'],sub:'Delicate herbs early. Hardy stuff late. She sorts the nights for you.',
+  clips:[{at:0,r:33.9,sp:1.45}],chips:[{t:'🌿 cilantro → Monday',x:1030,y:820,at:1.6,rot:-3}]});
+feature({a:24,b:30,side:'left',kicker:'04 · The list',head:['Everything','gets used up.'],sub:'Real package sizes, use-by dates, and nothing wilting in the drawer on Sunday.',
+  clips:[{at:0,r:40.3,sp:1.5}],chips:[{t:'✓ cilantro used twice',x:560,y:230,at:2.2,rot:-4,style:'background:#2F6B54;color:#fff'},{t:'0 half-bunches wasted',x:80,y:700,at:3.4,rot:4}]});
+feature({a:30,b:38,side:'right',kicker:'05 · At the stove',head:['She talks you','through it.'],sub:'Step by step, with timers — and answers when you’re mid-pan and panicking.',
+  clips:[{at:0,r:55.6,sp:2.3},{at:3.0,r:66.9,sp:1.3}],
+  extra:(r)=>{const u=el(`<div class="bub" style="left:170px;top:700px;background:#fff;color:#12141C">“Is the eggplant done?”</div>`);const m=el(`<div class="bub" style="left:230px;top:820px;background:#EE9265;color:#12141C;max-width:560px"><span style="font-weight:900">Mise:</span> press it with a spoon — if it slumps, pull it now.</div>`);r.appendChild(u);r.appendChild(m);
+    return (t,s)=>{[[u,34.0],[m,36.7]].forEach(([n,at])=>{const q=back(prog(t,at,.45));n.style.opacity=eo(prog(t,at,.2))*(1-s.o);n.style.transform=`translateY(${(1-q)*40}px) scale(${.85+.15*q})`})}}});
+
+/* S8 montage 38-42 */
+scene(38,42,(r)=>{
+  const shots=[{s:28.5,l:'Plan.'},{s:44.5,l:'Shop.'},{s:61.0,l:'Cook.'}];
+  r.innerHTML=shots.map((x,k)=>`<div class="L" data-k="${k}" style="left:${250+k*520}px;top:60px;width:420px">${phoneHTML().replace('phone L','phone').replace('<img>',`<img src="${recSrc(x.s)}">`)}<div class="h" style="color:#fff;text-align:center;margin-top:0;font-size:84px;position:absolute;top:760px;width:444px">${x.l}</div></div>`).join('')+
+  `<div class="L h" id="nw" style="left:0;width:1920px;top:400px;text-align:center;color:#fff;font-size:170px;word-spacing:.12em;text-shadow:0 20px 60px rgba(0,0,0,.35)">${words('Nothing wasted.')}</div>`;
+  const cols=[...r.querySelectorAll('[data-k]')],nw=r.querySelector('#nw');
+  cols.forEach(c=>{c.querySelector('.phone').style.transform='scale(.78)';c.querySelector('.phone').style.transformOrigin='top center'});
+  return (t)=>{const out=eio(prog(t,40.4,.4));
+    cols.forEach((c,k)=>{const q=back(prog(t,38+k*.5,.5));const lab=c.querySelector('.h');
+      c.style.opacity=eo(prog(t,38+k*.5,.2));c.style.transform=`translateY(${(1-q)*500 + out*-60}px) rotate(${(k-1)*2*(1-q)}deg) scale(${1-out*.08})`;c.style.filter=`blur(${out*10}px)`;c.style.opacity=eo(prog(t,38+k*.5,.2))*(1-out*.75);
+      const lq=back(prog(t,38.3+k*.5,.4));lab.style.opacity=eo(prog(t,38.3+k*.5,.2));lab.style.transform=`scale(${.5+.5*lq})`;});
+    animWords(nw,t,40.5,.25,.45,90);[...nw.querySelectorAll('.w')].forEach((w,k)=>w.style.transform+=` scale(${1+(1-eo(prog(t,40.5+k*.25,.4)))*.4})`);
+    r.style.opacity=1-eio(prog(t,41.75,.25));}
+});
+/* S9 end 42-48 */
+scene(42,48.1,(r)=>{
+  r.innerHTML=`<div class="L" id="av" style="left:820px;top:130px">${MISE(280)}</div>
+  <div class="L" id="wm" style="left:0;width:1920px;top:430px;text-align:center"><div style="font-weight:900;font-style:italic;font-size:190px;letter-spacing:-.04em;line-height:1">Mise</div>
+  <div style="font-weight:800;font-size:34px;letter-spacing:.6em;color:var(--plum);margin-top:6px;padding-left:.6em" id="ep">EN PLACE</div></div>
+  <div class="L sub" id="tg" style="left:0;width:1920px;max-width:none;top:760px;text-align:center;font-size:44px;color:var(--navy)">${words('Plan the week. Shop smarter. Cook with a friend.')}</div>
+  <div class="L" id="cta" style="left:760px;top:870px;width:400px;height:88px;border-radius:999px;background:var(--brick);color:#fff;font-weight:900;font-size:36px;display:flex;align-items:center;justify-content:center;box-shadow:0 26px 50px -20px rgba(180,71,34,.8)">Start cooking →</div>`;
+  const av=r.querySelector('#av'),wm=r.querySelector('#wm'),ep=r.querySelector('#ep'),tg=r.querySelector('#tg'),cta=r.querySelector('#cta');
+  return (t)=>{const p=back(prog(t,42,.6));av.style.opacity=eo(prog(t,42,.2));av.style.transform=`scale(${.3+.7*p}) translateY(${Math.sin(t*2.5)*6}px) rotate(${Math.sin(t*1.8)*3}deg)`;
+    const w=eo(prog(t,42.25,.7));wm.style.opacity=w;wm.style.transform=`translateY(${(1-w)*60}px) scale(${1.1-.1*w})`;ep.style.letterSpacing=`${.9-.3*eo(prog(t,42.4,1.2))}em`;
+    animWords(tg,t,43.0,.08,.45,30);
+    const c=back(prog(t,44.0,.5));cta.style.opacity=eo(prog(t,44,.2));cta.style.transform=`scale(${(.5+.5*c)*(1+Math.max(0,Math.sin((t-44.6)*4))*.03*(t>44.6))})`;
+    r.style.opacity=1-eio(prog(t,47.2,.8));}
+});
+
+window.render=async(t)=>{pending=[];drawBg(t);for(const s of scenes){const on=t>=s.a-0.001&&t<s.b;s.root.style.display=on?'block':'none';if(on)s.draw(t)}await Promise.all(pending);};
+</script></body></html>

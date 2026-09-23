@@ -1,0 +1,16 @@
+node_modules/
+frames/
+rec/
+out/
+prev/
+s/
+fonts/
+*.wav
+*.mp4
+*.jpg
+*.png
+*.webp
+frames.json
+marks.json
+concat.txt
+package*.json

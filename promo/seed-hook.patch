@@ -1,0 +1,12 @@
+diff --git a/components/MiseApp.jsx b/components/MiseApp.jsx
+index e22f51d..1e614e1 100644
+--- a/components/MiseApp.jsx
++++ b/components/MiseApp.jsx
+@@ -306,6 +306,7 @@ function availableFormats(equipment) {
+ }
+ 
+ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
++  if (typeof window !== "undefined" && window.__PROMO_SEED) return window.__PROMO_SEED;
+   const recentTraditions = (history || []).flatMap((w) => w.seed?.tradition || []);
+   const recentVegetables = (history || []).flatMap((w) => w.seed?.vegetable || []);
+   const recentTechniques = (history || []).flatMap((w) => w.seed?.technique || []);
