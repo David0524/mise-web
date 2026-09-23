@@ -52,7 +52,11 @@ Create a 25-second hype/promo launch video for Mise, the weekly cooking collabor
 - Display font: Nunito 900, embedded locally (`assets/fonts/`)
 - Body font: Nunito 700
 - Visual references from the project: MiseHello chef mark, the app's card, chip and
-  button styles, and the food artwork drawn for the story film in `brag-output/`
+  button styles
+- Food: real photography, four CC0 photographs (knife and board, wok of hot oil, glaze
+  close-up, plate), graded as one shoot with `media-treatment` (`food-pop` 0.8, vignette
+  0.3, grain 0.16). Motion comes from the camera plus physically motivated layers: steam
+  from seeded noise, deterministic oil spatter, a bass-driven burner glow. No drawn food.
 
 ## Storyboard
 Use the storyboard in `brag-plan.md` as the creative contract.
@@ -62,8 +66,8 @@ Use the storyboard in `brag-plan.md` as the creative contract.
 3. PLANS THE WEEK — 4.22s — phone setup cascade + stacked answer stickers
 4. It pitches. You push back. — 4.20s — Brainstorm, typed pushback, rewrite
 5. BUILDS THE LIST — 1.84s — tokens rain, the count runs to 11, scallions merge, 9 items
-6. TALKS YOU THROUGH IT — 4.48s — two chops, the drop, the pan, the step card, the glaze
-7. Nailed it — 2.10s — plate, four stars, the chip
+6. TALKS YOU THROUGH IT — 4.48s — photo punch-ins on the chops, the drop into hot oil, the glaze close-up under the step card
+7. Nailed it — 2.10s — a real plate, four stars, the chip
 8. Outro — 2.88s — MISE, the pitch line, the price
 
 ## Audio

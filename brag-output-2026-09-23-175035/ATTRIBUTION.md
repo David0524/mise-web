@@ -1,18 +1,20 @@
 # Third-party assets in this video
 
-Everything visual is either from this repository or drawn for the Mise story film in `brag-output/` and reused here:
-the palette, the Nunito type, the `MiseHello` character, the app's own copy and interface
-fragments, one of its photographs used as a dim counter surface, and all of the cooking —
-the board, knife, scallion, pan, oil, chicken, glaze, flames, steam and plate are hand-
-authored SVG under GSAP, because there is no footage in this repo. The audio and the
-animation runtime are third-party.
+The app's palette, Nunito type, `MiseHello` character, copy and interface fragments come
+from this repository. The cooking is real photography: four CC0 photographs from the
+WordPress Photo Directory, graded to match. The steam over them is generated from seeded
+noise for this film. The audio and the animation runtime are third-party.
 
 | Asset | Path | Source |
 | --- | --- | --- |
 | Music bed | `composition/assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3` | [ende.app](https://ende.app/en) — "Happy Beats / Business Moves" series, bundled with the `brag` Claude Code plugin |
 | Sound effects | `composition/assets/sfx/*` | [Kenney](https://kenney.nl/) — bundled with the `brag` plugin |
-
-| All cooking artwork (board, knife, scallion, pan, oil, chicken, glaze, flames, steam, plate, chillies, equipment icons) | inline SVG in `composition/index.html` | Drawn for this film; no third-party asset involved |
+| Prep shot (knife on a board, cook behind) | `composition/assets/img/prep.jpg` | Roberto Vazquez, [WordPress Photo Directory](https://wordpress.org/photos/photo/42267aba73/) — CC0 (cropped) |
+| Hot-oil shot (wok over flame) | `composition/assets/img/wok.jpg` | Bijay Kumal, [WordPress Photo Directory](https://wordpress.org/photos/photo/184696a6bc/) — CC0 (cropped) |
+| Glaze close-up | `composition/assets/img/glaze.jpg` | Manoj Gyawali, [WordPress Photo Directory](https://wordpress.org/photos/photo/2646a1d27f/) — CC0 (cropped) |
+| Plate (sesame-glazed chicken) | `composition/assets/img/plate.jpg` | Tawhid Sadman, [WordPress Photo Directory](https://wordpress.org/photos/photo/491695674a/) — CC0 (cropped) |
+| Steam textures | `composition/assets/img/steam1-7.png` | Generated for this film from seeded fractal noise; no third-party asset |
+| Oil spatter | generated in `composition/index.html` | Deterministic particles drawn for this film |
 | Nunito (woff2, weights 600/700/800/900) | `composition/assets/fonts/` | Google Fonts — SIL Open Font License 1.1 (the same family `app/layout.js` already loads) |
 | GSAP 3.14.2 | `composition/assets/vendor/gsap.min.js` | GreenSock — free "standard" license for this use; vendored so the render needs no network |
 | `brag` plugin (skill, music, SFX) | — | MIT, © 2026 Shunit Haviv Hakimi |

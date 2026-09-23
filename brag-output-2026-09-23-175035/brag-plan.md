@@ -4,6 +4,16 @@ A new `/brag` run, written through the skill's own four steps. The earlier work 
 `brag-output/` (v1–v6, a 59.5s story film) is kept as it is. This run is its opposite:
 a 25-second hype/promo reel.
 
+## Revision: realistic cooking
+
+The first version of this cut drew the food as SVG illustration. It now uses real
+photography for every cooking beat: four CC0 photographs from the WordPress Photo
+Directory (credits in `ATTRIBUTION.md`), cropped to 16:9 and graded as one shoot with
+Hyperframes' `food-pop` treatment plus a light vignette and grain. Motion is the camera's:
+punch-ins on the chops, a shake on the drop, pull-backs and push-ins. The hot shots add
+steam (seeded fractal noise, streaked upward, generated for this film), deterministic
+oil spatter and a bass-driven burner glow. Nothing else in the cut changed.
+
 ## What is this app?
 
 Mise is a weekly cooking collaborator. You tell it about your kitchen, it pitches dinners
@@ -42,14 +52,16 @@ a second. It's a hype-reel hook: a problem stated at full volume and dismissed i
 - **BUILDS THE LIST.** Full-bleed persimmon. Ingredient tokens from three dinners rain
   down, and the counter runs to 11. Three of them are scallions, which merge into one
   row, and the count drops to the **9** you actually buy.
-- **TALKS YOU THROUGH IT.** Two knife chops on the beat, then silence, then **the drop
-  at 16.86**: hard cut to the pan, thighs slam into the oil, sizzle burst, flames up. The
-  app's step card says "Spoon the glaze over." and the glaze pours.
+- **TALKS YOU THROUGH IT.** Real photography from here on. A knife on a board with a
+  cook behind it, punched in closer on each of the two chops, then silence, then **the
+  drop at 16.86**: hard cut to a wok of oil bubbling hard over a flame, the camera takes
+  the hit, oil spatters, steam rises. The app's step card says "Spoon the glaze over." over
+  a close-up of chicken lacquered in red glaze, and the light slides across the gloss.
 
 ## Outro / punchline
 
-The plate spins in and four stars stamp, landing on the app's real rating chip, **Nailed
-it**. Then black, and **MISE** slams in full-frame. On the strong cue at 23.17 the pitch
+The camera settles on a real plate of sesame-glazed chicken, and four stars stamp, landing
+on the app's real rating chip, **Nailed it**. Then black, and **MISE** slams in full-frame. On the strong cue at 23.17 the pitch
 line lands underneath: "plans the week, builds the list, talks you through cooking it."
 Then the price, **$12/month · cancel anytime**. The last hit rings out over the music fade.
 
@@ -82,8 +94,9 @@ it comes from `components/MiseApp.jsx`: the real `RESTRICTIONS`, `EQUIPMENT`, `S
 - Text: `#1A1B24` ink on paper, `#F6EFE3` on dark and on persimmon
 - Display font: Nunito 900 (the app's own family, `app/layout.js`), shipped locally
 - Body font: Nunito 700
-- Strongest visual element: the app's personalization cascade and the pan, both already
-  drawn for the story film. That artwork, the MiseHello mark and the device are reused.
+- Strongest visual element: the app's personalization cascade (reused from the story
+  film with the MiseHello mark and the device) and, for the food, four real CC0 photographs
+  graded as one shoot.
 
 ## Share copy (draft)
 
@@ -171,18 +184,24 @@ Audio-coupled idea: chips-stack under the tokens, chip-lay on the 9.
 Transition mood: hard cut → Scene 6
 
 ### Scene 6 — TALKS YOU THROUGH IT. — 4.48s (15.54 → 20.02)
-Night. Board and knife: chop on 15.81, chop on 16.34, then nothing. **16.86 THE DROP**:
-hard cut to the pan, thighs slam into the oil with squash, sizzle burst, flames up,
-**TALKS YOU THROUGH IT.** slams (held to 18.44). 18.44: the app's step card slides in,
-"Step 3 of 7 · Spoon the glaze over.", and the glaze pours and lands. 19.48: toss.
-Sequential/interaction: yes. The chops, the drop, the pour.
+Real photography, moved like a camera. **Prep**: a knife on a board with a cook working
+behind it; wide, then a punch-in on the chop at 15.81, then tight on the blade at 16.34,
+each framing drifting. Then nothing. **16.72** hard cut (flash) to a wok of oil bubbling
+over a gas flame, pulling back; **16.86 THE DROP**: the frame shakes, hot-oil droplets
+spatter up from the surface, three steam plumes rise, the burner glow rides the bass, and
+**TALKS YOU THROUGH IT.** slams (held to 20.02). **18.44**: cut to a close-up of chicken
+lacquered in glossy red glaze, pushing in, a specular pass sliding across the wet sauce,
+steam rising; the app's step card slides in from the right, "Step 3 of 7 · Spoon the glaze
+over.", its timer running. **19.48**: the camera kicks on the beat.
+Sequential/interaction: yes. The chops, the drop, the step card.
 Audio intent: the climax. A hole, then the hit.
 Audio-coupled idea: wood knocks for chops, a heavy hit on the drop, a soft impact on the glaze.
 Transition mood: hard cut → Scene 7
 
 ### Scene 7 — Nailed it — 2.10s (20.02 → 22.12)
-The plate spins in. Four stars stamp across 20.28 → 21.06, and the app's rating chip
-**Nailed it** pops at 21.06 and holds to 22.12.
+A real plate of sesame-glazed chicken, the camera settling back onto it with steam rising;
+the left side falls to dark for the type. Four stars stamp across 20.28 → 21.06, and the
+app's rating chip **Nailed it** pops at 21.06 and holds to 22.12.
 Sequential/interaction: yes. Four star stamps, then a chip.
 Audio intent: success.
 Audio-coupled idea: glass or chip clinks on stars, a success hit on the chip.
