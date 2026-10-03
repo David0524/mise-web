@@ -4438,7 +4438,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
         {step === 1 && (
           <>
             <h2>Which nights will you cook?</h2>
-            <p className="lead">Tap the days. You can change this any week.</p>
+            <p className="lead">You can change this any week.</p>
             <div className="grid-days">
               {DAYS.map((d) => (
                 <Chip key={d} active={profile.nights.includes(d)} onClick={() => toggleIn("nights", d)}>
@@ -4486,7 +4486,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
         {step === 2 && (
           <>
             <h2>How spicy do you like your food?</h2>
-            <p className="lead">I'll never go above this. Pick the one that sounds right.</p>
+            <p className="lead">I'll never go above this.</p>
             <Scale options={SPICE} value={profile.spice} onChange={(v) => set("spice", v)} name="Heat level" />
           </>
         )}
@@ -4507,7 +4507,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
         {step === 4 && (
           <>
             <h2>Anything you can't or won't eat?</h2>
-            <p className="lead">Tap all that apply. I treat these as hard rules, not preferences.</p>
+            <p className="lead">I treat these as hard rules, not preferences.</p>
             <div className="grid-2">
               {RESTRICTIONS.map((r) => (
                 <Chip key={r} active={profile.restrictions.includes(r)} onClick={() => toggleIn("restrictions", r)}>
@@ -4538,7 +4538,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
         {step === 5 && (
           <>
             <h2>What do you have to cook with?</h2>
-            <p className="lead">Tap what you own. I won't suggest a recipe that needs something you don't have.</p>
+            <p className="lead">I won't suggest a recipe that needs something you don't have.</p>
             <div className="grid-2">
               {EQUIPMENT.map((e) => (
                 <Chip key={e} active={profile.equipment.includes(e)} onClick={() => toggleIn("equipment", e)}>
@@ -4597,7 +4597,7 @@ function ThisWeek({ thisWeek, setThisWeek, profile, onEdit, onGo, busy }) {
     <div className="stack">
       <section className="card card--big">
         <h2>Just this week</h2>
-        <p className="lead">All optional. Skip straight to the ideas if you'd rather.</p>
+        <p className="lead">All optional.</p>
 
         <div className="field">
           <label htmlFor="fr">What's in the kitchen that needs using up?</label>
@@ -4615,19 +4615,22 @@ function ThisWeek({ thisWeek, setThisWeek, profile, onEdit, onGo, busy }) {
           <label htmlFor="rq">Is there a dish you already want to make?</label>
           <input id="rq" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={thisWeek.request} onChange={(e) => upd("request", e.target.value)}
             placeholder="Chicken katsu. Beef stew. My grandmother's rice." />
-          <p className="hint">I'll build the week around it, or tell you honestly if it fights the rest of the plan.</p>
+          <p className="hint">I'll build the week around it.</p>
         </div>
 
         <div className="recap">
-          <p><strong>Using your saved setup</strong></p>
-          <ul>
-            <li>{profile.people} {profile.people === 1 ? "person" : "people"}, {orderDays(profile.nights).map((d) => DAY_FULL[d]).join(", ") || "no nights picked"}</li>
-            <li>About {profile.time} minutes a night</li>
-            <li>Heat: {SPICE[profile.spice].label}</li>
-            {profile.healthConscious && <li>Leaning a bit healthier</li>}
-            <li>{ADVENTURE[profile.adventure - 1].label}</li>
-          </ul>
-          <Btn small variant="ghost" onClick={onEdit}>Change my setup</Btn>
+          <p>
+            <strong>Your setup:</strong>{" "}
+            {[
+              `${profile.people} ${profile.people === 1 ? "person" : "people"}`,
+              orderDays(profile.nights).join(", ") || "no nights picked",
+              `about ${profile.time} min`,
+              `heat: ${SPICE[profile.spice].label.toLowerCase()}`,
+              profile.healthConscious && "a bit healthier",
+              ADVENTURE[profile.adventure - 1].label.toLowerCase(),
+            ].filter(Boolean).join(" · ")}
+          </p>
+          <button className="linkish" onClick={onEdit}>Change my setup</button>
         </div>
 
         <div className="wiz">
@@ -4782,26 +4785,23 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
       </div>
 
       <section className="card">
-        <h2>Want something specific?</h2>
+        <h2>Want something different?</h2>
         <div className="field">
           <label htmlFor="rq2">A dish you'd like to make</label>
-          <input id="rq2" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={request} onChange={(e) => setRequest(e.target.value)}
-            placeholder="Chicken katsu" />
+          <div className="field__row">
+            <input id="rq2" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={request} onChange={(e) => setRequest(e.target.value)}
+              placeholder="Chicken katsu" />
+            <Btn small onClick={() => onSend(`I'd like to make ${request}. Can we fit it in?`)} disabled={!request.trim() || !!busy}>
+              Ask
+            </Btn>
+          </div>
         </div>
-        <Btn small onClick={() => onSend(`I'd like to make ${request}. Can we fit it in?`)} disabled={!request.trim() || !!busy}>
-          Ask about it
-        </Btn>
-      </section>
-
-      <section className="card card--ask">
-        <h2>Or tell me in your own words</h2>
-        <p className="hint">Optional. Everything above works with buttons alone.</p>
-        <textarea autoCapitalize="sentences" autoCorrect="on" spellCheck="true" rows="2" value={draft} onChange={(e) => setDraft(e.target.value)}
-          placeholder="I like the tostadas but Thursday feels too heavy"
-          aria-label="Tell Mise what you think" />
-        <div className="row">
-          <Btn onClick={() => { onSend(draft); setDraft(""); }} disabled={!draft.trim() || !!busy}>Send</Btn>
+        <div className="field">
+          <label htmlFor="fb2">Or tell me in your own words</label>
+          <textarea id="fb2" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" rows="2" value={draft} onChange={(e) => setDraft(e.target.value)}
+            placeholder="I like the tostadas but Thursday feels too heavy" />
         </div>
+        <Btn small onClick={() => { onSend(draft); setDraft(""); }} disabled={!draft.trim() || !!busy}>Send</Btn>
       </section>
 
       <div className="wiz">
@@ -4830,22 +4830,19 @@ function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, on
             <MiseAvatar mood={busy ? "thinking" : "idle"} size={46} />
             <div>
               <h2>Not sure about the order?</h2>
-              <p className="hint">
-                I&apos;ll fill the days in for you — what spoils first, what makes leftovers,
-                which night has least time.
-              </p>
+              <p className="hint">I&apos;ll fill the days in by what spoils first.</p>
             </div>
           </div>
           <div className="row">
             <Btn small onClick={onSuggestOrder} disabled={!!busy}>
               {busy ? "Working it out…" : "Sort out my week"}
             </Btn>
-            <Btn small variant="ghost" onClick={() => onAskMise("Is this too much food for the week?")} disabled={!!busy}>
+          </div>
+          <div className="minor">
+            <button className="linkish" onClick={() => onAskMise("Is this too much food for the week?")} disabled={!!busy}>
               Is this too much food?
-            </Btn>
-            <Btn small variant="ghost" onClick={onShareWeek} disabled={!!busy}>
-              Share this week
-            </Btn>
+            </button>
+            <button className="linkish" onClick={onShareWeek} disabled={!!busy}>Share this week</button>
           </div>
         </section>
       )}
@@ -4861,9 +4858,8 @@ function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, on
             but people shouldn't feel obliged to fill every slot with something new. */}
         {chosen.length > 0 && chosen.length < nights.length && (
           <p className="hint">
-            You have {chosen.length} {chosen.length === 1 ? "dish" : "dishes"} for {nights.length} nights.
-            You can add another, leave a night open, or put the same dish on two nights — plenty of
-            these make enough for a second night.
+            {chosen.length} {chosen.length === 1 ? "dish" : "dishes"} for {nights.length} nights — leave
+            one open or repeat a dish.
           </p>
         )}
         <div className="nights">
@@ -4871,24 +4867,24 @@ function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, on
             const dish = candidates.find((c) => c.id === week[d]);
             return (
               <div key={d} className="night">
-                <div className="night__hd">
-                  <h3>{DAY_FULL[d]}</h3>
-                  {!profile.consistent && (
-                    <div className="count__ctl count__ctl--sm">
-                      <button onClick={() => onCount(d, -1)} aria-label={`Fewer people on ${DAY_FULL[d]}`}>−</button>
-                      <span aria-live="polite" title="People eating">{countFor(d)}</span>
-                      <button onClick={() => onCount(d, 1)} aria-label={`More people on ${DAY_FULL[d]}`}>+</button>
-                    </div>
-                  )}
-                </div>
-                <div className="field">
-                  <label htmlFor={`sel-${d}`}>Dish</label>
+                <div className="night__row">
+                  <label htmlFor={`sel-${d}`} className="night__day">{DAY_FULL[d]}</label>
                   <select id={`sel-${d}`} value={week[d] || ""}
                     onChange={(e) => setWeek((w) => ({ ...w, [d]: e.target.value || null }))}>
                     <option value="">Nothing yet</option>
                     {chosen.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                   </select>
                 </div>
+                {!profile.consistent && (
+                  <div className="night__hd">
+                    <span className="night__ppl">People eating</span>
+                    <div className="count__ctl count__ctl--sm">
+                      <button onClick={() => onCount(d, -1)} aria-label={`Fewer people on ${DAY_FULL[d]}`}>−</button>
+                      <span aria-live="polite" title="People eating">{countFor(d)}</span>
+                      <button onClick={() => onCount(d, 1)} aria-label={`More people on ${DAY_FULL[d]}`}>+</button>
+                    </div>
+                  </div>
+                )}
                 {dish && (
                   <>
                     <p className="night__b">{dish.blurb}</p>
@@ -4912,9 +4908,8 @@ function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, on
       {!chosen.length && <p className="hint">Pick at least one dish in Ideas first.</p>}
       {!!chosen.length && !filled && (
         <p className="hint">
-          Nothing is on a day yet — I&apos;ll shop for all {chosen.length} picked{" "}
-          {chosen.length === 1 ? "dish" : "dishes"}. Assigning days lets me scale each night
-          and order them by what spoils first.
+          Nothing on a day yet — I&apos;ll shop for all {chosen.length} picked{" "}
+          {chosen.length === 1 ? "dish" : "dishes"}.
         </p>
       )}
 
@@ -5047,31 +5042,30 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
           <MiseAvatar mood={busy ? "thinking" : "idle"} size={46} />
           <div>
             <h2>Want to change something?</h2>
-            <p className="hint">
-              Ask me for a swap, a smaller amount, or something cheaper — I&apos;ll update the
-              recipes to match. Or edit any line above by hand.
-            </p>
+            <p className="hint">I&apos;ll update the recipes to match.</p>
           </div>
         </div>
 
-        <div className="grid-2">
+        <div className="quicks">
           {[
-            "Something cheaper instead",
-            "I can't find one of these",
-            "Smaller amounts, less waste",
-            "Swap something I don't like",
-          ].map((q) => (
-            <Chip key={q} onClick={() => onAsk(q)}>{q}</Chip>
+            ["Cheaper", "Something cheaper instead"],
+            ["Can't find one", "I can't find one of these"],
+            ["Less waste", "Smaller amounts, less waste"],
+            ["Swap one I don't like", "Swap something I don't like"],
+          ].map(([label, q]) => (
+            <button key={q} className="quick" onClick={() => onAsk(q)}>{label}</button>
           ))}
         </div>
 
         <div className="field">
           <label htmlFor="sa">Or say it in your own words</label>
-          <input id="sa" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
-            placeholder="I don't want a whole bunch of dill"
-            onKeyDown={(e) => { if (e.key === "Enter" && ask.trim()) { onAsk(ask); setAsk(""); } }} />
+          <div className="field__row">
+            <input id="sa" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
+              placeholder="I don't want a whole bunch of dill"
+              onKeyDown={(e) => { if (e.key === "Enter" && ask.trim()) { onAsk(ask); setAsk(""); } }} />
+            <Btn small onClick={() => { onAsk(ask); setAsk(""); }} disabled={!ask.trim() || !!busy}>Ask</Btn>
+          </div>
         </div>
-        <Btn small onClick={() => { onAsk(ask); setAsk(""); }} disabled={!ask.trim() || !!busy}>Ask Mise</Btn>
       </section>
 
       <div className="wiz">
@@ -5168,41 +5162,31 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
       {rec && (
         <>
           <section className="card">
-            <div className="card__head">
-              <div>
-                <h2>{rec.title}</h2>
-                <p className="lead">{rec.servings}{rec.servings && rec.time ? " · " : ""}{rec.time}</p>
-              </div>
-              <div className="headacts">
-                <Btn small variant="ghost" onClick={onPrint}>Print</Btn>
-                <Btn small variant="ghost" onClick={onShare}>Share</Btn>
-              </div>
-            </div>
+            <h2>{rec.title}</h2>
+            <p className="lead">{rec.servings}{rec.servings && rec.time ? " · " : ""}{rec.time}</p>
 
             <div className="row">
-              <Btn variant="hot" onClick={onStartCooking}>Start cooking — guided</Btn>
-              <Btn variant="ghost" onClick={onMise}>Just ask Mise</Btn>
-              <Btn variant="ghost" onClick={() => setEditing((e) => !e)}>
+              <Btn variant="hot" onClick={onStartCooking}>Start cooking</Btn>
+              <Btn variant="ghost" onClick={onMise}>Ask Mise</Btn>
+            </div>
+            <div className="minor">
+              <button className="linkish" onClick={() => setEditing((e) => !e)}>
                 {editing ? "Done editing" : "Edit by hand"}
-              </Btn>
+              </button>
+              <button className="linkish" onClick={onPrint}>Print</button>
+              <button className="linkish" onClick={onShare}>Share</button>
             </div>
 
             {hasList && rec.basis && rec.basis !== shoppingSignature && (
               <div className="stale">
-                <p>
-                  <strong>Your shopping list changed</strong> since I wrote this, so the
-                  ingredients below may not match what you're actually buying.
-                </p>
-                <Btn small onClick={onRewrite} disabled={!!busy}>Rewrite it from the current list</Btn>
+                <p><strong>Your shopping list changed</strong> since I wrote this.</p>
+                <Btn small onClick={onRewrite} disabled={!!busy}>Rewrite from the current list</Btn>
               </div>
             )}
 
             {rec.missing?.length > 0 && (
               <div className="stale stale--warn">
-                <p>
-                  <strong>Not on your list:</strong> {rec.missing.join(", ")}. The recipe works
-                  without them, but they'd make it better.
-                </p>
+                <p><strong>Not on your list:</strong> {rec.missing.join(", ")}. Optional, but better with.</p>
                 <Btn small variant="ghost" onClick={() => onAddToList(rec.missing)}>
                   Add {rec.missing.length === 1 ? "it" : "them"} to my list
                 </Btn>
@@ -5308,11 +5292,13 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
 
             <div className="field">
               <label htmlFor="ra">Or say it in your own words</label>
-              <input id="ra" name="miseRecipeAsk" type="text" inputMode="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
-                placeholder="I don't want to buy a pack of buns for one burger"
-                onKeyDown={(e) => { if (e.key === "Enter" && ask.trim()) { onAsk(ask); setAsk(""); } }} />
+              <div className="field__row">
+                <input id="ra" name="miseRecipeAsk" type="text" inputMode="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
+                  placeholder="I don't want to buy a pack of buns for one burger"
+                  onKeyDown={(e) => { if (e.key === "Enter" && ask.trim()) { onAsk(ask); setAsk(""); } }} />
+                <Btn small onClick={() => { onAsk(ask); setAsk(""); }} disabled={!ask.trim() || !!busy}>Ask</Btn>
+              </div>
             </div>
-            <Btn small onClick={() => { onAsk(ask); setAsk(""); }} disabled={!ask.trim() || !!busy}>Ask Mise</Btn>
 
             {negotiating && (
               <div className="rchat">
@@ -5366,11 +5352,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
             open={openFold === "rate" || scrollTarget === "rating"}
             onToggle={() => setOpenFold(openFold === "rate" ? null : "rate")}
           >
-            <p className="lead">
-              {alreadyRated
-                ? "You've rated this before. Rate it again if it went differently."
-                : "This shapes what I suggest next week."}
-            </p>
+            {!alreadyRated && <p className="lead">This shapes what I suggest next week.</p>}
             <div className="stars" role="radiogroup" aria-label="Rating out of five">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} role="radio" aria-checked={rating === n}
@@ -7043,8 +7025,8 @@ const CSS = `
      on top of that layer and hide it completely, which is exactly what happened
      the first time. The paper colour lives on the body as the fallback. */
   background:transparent; color:var(--ink);
-  font-family:'Nunito',system-ui,sans-serif; line-height:1.55; font-weight:600;
-  min-height:100vh; padding-bottom:7rem;
+  font-family:'Nunito',system-ui,sans-serif; line-height:1.45; font-weight:600;
+  min-height:100vh;
 }
 /* keep legacy names working so nothing goes unstyled mid-refactor */
 .app{--steel:var(--sunk); --card:var(--surface); --line:var(--rule-2); --blade:var(--muted)}
@@ -7052,7 +7034,7 @@ const CSS = `
 
 /* Sized in rem, not px, so the reader's own browser text-size setting scales the
    whole interface. Contrast follows the operating system rather than an in-app toggle. */
-.app{font-size:1.125rem}
+.app{font-size:1.0625rem}
 
 @media (prefers-contrast:more){.app{
   --steel:#FFFFFF; --card:#FFFFFF; --ink:#000000; --ink-2:#1A1A1A;
@@ -7092,7 +7074,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .app input[type=text],.app textarea,.app select{max-width:100%}
 .app h1,.app h2,.app h3,.app h4{font-family:'Nunito',system-ui,sans-serif;font-weight:800;
   letter-spacing:-.025em;margin:0;line-height:1.18;color:var(--ink)}
-.app h2{font-size:1.48em}
+.app h2{font-size:1.36em}
 .app h3{font-size:1.1em;letter-spacing:-.015em}
 .app h4{font-size:.96em;font-weight:650;color:var(--plum)}
 .app p{margin:.6em 0 0}
@@ -7132,7 +7114,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .tape--hot{background:var(--hot);color:#fff}
 
 /* header */
-.hdr{max-width:960px;margin:0 auto;padding:1.4rem 1.15rem .6rem}
+.hdr{max-width:960px;margin:0 auto;padding:1rem 1.15rem .4rem}
 .hdr__row{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap}
 .hdr__mark{display:flex;align-items:center;gap:.7rem;background:none;border:none;padding:.2rem;
   margin:-.2rem;cursor:pointer;border-radius:14px;font:inherit;color:inherit;text-align:left;
@@ -7230,14 +7212,14 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .main{max-width:960px;margin:0 auto;
   padding:1.15rem 1.15rem calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + 5.5rem)}
 @media print{.main{padding:1.15rem}}
-.stack{display:flex;flex-direction:column;gap:1.1rem}
+.stack{display:flex;flex-direction:column;gap:.85rem}
 .sec-h{margin-top:.4rem}
 
 /* cards */
 .card{background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);
   backdrop-filter:var(--glass-blur);
   border:1px solid var(--glass-rim);border-radius:26px;
-  padding:1.5rem 1.35rem;box-shadow:var(--spec), var(--lift-1);
+  padding:1.15rem 1.1rem;box-shadow:var(--spec), var(--lift-1);
   position:relative;isolation:isolate;--gx:50%;--gy:20%}
 /* A highlight that tracks the pointer rather than sitting fixed — real
    Liquid Glass shifts its specular response as content and viewpoint move;
@@ -7253,7 +7235,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 @media(prefers-reduced-motion:reduce){.card::before{display:none}}
 /* Larger surfaces get a larger radius so corners stay visually concentric
    with the elements nested inside them rather than fighting them. */
-.card--big{padding:2rem 1.6rem;border-radius:32px;box-shadow:var(--spec), var(--lift-2)}
+.card--big{padding:1.5rem 1.25rem;border-radius:32px;box-shadow:var(--spec), var(--lift-2)}
 .hero{text-align:center;padding:.6rem 0 .4rem;max-width:34rem;margin:0 auto}
 .hero__mark{display:flex;justify-content:center;margin-bottom:1rem}
 .hero__mark .mise-av{filter:drop-shadow(0 10px 20px rgba(180,71,34,.28))}
@@ -7285,6 +7267,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .hint--save{margin-top:.9rem}
 .hint--center{text-align:center;margin-top:1.1rem;max-width:none}
 .row{display:flex;gap:.65rem;flex-wrap:wrap;margin-top:1rem;align-items:center}
+.minor{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:.15rem}
 
 /* buttons — a solid top face sitting on a darker edge, so pressing physically
    pushes the face down onto it. Everything else in this redesign follows from
@@ -7293,7 +7276,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
    an outer shadow) is what makes the press feel like real displacement. */
 .btn{font-family:'Nunito',system-ui,sans-serif;font-weight:700;font-size:1em;
   letter-spacing:-.005em;
-  border-radius:18px;padding:.75rem 1.5rem;min-height:52px;cursor:pointer;
+  border-radius:18px;padding:.65rem 1.3rem;min-height:48px;cursor:pointer;
   border:none;background:var(--brick);color:#fff;
   box-shadow:0 2px 0 var(--brick-edge), var(--spec), var(--lift-1);
   transition:transform .14s cubic-bezier(.3,.8,.4,1), box-shadow .14s ease, filter .16s ease}
@@ -7311,7 +7294,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .btn--good:active:not(:disabled){transform:translateY(2px);
   box-shadow:0 0 0 var(--good-edge), var(--spec)}
 .btn--wide{width:100%}
-.btn--sm{min-height:46px;padding:.55rem .95rem;font-size:.86em;border-radius:14px}
+.btn--sm{min-height:44px;padding:.5rem .9rem;font-size:.86em;border-radius:14px}
 /* The press animation is displacement, not decoration — but honor the setting. */
 @media(prefers-reduced-motion:reduce){.btn{transition:none}}
 .btn:disabled{opacity:.45;cursor:not-allowed}
@@ -7322,7 +7305,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .chip{display:flex;flex-direction:column;gap:.15rem;text-align:left;
   background:var(--glass-strong);
   -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);
-  border:1px solid var(--rule-2);border-radius:18px;padding:.8rem 1rem;min-height:56px;
+  border:1px solid var(--rule-2);border-radius:18px;padding:.6rem .9rem;min-height:48px;
   font-family:'Nunito',system-ui,sans-serif;font-weight:700;font-size:.95em;color:var(--ink-2);
   cursor:pointer;width:100%;box-shadow:0 2px 0 var(--surface-edge), var(--spec), var(--lift-1);
   transition:transform .14s cubic-bezier(.3,.8,.4,1), box-shadow .14s ease,
@@ -7339,13 +7322,13 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .chip__sub{font-size:.82em;opacity:.75}
 .grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.55rem;margin-top:1rem}
 /* a heading following a group of controls needs air */
-.grid-2 + h3,.grid-days + h3,.counts + h3,.scale + h3,.stepper + h3{margin-top:1.6rem;display:block}
+.grid-2 + h3,.grid-days + h3,.counts + h3,.scale + h3,.stepper + h3{margin-top:1.15rem;display:block}
 .grid-days{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;margin-top:.9rem}
 
 /* scale */
 .scale{display:flex;flex-direction:column;gap:.5rem;margin-top:1rem}
 .scale__o{display:flex;flex-direction:column;gap:.2rem;text-align:left;background:var(--surface);
-  border:1px solid var(--rule);border-radius:16px;padding:.85rem .9rem;min-height:60px;cursor:pointer;color:var(--ink);
+  border:1px solid var(--rule);border-radius:16px;padding:.65rem .85rem;min-height:48px;cursor:pointer;color:var(--ink);
   transition:background .12s ease, border-color .12s ease, transform .12s ease}
 .scale__o:active{transform:scale(.98)}
 /* warm tint + brick edge, matching .chip--on — not an inverted black block */
@@ -7354,7 +7337,10 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .scale__note{font-size:.9em;opacity:.8}
 
 /* fields */
-.field{margin-top:1.1rem;display:flex;flex-direction:column;gap:.4rem}
+.field{margin-top:.85rem;display:flex;flex-direction:column;gap:.35rem}
+.field__row{display:flex;gap:.5rem;align-items:stretch}
+.app .field__row > input[type=text]{flex:1 1 0;width:auto;min-width:0}
+.field__row > .btn{flex:0 0 auto;margin:0}
 /* A button or chip group immediately after a text field was landing flush against
    it — the field has bottom margin of its own but the button had none, so they
    touched. These rules give every such pairing room without hunting them one by one. */
@@ -7363,21 +7349,21 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .field + .grid-2,
 .field + .stars,
 .field + .shots,
-.field + h3{margin-top:1.4rem}
+.field + h3{margin-top:1.1rem}
 /* A bare h3 has margin:0 globally, so anything right after a callout box or a
    field sat flush against it with no visible gap at all. */
 .learn + h3,
 .learn + .sec-h{margin-top:1.6rem}
 .btn + .field,
 .row + .field,
-.grid-2 + .field{margin-top:1.25rem}
+.grid-2 + .field{margin-top:1rem}
 .card > .btn:last-child{margin-top:1rem}
 h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .field--hi{border-left:4px solid var(--hot);padding-left:.85rem}
 .field label{font-family:'Nunito',sans-serif;font-weight:600;font-size:.87em;color:var(--muted)}
 .app input[type=text],.app textarea,.app select{width:100%;background:var(--surface);color:var(--ink);
-  border:1px solid var(--rule-input);border-radius:14px;padding:.75rem .95rem;
-  font-family:'Nunito',sans-serif;font-size:1em;min-height:52px;
+  border:1px solid var(--rule-input);border-radius:14px;padding:.65rem .9rem;
+  font-family:'Nunito',sans-serif;font-size:1em;min-height:48px;
   transition:border-color .12s ease, box-shadow .12s ease}
 .app input[type=text]:focus,.app textarea:focus,.app select:focus{border-color:var(--brick);
   box-shadow:0 0 0 4px rgba(180,71,34,.12);outline:none}
@@ -7429,7 +7415,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 
    The backdrop is needed because the button now floats over content: a bare
    button over a dish card was unreadable at the overlap. */
-.wiz{display:flex;gap:.65rem;margin-top:1.6rem;flex-wrap:wrap;align-items:center;
+.wiz{display:flex;gap:.65rem;margin-top:1.15rem;flex-wrap:wrap;align-items:center;
   position:sticky;z-index:6;
   bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + .55rem);
   padding:.55rem;margin-left:-.55rem;margin-right:-.55rem;border-radius:20px;
@@ -7480,7 +7466,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 }
 
 /* recap */
-.recap{background:var(--sunk);border:1px solid var(--rule);padding:1.15rem;margin-top:1.2rem;border-radius:18px}
+.recap{background:var(--sunk);border:1px solid var(--rule);padding:.95rem;margin-top:.9rem;border-radius:18px}
 .recap ul{margin:.5rem 0 .8rem;padding-left:1.3rem}
 .recap li{padding:.15rem 0}
 .recap__list{list-style:none;padding:0;margin:.8rem 0 0}
@@ -7515,22 +7501,22 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .bub--me .bub__who{color:#B9C9C1}
 
 /* dish cards */
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.9rem}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.7rem}
 .dish{background:var(--glass);-webkit-backdrop-filter:var(--glass-blur);
   backdrop-filter:var(--glass-blur);
   border:1px solid var(--glass-rim);border-radius:24px;
-  padding:1.4rem 1.3rem;box-shadow:var(--spec), var(--lift-1);
+  padding:1.1rem 1.1rem;box-shadow:var(--spec), var(--lift-1);
   transition:transform .16s cubic-bezier(.3,.8,.4,1), box-shadow .16s ease, border-color .16s ease}
 .dish:hover{border-color:rgba(238,146,101,.7);box-shadow:var(--spec), var(--lift-2);
   transform:translateY(-2px)}
-.dish h3{font-size:1.24em}
+.dish h3{font-size:1.14em}
 .dish--yes{border-color:rgba(47,107,84,.65);background:rgba(214,240,227,.55);
   box-shadow:var(--spec), 0 2px 8px rgba(47,107,84,.14), 0 16px 40px -18px rgba(47,107,84,.5)}
 .dish--no{opacity:.5}
 .dish__b{font-size:1em}
 .dish__why{color:var(--ink-2);font-style:italic}
 .dish__meta{font-family:'Nunito',sans-serif;font-size:.86em;color:var(--blade)}
-.dish__acts{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.9rem}
+.dish__acts{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.7rem}
 .dish__note{margin-top:.5rem}
 .dish__more{display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
 .askmise{display:flex;gap:.85rem;align-items:center}
@@ -7539,8 +7525,8 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .rchat{display:flex;flex-direction:column;gap:.6rem;margin-top:1.2rem}
 .opts{margin-top:1.3rem}
 .opt{display:flex;flex-direction:column;gap:.25rem;width:100%;text-align:left;margin-top:.65rem;
-  background:var(--surface);border:1px solid var(--rule-2);border-radius:18px;padding:1rem 1.15rem;
-  cursor:pointer;color:var(--ink);min-height:60px;transition:border-color .12s ease, transform .12s ease}
+  background:var(--surface);border:1px solid var(--rule-2);border-radius:18px;padding:.8rem 1rem;
+  cursor:pointer;color:var(--ink);min-height:52px;transition:border-color .12s ease, transform .12s ease}
 .opt:hover{border-color:var(--brick);transform:translateY(-1px)}
 .opt:active{transform:scale(.98)}
 .opt--best{border-color:rgba(47,107,84,.5);background:linear-gradient(180deg,#F3FAF6,#fff 60%)}
@@ -7550,7 +7536,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .opt__cost{font-size:.9em;color:var(--blade)}
 .comp__l2{list-style:none;padding:0}
 .comp__l2 li{display:flex;justify-content:space-between;align-items:center;gap:.6rem;
-  padding:.45rem 0;border-bottom:1px solid var(--rule)}
+  padding:.15rem 0;min-height:44px;border-bottom:1px solid var(--rule)}
 .swapwrap{position:fixed;inset:0;z-index:40;background:rgba(34,26,21,.42);
   display:flex;align-items:flex-end;justify-content:center;padding:.6rem}
 @media(min-width:640px){.swapwrap{align-items:center}}
@@ -7559,13 +7545,18 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .swapbox__hd{display:flex;align-items:flex-start;gap:.8rem}
 .swapbox__hd > div{flex:1;min-width:0}
 .swapbox__hd h2{font-size:1.25em}
-.swap{flex:0 0 auto;min-height:36px;padding:0 .8rem;background:var(--sunk);border:1px solid transparent;
+.swap{flex:0 0 auto;min-height:34px;padding:0 .75rem;background:var(--sunk);border:1px solid transparent;
   border-radius:999px;font-family:'Nunito',sans-serif;font-size:.8em;color:var(--plum);cursor:pointer}
 .swap:hover{border-color:var(--brick);color:var(--brick)}
 
 /* week */
-.nights{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.9rem;margin-top:1.1rem}
-.night{background:var(--sunk);border:none;padding:1.2rem;border-radius:18px}
+.nights{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.55rem;margin-top:.9rem}
+.night{background:var(--sunk);border:none;padding:.6rem .75rem;border-radius:16px}
+.night__row{display:grid;grid-template-columns:6.2rem 1fr;align-items:center;gap:.6rem}
+.night__day{font-weight:800;color:var(--ink)}
+.night__ppl{font-size:.88em;color:var(--muted)}
+.night__hd{margin-top:.4rem}
+.night .btn{margin-top:.5rem}
 .night__b{color:var(--ink-2);font-size:.95em}
 .night__hd{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
 .count__ctl--sm button{width:36px;height:36px;font-size:1.1em}
@@ -7584,9 +7575,9 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .row2--off .row2__name{text-decoration:line-through}
 .row2--open{background:var(--sunk);border-radius:14px;margin:.2rem 0;
   border-bottom-color:transparent}
-.row2__tick{display:flex;align-items:center;justify-content:center;width:44px;min-height:52px;cursor:pointer}
+.row2__tick{display:flex;align-items:center;justify-content:center;width:44px;min-height:46px;cursor:pointer}
 .row2__tick input{width:24px;height:24px;accent-color:var(--good)}
-.row2__face{display:flex;align-items:center;gap:.5rem;min-height:52px;padding:.55rem .5rem .55rem 0;
+.row2__face{display:flex;align-items:center;gap:.5rem;min-height:46px;padding:.4rem .5rem .4rem 0;
   background:none;border:none;text-align:left;cursor:pointer;color:inherit;width:100%;min-width:0}
 .row2__text{flex:1;min-width:0;line-height:1.35;overflow-wrap:anywhere}
 .row2__qty{font-family:'Nunito',sans-serif;font-weight:700;font-size:.92em;color:var(--plum);
@@ -7641,32 +7632,32 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* recipe */
 .learn{background:var(--sunk);border-left:4px solid var(--rose);padding:1rem 1.15rem;
   margin-top:1.3rem;border-radius:4px 16px 16px 4px}
-.stale{background:var(--sunk);border:1px solid var(--rule);border-radius:16px;padding:1.15rem;margin-top:1.3rem}
+.stale{background:var(--sunk);border:1px solid var(--rule);border-radius:16px;padding:.9rem 1rem;margin-top:1rem}
 .stale p{margin:0 0 .7rem}
 .stale--warn{background:var(--warn-bg);border-color:var(--warn)}
 /* A visible seam: everything below this is for after dinner, not before. */
-.later{margin:2.6rem 0 -.4rem;border-top:2px dashed var(--rule-2);position:relative;height:0}
+.later{margin:1.8rem 0 -.4rem;border-top:2px dashed var(--rule-2);position:relative;height:0}
 .later__tab{position:absolute;top:-.85rem;left:50%;transform:translateX(-50%);
   background:var(--paper);padding:0 .9rem;font-family:'Nunito',sans-serif;font-weight:600;
   font-size:.86em;color:var(--muted);white-space:nowrap}
 .card--later{background:var(--sunk);box-shadow:none;border:1px solid var(--rule)}
 .fold{padding:0;overflow:hidden}
 .fold__hd{display:flex;align-items:center;justify-content:space-between;gap:1rem;width:100%;
-  background:none;border:none;cursor:pointer;padding:1.25rem 1.35rem;text-align:left;min-height:68px}
+  background:none;border:none;cursor:pointer;padding:1rem 1.1rem;text-align:left;min-height:56px}
 .fold__t{display:flex;flex-direction:column;gap:.15rem;min-width:0}
-.fold__h2{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.28em;color:var(--ink);
+.fold__h2{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.18em;color:var(--ink);
   letter-spacing:-.02em}
 .fold__note{font-size:.92em;color:var(--muted);font-style:italic}
 .fold__chev{font-size:1.1em;color:var(--plum);flex:0 0 auto;transition:transform .16s ease}
 .fold__chev--open{transform:rotate(180deg)}
-.fold__body{padding:0 1.35rem 1.35rem}
+.fold__body{padding:0 1.1rem 1.15rem}
 .comp{margin-top:1rem}
 .comp ul{margin:.4rem 0 0;padding-left:1.4rem}
 .comp li{padding:.22rem 0}
 /* Horizontal snap carousel. A ten-step recipe made the page endless vertically;
    this keeps the whole recipe one screen tall and swipeable. */
 .sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;
-  margin-top:1.6rem;flex-wrap:wrap}
+  margin-top:1.2rem;flex-wrap:wrap}
 .hsteps{display:flex;gap:.8rem;overflow-x:auto;scroll-snap-type:x mandatory;
   list-style:none;margin:.9rem 0 0;padding:.2rem .2rem 1rem;-webkit-overflow-scrolling:touch}
 .hstep{flex:0 0 min(88%,320px);scroll-snap-align:start;background:var(--surface);
@@ -8086,6 +8077,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    the glare job well enough while actually feeling like somewhere you'd want to
    spend forty minutes. */
 .cook{position:fixed;inset:0;z-index:25;overflow-y:auto;display:flex;flex-direction:column;
+  font-size:1.125rem;line-height:1.55;
   color:var(--ink);-webkit-overflow-scrolling:touch;
   background:#FFF9F7;
   background-image:
@@ -8440,7 +8432,8 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .sheet__body{overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.7rem;flex:1}
 .sheet__hint{color:var(--muted);margin:0}
 .sheet__quick{display:flex;gap:.4rem;overflow-x:auto;padding:.6rem 1rem;border-top:1px solid var(--rule)}
-.quick{flex:0 0 auto;min-height:46px;padding:0 .95rem;background:var(--sunk);
+.quicks{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.8rem}
+.quick{flex:0 0 auto;min-height:44px;padding:0 .95rem;background:var(--sunk);
   border:1px solid transparent;font-family:'Nunito',sans-serif;font-size:.92em;
   cursor:pointer;color:var(--plum);border-radius:999px}
 .quick:hover{border-color:var(--rule-2)}
