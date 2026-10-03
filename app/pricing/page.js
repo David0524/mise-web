@@ -25,15 +25,15 @@ export default function PricingPage() {
       <FilterDefs />
       <div style={{ ...S.card, width: 380, textAlign: "center" }}>
         <h1 style={S.h1}>Mise</h1>
-        <p style={{ fontFamily: "system-ui, sans-serif", color: "#4A4453", marginTop: -8 }}>
+        <p style={{ fontFamily: "system-ui, sans-serif", color: "#51453D", marginTop: -8 }}>
           A weekly cooking collaborator — plans the week, builds the list, talks you through cooking it.
         </p>
         {err && <p style={S.error}>{err}</p>}
         <div style={{ background: "#F4EBE9", borderRadius: 16, padding: "1.4rem", margin: "1.2rem 0" }}>
-          <p style={{ fontFamily: "system-ui, sans-serif", fontSize: 32, fontWeight: 800, margin: 0, color: "#12141C" }}>
-            $12<span style={{ fontSize: 15, fontWeight: 500, color: "#6E6472" }}>/month</span>
+          <p style={{ fontFamily: "system-ui, sans-serif", fontSize: 32, fontWeight: 800, margin: 0, color: "#221A15" }}>
+            $12<span style={{ fontSize: 15, fontWeight: 500, color: "#72645C" }}>/month</span>
           </p>
-          <p style={{ fontFamily: "system-ui, sans-serif", fontSize: 13.5, color: "#6E6472", margin: "6px 0 0" }}>
+          <p style={{ fontFamily: "system-ui, sans-serif", fontSize: 13.5, color: "#72645C", margin: "6px 0 0" }}>
             Cancel anytime. Manage it yourself, no email required.
           </p>
         </div>

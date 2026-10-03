@@ -845,7 +845,7 @@ function shareBackground(ctx) {
 function glassPanel(ctx, x, y, w, h, r) {
   ctx.save();
   roundRect(ctx, x, y + 6, w, h, r);
-  ctx.fillStyle = "rgba(87,60,86,.10)";
+  ctx.fillStyle = "rgba(34,26,21,.08)";
   ctx.filter = "blur(12px)";
   ctx.fill();
   ctx.filter = "none";
@@ -875,7 +875,7 @@ function shareFooter(ctx) {
   ctx.fillStyle = "#B44722";
   ctx.font = "800 30px Nunito, system-ui, sans-serif";
   ctx.fillText("Made with Mise", 184, SHARE_H - 98);
-  ctx.fillStyle = "#6E6472";
+  ctx.fillStyle = "#72645C";
   ctx.font = "600 26px Nunito, system-ui, sans-serif";
   ctx.fillText("a weekly cooking collaborator", 184, SHARE_H - 62);
 }
@@ -1001,7 +1001,7 @@ async function renderDishCard(dish, recipe, photo) {
   drawBadge(ctx, "I COOKED THIS", M, y);
   y += BADGE_H + GAP_BADGE_TITLE;
 
-  ctx.fillStyle = "#12141C";
+  ctx.fillStyle = "#221A15";
   ctx.font = `800 ${titleSize}px Nunito, system-ui, sans-serif`;
   titleLines.forEach((line, i) => {
     // First line drawn at its own baseline, which sits titleSize below the top.
@@ -1011,7 +1011,7 @@ async function renderDishCard(dish, recipe, photo) {
 
   if (blurbLines.length) {
     y += GAP_TITLE_BLURB;
-    ctx.fillStyle = "#4A4453";
+    ctx.fillStyle = "#51453D";
     ctx.font = "600 38px Nunito, system-ui, sans-serif";
     blurbLines.forEach((line, i) => {
       ctx.fillText(line, M, y + 30 + i * blurbLead);
@@ -1021,7 +1021,7 @@ async function renderDishCard(dish, recipe, photo) {
 
   if (meta) {
     y += GAP_BLURB_META;
-    ctx.fillStyle = "#6E6472";
+    ctx.fillStyle = "#72645C";
     ctx.font = "700 30px Nunito, system-ui, sans-serif";
     ctx.fillText(meta, M, y + 24);
   }
@@ -1087,7 +1087,7 @@ async function renderWeekCard(dishes, ecosystem) {
     ctx.arc(M + 18, y - size * 0.32, 9, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = "#12141C";
+    ctx.fillStyle = "#221A15";
     ctx.font = `800 ${size}px Nunito, system-ui, sans-serif`;
     r.title.forEach((line) => {
       ctx.fillText(line, listX, y);
@@ -1095,7 +1095,7 @@ async function renderWeekCard(dishes, ecosystem) {
     });
 
     if (r.blurb) {
-      ctx.fillStyle = "#6E6472";
+      ctx.fillStyle = "#72645C";
       ctx.font = "400 32px Nunito, system-ui, sans-serif";
       const b = wrapText(ctx, r.blurb, maxW).slice(0, 1);
       b.forEach((line) => {
@@ -1108,14 +1108,14 @@ async function renderWeekCard(dishes, ecosystem) {
 
   const hidden = dishes.length - shown.length;
   if (hidden > 0) {
-    ctx.fillStyle = "#8A7B86";
+    ctx.fillStyle = "#72645C";
     ctx.font = "600 30px Nunito, system-ui, sans-serif";
     ctx.fillText(`+ ${hidden} more`, listX, y);
     y += 50;
   }
 
   if (spine) {
-    ctx.fillStyle = "#8A7B86";
+    ctx.fillStyle = "#72645C";
     ctx.font = "400 28px Nunito, system-ui, sans-serif";
     wrapText(ctx, spine, SHARE_W - M * 2).slice(0, 2).forEach((line) => {
       y += 40;
@@ -5020,7 +5020,7 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
                       <div className="row2__acts">
                         <button className={`line__have${i.have ? " line__have--on" : ""}`}
                           onClick={() => upd(i.id, "have", !i.have)} aria-pressed={i.have}>
-                          Have it
+                          {i.have && <span aria-hidden="true">✓ </span>}Have it
                         </button>
                         <button className="line__swap" onClick={() => onSwap(i.item)} disabled={!!busy}>
                           Swap
@@ -6975,36 +6975,49 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap');
 
 .app{
-  /* Palette: rose, brick, ink-navy, indigo, plum — weighted toward paper white.
-     Surfaces are white on a warm rose-tinted ground, so cards read by their
-     elevation rather than by an outline drawn around everything. */
-  --rose:#EE9265; --brick:#B44722; --navy:#12141C; --indigo:#3C3F63; --plum:#573C56;
+  /* Palette, weighted toward paper white. Surfaces are white on a warm
+     rose-tinted ground, so cards read by their elevation rather than by an
+     outline drawn around everything.
 
-  --paper:#FAF5F4;          /* the ground */
-  --surface:#FFFFFF;        /* raised cards */
-  --sunk:#F4EBE9;           /* recessed wells */
-  --ink:#1A1B24;            /* body text */
-  --ink-2:#4A4453;          /* secondary text */
-  --muted:#6E6472;          /* tertiary */
-  --rule:rgba(87,60,86,.14);   /* hairlines, not borders */
-  --rule-2:rgba(87,60,86,.26);
-  --hot:#B44722;            /* primary accent */
-  --good:#2F6B54;
-  --tape:#F0D9D5; --tape-ink:#57303A;
-  --warn:#7A4630; --warn-bg:#FBEDE9;
+     Hex, with the OKLCH source beside each. The iOS build targets 15.0, and
+     oklch() / color-mix() need 16.4 / 16.2, so the values are resolved by hand.
+     Neutrals sit on the paper's warm side (hue 55); brick is the one
+     high-chroma colour and means "act here", so it isn't spent on decoration. */
+  --brick:#B44722;          /* oklch(0.539 0.150 38)  primary accent */
+  --rose:#EE9265;           /* oklch(0.746 0.127 46)  decoration only */
+  --rose-strong:#CC6F46;    /* oklch(0.64 0.13 44)    rose that conveys state: 3:1 on paper */
+  --plum:#573C56;           /* oklch(0.397 0.055 328) text on secondary controls */
+  --night:#3C3F63;          /* oklch(0.382 0.061 279) dark panels under light text */
+
+  --paper:#FAF5F4;          /* oklch(0.974 0.006 31)  the ground */
+  --surface:#FFFFFF;        /* oklch(1 0 0)           raised cards */
+  --sunk:#F4EBE9;           /* oklch(0.947 0.010 33)  recessed wells */
+  --ink:#221A15;            /* oklch(0.225 0.016 55)  body text and headings */
+  --ink-2:#51453D;          /* oklch(0.40 0.022 55)   secondary text */
+  --muted:#72645C;          /* oklch(0.515 0.022 55)  tertiary */
+  /* Ink at low alpha. Alphas are ~0.82x the old plum ones so each line keeps
+     the same weight on paper; only the tint moved. */
+  --rule:rgba(34,26,21,.11);   /* hairlines, not borders */
+  --rule-2:rgba(34,26,21,.21);
+  --rule-input:#8A7D75;     /* oklch(0.60 0.02 55)   edge of a control: 3:1 on paper */
+  --hot:#B44722;            /* = brick; overridden separately in prefers-contrast */
+  --good:#2F6B54;           /* oklch(0.481 0.073 166) */
+  --tape:#F0D9D5;           /* oklch(0.903 0.026 29) */
+  --tape-ink:#57303A;       /* oklch(0.362 0.058 4) */
+  --warn:#7A4630;           /* oklch(0.451 0.079 43) */
+  --warn-bg:#FBEDE9;        /* oklch(0.956 0.016 37) */
   --bw:1px;
-  /* Bottom-edge tones for the 3D press effect. Derived directly from the
-     palette above (same hue, ~72% lightness) — no new colors, just shadowed
-     faces of the ones already here. */
-  --brick-edge:#813318; --good-edge:#214D3C; --rose-edge:#AB6948;
-  --plum-edge:#3E2B3D; --surface-edge:#E4D7D3;
+  /* Bottom-edge tones for the 3D press effect: the same hue, darkened. */
+  --brick-edge:#813318;     /* oklch(0.426 0.115 39)  brick, L -0.11 */
+  --good-edge:#214D3C;      /* oklch(0.383 0.057 166) good, L -0.10 */
+  --surface-edge:#E4D7D3;   /* oklch(0.888 0.015 38) */
   /* Glass: translucent fill + saturation boost so colour bleeds through from
      behind, a hairline rim, and a specular top highlight. The highlight is
      what sells it as a lit pane rather than just something transparent. */
   /* Thin on purpose (.58/.70 previously). The cards sit over a gradient-lit
      surface now, and a heavy white fill flattened the light behind them into
      one dead panel. At .36 the shading still reads through the card, and text
-     keeps an enormous contrast margin (navy #12141C on ~240 luminance). */
+     keeps an enormous contrast margin (ink #221A15 on ~240 luminance). */
   --glass:rgba(255,255,255,.36);
   --glass-strong:rgba(255,255,255,.50);
   --glass-rim:rgba(255,255,255,.62);
@@ -7018,10 +7031,11 @@ const CSS = `
      the daylight tint toward a visible cast on white cards. */
   --glass-blur:url(#glassDistort) saturate(140%) blur(12px);
   --spec:inset 0 1px 0 rgba(255,255,255,.9);
-  --lift-1:0 1px 2px rgba(87,60,86,.06), 0 8px 24px -10px rgba(87,60,86,.22);
-  --lift-2:0 2px 6px rgba(87,60,86,.07), 0 18px 44px -16px rgba(87,60,86,.28);
-  --shadow:0 1px 2px rgba(30,20,30,.04), 0 6px 18px -8px rgba(87,60,86,.16);
-  --shadow-lift:0 2px 4px rgba(30,20,30,.05), 0 18px 40px -14px rgba(87,60,86,.24);
+  /* Shadows are ink-tinted (34,26,21 = --ink). */
+  --lift-1:0 1px 2px rgba(34,26,21,.05), 0 8px 24px -10px rgba(34,26,21,.18);
+  --lift-2:0 2px 6px rgba(34,26,21,.06), 0 18px 44px -16px rgba(34,26,21,.23);
+  --shadow:0 1px 2px rgba(34,26,21,.04), 0 6px 18px -8px rgba(34,26,21,.13);
+  --shadow-lift:0 2px 4px rgba(34,26,21,.05), 0 18px 40px -14px rgba(34,26,21,.20);
 
   /* TRANSPARENT on purpose. The surface the glass refracts lives in its own
      fixed layer (.surface, below) so scrolling never repaints it — only a
@@ -7077,12 +7091,12 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .app p,.app li,.app strong,.app span{overflow-wrap:anywhere}
 .app input[type=text],.app textarea,.app select{max-width:100%}
 .app h1,.app h2,.app h3,.app h4{font-family:'Nunito',system-ui,sans-serif;font-weight:800;
-  letter-spacing:-.025em;margin:0;line-height:1.18;color:var(--navy)}
+  letter-spacing:-.025em;margin:0;line-height:1.18;color:var(--ink)}
 .app h2{font-size:1.48em}
 .app h3{font-size:1.1em;letter-spacing:-.015em}
 .app h4{font-size:.96em;font-weight:650;color:var(--plum)}
 .app p{margin:.6em 0 0}
-/* Headings are navy by default; on dark surfaces they must inherit or they vanish. */
+/* Headings are ink by default; on dark surfaces they must inherit or they vanish. */
 .card--dark h1,.card--dark h2,.card--dark h3,.card--dark h4,
 .cook h1,.cook h2,.cook h3,.cook h4,
 .sheet__hdr h1,.sheet__hdr h2{color:inherit}
@@ -7133,7 +7147,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .mise-mark{color:var(--brick);flex:0 0 auto}
 .hdr__word{display:flex;flex-direction:column;line-height:1;gap:.28rem}
 .hdr__logo{font-family:'Nunito',sans-serif;font-weight:600;font-size:1.85em;
-  letter-spacing:-.015em;color:var(--navy);font-style:italic}
+  letter-spacing:-.015em;color:var(--ink);font-style:italic}
 .hdr__tag{font-family:'Nunito',sans-serif;font-weight:600;font-size:.62em;
   letter-spacing:.24em;text-transform:uppercase;color:var(--plum)}
 
@@ -7250,7 +7264,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 /* Not everything needs to be a box. Some sections sit straight on the paper. */
 .card--flat{background:none;box-shadow:none;padding:0}
 .card--flat > h2{margin-bottom:.2rem}
-.card--dark{background:var(--indigo);color:#F2EFF6;border:none;border-radius:24px;
+.card--dark{background:var(--night);color:#F2EFF6;border:none;border-radius:24px;
   box-shadow:var(--shadow-lift)}
 .card--dark .eco__why{color:#C9D6D0}
 .card--warn{background:var(--warn-bg);box-shadow:none;border:1px solid rgba(122,70,48,.28)}
@@ -7362,7 +7376,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .field--hi{border-left:4px solid var(--hot);padding-left:.85rem}
 .field label{font-family:'Nunito',sans-serif;font-weight:600;font-size:.87em;color:var(--muted)}
 .app input[type=text],.app textarea,.app select{width:100%;background:var(--surface);color:var(--ink);
-  border:1px solid var(--rule-2);border-radius:14px;padding:.75rem .95rem;
+  border:1px solid var(--rule-input);border-radius:14px;padding:.75rem .95rem;
   font-family:'Nunito',sans-serif;font-size:1em;min-height:52px;
   transition:border-color .12s ease, box-shadow .12s ease}
 .app input[type=text]:focus,.app textarea:focus,.app select:focus{border-color:var(--brick);
@@ -7390,10 +7404,13 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* wizard */
 .progress{background:none;padding:.2rem .3rem;border-radius:0;box-shadow:none}
 .progress__segs{display:flex;gap:.3rem;align-items:center}
-.progress__seg{flex:1;height:5px;border-radius:999px;background:rgba(87,60,86,.16);
+.progress__seg{flex:1;height:5px;border-radius:999px;background:rgba(34,26,21,.13);
   transition:background .3s ease, box-shadow .3s ease}
-.progress__seg--done{background:var(--rose)}
-.progress__seg--now{background:var(--brick);box-shadow:0 0 0 3px rgba(180,71,34,.14)}
+/* Done vs now must not rest on hue alone (rose-strong and brick are near
+   neighbours, and closer still under protanopia): done is a plain fill, now
+   carries a ring — a paper gap, then brick — which reads as a shape. */
+.progress__seg--done{background:var(--rose-strong)}
+.progress__seg--now{background:var(--brick);box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px var(--brick)}
 .progress__t{font-family:'Nunito',sans-serif;margin:.65rem 0 0;display:flex;gap:.5rem;
   align-items:baseline;flex-wrap:wrap}
 .progress__n{font-weight:800;font-size:.82em;color:var(--brick);letter-spacing:.02em;
@@ -7491,7 +7508,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .bub p{margin:.2rem 0 0;white-space:pre-wrap}
 .bub--mise{background:var(--surface);border:1px solid var(--rule);
   border-top-left-radius:7px;box-shadow:inset 3px 0 0 var(--rose), var(--shadow)}
-.bub--me{background:var(--indigo);color:#F4F1F8;align-self:flex-end;border-bottom-right-radius:7px}
+.bub--me{background:var(--night);color:#F4F1F8;align-self:flex-end;border-bottom-right-radius:7px}
 .bub__who{font-family:'Nunito',sans-serif;font-weight:650;font-size:.8em;color:var(--brick);
   letter-spacing:.02em}
 .bub__can{font-size:.92em;color:var(--muted);font-style:italic}
@@ -7534,11 +7551,11 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .comp__l2{list-style:none;padding:0}
 .comp__l2 li{display:flex;justify-content:space-between;align-items:center;gap:.6rem;
   padding:.45rem 0;border-bottom:1px solid var(--rule)}
-.swapwrap{position:fixed;inset:0;z-index:40;background:rgba(26,27,36,.42);
+.swapwrap{position:fixed;inset:0;z-index:40;background:rgba(34,26,21,.42);
   display:flex;align-items:flex-end;justify-content:center;padding:.6rem}
 @media(min-width:640px){.swapwrap{align-items:center}}
 .swapbox{background:var(--surface);border-radius:26px;padding:1.4rem 1.25rem;width:100%;
-  max-width:460px;box-shadow:0 20px 60px rgba(26,27,36,.4);max-height:88vh;overflow-y:auto}
+  max-width:460px;box-shadow:0 20px 60px rgba(34,26,21,.4);max-height:88vh;overflow-y:auto}
 .swapbox__hd{display:flex;align-items:flex-start;gap:.8rem}
 .swapbox__hd > div{flex:1;min-width:0}
 .swapbox__hd h2{font-size:1.25em}
@@ -7637,7 +7654,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .fold__hd{display:flex;align-items:center;justify-content:space-between;gap:1rem;width:100%;
   background:none;border:none;cursor:pointer;padding:1.25rem 1.35rem;text-align:left;min-height:68px}
 .fold__t{display:flex;flex-direction:column;gap:.15rem;min-width:0}
-.fold__h2{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.28em;color:var(--navy);
+.fold__h2{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.28em;color:var(--ink);
   letter-spacing:-.02em}
 .fold__note{font-size:.92em;color:var(--muted);font-style:italic}
 .fold__chev{font-size:1.1em;color:var(--plum);flex:0 0 auto;transition:transform .16s ease}
@@ -7798,7 +7815,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   color:var(--muted);margin-right:.25rem}
 .looks__o{display:inline-flex;align-items:center;gap:.45rem;
   padding:.3rem .7rem .3rem .35rem;min-height:40px;
-  background:none;border:1.5px solid var(--rule);border-radius:999px;cursor:pointer;
+  background:none;border:1.5px solid var(--rule-input);border-radius:999px;cursor:pointer;
   font-family:'Nunito',sans-serif;font-weight:700;font-size:.88em;color:var(--muted);
   transition:border-color .16s ease, color .16s ease}
 .looks__o--on{border-color:var(--brick);color:var(--ink)}
@@ -7838,6 +7855,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   --muted:#6B5F54;
   --rule:#CDBFAA;
   --rule-2:#B9A991;
+  --rule-input:#8D7E69;     /* oklch(0.60 0.035 75) edge of a control: 3:1 on stock */
   --glass:#FBF6EC;          /* no glass in this look: cards are opaque stock */
   --glass-rim:#CDBFAA;
   --glass-blur:none;
@@ -7899,7 +7917,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .app[data-style="canvas"] .app input[type=text],
 .app[data-style="canvas"] input[type=text],
 .app[data-style="canvas"] textarea{
-  background:transparent;border:none;border-bottom:1.6px solid var(--rule-2);
+  background:transparent;border:none;border-bottom:1.6px solid var(--rule-input);
   border-radius:0;padding-left:.2rem}
 .app[data-style="canvas"] input[type=text]:focus,
 .app[data-style="canvas"] textarea:focus{border-bottom-color:var(--brick);outline:none}
@@ -7925,7 +7943,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* Chips and quick asks: hand-ruled outlines. */
 .app[data-style="canvas"] .chip,
 .app[data-style="canvas"] .quick{
-  background:transparent;border:1.4px solid var(--rule-2);
+  background:transparent;border:1.4px solid var(--rule-input);
   border-radius:12px 16px 13px 17px / 16px 12px 17px 13px}
 .app[data-style="canvas"] .chip--on{background:var(--brick);color:#fff;border-color:var(--ink)}
 
@@ -7972,7 +7990,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    the phone, and the step type is set large for that reason. A fabric weave
    sitting behind 2em text fights it at the same visual frequency.
    So: identical light, so it's unmistakably the same room, over a plain pale
-   ground instead of cloth. Stays light because cook mode sets navy text on it.
+   ground instead of cloth. Stays light because cook mode sets ink text on it.
    Also one fewer image request on the screen most likely to be opened on bad
    kitchen wifi.
 
@@ -7999,7 +8017,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .advlink{display:block;width:100%;margin:.4rem 0 0;padding:.7rem;background:none;border:none;
   font-family:'Nunito',sans-serif;font-weight:700;font-size:.86em;color:var(--muted);
   cursor:pointer;text-align:center;border-radius:14px}
-.advlink:hover{color:var(--plum);background:rgba(87,60,86,.05)}
+.advlink:hover{color:var(--plum);background:rgba(34,26,21,.04)}
 /* The spice photo sits behind the seed card at low opacity and is masked to
    fade out toward the text, so the tradition and vegetable stay readable. It's
    atmosphere, not an illustration of the specific cuisine drawn — 53 traditions
@@ -8035,7 +8053,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* Tiles in a row match height so a tall neighbour doesn't leave dead space. */
 .setg__t{align-self:stretch}
 .setg__v{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.7em;line-height:1.1;
-  color:var(--navy)}
+  color:var(--ink)}
 .setg__v--sm{font-size:1em;font-weight:700;line-height:1.35;color:var(--ink-2);
   overflow-wrap:anywhere}
 @media(min-width:560px){
@@ -8080,7 +8098,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   position:sticky;top:0;z-index:3;background:rgba(255,249,247,.86);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--rule)}
 .cook__title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
-.cook__title strong{font-family:'Nunito',sans-serif;font-size:1.02em;color:var(--navy);
+.cook__title strong{font-family:'Nunito',sans-serif;font-size:1.02em;color:var(--ink);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cook__title span{font-size:.85em;color:var(--muted)}
 .cook__exit,.cook__vox{min-height:46px;padding:0 1rem;background:var(--surface);
@@ -8095,18 +8113,18 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 
 .cook__kicker{font-family:'Nunito',sans-serif;font-weight:700;font-size:.92em;color:var(--brick);
   text-transform:uppercase;letter-spacing:.1em;margin:0}
-.cook__h{font-size:2.1em;margin-top:.35rem;color:var(--navy);letter-spacing:-.03em}
+.cook__h{font-size:2.1em;margin-top:.35rem;color:var(--ink);letter-spacing:-.03em}
 .cook__lead{color:var(--ink-2);max-width:46ch;font-size:1.05em}
 
 .cook__prog{margin-bottom:1.6rem}
-.cook__bar{height:8px;background:rgba(87,60,86,.12);margin-top:.6rem;border-radius:999px;overflow:hidden}
+.cook__bar{height:8px;background:rgba(34,26,21,.10);margin-top:.6rem;border-radius:999px;overflow:hidden}
 .cook__bar span{display:block;height:100%;border-radius:999px;
   background:linear-gradient(90deg,var(--rose),var(--brick))}
 
 /* The step itself: a big warm card, the largest thing on screen by far. */
-.cook__step{font-size:1.95em;line-height:1.34;margin:0;color:var(--navy);letter-spacing:-.02em;
+.cook__step{font-size:1.95em;line-height:1.34;margin:0;color:var(--ink);letter-spacing:-.02em;
   background:var(--surface);border:1px solid var(--rule);border-radius:26px;
-  padding:1.6rem 1.5rem;box-shadow:0 2px 4px rgba(30,20,30,.04), 0 22px 50px -22px rgba(180,71,34,.4)}
+  padding:1.6rem 1.5rem;box-shadow:0 2px 4px rgba(34,26,21,.04), 0 22px 50px -22px rgba(180,71,34,.4)}
 .cook__why{font-size:1.06em;color:var(--ink-2);font-style:italic;
   border-left:3px solid var(--rose);padding-left:1rem;margin-top:1.2rem}
 
@@ -8138,7 +8156,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .cook__all button{display:flex;gap:.8rem;width:100%;text-align:left;background:none;border:none;
   color:var(--ink-2);padding:1rem .2rem;font-family:'Nunito',sans-serif;font-size:1em;
   cursor:pointer;min-height:54px}
-.cook__all li.on button{color:var(--navy);font-weight:600}
+.cook__all li.on button{color:var(--ink);font-weight:600}
 .cook__all button span{font-family:'Nunito',sans-serif;font-weight:700;color:var(--brick);flex:0 0 1.6rem}
 
 /* prep checklist */
@@ -8147,7 +8165,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   backdrop-filter:blur(6px)}
 .prepbar__in{max-width:720px;margin:0 auto;display:flex;align-items:center;gap:.9rem;
   background:var(--surface);border:1px solid var(--rule);border-radius:999px;
-  padding:.45rem .5rem .45rem 1.3rem;box-shadow:0 10px 30px -12px rgba(87,60,86,.45)}
+  padding:.45rem .5rem .45rem 1.3rem;box-shadow:0 10px 30px -12px rgba(34,26,21,.37)}
 .prepbar__count{flex:1;min-width:0;font-family:'Nunito',sans-serif;font-weight:600;
   font-size:.94em;color:var(--muted)}
 .prepbar .btn{flex:0 0 auto}
@@ -8161,7 +8179,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .prep__b--on{background:linear-gradient(180deg,#F1FAF4,#fff 55%);border-color:rgba(47,107,84,.45);
   color:var(--good)}
 .prep__b em{color:var(--muted);font-size:.86em;font-style:normal}
-.prep__tick{flex:0 0 32px;height:32px;border:2px solid var(--rule-2);border-radius:50%;
+.prep__tick{flex:0 0 32px;height:32px;border:2px solid var(--rule-input);border-radius:50%;
   display:flex;align-items:center;justify-content:center;font-family:'Nunito',sans-serif;font-weight:800}
 .prep__b--on .prep__tick{background:var(--good);border-color:var(--good);color:#fff}
 
@@ -8190,7 +8208,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .ctimer__ctl button:hover{border-color:var(--brick);color:var(--brick)}
 .ctimer__del{color:var(--brick)!important}
 .ctimer__clock{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.25em;
-  font-variant-numeric:tabular-nums;color:var(--navy)}
+  font-variant-numeric:tabular-nums;color:var(--ink)}
 .ctimer--done .ctimer__clock{color:var(--brick)}
 .ctimer__lab{font-size:.86em;color:var(--muted)}
 
@@ -8215,18 +8233,18 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .cbubble:hover{transform:translateY(-2px)}
 .cbubble:active{transform:scale(.95)}
 .cbubble__av{display:flex;background:#fff;border-radius:50%;padding:3px}
-.cbubble__av .mise-av{color:var(--navy)}
+.cbubble__av .mise-av{color:var(--ink)}
 
 .cask{position:fixed;left:.6rem;right:.6rem;bottom:.6rem;z-index:28;background:var(--surface);
   border:1px solid var(--rule);border-radius:26px;padding:1.1rem;
-  box-shadow:0 -8px 50px rgba(87,60,86,.28)}
+  box-shadow:0 -8px 50px rgba(34,26,21,.23)}
 @media(min-width:720px){.cask{left:auto;width:450px}}
 .cask__hd{display:flex;align-items:center;gap:.75rem}
-.cask__hd strong{display:block;font-family:'Nunito',sans-serif;font-size:1.08em;color:var(--navy)}
+.cask__hd strong{display:block;font-family:'Nunito',sans-serif;font-size:1.08em;color:var(--ink)}
 .cask__hd span{font-size:.86em;color:var(--muted)}
 .cask__hd > div{flex:1;min-width:0}
 .cask__plate{display:flex;background:var(--sunk);border-radius:50%;padding:4px;flex:0 0 auto}
-.cask__plate .mise-av{color:var(--navy)}
+.cask__plate .mise-av{color:var(--ink)}
 /* A button's default vertical alignment leaves the label sitting slightly off
    centre once a min-height is applied — flex centring puts it dead centre. */
 .cask__x{min-height:44px;padding:0 1.1rem;background:var(--sunk);border:1px solid var(--rule);
@@ -8244,7 +8262,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .cook__done-badge{width:118px;height:118px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;background:linear-gradient(150deg,#FBEAE8,#fff);
   border:1px solid var(--rule);box-shadow:0 18px 44px -18px rgba(180,71,34,.55);margin-bottom:.4rem}
-.cook__done-badge .mise-av{color:var(--navy)}
+.cook__done-badge .mise-av{color:var(--ink)}
 .cook__stats{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:1.1rem}
 .cook__stat{background:var(--surface);border:1px solid var(--rule);border-radius:16px;
   padding:.7rem 1.1rem;min-width:96px}
@@ -8406,7 +8424,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 @media(min-width:760px){.sheet{inset:auto 1rem 1rem auto;width:470px;max-height:78vh;
   border-radius:26px}}
 .sheet__hdr{display:flex;justify-content:space-between;align-items:center;gap:1rem;
-  padding:.9rem 1.1rem;background:var(--indigo);color:#F4F1F8;
+  padding:.9rem 1.1rem;background:var(--night);color:#F4F1F8;
   border-radius:24px 24px 0 0}
 @media(min-width:760px){.sheet__hdr{border-radius:22px 22px 0 0}}
 .sheet__name{font-family:'Nunito',sans-serif;font-weight:800;font-size:1.2em}
@@ -8457,7 +8475,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    progress is modelled rather than measured. */
 .lbar{margin:1rem 0 .2rem}
 .lbar__track{height:8px;border-radius:999px;overflow:hidden;
-  background:rgba(87,60,86,.12)}
+  background:rgba(34,26,21,.10)}
 .lbar__fill{height:100%;border-radius:999px;
   background:linear-gradient(90deg,var(--rose),var(--brick));
   /* Eased in CSS as well as in the width value: the width updates once a
@@ -8480,7 +8498,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    — there's no progress to report on a single POST, so it travels rather than
    fills. */
 .topbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:30;overflow:hidden;
-  background:rgba(87,60,86,.10)}
+  background:rgba(34,26,21,.08)}
 .topbar__run{position:absolute;inset:0;display:block;
   background:linear-gradient(90deg,transparent,var(--brick),var(--rose),transparent);
   animation:topRun 1.15s ease-in-out infinite}
