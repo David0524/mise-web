@@ -7,6 +7,10 @@ import { query } from "@/lib/db";
    product. Reuses a stored Stripe customer id across attempts so a person who
    abandons checkout and comes back isn't a brand-new customer every time. */
 export async function POST() {
+  /* Every path returns JSON: a Stripe or database throw used to escape as a
+     500 with an empty body, and the page showed the person a raw
+     "Unexpected end of JSON input". */
+  try {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
@@ -29,4 +33,11 @@ export async function POST() {
   });
 
   return NextResponse.json({ url: session.url });
+  } catch (e) {
+    console.error("checkout failed:", e?.type || e?.code || "", e?.message || e);
+    return NextResponse.json(
+      { error: "Billing is unavailable right now. Try again in a moment." },
+      { status: 502 }
+    );
+  }
 }

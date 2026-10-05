@@ -20,21 +20,35 @@ export async function POST(req) {
     return NextResponse.json({ error: "bad signature" }, { status: 400 });
   }
 
+  /* Stripe does not deliver events in order, and a retried event can arrive
+     after newer ones. Every write below is therefore conditional on this
+     event being at least as new as the last one applied to that row —
+     otherwise a late "active" resurrects a subscription that was cancelled
+     after it. */
+  const created = Number(event.created) || 0;
+  const NEWER = `coalesce(subscriptions.stripe_event_created, 0) <= excluded.stripe_event_created`;
+
   try {
     switch (event.type) {
-      // Fired once, right after successful checkout. Its only job here is
-      // linking the Stripe customer to our user id for the first time.
+      // Fired once, right after successful checkout. Links the Stripe customer
+      // to our user id AND grants access: signup always pre-creates a 'none'
+      // row, so the old insert-only 'active' never applied and a paying
+      // customer bounced off the paywall until a subscription event happened
+      // to arrive.
       case "checkout.session.completed": {
         const session = event.data.object;
         const userId = session.client_reference_id;
         if (userId && session.customer) {
           await query(
-            `insert into subscriptions (user_id, status, stripe_customer_id, stripe_subscription_id)
-             values ($1, 'active', $2, $3)
+            `insert into subscriptions (user_id, status, stripe_customer_id, stripe_subscription_id, stripe_event_created)
+             values ($1, 'active', $2, $3, $4)
              on conflict (user_id) do update set
+               status = case when ${NEWER} then 'active' else subscriptions.status end,
                stripe_customer_id = excluded.stripe_customer_id,
-               stripe_subscription_id = excluded.stripe_subscription_id`,
-            [userId, session.customer, session.subscription]
+               stripe_subscription_id = excluded.stripe_subscription_id,
+               stripe_event_created = greatest(coalesce(subscriptions.stripe_event_created, 0), excluded.stripe_event_created),
+               updated_at = now()`,
+            [userId, session.customer, session.subscription, created]
           );
         }
         break;
@@ -52,25 +66,35 @@ export async function POST(req) {
           : null;
 
         if (userId) {
+          /* Also skipped: an event about a DIFFERENT subscription than the one
+             on file, unless it's the newer one. Without this, the deletion of
+             someone's old subscription could cancel the one they just bought. */
           await query(
-            `insert into subscriptions (user_id, status, stripe_customer_id, stripe_subscription_id, current_period_end)
-             values ($1, $2, $3, $4, $5)
+            `insert into subscriptions (user_id, status, stripe_customer_id, stripe_subscription_id, current_period_end, stripe_event_created)
+             values ($1, $2, $3, $4, $5, $6)
              on conflict (user_id) do update set
                status = excluded.status,
                stripe_customer_id = excluded.stripe_customer_id,
                stripe_subscription_id = excluded.stripe_subscription_id,
                current_period_end = excluded.current_period_end,
-               updated_at = now()`,
-            [userId, sub.status, sub.customer, sub.id, periodEnd]
+               stripe_event_created = excluded.stripe_event_created,
+               updated_at = now()
+             where ${NEWER}
+               and not (excluded.status in ('canceled', 'incomplete_expired')
+                        and subscriptions.stripe_subscription_id is not null
+                        and subscriptions.stripe_subscription_id <> excluded.stripe_subscription_id)`,
+            [userId, sub.status, sub.customer, sub.id, periodEnd, created]
           );
         } else {
           // Metadata can be missing if the subscription was edited in the
           // Stripe dashboard rather than created through our checkout flow.
           // Fall back to matching by customer id instead of silently dropping it.
           await query(
-            `update subscriptions set status = $2, current_period_end = $3, updated_at = now()
-             where stripe_customer_id = $1`,
-            [sub.customer, sub.status, periodEnd]
+            `update subscriptions set status = $2, current_period_end = $3, stripe_event_created = $4, updated_at = now()
+             where stripe_customer_id = $1
+               and coalesce(stripe_event_created, 0) <= $4
+               and (stripe_subscription_id is null or stripe_subscription_id = $5)`,
+            [sub.customer, sub.status, periodEnd, created, sub.id]
           );
         }
         break;
@@ -80,6 +104,13 @@ export async function POST(req) {
         break; // plenty of other event types exist; nothing else to do with them here
     }
   } catch (e) {
+    /* An event naming a user that doesn't exist (deleted account, or metadata
+       that isn't one of our ids) will fail identically on every retry. Returning
+       500 made Stripe retry it for days; acknowledge it and log it instead. */
+    if (e?.code === "23503" || e?.code === "22P02") {
+      console.error("Webhook references an unknown user; acknowledged without applying", event.type, event.id);
+      return NextResponse.json({ received: true, applied: false });
+    }
     console.error("Webhook handling failed", event.type, e);
     // Return 500 so Stripe retries — better to process an event twice
     // (each write here is idempotent) than to silently drop one.

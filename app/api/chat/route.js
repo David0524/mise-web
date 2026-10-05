@@ -17,7 +17,17 @@ import * as openai from "@/lib/providers/openai";
    completely unaware which one is actually answering. Set AI_PROVIDER=gemini
    to use Google's free tier; leave it unset (or "anthropic") to use Claude. */
 const PROVIDERS = { anthropic, gemini, openai };
-const serverProvider = PROVIDERS[process.env.AI_PROVIDER] || PROVIDERS.anthropic;
+const serverProvider =
+  (Object.hasOwn(PROVIDERS, process.env.AI_PROVIDER || "") && PROVIDERS[process.env.AI_PROVIDER]) || PROVIDERS.anthropic;
+
+/* Request limits. The client's largest real call (a recipe rewrite carrying the
+   current recipe and the shopping list) is well under a tenth of these; they
+   exist so the route can't be used as an unbounded, server-billed general
+   purpose model by anyone with a session. */
+const MAX_MESSAGES = 12;
+const MAX_MESSAGE_CHARS = 60_000;
+const MAX_TOTAL_CHARS = 120_000;
+const MAX_CONTEXT_CHARS = 16_000;
 
 /* Must be >= the provider's own total time budget (BUDGET_MS in
    lib/providers/gemini.js), or Vercel kills the function mid-rotation and the
@@ -69,6 +79,22 @@ export async function POST(req) {
     console.error("chat reject: no messages (400)");
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
+  /* Shape-check before anything is forwarded. Malformed messages used to go
+     upstream, fail there, and come back as a 502 "network" error — a client
+     bug reported as an outage. */
+  const shapeOk = messages.length <= MAX_MESSAGES && messages.every(
+    (m) => m && (m.role === "user" || m.role === "assistant") &&
+      typeof m.content === "string" && m.content.length <= MAX_MESSAGE_CHARS
+  );
+  const total = shapeOk ? messages.reduce((n, m) => n + m.content.length, 0) : Infinity;
+  if (!shapeOk || total > MAX_TOTAL_CHARS) {
+    console.error(`chat reject: malformed or oversized messages (400)`);
+    return NextResponse.json({ error: "bad_messages" }, { status: 400 });
+  }
+  if (sessionContext != null && (typeof sessionContext !== "string" || sessionContext.length > MAX_CONTEXT_CHARS)) {
+    console.error("chat reject: oversized sessionContext (400)");
+    return NextResponse.json({ error: "bad_context" }, { status: 400 });
+  }
 
   // Restrictions, allergies, equipment, spice ceiling — this is what makes a
   // response actually about the person asking rather than a generic answer.
@@ -102,7 +128,9 @@ export async function POST(req) {
   /* If the person brought their own key, use it — their account pays, and the
      key exists only for the life of this request. It is never written to the
      database, never logged, and not retained after the call returns. */
-  const byok = userKey && BYOK_PROVIDERS[userProvider];
+  // Own properties only — "constructor" et al. are on every object.
+  const byok = typeof userKey === "string" && userKey && typeof userProvider === "string" &&
+    Object.hasOwn(BYOK_PROVIDERS, userProvider) && BYOK_PROVIDERS[userProvider];
   const active = byok || serverProvider;
 
   /* The provider's own time budget starts when callModel is invoked, which

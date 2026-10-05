@@ -44,3 +44,38 @@ create table if not exists histories (
 
 create index if not exists idx_subscriptions_stripe_customer on subscriptions(stripe_customer_id);
 create index if not exists idx_subscriptions_stripe_sub on subscriptions(stripe_subscription_id);
+
+-- ---------------------------------------------------------------------------
+-- Additions. Everything below is safe to re-run against an existing database:
+--   psql "$DATABASE_URL" -f prisma/schema.sql
+-- ---------------------------------------------------------------------------
+
+-- The recipe book (client key mise:recipes-v1). The client has written this key
+-- since the recipe book shipped, but the server never had a table for it, so
+-- every save was rejected with 400 and swallowed.
+create table if not exists recipe_books (
+  user_id     uuid primary key references users(id) on delete cascade,
+  data        jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now()
+);
+
+-- The week in progress (client key mise:week-v1): picks, day plan, shopping
+-- list with its ticks, recipes. Previously React state only, so a refresh, an
+-- expired session or the Back button threw the whole week away.
+create table if not exists current_weeks (
+  user_id     uuid primary key references users(id) on delete cascade,
+  data        jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now()
+);
+
+-- Stripe does not deliver events in order. The webhook only applies an event
+-- whose `created` is at least as new as the last one it applied.
+alter table subscriptions add column if not exists stripe_event_created bigint;
+
+-- Logout revocation. A JWT is valid until it expires; logging out used to only
+-- delete the cookie, so a copied token kept working for 30 days.
+create table if not exists revoked_sessions (
+  jti         text primary key,
+  expires_at  timestamptz not null
+);
+create index if not exists idx_revoked_sessions_expires on revoked_sessions(expires_at);

@@ -11,7 +11,9 @@ export default function PricingPage() {
     setErr("");
     try {
       const res = await fetch("/api/stripe/checkout", { method: "POST" });
-      const data = await res.json();
+      // Never parse blindly — an error response may have an empty or non-JSON body.
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) { window.location.href = "/login"; return; }
       if (!res.ok || !data.url) throw new Error(data.error || "Couldn't start checkout.");
       window.location.href = data.url; // hands off to Stripe Checkout
     } catch (e) {
