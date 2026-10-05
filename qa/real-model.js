@@ -19,7 +19,10 @@ const OUT = path.join(__dirname, "out");
 fs.mkdirSync(OUT, { recursive: true });
 
 /* ---------------------------------------------------------------- checks */
-const words = (re) => (s) => !re.test(String(s || ""));
+/* "Vegan feta", "dairy-free butter", "egg replacer" are the substitutes we want,
+   not violations — strip qualified phrases before looking for the real thing. */
+const SUBSTITUTE = /\b(vegan|plant[- ]based|dairy[- ]free|non[- ]dairy|egg[- ]free|nut[- ]free|meatless|vegetarian|faux|mock|imitation|oat|soy|coconut)\s+(\w+\s+)?\w+|\b\w+\s+(replacer|substitute|alternative)\b|\bno\s+\w+/gi;
+const words = (re) => (s) => !re.test(String(s || "").replace(SUBSTITUTE, " "));
 const MEAT = /\b(chicken|beef|pork|bacon|lamb|turkey|ham|sausage|chorizo|prosciutto|anchov|fish sauce|shrimp|prawn|salmon|tuna|cod|gelatin)\w*/i;
 const DAIRY = /\b(milk|butter|cheese|parmesan|cream|yogh?urt|ghee|feta|ricotta|mozzarella|labneh|cr[eè]me)\w*/i;
 const EGG = /\beggs?\b|\bmayo/i;
