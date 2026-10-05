@@ -1,19 +1,30 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { hashPassword, createSession } from "@/lib/auth";
+import {
+  hashPassword, createSession, readCredentials, passwordBytes, PASSWORD_MAX_BYTES, EMAIL_RE,
+} from "@/lib/auth";
 
 export async function POST(req) {
   try {
-  const { email, password } = await req.json().catch(() => ({}));
+  const { email, password } = readCredentials(await req.json().catch(() => ({})));
 
-  if (!email || !password || password.length < 8) {
+  if (!email || !password || password.length < 8 || !password.trim()) {
     return NextResponse.json(
       { error: "Enter an email and a password of at least 8 characters." },
       { status: 400 }
     );
   }
+  if (email.length > 254 || !EMAIL_RE.test(email)) {
+    return NextResponse.json({ error: "That doesn't look like an email address." }, { status: 400 });
+  }
+  if (passwordBytes(password) > PASSWORD_MAX_BYTES) {
+    return NextResponse.json(
+      { error: "That password is too long — keep it under 72 characters (fewer if it uses emoji)." },
+      { status: 400 }
+    );
+  }
 
-  const existing = await query("select id from users where email = $1", [email.toLowerCase()]);
+  const existing = await query("select id from users where email = $1", [email]);
   if (existing.rows.length) {
     return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
   }
@@ -21,7 +32,7 @@ export async function POST(req) {
   const hash = await hashPassword(password);
   const { rows } = await query(
     "insert into users (email, password_hash) values ($1, $2) returning id",
-    [email.toLowerCase(), hash]
+    [email, hash]
   );
   const userId = rows[0].id;
 
@@ -39,6 +50,12 @@ export async function POST(req) {
        EMPTY body — and the client called res.json() on it and died with
        "Unexpected end of JSON input", hiding the real cause completely.
        A route that the client parses as JSON must return JSON on every path. */
+    // Two signups for the same email at once both pass the existence check
+    // above; the unique constraint catches the loser. That is a duplicate, not
+    // a server fault.
+    if (e?.code === "23505") {
+      return NextResponse.json({ error: "An account with that email already exists." }, { status: 409 });
+    }
     console.error("auth route failure:", e?.code || "", e?.message || e);
     const config = e?.code === "NO_DATABASE_URL" || e?.code === "ECONNREFUSED";
     return NextResponse.json(

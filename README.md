@@ -77,6 +77,10 @@ is somewhere else — auth, storage, a specific prompt.
    ```
    psql "$DATABASE_URL" -f prisma/schema.sql
    ```
+   The file is safe to re-run, and **must be re-run on an existing database
+   after pulling changes to it** — later additions (the recipe book, the
+   week-in-progress table, webhook event ordering, logout revocation) are
+   appended as `create ... if not exists` / `add column if not exists`.
 
 2. **An AI key.** Either a free Gemini key from `aistudio.google.com/apikey`
    (comma-separate several as `GEMINI_API_KEYS` if you have them — they

@@ -507,7 +507,33 @@ const RECIPE_KEY = "mise:recipes-v1";
    of JSON, so 200 is generous while staying an order of magnitude clear. */
 const RECIPE_BOOK_MAX = 200;
 
-const recipeKeyFor = (title) => (title || "").toLowerCase().replace(/\s+/g, " ").trim();
+const recipeKeyFor = (title) => String(title || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/* A profile read back from storage is clamped to what the screens can render:
+   SPICE[profile.spice].label and ADVENTURE[profile.adventure - 1].label throw
+   on anything out of range, and the steppers assume small positive integers. */
+function sanitizeProfile(p, fallback) {
+  const int = (v, lo, hi, d) => (Number.isFinite(Number(v)) ? Math.max(lo, Math.min(hi, Math.round(Number(v)))) : d);
+  const strs = (v, d) => (Array.isArray(v) ? v.filter((x) => typeof x === "string") : d);
+  const headcount = {};
+  if (p.headcount && typeof p.headcount === "object") {
+    for (const d of DAYS) if (p.headcount[d] != null) headcount[d] = int(p.headcount[d], 1, 12, fallback.people);
+  }
+  return {
+    ...p,
+    people: int(p.people, 1, 12, fallback.people),
+    spice: int(p.spice, 0, 4, fallback.spice),
+    adventure: int(p.adventure, 1, 5, fallback.adventure),
+    time: int(p.time, 5, 240, fallback.time),
+    nights: orderDays(strs(p.nights, fallback.nights)),
+    restrictions: strs(p.restrictions, fallback.restrictions),
+    equipment: strs(p.equipment, fallback.equipment),
+    restrictionsNote: str(p.restrictionsNote),
+    dislikes: str(p.dislikes),
+    consistent: p.consistent !== false,
+    headcount,
+  };
+}
 
 /* --------------------------------------------------------------- model call */
 
@@ -607,6 +633,146 @@ function cleanDish(d) {
   return { ...d, title: stripFits(d.title), blurb: stripFits(d.blurb), why: stripFits(d.why) };
 }
 
+/* ---------------------------------------------------------- shape repair
+
+   Everything the model returns is rendered by components that assume a shape:
+   steps is an array of {do, why}, items is an array of strings, titles are
+   strings. The prompts ask for exactly that, and models mostly comply — but
+   "steps" written as one paragraph, "missing": "lemons" instead of
+   ["lemons"], or a null in a list each threw during render, and with no error
+   boundary a single bad field took the entire app down. Worse, the recipe was
+   saved to history BEFORE it rendered, so "Cook again" on that dish crashed
+   the app on every later visit too.
+
+   So every model answer is coerced into the shape the UI expects at the point
+   it enters state, and anything read back from storage goes through the same
+   repair, which also heals records saved before this existed. */
+const str = (v) => (v == null ? "" : typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
+const listOf = (v, sentences = false) => {
+  if (Array.isArray(v)) return v;
+  if (typeof v === "string") {
+    const t = v.trim();
+    if (!t || /^(none|n\/a|nothing|empty|-)$/i.test(t)) return [];
+    // "1. Heat the pan. 2. Add oil." or one item per line or comma-separated.
+    // Steps are prose, so without lines or numbers they split on sentences, not commas.
+    const parts = t.includes("\n") ? t.split(/\n+/)
+      : /(^|\s)\d+[.)]\s/.test(t) ? t.split(/(?:^|\s)\d+[.)]\s+/)
+      : sentences ? t.split(/(?<=[.!?])\s+/) : t.split(/\s*[,;]\s*/);
+    return parts.map((x) => x.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, "").trim()).filter(Boolean);
+  }
+  return [];
+};
+
+function normalizeRecipe(r) {
+  if (!r || typeof r !== "object" || Array.isArray(r)) return null;
+  const components = (Array.isArray(r.components) ? r.components : r.components ? [r.components] : [])
+    .filter((c) => c && typeof c === "object")
+    .map((c) => ({ ...c, name: str(c.name), items: listOf(c.items).map(str).filter(Boolean) }));
+  const steps = listOf(r.steps, true)
+    .map((st) => (typeof st === "string" || typeof st === "number" ? { do: str(st), why: "" }
+      : st && typeof st === "object" ? { ...st, do: str(st.do), why: str(st.why) } : null))
+    .filter((st) => st && st.do);
+  return {
+    ...r,
+    title: str(r.title),
+    servings: str(r.servings),
+    time: str(r.time),
+    technique: str(r.technique),
+    seasoning: str(r.seasoning),
+    doneness: str(r.doneness),
+    assembly: str(r.assembly),
+    missing: listOf(r.missing).map(str).filter(Boolean),
+    components,
+    steps,
+  };
+}
+
+/* A dish card. Null entries and title-less dishes are dropped rather than
+   rendered as blank cards; a numeric title becomes text. */
+function normalizeDish(d) {
+  if (!d || typeof d !== "object") return null;
+  const title = str(d.title).trim();
+  if (!title) return null;
+  const spice = Math.max(0, Math.min(4, Math.round(Number(d.spice) || 0)));
+  const minutes = Number(d.minutes) > 0 ? Math.round(Number(d.minutes)) : null;
+  return cleanDish({ ...d, title, blurb: str(d.blurb), why: str(d.why), spice, minutes });
+}
+
+function normalizeItem(i) {
+  if (!i || typeof i !== "object") return null;
+  const item = str(i.item).trim();
+  if (!item) return null;
+  return { ...i, item, qty: str(i.qty), jobs: str(i.jobs) };
+}
+
+/* Photos are data URLs and the only thing that makes the saved blobs big. Drop
+   them oldest-first until the blob fits — the server applies the same budgets,
+   but trimming here keeps the request itself under the platform's body limit.
+   `list` is newest-LAST. */
+function fitPhotos(list, budget, photosOf, strip) {
+  let out = list;
+  for (let i = 0; i < out.length && JSON.stringify(out).length > budget; i++) {
+    if (photosOf(out[i])) out = out.map((x, n) => (n === i ? strip(x) : x));
+  }
+  return out;
+}
+
+/* History's version: drops one DISH's photos at a time, oldest week first, so a
+   single photo-heavy week loses its oldest pictures rather than all of them.
+   `weeks` is newest-FIRST, as stored. */
+function fitHistoryPhotos(weeks, budget) {
+  let out = weeks;
+  const size = () => JSON.stringify(out).length;
+  if (size() <= budget) return out;
+  for (let wi = out.length - 1; wi >= 0; wi--) {
+    const dishes = out[wi].dishes || [];
+    for (let di = 0; di < dishes.length; di++) {
+      if (!out[wi].dishes[di]?.photos?.length) continue;
+      out = out.map((w, n) => (n !== wi ? w : {
+        ...w, dishes: w.dishes.map((d, m) => (m === di ? (({ photos, ...rest }) => rest)(d) : d)),
+      }));
+      if (size() <= budget) return out;
+    }
+  }
+  return out;
+}
+
+/* History and the recipe book come back from storage; repair what's inside. */
+function normalizeHistory(h) {
+  return (Array.isArray(h) ? h : [])
+    .filter((w) => w && typeof w === "object" && w.id)
+    .map((w) => ({
+      ...w,
+      dishes: (Array.isArray(w.dishes) ? w.dishes : [])
+        .filter((d) => d && typeof d === "object")
+        .map((d) => ({ ...d, title: str(d.title), blurb: str(d.blurb),
+          ...(d.recipe ? { recipe: normalizeRecipe(d.recipe) } : {}) })),
+    }));
+}
+
+function normalizeBook(b) {
+  const out = {};
+  if (!b || typeof b !== "object" || Array.isArray(b)) return out;
+  for (const [k, r] of Object.entries(b)) {
+    const n = normalizeRecipe(r);
+    if (n) out[k] = n;
+  }
+  return out;
+}
+
+/* What a person reads when something fails. Messages written for people pass
+   through; engine internals ("Failed to fetch", "Cannot read properties of
+   null", a JSON parser's complaint) don't belong on screen. */
+function friendlyError(e) {
+  const m = e?.message || "";
+  if (!m || e instanceof TypeError || e instanceof SyntaxError || /JSON|properties of|is not a function|Failed to fetch|NetworkError|Load failed/i.test(m)) {
+    return /Failed to fetch|NetworkError|Load failed/i.test(m)
+      ? "Couldn't reach the kitchen — check your connection and try again."
+      : "That answer came back in a shape I couldn't use. Give it another go.";
+  }
+  return m;
+}
+
 function parseJSON(text, onRepair) {
   let t = text.replace(/```json/gi, "").replace(/```/g, "").trim();
   const s = t.search(/[[{]/);
@@ -690,8 +856,17 @@ function shrinkImage(file, maxEdge = 900, quality = 0.72) {
    checkable things. Quantity words are stripped so matching works on the noun. */
 function parseLeftovers(text) {
   const PREFIX = /^(some|a|an|the|about|half of|half|leftover|leftovers|couple of|couple|few|bit of|bits of|piece of|pieces of|handful of|rest of|remaining|two|three|four|five|\d+)\s+/i;
-  return (text || "")
-    .split(/[,\n;]+|\band\b|\bplus\b/i)
+  /* "and" separates items only when both sides are phrases in their own right
+     ("half a cabbage and some cold rice"). A single word on either side means
+     it's one thing — "mac and cheese", "salt and pepper chicken" — which used
+     to become separate items the ideas were then flagged for not using. */
+  const splitAnd = (chunk) => {
+    const parts = chunk.split(/\band\b|\bplus\b/i).map((x) => x.trim()).filter(Boolean);
+    return parts.length > 1 && parts.every((x) => x.split(/\s+/).length >= 2) ? parts : [chunk];
+  };
+  return String(text || "")
+    .split(/[,\n;]+/)
+    .flatMap(splitAnd)
     .map((x) => {
       let t = x.trim().replace(/[.]+$/, "").trim();
       // Strip stacked quantity words: "half a cabbage" -> "half a" -> "cabbage"
@@ -1515,16 +1690,80 @@ async function apiStorageGet(key) {
   if (!res.ok) throw new Error("storage unavailable");
   return res.json();
 }
+/* Throws on any failure. It used to return null on a rejected write, and
+   most callers didn't look — so a 401 (signed out), 400 or 413 was reported to
+   the person as "saved". The error carries the status so callers can say
+   which kind of failure it was. */
 async function apiStorageSet(key, value) {
   const res = await fetch("/api/storage", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ key, value }),
   });
-  if (!res.ok) return null;
-  return res.json();
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const e = new Error(
+      res.status === 401 ? "You've been signed out, so your changes aren't being saved. Sign in again to keep them."
+        : res.status === 413 ? "That's too much to save in one go."
+        : "Couldn't save your changes just now."
+    );
+    e.status = res.status;
+    throw e;
+  }
+  return data;
 }
 
-export default function App() {
+/* The week in progress — picks, days, shopping list and ticks, recipes. */
+const WEEK_KEY = "mise:week-v1";
+
+/* A render error anywhere used to unmount the whole tree and leave Next's bare
+   "Application error: a client-side exception has occurred". The data that
+   caused it was usually already saved, so a reload hit the same wall. This
+   catches it, says what happened in plain words, and offers a way back that
+   doesn't depend on whatever broke. */
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error, info) {
+    console.error("Mise render failure:", error, info?.componentStack);
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="app">
+        <style dangerouslySetInnerHTML={{ __html: CSS }} />
+        <main className="main"><div className="stack">
+          <section className="card card--big" role="alert">
+            <h2>Something on this screen didn&apos;t load</h2>
+            <p className="lead">Your week and your saved dishes are fine. Going back to the start usually sorts it.</p>
+            <div className="row">
+              <Btn onClick={() => { this.setState({ failed: false }); this.props.onReset?.(); }}>Back to the start</Btn>
+              <Btn variant="ghost" onClick={() => window.location.reload()}>Reload</Btn>
+            </div>
+          </section>
+        </div></main>
+      </div>
+    );
+  }
+}
+
+export default function MiseApp() {
+  /* Remounting App via the key is the reset: fresh state, a fresh load from
+     storage, and the default screen — rather than re-rendering the exact state
+     that just threw. */
+  const [epoch, setEpoch] = useState(0);
+  return (
+    <ErrorBoundary onReset={() => setEpoch((n) => n + 1)}>
+      <App key={epoch} />
+    </ErrorBoundary>
+  );
+}
+
+function App() {
   const [loaded, setLoaded] = useState(false);
   const [view, setView] = useState("start");
   const [step, setStep] = useState(0);
@@ -1633,6 +1872,11 @@ export default function App() {
      silently — so surface it rather than letting people think it saved. */
   const [storageOk, setStorageOk] = useState(null);
   const historyRef = useRef([]);
+  /* Bumped by startNewWeek. A model call captures it before awaiting and
+     drops its answer if it changed — see startNewWeek. */
+  const weekGenRef = useRef(0);
+  /* Same idea for list revisions: only the most recent one may apply. */
+  const reviseSeqRef = useRef(0);
 
   /* The recipe book: normalised title -> recipe. See RECIPE_KEY above for why
      this exists separately from history. Held in a ref as well as state
@@ -1658,7 +1902,19 @@ export default function App() {
     }
     recipeBookRef.current = next;
     setRecipeBook(next);
-    try { await apiStorageSet(RECIPE_KEY, JSON.stringify(next)); } catch (_) {}
+    try {
+      const res = await apiStorageSet(RECIPE_KEY, JSON.stringify(next));
+      /* The server merges with what other tabs saved and sends the result back.
+         Adopt it only if nothing changed locally while the request was out. */
+      if (res?.value && recipeBookRef.current === next) {
+        const merged = normalizeBook(JSON.parse(res.value));
+        recipeBookRef.current = merged;
+        setRecipeBook(merged);
+      }
+    } catch (e) {
+      noteSaveFailure(e);
+    }
+    // eslint-disable-next-line
   }, []);
 
   const recallRecipe = useCallback((title) => recipeBookRef.current[recipeKeyFor(title)] || null, []);
@@ -1786,7 +2042,7 @@ export default function App() {
      retry button, which is right for failures that would fail identically
      again (a content block, a malformed request). */
   const fail = useCallback((e, again) => {
-    setErr(e?.message || "Something went wrong. Give it another go in a moment.");
+    setErr(friendlyError(e) || "Something went wrong. Give it another go in a moment.");
     setRetry(again ? () => again : null);
   }, []);
 
@@ -1802,8 +2058,8 @@ export default function App() {
         const r = await apiStorageGet(STORE_KEY);
         if (r?.value) {
           const d = JSON.parse(r.value);
-          if (d.profile) setProfile((p) => ({ ...p, ...d.profile, nights: orderDays(d.profile.nights ?? p.nights) }));
-          if (d.favorites) setFavorites(d.favorites);
+          if (d.profile) setProfile((p) => sanitizeProfile({ ...p, ...d.profile, nights: orderDays(d.profile.nights ?? p.nights) }, p));
+          if (Array.isArray(d.favorites)) setFavorites(d.favorites.filter((f) => f && typeof f === "object"));
           if (d.profile) setSavedAt(d.savedAt || null);
           // Older saves predate this flag; a stored profile with real cooking
           // nights means they got through setup, so don't re-onboard them.
@@ -1816,7 +2072,7 @@ export default function App() {
       try {
         const h = await apiStorageGet(HISTORY_KEY);
         if (h?.value) {
-          const parsed = JSON.parse(h.value);
+          const parsed = normalizeHistory(JSON.parse(h.value));
           setHistory(parsed);
           historyRef.current = parsed;
         }
@@ -1825,7 +2081,7 @@ export default function App() {
       }
       try {
         const r = await apiStorageGet(RECIPE_KEY);
-        const book = r?.value ? JSON.parse(r.value) : {};
+        const book = normalizeBook(r?.value ? JSON.parse(r.value) : {});
         /* Backfill from history on first run after this shipped: anyone with
            existing weeks has recipes sitting in the old nested location, and
            they should keep working rather than being regenerated once more. */
@@ -1843,10 +2099,23 @@ export default function App() {
         }
       } catch (_) {
         /* no book yet */
+      }
+      /* The week in progress. Restored before `loaded` flips, because the
+         snapshot effect below starts saving the moment it does — restoring
+         after would race an empty snapshot over the real one. */
+      try {
+        const w = await apiStorageGet(WEEK_KEY);
+        const d = w?.value ? JSON.parse(w.value) : null;
+        if (d && typeof d === "object" && (d.weekId || (Array.isArray(d.candidates) && d.candidates.length))) {
+          restoreWeek(d);
+        }
+      } catch (_) {
+        /* nothing in progress */
       } finally {
         setLoaded(true);
       }
     })();
+    // eslint-disable-next-line
   }, []);
 
   /* Upsert this week's snapshot and write it immediately — unlike the profile,
@@ -1876,19 +2145,46 @@ export default function App() {
             : { ...w, dishes: (w.dishes || []).map(({ photos, ...d }) => d) }
         );
 
-      historyRef.current = trimmed;
-      setHistory(trimmed);
-      try {
-        const res = await apiStorageSet(HISTORY_KEY, JSON.stringify(trimmed));
-        // A null return means the write was rejected; undefined means no storage
-        // API at all. Only an actual result counts as a confirmed save.
-        setStorageOk(res ? true : false);
-      } catch (_) {
-        setStorageOk(false);
-      }
+      await saveHistory(trimmed);
     },
+    // eslint-disable-next-line
     [weekId]
   );
+
+  /* The one way history is written. The server merges per week with whatever
+     other tabs and devices have saved (a plain overwrite let a second tab
+     delete the first tab's weeks) and returns the merged list, which is
+     adopted here unless the local copy has moved on since the request left. */
+  async function saveHistory(list) {
+    // Every writer goes through here, including ratings that add photos.
+    const next = fitHistoryPhotos(list, 3_000_000);
+    historyRef.current = next;
+    setHistory(next);
+    try {
+      const res = await apiStorageSet(HISTORY_KEY, JSON.stringify(next));
+      setStorageOk(true);
+      saveWarnedRef.current = false;
+      if (res?.value && historyRef.current === next) {
+        const merged = normalizeHistory(JSON.parse(res.value));
+        historyRef.current = merged;
+        setHistory(merged);
+      }
+    } catch (e) {
+      noteSaveFailure(e);
+    }
+  }
+
+  /* A failed save is said out loud once — not on every keystroke's autosave —
+     and the History screen keeps showing its warning until a save succeeds. */
+  const saveWarnedRef = useRef(false);
+  function noteSaveFailure(e) {
+    setStorageOk(false);
+    if (!saveWarnedRef.current) {
+      saveWarnedRef.current = true;
+      setErr(e?.message || "Couldn't save your changes just now.");
+      setRetry(null);
+    }
+  }
 
   useEffect(() => { historyRef.current = history; }, [history]);
 
@@ -1984,6 +2280,7 @@ export default function App() {
   /* Ask for a cooking order and actually apply it, rather than producing advice
      the person then has to hand-copy into the day dropdowns. */
   async function suggestOrder() {
+    const gen = weekGenRef.current;   // see startNewWeek
     if (chosen.length < 2) return;
     setBusy("Working out the best order");
     setErr("");
@@ -2020,6 +2317,7 @@ not the names:
 
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
 
       const next = {};
@@ -2034,7 +2332,7 @@ not the names:
       setMiseThread((t) => [
         ...t,
         { who: "me", text: "What order should I cook these?" },
-        { who: "mise", text: out.say || "" },
+        { who: "mise", text: str(out.say) },
       ]);
     } catch (e) {
       fail(e, () => suggestOrder());
@@ -2047,33 +2345,30 @@ not the names:
      only be captured live on the Cook page, so anything cooked away from the app
      — or rated a day later — had no way in at all. */
   function rateHistoryDish(weekId, dishIndex, patch) {
-    setHistory((hs) => {
-      const next = hs.map((w) =>
-        w.id !== weekId
-          ? w
-          : {
-              ...w,
-              dishes: (w.dishes || []).map((d, i) =>
-                i !== dishIndex
-                  ? d
-                  : {
-                      ...d,
-                      rating: patch.rating,
-                      missing: patch.missing,
-                      note: patch.note,
-                      photos: (patch.photos || []).slice(0, 3),
-                    }
-              ),
-            }
-      );
-      historyRef.current = next;
-      // Matches how archiveWeek persists — same key, same shape, so the port
-      // to mise-web rewrites this line along with the others.
-      try {
-        apiStorageSet(HISTORY_KEY, JSON.stringify(next));
-      } catch (_) {}
-      return next;
-    });
+    /* Computed from the ref and saved outside any state updater (updaters must
+       be pure), with updatedAt bumped so the server's per-week merge knows
+       this copy is the newer one. */
+    const hs = historyRef.current || [];
+    const next = hs.map((w) =>
+      w.id !== weekId
+        ? w
+        : {
+            ...w,
+            updatedAt: new Date().toISOString(),
+            dishes: (w.dishes || []).map((d, i) =>
+              i !== dishIndex
+                ? d
+                : {
+                    ...d,
+                    rating: patch.rating,
+                    missing: patch.missing,
+                    note: patch.note,
+                    photos: (patch.photos || []).slice(0, 3),
+                  }
+            ),
+          }
+    );
+    saveHistory(next);
   }
 
   /* Write a recipe into whichever archived dish it belongs to. Matches on title
@@ -2129,13 +2424,11 @@ not the names:
           },
         ];
       }
-      return touched ? { ...w, dishes } : w;
+      return touched ? { ...w, dishes, updatedAt: new Date().toISOString() } : w;
     });
     if (!touched) return;
 
-    historyRef.current = next;
-    setHistory(next);
-    apiStorageSet(HISTORY_KEY, JSON.stringify(next)).catch(() => {});
+    saveHistory(next);
   }
 
   /* Cook something from History again. It becomes a dish in the current week, so
@@ -2159,7 +2452,7 @@ not the names:
            reliable one — history's copy is written through merge paths that
            have dropped it before — but preferring the entry you tapped keeps
            a per-week variation intact if one exists. */
-        const known = dish.recipe || recallRecipe(dish.title);
+        const known = normalizeRecipe(dish.recipe) || normalizeRecipe(recallRecipe(dish.title));
         if (known) {
           setRecipes((r) => ({ ...r, [existing.id]: { ...known, basis: shoppingSignature } }));
         } else {
@@ -2185,7 +2478,7 @@ not the names:
     ]);
     setCookingId(id);
     setView("cook");
-    const known = dish.recipe || recallRecipe(dish.title);
+    const known = normalizeRecipe(dish.recipe) || normalizeRecipe(recallRecipe(dish.title));
     if (known) {
       setRecipes((r) => ({ ...r, [id]: { ...known, basis: shoppingSignature } }));
     } else {
@@ -2221,6 +2514,13 @@ not the names:
   /* Clear everything week-specific and start fresh. Profile, favourites and
      history are deliberately kept — those are the things that accumulate. */
   function startNewWeek() {
+    /* Anything still in flight belongs to the week being cleared. Bumping the
+       generation makes each of those calls drop its answer when it lands,
+       instead of writing last week's shopping list into this one. */
+    weekGenRef.current += 1;
+    setBusy("");
+    setBuilding({ ideas: false, shopping: false, leftovers: false, recipe: null });
+    setNegotiating(false);
     prefetchedRef.current = new Set();
     setPrefetching(0);
     setWeekId(null);
@@ -2247,6 +2547,104 @@ not the names:
     setView("thisweek");
   }
 
+  /* ------------------------------------------------- the week in progress
+
+     Everything about this week used to exist only in React state: a refresh,
+     an expired session (which redirects to sign-in), the Back button, or the
+     phone evicting the tab threw away the picks, the day plan, the shopping
+     list with everything already ticked off, and the recipes. It is now saved
+     as one snapshot, debounced, and restored on load. */
+  const WEEK_VIEWS = ["thisweek", "ideas", "week", "shop", "cook", "leftovers"];
+  function restoreWeek(d) {
+    const arr = (v) => (Array.isArray(v) ? v : []);
+    const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
+    const cands = arr(d.candidates)
+      .map((c) => {
+        const n = normalizeDish(c);
+        return n && { ...n, id: str(c.id) || uid(), reaction: c.reaction ?? null, note: str(c.note) };
+      })
+      .filter(Boolean);
+    const recs = {};
+    for (const [id, r] of Object.entries(obj(d.recipes))) {
+      const n = normalizeRecipe(r);
+      if (n) recs[id] = n;
+    }
+    const lrecs = {};
+    for (const [id, r] of Object.entries(obj(d.leftoverRecipes))) {
+      const n = normalizeRecipe(r);
+      if (n) lrecs[id] = n;
+    }
+    setWeekId(d.weekId || null);
+    setWeekSeed(d.weekSeed && Array.isArray(d.weekSeed.formats) ? d.weekSeed : null);
+    setCandidates(cands);
+    setEcosystem(d.ecosystem && typeof d.ecosystem === "object" ? d.ecosystem : null);
+    setWeek(Object.fromEntries(Object.entries(obj(d.week)).filter(([day, id]) => DAYS.includes(day) && typeof id === "string")));
+    setShopping(arr(d.shopping).map(normalizeItem).filter(Boolean).map((i) => ({
+      ...i, id: str(i.id) || uid(), section: normalizeSection(i.section),
+      days: Number(i.days) > 0 ? Number(i.days) : 7, checked: !!i.checked, have: !!i.have,
+    })));
+    setRecipes(recs);
+    setExcluded(arr(d.excluded).filter((x) => typeof x === "string"));
+    const tw = obj(d.thisWeek);
+    setThisWeek({ fridge: str(tw.fridge), cravings: str(tw.cravings), request: str(tw.request) });
+    setHaveOnHand(str(d.haveOnHand));
+    setLeftoverIdeas(arr(d.leftoverIdeas).filter((i) => i && typeof i === "object" && str(i.title)));
+    setLeftoverSafety(str(d.leftoverSafety));
+    setLeftoverRecipes(lrecs);
+    setThread(arr(d.thread).filter((m) => m && typeof m.text === "string"));
+    setConvo(arr(d.convo).filter((m) => m && typeof m.content === "string"));
+    setMiseThread(arr(d.miseThread).filter((m) => m && typeof m.text === "string"));
+    setCookingId(typeof d.cookingId === "string" && (cands.some((c) => c.id === d.cookingId)) ? d.cookingId : null);
+    setDoneSteps(obj(d.doneSteps));
+    if (WEEK_VIEWS.includes(d.view)) setView(d.view);
+  }
+
+  useEffect(() => {
+    if (!loaded) return;
+    const t = setTimeout(() => {
+      const snapshot = {
+        weekId, weekSeed, candidates, ecosystem, week, shopping, recipes, excluded, thisWeek,
+        haveOnHand, leftoverIdeas, leftoverSafety, leftoverRecipes, cookingId, doneSteps,
+        // Conversation is context, not record — keep the recent end only.
+        thread: thread.slice(-30), convo: convo.slice(-2), miseThread: miseThread.slice(-30),
+        view: WEEK_VIEWS.includes(view) ? view : null,
+        savedAt: new Date().toISOString(),
+      };
+      apiStorageSet(WEEK_KEY, JSON.stringify(snapshot))
+        .then(() => { saveWarnedRef.current = false; })
+        .catch(noteSaveFailure);
+    }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line
+  }, [loaded, weekId, weekSeed, candidates, ecosystem, week, shopping, recipes, excluded, thisWeek,
+      haveOnHand, leftoverIdeas, leftoverSafety, leftoverRecipes, cookingId, doneSteps, thread, convo, miseThread, view]);
+
+  /* Browser Back and Forward move between screens. The app is one URL, so Back
+     used to leave it entirely (to the sign-up page) and take the week with it.
+     Each screen change is pushed as a history entry carrying the view; popping
+     one sets the view without pushing again. */
+  const poppingRef = useRef(false);
+  useEffect(() => {
+    if (!loaded) return;
+    if (poppingRef.current) { poppingRef.current = false; return; }
+    try {
+      if (window.history.state?.miseView === undefined) window.history.replaceState({ miseView: view }, "");
+      else if (window.history.state.miseView !== view) window.history.pushState({ miseView: view }, "");
+    } catch (_) {}
+  }, [view, loaded]);
+  useEffect(() => {
+    const onPop = (e) => {
+      const v = e.state?.miseView;
+      if (typeof v === "string") {
+        poppingRef.current = true;
+        setCooking(false);
+        setView(v);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const persist = useCallback(async (next) => {
     try {
       const payload = {
@@ -2259,9 +2657,12 @@ not the names:
       await apiStorageSet(STORE_KEY, JSON.stringify(payload));
       setSavedAt(payload.savedAt);
       setStorageOk(true);
-    } catch (_) {
-      setStorageOk(false);
+      saveWarnedRef.current = false;
+    } catch (e) {
+      // Used to report "saved" here no matter what the server said.
+      noteSaveFailure(e);
     }
+    // eslint-disable-next-line
   }, [profile, favorites, setupDone, style]);
 
   useEffect(() => {
@@ -2402,10 +2803,17 @@ ${palate.map((x) => `- ${x}`).join("\n")}`
     return day ? countFor(day) : profile.people;
   };
 
+  /* Picked dishes without a day still get cooked — the week screen says "I'll
+     shop for all N picked dishes" when none are placed. Counting only scheduled
+     dishes told the model to buy for 0 servings in exactly that case, and
+     undercounted whenever only some were placed. Unplaced dishes count at the
+     household's usual number, which is what servingsFor scales them to. */
   const totalCovers = useMemo(
-    () => scheduled.reduce((sum, s) => sum + countFor(s.day), 0),
+    () =>
+      scheduled.reduce((sum, s) => sum + countFor(s.day), 0) +
+      chosen.filter((c) => !scheduled.some((s) => s.dish.id === c.id)).length * profile.people,
     // eslint-disable-next-line
-    [scheduled, profile.consistent, profile.people, profile.headcount]
+    [scheduled, chosen, profile.consistent, profile.people, profile.headcount]
   );
 
   /* Quantities count too: changing "500g chicken" to "1kg chicken" should mark the
@@ -2572,6 +2980,7 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
   /* ------------------------------------------------------------ ideas flow */
 
   async function startIdeas(existingSeed) {
+    const gen = weekGenRef.current;   // see startNewWeek
     mark("ideas", true);
     setErr("");
     setBusy("Putting some ideas together");
@@ -2711,11 +3120,16 @@ Respond with ONLY this JSON, no backticks:
          thinking/answer token split — that's the number to look at before
          raising this back up, rather than guessing. */
       const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1200, docSlices: ["core", "flavor"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
-      setEcosystem(out.ecosystem || null);
-      setCandidates((out.dishes || []).map((d) => ({ ...cleanDish(d), id: uid(), reaction: null, note: "" })));
+      if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
+      const dishes = (Array.isArray(out.dishes) ? out.dishes : []).map(normalizeDish).filter(Boolean);
+      // An empty list used to land as a silent "No ideas yet" with no error.
+      if (!dishes.length) throw new Error("I didn't get any dishes back that time. Give it another go.");
+      setEcosystem(out.ecosystem && typeof out.ecosystem === "object" ? out.ecosystem : null);
+      setCandidates(dishes.map((d) => ({ ...d, id: uid(), reaction: null, note: "" })));
       setConvo([{ role: "user", content: prompt }, { role: "assistant", content: raw }]);
-      setThread([{ who: "mise", text: out.say || "" }]);
+      setThread([{ who: "mise", text: str(out.say) }]);
     } catch (e) {
       // Same seed on retry: "Try again" should rerun THIS week, not reroll it.
       fail(e, () => runIdeas(seed));
@@ -2747,6 +3161,7 @@ Respond with ONLY this JSON, no backticks:
   }
 
   async function sendFeedback(text) {
+    const gen = weekGenRef.current;   // see startNewWeek
     if (!text.trim()) return;
     setErr("");
     setThread((t) => [...t, { who: "me", text }]);
@@ -2790,16 +3205,21 @@ Return the FULL revised list.`;
       const recent = convo.slice(-2);
       const msgs = [...recent, { role: "user", content: prompt }];
       const raw = await callClaude(msgs, { docSlices: ["core", "flavor"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
-      const prior = new Map(candidates.map((c) => [c.title.toLowerCase(), c]));
+      if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
+      const dishes = (Array.isArray(out.dishes) ? out.dishes : []).map(normalizeDish).filter(Boolean);
+      // An empty revision would have wiped every candidate, kept ones included.
+      if (!dishes.length) throw new Error("I didn't get a revised list back. Your picks are unchanged — try again.");
+      const prior = new Map(candidates.map((c) => [str(c.title).toLowerCase(), c]));
       setCandidates(
-        (out.dishes || []).map((d) => {
-          const old = prior.get((d.title || "").toLowerCase());
-          return { ...cleanDish(d), id: old?.id || uid(), reaction: old?.reaction ?? null, note: old?.note || "" };
+        dishes.map((d) => {
+          const old = prior.get(d.title.toLowerCase());
+          return { ...d, id: old?.id || uid(), reaction: old?.reaction ?? null, note: old?.note || "" };
         })
       );
       setConvo([{ role: "user", content: prompt }, { role: "assistant", content: raw }]);
-      setThread((t) => [...t, { who: "mise", text: out.say || "" }]);
+      setThread((t) => [...t, { who: "mise", text: str(out.say) }]);
     } catch (e) {
       fail(e, () => sendFeedback(text));
     } finally {
@@ -2809,6 +3229,7 @@ Return the FULL revised list.`;
 
   /* One-tap alternative — no typing required. */
   async function swapDish(id) {
+    const gen = weekGenRef.current;   // see startNewWeek
     const dish = candidates.find((c) => c.id === id);
     if (!dish) return;
     setErr("");
@@ -2830,9 +3251,12 @@ Respond with ONLY this JSON:
 {"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30,"say":"one short sentence on why this instead"}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
-      setCandidates((cs) => cs.map((c) => (c.id === id ? { ...cleanDish(out), id: c.id, reaction: null, note: "" } : c)));
-      if (out.say) setThread((t) => [...t, { who: "mise", text: out.say }]);
+      const swapped = normalizeDish(out);
+      if (!swapped) throw new Error("I didn't get a replacement back that time. Give it another go.");
+      setCandidates((cs) => cs.map((c) => (c.id === id ? { ...swapped, id: c.id, reaction: null, note: "" } : c)));
+      if (out.say) setThread((t) => [...t, { who: "mise", text: str(out.say) }]);
     } catch (e) {
       fail(e, () => swapDish(id));
     } finally {
@@ -2843,6 +3267,7 @@ Respond with ONLY this JSON:
   /* --------------------------------------------------------------- shopping */
 
   async function buildShopping() {
+    const gen = weekGenRef.current;   // see startNewWeek
     mark("shopping", true);
     setErr("");
     setBusy("Checking package sizes and waste");
@@ -2857,7 +3282,11 @@ What's left over on Sunday? Is there a crunchy element in every dinner?
 ${profile.consistent
   ? `TOTAL SERVINGS TO BUY FOR: ${totalCovers}.`
   : `THE NIGHTS ARE DIFFERENT SIZES — buy for the real total, not nights x usual headcount:
-${scheduled.map((s) => `- ${DAY_FULL[s.day]}: ${s.dish.title}, ${countFor(s.day)} ${countFor(s.day) === 1 ? "person" : "people"}`).join("\n")}
+${[
+  ...scheduled.map((s) => `- ${DAY_FULL[s.day]}: ${s.dish.title}, ${countFor(s.day)} ${countFor(s.day) === 1 ? "person" : "people"}`),
+  ...chosen.filter((c) => !scheduled.some((s) => s.dish.id === c.id))
+    .map((c) => `- No day yet: ${c.title}, ${profile.people} ${profile.people === 1 ? "person" : "people"}`),
+].join("\n")}
 TOTAL SERVINGS ACROSS THE WEEK: ${totalCovers}.
 Quantities must add up across nights of different sizes — a protein feeding four on Saturday
 and one on Tuesday is five servings, and that's often exactly what makes a bigger package
@@ -2879,10 +3308,14 @@ Respond with ONLY this JSON:
 "items":[{"item":"","qty":"amount to buy in the units the store sells","section":"Produce|Protein|Dairy & eggs|Bakery|Pantry|Frozen|Other","jobs":"which dishes use it","days":7}]}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       let repaired = false;
       const out = parseJSON(raw, () => { repaired = true; });
+      if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
+      const items = (Array.isArray(out.items) ? out.items : []).map(normalizeItem).filter(Boolean);
+      if (!items.length) throw new Error("The list came back empty. Give it another go.");
       setShopping(
-        (out.items || []).map((i) => ({
+        items.map((i) => ({
           ...i,
           section: normalizeSection(i.section),
           days: Number(i.days) > 0 ? Number(i.days) : 7,
@@ -2893,7 +3326,7 @@ Respond with ONLY this JSON:
       );
       setThread((t) => [
         ...t,
-        { who: "mise", text: (out.say || "") + (out.flags?.length ? "\n\n" + out.flags.map((f) => "• " + f).join("\n") : "") },
+        { who: "mise", text: str(out.say) + (listOf(out.flags).length ? "\n\n" + listOf(out.flags).map((f) => "• " + str(f)).join("\n") : "") },
         ...(repaired
           ? [{ who: "mise", text: "That list ran long and the tail got cut off. Check the bottom of it — tap Rebuild my shopping list if something's missing." }]
           : []),
@@ -2933,7 +3366,7 @@ Respond with ONLY this JSON:
           // again, an adopted leftover, something already rated — stays.
           ...already.filter((d) => !planned.some((p) => sameDish(d.title, p.dish.title))),
         ],
-        shoppingCount: (out.items || []).length,
+        shoppingCount: items.length,
         people: profile.people,
         spice: profile.spice,
         cravings: thisWeek.cravings || null,
@@ -2947,7 +3380,12 @@ Respond with ONLY this JSON:
   }
 
   async function reviseShopping(instruction) {
+    const gen = weekGenRef.current;   // see startNewWeek
     if (!instruction.trim()) return;
+    /* Only the newest revision may land. Two quick taps ("Cheaper", then
+       "Less waste") used to race, and whichever answer arrived LAST won — often
+       the older request, silently undoing the newer one. */
+    const seq = ++reviseSeqRef.current;
     setBusy("Adjusting the list");
     const prompt = `CURRENT LIST:
 ${shopping.map((i) => `${i.qty} ${i.item} (${i.section}, good ~${i.days} days) — ${i.jobs || ""}`).join("\n")}
@@ -2963,29 +3401,46 @@ Respond with ONLY this JSON:
 {"say":"","items":[{"item":"","qty":"","section":"","jobs":"","days":7}]}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
+      if (seq !== reviseSeqRef.current) return; // a newer revision was asked for
       const out = parseJSON(raw);
-      if (out.items)
-        setShopping(
-          out.items.map((i) => ({
-            ...i,
-            section: normalizeSection(i.section),
-            days: Number(i.days) > 0 ? Number(i.days) : 7,
-            id: uid(),
-            checked: false,
-            have: false,
-          }))
-        );
-      if (out.say) setThread((t) => [...t, { who: "mise", text: out.say }]);
+      if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
+      const items = (Array.isArray(out.items) ? out.items : []).map(normalizeItem).filter(Boolean);
+      // An empty "revised" list would have silently wiped the whole list.
+      if (Array.isArray(out.items) && !items.length) {
+        throw new Error("That came back as an empty list, so I kept yours as it was.");
+      }
+      if (items.length)
+        /* Ticks survive a revision. Every item used to come back unticked, so
+           someone halfway round the shop who asked for "cheaper" lost track of
+           everything already in their basket. Matched by name against the list
+           as it is NOW, so ticks made while this was in flight count too. */
+        setShopping((cur) => {
+          const prev = new Map(cur.map((i) => [str(i.item).trim().toLowerCase(), i]));
+          return items.map((i) => {
+            const old = prev.get(i.item.trim().toLowerCase());
+            return {
+              ...i,
+              section: normalizeSection(i.section),
+              days: Number(i.days) > 0 ? Number(i.days) : 7,
+              id: old?.id || uid(),
+              checked: !!old?.checked,
+              have: !!old?.have,
+            };
+          });
+        });
+      if (out.say) setThread((t) => [...t, { who: "mise", text: str(out.say) }]);
     } catch (e) {
       fail(e, () => reviseShopping(instruction));
     } finally {
-      setBusy("");
+      if (seq === reviseSeqRef.current) setBusy("");
     }
   }
 
   /* ---------------------------------------------------------------- recipes */
 
   async function getRecipe(dishId, opts = {}) {
+    const gen = weekGenRef.current;   // see startNewWeek
     const dish = candidates.find((c) => c.id === dishId);
     if (!dish) return;   // must precede mark(), or the flag sticks on forever
     if (!opts.quiet) {
@@ -3036,7 +3491,12 @@ Respond with ONLY this JSON:
 {"title":"","servings":"","time":"","technique":"the one technique worth learning here, or empty","seasoning":"what to taste for at the end and how to correct it — flat, thin, harsh, dull","doneness":"the sensory cue and the temperature, or empty if nothing needs judging","assembly":"one sentence","missing":["anything needed that is not on their shopping list, or empty"],"components":[{"name":"","items":["quantity + ingredient WITH its prep state"]}],"steps":[{"do":"","why":""}]}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900, docSlices: ["core", "flavor"] });
-      const built = { ...parseJSON(raw), basis: shoppingSignature };
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
+      const parsedRecipe = normalizeRecipe(parseJSON(raw));
+      if (!parsedRecipe || !parsedRecipe.steps.length) {
+        throw new Error("That recipe came back incomplete. Give it another go.");
+      }
+      const built = { ...parsedRecipe, basis: shoppingSignature };
       setRecipes((r) => ({ ...r, [dishId]: built }));
       // Into the book, keyed by title. This is the copy cookAgain will find.
       const dishTitle = candidates.find((c) => c.id === dishId)?.title;
@@ -3051,7 +3511,10 @@ Respond with ONLY this JSON:
       // A quiet prefetch failure stays silent — it retries on demand when the
       // person actually opens the dish. A visible one gets a retry button.
       if (!opts.quiet) fail(e, () => getRecipe(dishId, opts));
-      throw e;
+      /* Only the background prefetch awaits this and needs the rejection; the
+         visible path has already shown the error, and its callers fire and
+         forget — rethrowing there was an unhandled promise rejection. */
+      if (opts.quiet) throw e;
     } finally {
       if (!opts.quiet) {
         setBusy("");
@@ -3064,6 +3527,7 @@ Respond with ONLY this JSON:
      tradeoffs, not a silent rewrite — because the interesting answer to "no buns" is
      usually a different dish, not the same dish minus bread. */
   async function proposeRecipeChange(instruction) {
+    const gen = weekGenRef.current;   // see startNewWeek
     if (!instruction.trim() || !cookingId) return;
     setNegotiating(true);
     setBusy("Thinking it through");
@@ -3096,9 +3560,12 @@ Respond with ONLY this JSON:
 
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
-      setRecipeChat((c) => [...c, { who: "mise", text: out.say || "" }]);
-      setRecipeOptions((out.options || []).map((o) => ({ ...o, id: uid() })));
+      setRecipeChat((c) => [...c, { who: "mise", text: str(out.say) }]);
+      setRecipeOptions((Array.isArray(out.options) ? out.options : [])
+        .filter((o) => o && typeof o === "object" && str(o.label))
+        .map((o) => ({ ...o, label: str(o.label), what: str(o.what), cost: str(o.cost), best: !!o.best, id: uid() })));
     } catch (e) {
       fail(e, () => proposeRecipeChange(instruction));
     } finally {
@@ -3109,6 +3576,7 @@ Respond with ONLY this JSON:
 
   /* Stage two: you picked one, now she rewrites. */
   async function applyRecipeChange(option) {
+    const gen = weekGenRef.current;   // see startNewWeek
     if (!cookingId) return;
     setNegotiating(true);
     setBusy(`Reworking it — ${option.label}`);
@@ -3141,13 +3609,16 @@ Respond with ONLY this JSON:
 
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900, docSlices: ["core", "groceries", "flavor"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
 
       /* Apply the list changes first, then stamp the recipe against the resulting
          list — otherwise the recipe is immediately "stale" against a list its own
          rewrite just changed. */
-      const adds = (out.shoppingAdd || []).filter((a) => a?.item);
-      const removes = (out.shoppingRemove || []).map((x) => String(x).toLowerCase());
+      if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
+      const adds = (Array.isArray(out.shoppingAdd) ? out.shoppingAdd : []).map(normalizeItem).filter(Boolean);
+      const removes = (Array.isArray(out.shoppingRemove) ? out.shoppingRemove : []).map((x) => str(x).toLowerCase()).filter(Boolean);
+      const rewritten = normalizeRecipe(out.recipe);
       /* Computed synchronously from current state rather than inside a setShopping
          updater — an updater runs later, so the signature read below would still be
          the old one and the recipe would be stamped stale against its own change. */
@@ -3174,8 +3645,8 @@ Respond with ONLY this JSON:
         setShopping(merged);
       }
 
-      if (out.recipe) {
-        const revised = { ...out.recipe, basis: nextSignature };
+      if (rewritten && rewritten.steps.length) {
+        const revised = { ...rewritten, basis: nextSignature };
         setRecipes((r) => ({ ...r, [cookingId]: revised }));
         // A negotiated rewrite is the version they chose — it replaces the
         // stored one rather than being dropped when they come back to it.
@@ -3185,7 +3656,7 @@ Respond with ONLY this JSON:
         // would hand back the pre-negotiation recipe.
         stashRecipeInHistory(cookingId, revised, true);
       }
-      if (out.say) setRecipeChat((c) => [...c, { who: "mise", text: out.say }]);
+      if (out.say) setRecipeChat((c) => [...c, { who: "mise", text: str(out.say) }]);
       if (adds.length || removes.length) {
         setRecipeChat((c) => [
           ...c,
@@ -3193,7 +3664,7 @@ Respond with ONLY this JSON:
             who: "mise",
             text: [
               adds.length ? `Added to your list: ${adds.map((a) => a.item).join(", ")}.` : "",
-              removes.length ? `Took off: ${out.shoppingRemove.join(", ")}.` : "",
+              removes.length ? `Took off: ${out.shoppingRemove.map(str).join(", ")}.` : "",
             ].filter(Boolean).join(" "),
           },
         ]);
@@ -3210,6 +3681,7 @@ Respond with ONLY this JSON:
   /* -------------------------------------------------------------- leftovers */
 
   async function getLeftoverIdeas(focusItems = null) {
+    const gen = weekGenRef.current;   // see startNewWeek
     mark("leftovers", true);
     setErr("");
     setBusy("Thinking about what that could become");
@@ -3255,8 +3727,17 @@ Respond with ONLY this JSON:
 
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries", "flavor"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
-      let ideas = (out.ideas || []).map((i) => ({ ...i, id: uid() }));
+      if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
+      let ideas = (Array.isArray(out.ideas) ? out.ideas : [])
+        .filter((i) => i && typeof i === "object" && str(i.title).trim())
+        .map((i) => ({
+          ...i, id: uid(), title: str(i.title), blurb: str(i.blurb), need: str(i.need), uses: str(i.uses),
+          usesItems: listOf(i.usesItems).map(str).filter(Boolean),
+          minutes: Number(i.minutes) > 0 ? Math.round(Number(i.minutes)) : null,
+        }));
+      if (!ideas.length) throw new Error("I didn't get any ideas back that time. Give it another go.");
 
       /* Enforce it rather than trusting it. An idea using nothing they typed gets
          flagged in the UI, and anything left uncovered is surfaced with a way to
@@ -3269,9 +3750,9 @@ Respond with ONLY this JSON:
       }
 
       setLeftoverIdeas(focusItems && focusItems.length ? (prev) => [...prev, ...ideas] : ideas);
-      setLeftoverSafety(out.safety || "");
-      if (out.say) setThread((t) => [...t, { who: "mise", text: out.say }]);
-      if (out.orphans) setThread((t) => [...t, { who: "mise", text: out.orphans }]);
+      setLeftoverSafety(str(out.safety));
+      if (out.say) setThread((t) => [...t, { who: "mise", text: str(out.say) }]);
+      if (str(out.orphans)) setThread((t) => [...t, { who: "mise", text: str(out.orphans) }]);
     } catch (e) {
       fail(e, () => getLeftoverIdeas(focusItems));
     } finally {
@@ -3282,6 +3763,7 @@ Respond with ONLY this JSON:
 
 
   async function expandLeftover(idea) {
+    const gen = weekGenRef.current;   // see startNewWeek
     mark("recipe", idea.id);
     setBusy(`Writing ${idea.title}`);
     const prompt = `They have: ${haveOnHand || "leftovers from this week's menu"}
@@ -3294,7 +3776,10 @@ Respond with ONLY this JSON:
 {"title":"","servings":"","time":"","seasoning":"","components":[{"name":"","items":[""]}],"steps":[{"do":"","why":""}]}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1500, docSlices: ["core", "flavor"] });
-      setLeftoverRecipes((r) => ({ ...r, [idea.id]: parseJSON(raw) }));
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
+      const rec = normalizeRecipe(parseJSON(raw));
+      if (!rec || !rec.steps.length) throw new Error("That recipe came back incomplete. Give it another go.");
+      setLeftoverRecipes((r) => ({ ...r, [idea.id]: rec }));
     } catch (e) {
       fail(e, () => expandLeftover(idea));
     } finally {
@@ -3306,6 +3791,7 @@ Respond with ONLY this JSON:
   /* ------------------------------------------------------------- sous chef */
 
   async function askMise(text) {
+    const gen = weekGenRef.current;   // see startNewWeek
     if (!text.trim()) return;
     setMiseThread((t) => [...t, { who: "me", text }]);
     setBusy("mise");
@@ -3367,15 +3853,17 @@ Respond with ONLY this JSON:
         // rewrite done here.
         docSlices: atStove ? ["core", "flavor"] : ["core", "groceries"],
       });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       /* If she replies with prose instead of JSON that's still a fine answer —
          show it rather than erroring. Only the actions need structure. */
       let out;
       try { out = parseJSON(raw); } catch (_) { out = { say: raw }; }
 
-      setMiseThread((t) => [...t, { who: "mise", text: out.say || raw }]);
+      if (!out || typeof out !== "object" || Array.isArray(out)) out = { say: raw };
+      setMiseThread((t) => [...t, { who: "mise", text: str(out.say) || raw }]);
 
-      const adds = (out.shoppingAdd || []).filter((a) => a?.item);
-      const removes = (out.shoppingRemove || []).map((x) => String(x).toLowerCase());
+      const adds = (Array.isArray(out.shoppingAdd) ? out.shoppingAdd : []).map(normalizeItem).filter(Boolean);
+      const removes = (Array.isArray(out.shoppingRemove) ? out.shoppingRemove : []).map((x) => str(x).toLowerCase()).filter(Boolean);
 
       if (adds.length || removes.length) {
         setShopping((s) => {
@@ -3396,7 +3884,7 @@ Respond with ONLY this JSON:
 
         // Removing something here is a deliberate exclusion, same as deleting it
         // by hand — she shouldn't quietly reintroduce it in a later recipe.
-        if (removes.length) setExcluded((x) => [...new Set([...x, ...out.shoppingRemove])]);
+        if (removes.length) setExcluded((x) => [...new Set([...x, ...out.shoppingRemove.map(str).filter(Boolean)])]);
 
         setMiseThread((t) => [
           ...t,
@@ -3434,7 +3922,18 @@ Respond with ONLY this JSON:
     if (!dish) return;
     const entry = { id: uid(), title: dish.title, blurb: dish.blurb, rating, missing, note,
       photos: photos.slice(0, 3), date: new Date().toISOString() };
-    const next = [...favorites, entry];
+    /* Favorites ride inside the profile blob, which is re-sent on every
+       settings change. Every rating used to keep its photos forever (~100KB
+       each, three per rating), so the blob grew without limit toward the point
+       where saves fail outright. Keep photos on the recent ones only, and cap
+       the list; the server applies the same limits. */
+    const FAVORITES_MAX = 200, FAVORITE_PHOTOS = 12;
+    const all = [...favorites, entry].slice(-FAVORITES_MAX);
+    const cut = Math.max(0, all.length - FAVORITE_PHOTOS);
+    const next = fitPhotos(
+      all.map((f, i) => (i >= cut || !f.photos ? f : (({ photos, ...rest }) => rest)(f))),
+      1_000_000, (f) => f?.photos?.length, ({ photos, ...rest }) => rest
+    );
     setFavorites(next);
     persist({ favorites: next });
 
@@ -3503,6 +4002,7 @@ text, no JSON.`;
   }
 
   async function suggestLike(fav) {
+    const gen = weekGenRef.current;   // see startNewWeek
     setBusy(`Finding dishes like ${fav.title}`);
     setErr("");
     const prompt = `They loved: ${fav.title} — ${fav.blurb || ""} (rated ${fav.rating}/5)
@@ -3516,9 +4016,10 @@ Respond with ONLY this JSON:
 {"say":"the through-line, one short sentence","dishes":[{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30}]}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
+      if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
       setCandidates((cs) => [...cs, ...(out.dishes || []).map((d) => ({ ...cleanDish(d), id: uid(), reaction: null, note: "" }))]);
-      setThread((t) => [...t, { who: "mise", text: out.say || "" }]);
+      setThread((t) => [...t, { who: "mise", text: str(out.say) }]);
       setView("ideas");
     } catch (e) {
       fail(e, () => suggestLike(fav));
@@ -3749,7 +4250,7 @@ Respond with ONLY this JSON:
   if (!loaded)
     return (
       <div className="app">
-        <style>{CSS}</style>
+        <style dangerouslySetInnerHTML={{ __html: CSS }} />
         <div className="surface" aria-hidden="true" />
         {/* Echoes the shape of the hero card about to appear, rather than a bare
            spinner floating with nothing around it — consistent with the rest of
@@ -3807,6 +4308,7 @@ Respond with ONLY this JSON:
             toggleIn={toggleIn}
             step={step}
             setStep={setStep}
+            storageOk={storageOk}
             onDone={() => {
               // Reaching the end of setup is what actually completes onboarding —
               // not the autosave timer having fired at some point.
@@ -3900,9 +4402,13 @@ Respond with ONLY this JSON:
               if (!dish) return;
               // Their own photo if they've rated it with one — that's the version
               // worth sharing, not a generic card.
+              /* History keeps photos longer than favorites (favorites shed
+                 them first, to keep the profile small), so look there too. */
               const shot = [...favorites].reverse().find(
                 (f) => f.title === dish.title && f.photos?.length
-              )?.photos?.[0];
+              )?.photos?.[0] || history
+                .flatMap((w) => w.dishes || [])
+                .find((d) => d.title === dish.title && d.photos?.length)?.photos?.[0];
               setBusy("Making your card");
               try {
                 const canvas = await renderDishCard(dish, recipes[cookingId], shot);
@@ -3984,11 +4490,17 @@ Respond with ONLY this JSON:
           />
   );
 
-  const setStyleAndSave = (v) => { setStyle(v); persist({ style: v }); };
+  /* The autosave effect already saves on a style change (persist depends on
+     style); calling persist here as well sent the whole profile twice. */
+  const setStyleAndSave = (v) => { setStyle(v); };
 
   return (
     <div className="app" data-style={style}>
-      <style>{CSS}</style>
+      {/* As raw HTML, not a text child: server rendering escapes text, so
+          `>` selectors and quoted values arrived as &gt; and &quot; — broken
+          CSS until hydration, and a hydration mismatch that made React throw
+          the server render away. CSS is a constant, so this is safe. */}
+      <style dangerouslySetInnerHTML={{ __html: CSS }} />
       {/* The drawn stock belongs to the canvas look only. Modern keeps its
           painted surface, which the .surface rule supplies in CSS. */}
       {style === "canvas" ? <PaperSurface /> : <div className="surface" aria-hidden="true" />}
@@ -4377,7 +4889,7 @@ function recapLines(profile) {
   return lines;
 }
 
-function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
+function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
   const last = STEPS.length - 1;
   const next = () => (step === last ? onDone() : setStep(step + 1));
 
@@ -4583,7 +5095,11 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone }) {
             {step === last ? "Show me this week" : "Next"}
           </Btn>
         </div>
-        <p className="hint hint--save">Your answers are saved for next week.</p>
+        {/* Only claimed when it's true — this line used to show even while every
+            save was being rejected. */}
+        <p className="hint hint--save">
+          {storageOk === false ? "Your answers aren't saving right now — check you're signed in." : "Your answers are saved for next week."}
+        </p>
       </div>
     </div>
   );
@@ -5053,7 +5569,7 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
             ["Less waste", "Smaller amounts, less waste"],
             ["Swap one I don't like", "Swap something I don't like"],
           ].map(([label, q]) => (
-            <button key={q} className="quick" onClick={() => onAsk(q)}>{label}</button>
+            <button key={q} className="quick" onClick={() => onAsk(q)} disabled={!!busy}>{label}</button>
           ))}
         </div>
 
@@ -5993,9 +6509,9 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
     <section className="card card--warn">
       <h2>Saving isn't working right now</h2>
       <p>
-        Artifact storage only runs once an artifact has been published — until then
-        writes are dropped silently. Anything below will disappear when you close this.
-        Publish the artifact and it'll start saving properly.
+        Your latest changes didn&apos;t reach the server — usually because you&apos;ve
+        been signed out or the connection dropped. Sign in again and they&apos;ll save
+        from the next change you make.
       </p>
     </section>
   );
@@ -6041,9 +6557,13 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
       </div>
     );
 
+  /* Newest week first, by when it started. The old comparator mixed one
+     week's updatedAt with the other's startedAt, so it wasn't a consistent
+     ordering at all: re-rating an old week could float it above newer ones. */
   const sorted = [...history].sort(
-    (a, b) => new Date(b.updatedAt || b.startedAt) - new Date(a.startedAt)
+    (a, b) => (Date.parse(b.startedAt) || 0) - (Date.parse(a.startedAt) || 0)
   );
+  const thisYear = new Date().getFullYear();
 
   return (
     <div className="stack">
@@ -6059,7 +6579,11 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
               <div>
                 <h2>
                   Week of{" "}
-                  {fmtDate(new Date(w.startedAt), { month: "long", day: "numeric" })}
+                  {/* The year only when it isn't this one — otherwise last
+                      October and this October read identically. */}
+                  {fmtDate(new Date(w.startedAt), new Date(w.startedAt).getFullYear() === thisYear
+                    ? { month: "long", day: "numeric" }
+                    : { month: "long", day: "numeric", year: "numeric" })}
                 </h2>
                 <p className="hint">
                   {w.people ? `${w.people} ${w.people === 1 ? "person" : "people"}` : ""}
@@ -6394,7 +6918,59 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
 
       {/* Last thing on the page, collapsed. */}
       <AiSource />
+
+      <Account />
     </div>
+  );
+}
+
+/* Signing out and managing the subscription. Both endpoints existed with
+   nothing in the app calling them — the pricing page promises "Cancel anytime.
+   Manage it yourself", and there was no way to, or to sign out on a shared
+   device. */
+function Account() {
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const manage = async () => {
+    setBusy("manage");
+    setMsg("");
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) { window.location.href = data.url; return; }
+      setMsg(res.status === 404
+        ? "There's no subscription on this account yet."
+        : data.error || "Couldn't open billing just now. Try again in a moment.");
+    } catch (_) {
+      setMsg("Couldn't reach billing — check your connection.");
+    }
+    setBusy("");
+  };
+
+  const signOut = async () => {
+    setBusy("out");
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch (_) {}
+    // A personal API key belongs to this person, not to the device.
+    writeByok(null, null);
+    window.location.href = "/login";
+  };
+
+  return (
+    <section className="card">
+      <div className="card__head">
+        <h2>Account</h2>
+      </div>
+      {msg && <p className="hint" role="status">{msg}</p>}
+      <div className="row">
+        <Btn small variant="ghost" onClick={manage} disabled={!!busy}>
+          {busy === "manage" ? "Opening billing…" : "Manage subscription"}
+        </Btn>
+        <Btn small variant="ghost" onClick={signOut} disabled={!!busy}>
+          {busy === "out" ? "Signing out…" : "Sign out"}
+        </Btn>
+      </div>
+    </section>
   );
 }
 
@@ -6409,19 +6985,43 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
    10-minute timer — the upper bound, because under-cooking is the worse failure. */
 function parseDurations(text) {
   const out = [];
-  const re = /(\d+(?:\.\d+)?)\s*(?:(?:to|–|—|-|or)\s*(\d+(?:\.\d+)?)\s*)?(seconds?|secs?|minutes?|mins?|hours?|hrs?)\b/gi;
+  /* A number is a whole, a decimal, a vulgar fraction, or a whole plus a
+     fraction: "1 1/2 hours" used to read as "2 hours" (the regex skipped "1 1/"
+     and matched "2 hours" — thirty minutes over), and "1½ hours" matched
+     nothing at all. A compound "1 hr 30 min" is one duration, not two separate
+     timers. */
+  const FRAC = { "½": 0.5, "¼": 0.25, "¾": 0.75, "⅓": 1 / 3, "⅔": 2 / 3 };
+  const NUM = "(\\d+(?:\\.\\d+)?(?:\\s*[½¼¾⅓⅔]|\\s+\\d+\\/\\d+)?|[½¼¾⅓⅔]|\\d+\\/\\d+)";
+  const UNIT = "(seconds?|secs?|minutes?|mins?|hours?|hrs?)";
+  const re = new RegExp(`${NUM}\\s*(?:(?:to|–|—|-|or)\\s*${NUM}\\s*)?${UNIT}\\b(?:\\s*(?:and\\s*)?${NUM}\\s*(minutes?|mins?)\\b)?`, "gi");
+  const num = (t) => {
+    if (!t) return NaN;
+    let v = 0;
+    for (const part of t.trim().split(/\s+/)) {
+      if (FRAC[part.slice(-1)] !== undefined && part.length > 1) v += parseFloat(part) + FRAC[part.slice(-1)];
+      else if (FRAC[part] !== undefined) v += FRAC[part];
+      else if (part.includes("/")) { const [a, b] = part.split("/").map(Number); v += b ? a / b : NaN; }
+      else v += parseFloat(part);
+    }
+    return v;
+  };
+  const fmt = (n) => String(Math.round(n * 100) / 100);
   let m;
   while ((m = re.exec(text)) !== null) {
-    const hi = parseFloat(m[2] || m[1]);
+    const hi = num(m[2] || m[1]);
     const unit = m[3].toLowerCase();
     const mult = unit.startsWith("s") ? 1 : unit.startsWith("m") ? 60 : 3600;
-    const seconds = Math.round(hi * mult);
-    if (seconds >= 20 && seconds <= 6 * 3600) {
-      const label = unit.startsWith("h")
-        ? `${hi} hour${hi === 1 ? "" : "s"}`
+    // "1 hr 30 min": the trailing minutes belong to the same duration.
+    const extra = unit.startsWith("h") && m[4] ? num(m[4]) * 60 : 0;
+    const seconds = Math.round(hi * mult + extra);
+    if (Number.isFinite(seconds) && seconds >= 20 && seconds <= 6 * 3600) {
+      const label = extra
+        ? `${Math.floor(seconds / 3600)} hr ${Math.round((seconds % 3600) / 60)} min`
+        : unit.startsWith("h")
+        ? `${fmt(hi)} hour${hi === 1 ? "" : "s"}`
         : unit.startsWith("m")
-        ? `${hi} min`
-        : `${hi} sec`;
+        ? `${fmt(hi)} min`
+        : `${fmt(hi)} sec`;
       if (!out.some((o) => o.seconds === seconds)) out.push({ seconds, label });
     }
   }
@@ -7163,6 +7763,9 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .tabbar__i{position:relative;display:flex;align-items:center;justify-content:center;
   width:34px;height:26px;border-radius:999px;transition:background .16s ease}
 .tabbar__l{line-height:1.1;text-align:center}
+/* At 320px "Brainstorm" is wider than its fifth of the bar and wrapped mid-word
+   ("Brainstor / m"). Labels are single words, so shrink rather than wrap. */
+@media (max-width:360px){.tabbar__l{font-size:.92em;letter-spacing:-.03em;white-space:nowrap}}
 .tabbar__b:hover{color:var(--ink)}
 /* Active state is a filled pill behind the ICON only, not the whole tab. A
    full-height fill on a 1/5-width tab reads as a block of colour rather than a
