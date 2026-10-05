@@ -281,9 +281,9 @@ async function proposeAndLog(p, c, instruction, check = true) {
     const alert = p ? await h.alertText(p).catch(() => "") : "";
     if (alert) c("no error banner at the end", false, alert);
     if (p?.errs?.length) c("no page errors", false, p.errs.join(" || "));
-    fs.writeFileSync(path.join(OUT, `${id}.json`), JSON.stringify({ id, title: sc.title, profile: sc.profile || {}, checks, transcript: p?.log || [] }, null, 2));
+    fs.writeFileSync(path.join(OUT, `${id}.json`), JSON.stringify({ id, title: sc.title, profile: sc.profile || {}, retries: p?.retries || 0, checks, transcript: p?.log || [] }, null, 2));
     if (p) await p.screenshot({ path: path.join(OUT, `${id}.png`), fullPage: true }).catch(() => {});
-    report.push(`## ${id} — ${sc.title}  (${Math.round((Date.now() - t0) / 1000)}s)`, "");
+    report.push(`## ${id} — ${sc.title}  (${Math.round((Date.now() - t0) / 1000)}s${p?.retries ? `, ${p.retries} provider retr${p.retries === 1 ? "y" : "ies"}` : ""})`, "");
     for (const k of checks) {
       k.pass ? pass++ : fail++;
       report.push(`- ${k.pass ? "PASS" : "**FAIL**"} ${k.name}${k.detail ? ` — ${k.detail.replace(/\n/g, " ")}` : ""}`);

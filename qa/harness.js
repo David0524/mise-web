@@ -47,6 +47,23 @@ const tab = async (p, name) => { await p.locator(".tabbar__b", { hasText: name }
 /* Waits until the app is idle: no top progress bar and no visible skeleton, up
    to `ms`. Real model calls take 5–50s. */
 async function idle(p, ms = 90000) {
+  /* A transient provider failure (Gemini 503 "overloaded" is common on the
+     free tier) shows the error banner with "Try again". Tap it like a person
+     would, up to twice, and count it so the report can say how often that
+     happened rather than hiding it. */
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await settle(p, ms);
+    const banner = await alertText(p);
+    if (!/Couldn't reach the kitchen|Give it another go in a moment/.test(banner) || attempt === 2) return;
+    const again = p.locator("[role=alert] button", { hasText: "Try again" });
+    if (!(await again.count())) return;
+    p.retries = (p.retries || 0) + 1;
+    await p.waitForTimeout(8000);
+    await again.first().click();
+  }
+}
+
+async function settle(p, ms) {
   const t0 = Date.now();
   await p.waitForTimeout(800);
   while (Date.now() - t0 < ms) {
@@ -135,9 +152,21 @@ async function askMise(p, question) {
     await p.locator(inCook ? ".cbubble" : ".fab").first().click({ force: true });
     await p.waitForTimeout(500);
   }
-  await p.locator(input).fill(question); await p.locator(input).press("Enter");
-  await idle(p);
-  await p.waitForFunction((q) => !document.querySelector(".bub--wait"), null, { timeout: 90000 }).catch(() => {});
+  let reply = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await p.locator(input).fill(question); await p.locator(input).press("Enter");
+    await idle(p);
+    await p.waitForFunction(() => !document.querySelector(".bub--wait"), null, { timeout: 90000 }).catch(() => {});
+    reply = await lastReply(p, inCook);
+    // Her stock line when the call itself failed — ask again, as a person would.
+    if (!/^Lost you for a second/.test(reply)) return reply;
+    p.retries = (p.retries || 0) + 1;
+    await p.waitForTimeout(8000);
+  }
+  return reply;
+}
+
+function lastReply(p, inCook) {
   return inCook
     ? p.$eval(".cask__say", (e) => e.innerText).catch(() => "")
     : p.$$eval(".sheet .bub--mise p", (els) => els.map((e) => e.innerText).at(-1) || "");
