@@ -11,7 +11,7 @@ function classify(prompt) {
   if (/^CURRENT LIST:/.test(prompt)) return 'revise';
   if (/^Write the recipe for:/.test(prompt)) return 'recipe';
   if (/Do NOT rewrite the recipe yet/.test(prompt)) return 'propose';
-  if (/They chose this route/.test(prompt)) return 'apply';
+  if (/They chose this route|THE ROUTE THEY PICKED/.test(prompt)) return 'apply';
   if (/WHAT THEY ACTUALLY HAVE LEFT/.test(prompt)) return 'leftovers';
   if (/^They have:/.test(prompt)) return 'expand';
   if (/what order to cook these/.test(prompt)) return 'order';
