@@ -50,6 +50,14 @@ is to move to Claude before a real launch. Two things worth knowing:
   the keys come from different Google accounts. Google no longer publishes
   per-model free-tier RPM/RPD numbers — check your own at
   `aistudio.google.com/rate-limit`.
+- **The free tier will not carry real users.** Measured on 2026-10-05: the
+  main model (`gemini-3.6-flash`) allowed **20 requests per day per project**,
+  shared by everyone using the app. Planning one week takes roughly 6–10 of
+  them (ideas, the shopping list, a recipe per dish, any rewrites), so that is
+  two or three planned weeks a day in total. `gemini-3.5-flash-lite` has its own,
+  larger allowance, and the provider falls back to it when the main model
+  returns 429 or 503 — at a noticeable cost in plan quality. Enable billing on
+  the project (or switch to Anthropic) before anyone but you uses it.
 
 Model names in this tier also shift fast (three Flash releases in six weeks
 as of September 2026), so `lib/providers/gemini.js` needs occasional
