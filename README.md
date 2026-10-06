@@ -113,10 +113,19 @@ is somewhere else — auth, storage, a specific prompt.
    paste the same env vars into Vercel's project settings, deploy.
    `npm run build` is what Vercel runs.
 
+## Checking a deployment
+
+Open `/api/health` on any deployment. It says whether the database answers,
+whether its schema is up to date (and which columns are missing if not),
+whether SESSION_SECRET, APP_URL, the AI key and Stripe are set, and which
+sign-in methods are configured. No secrets are shown.
+
 ## Onboarding, sign-in and the paywall
 
 **The flow:** landing → `/start` (intro → kitchen setup → app tour → create
-account) → `/pricing` (paywall) → `/app`. Until the account exists, setup is
+account) → `/pricing` (paywall) → `/app`. Onboarding always comes before the
+paywall: an account that exists but hasn't finished setup is sent through the
+same onboarding (saved to the account) and then to the paywall. Until the account exists, setup is
 saved on the device (`mise:guest:*` in localStorage); `/auth/finish` copies it
 to the new account after any sign-in, never overwriting an existing kitchen.
 
@@ -130,8 +139,9 @@ dashboard prices instead. Test a real checkout in Stripe test mode before launch
 app without paying. Defaults to `VIP26`. Redeemed codes are stored on the
 account (`subscriptions.access_code`).
 
-**Sign-in methods.** Each button shows a friendly "isn't set up yet" message
-until its variables are set.
+**Sign-in methods.** A button only appears once its variables are set (so
+with none set, it's email and password only). "Forgot password?" appears once
+email sending is set up; until then the sign-in page points to support.
 
 | Method | Variables | Where to get them |
 |---|---|---|
@@ -157,8 +167,9 @@ Policy pages: `/privacy`, `/terms`, `/refunds`, `/cookies`. Every public page
 has a footer with the business details and policy links, and the site shows a
 cookie banner (`components/CookieBanner.jsx`).
 
-**Before launch, set these** (they show as bracketed placeholders until you do,
-on purpose, rather than invented details). They're `NEXT_PUBLIC_`, so rebuild
+**Before launch, set these.** Until you do, the pages show FAKE stand-in
+details (Mise Kitchen, Inc., a San Francisco address, support@misekitchen.app)
+so they read finished during testing; a live legal page must name the real business. They're `NEXT_PUBLIC_`, so rebuild
 after changing them:
 
 | Variable | Example |

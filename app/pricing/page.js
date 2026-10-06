@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { FilterDefs } from "@/lib/authStyles";
+import { FilterDefs, DAYLIGHT } from "@/lib/authStyles";
 import MiseHello from "@/components/MiseHello";
 
 /* The paywall: a sheet that slides up over a blurred preview of the person's
@@ -89,7 +89,11 @@ function Paywall() {
   const [up, setUp] = useState(false);
 
   useEffect(() => {
-    fetch("/api/billing/status").then((r) => r.json()).then(setStatus).catch(() => setStatus({ signedIn: false, introEligible: true }));
+    fetch("/api/billing/status").then((r) => r.json()).then((s) => {
+      // Not set up yet: onboarding comes first.
+      if (s.signedIn && !s.active && s.setupDone === false) { window.location.replace("/start"); return; }
+      setStatus(s);
+    }).catch(() => setStatus({ signedIn: true, introEligible: true, error: "network" }));
     const t = setTimeout(() => setUp(true), 60);
     return () => clearTimeout(t);
   }, []);
@@ -135,7 +139,7 @@ function Paywall() {
   const active = status?.active;
 
   return (
-    <div className="pwx">
+    <div className="pwx" style={{ backgroundImage: DAYLIGHT }}>
       <FilterDefs />
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <Backdrop k={kitchen} />
@@ -239,7 +243,7 @@ export default function PricingPage() {
 }
 
 const CSS = `
-.pwx{position:relative;min-height:100vh;min-height:100dvh;overflow:hidden;background:#F6EFE3;font-family:'Nunito',system-ui,sans-serif;color:#221A15}
+.pwx{position:relative;min-height:100vh;min-height:100dvh;overflow:hidden;background-color:#FAF5F4;font-family:'Nunito',system-ui,sans-serif;color:#221A15}
 /* The person's week, behind glass. */
 .bd{position:absolute;inset:0;padding:calc(1rem + env(safe-area-inset-top)) 1rem 0;max-width:520px;margin:0 auto;filter:blur(2.5px) saturate(1.05);transform:scale(1.02)}
 .bd__hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
@@ -254,11 +258,11 @@ const CSS = `
 .bd__item{display:flex;align-items:center;gap:.7rem;padding:.45rem 0}
 .bd__box{width:18px;height:18px;border-radius:5px;border:2px solid #8A7D75}
 .bd__line{height:10px;border-radius:5px;background:rgba(34,26,21,.18)}
-.pwx__scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(34,26,21,.05),rgba(34,26,21,.45))}
+.pwx__scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(24,22,30,0),rgba(24,22,30,.34))}
 
 /* The sheet. */
 .sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:520px;max-height:calc(100dvh - 2.5rem - env(safe-area-inset-top));
-  display:flex;flex-direction:column;background:#FFFDF9;border-radius:30px 30px 0 0;
+  display:flex;flex-direction:column;background:#FFFFFF;border-radius:30px 30px 0 0;
   box-shadow:0 -18px 50px -12px rgba(34,26,21,.35);transform:translateY(104%);transition:transform .5s cubic-bezier(.2,.9,.25,1)}
 .sheet--up{transform:none}
 @media (prefers-reduced-motion:reduce){.sheet{transition:none}}
@@ -293,11 +297,11 @@ const CSS = `
 .tl::before{content:"";position:absolute;left:7px;right:calc(33.3% - 7px);top:6px;height:2px;background:linear-gradient(90deg,#B44722,rgba(34,26,21,.18))}
 .tl__i{position:relative;display:flex;flex-direction:column;gap:.1rem;padding-right:.4rem;font-size:.76rem;font-weight:700;color:#51453D;line-height:1.3}
 .tl__i strong{color:#221A15;font-weight:900;font-size:.82rem;margin-top:.35rem}
-.tl__dot{position:relative;z-index:1;width:14px;height:14px;border-radius:50%;background:#FFFDF9;border:3px solid rgba(34,26,21,.25);box-sizing:border-box}
+.tl__dot{position:relative;z-index:1;width:14px;height:14px;border-radius:50%;background:#FFFFFF;border:3px solid rgba(34,26,21,.25);box-sizing:border-box}
 .tl__i--now .tl__dot{background:#B44722;border-color:#B44722}
 .renew{margin:1rem 0 0;font-weight:700;font-size:.88rem;color:#51453D}
 
-.sheet__foot{padding:.5rem 1.2rem calc(.7rem + env(safe-area-inset-bottom));background:#FFFDF9;border-radius:0 0 30px 30px}
+.sheet__foot{padding:.5rem 1.2rem calc(.7rem + env(safe-area-inset-bottom));background:#FFFFFF;border-radius:0 0 30px 30px}
 .cta{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;padding:.95rem;border-radius:18px;border:0;cursor:pointer;
   background:#B44722;color:#fff;font:900 1.08rem 'Nunito',system-ui,sans-serif;letter-spacing:-.005em;
   box-shadow:0 2px 0 #813318,inset 0 1px 0 rgba(255,255,255,.25),0 14px 30px -14px rgba(180,71,34,.75);transition:transform .12s}

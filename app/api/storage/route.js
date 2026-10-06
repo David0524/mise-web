@@ -145,7 +145,8 @@ function dbError(e) {
     return NextResponse.json({ error: "value contains characters that can't be stored" }, { status: 400 });
   }
   console.error("storage failure:", e?.code || "", e?.message || e);
-  return NextResponse.json({ error: "storage_failed" }, { status: 500 });
+  // The Postgres code goes back so a person can quote it (no data or secrets in it).
+  return NextResponse.json({ error: "storage_failed", code: e?.code || null }, { status: 500 });
 }
 
 export async function GET(req) {

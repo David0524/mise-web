@@ -3,7 +3,8 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { S, FilterDefs } from "@/lib/authStyles";
 import SiteFooter from "@/components/SiteFooter";
-import AuthOptions from "@/components/AuthOptions";
+import { BUSINESS } from "@/lib/business";
+import AuthOptions, { useProviders } from "@/components/AuthOptions";
 
 function LoginForm() {
   const params = useSearchParams();
@@ -12,6 +13,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState(params.get("error") || "");
   const [busy, setBusy] = useState(false);
+  const providers = useProviders();
 
   async function submit(e) {
     e.preventDefault();
@@ -61,17 +63,19 @@ function LoginForm() {
         )}
         {err && <p style={{ ...S.error, marginBottom: 12 }} role="alert">{err}</p>}
         <AuthOptions from="/login" next={next} />
-        <div style={divider}><span style={rule} /><span>or with email</span><span style={rule} /></div>
-        <form onSubmit={submit}>
+        <form onSubmit={submit} style={{ marginTop: 10 }}>
           <label htmlFor="email" style={{ ...S.label, marginTop: 0 }}>Email</label>
           <input id="email" autoComplete="email" style={S.input} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <label htmlFor="password" style={S.label}>Password</label>
-            <a href="/forgot" style={{ ...S.link, fontSize: ".85rem" }}>Forgot password?</a>
+            {providers?.reset && <a href="/forgot" style={{ ...S.link, fontSize: ".85rem" }}>Forgot password?</a>}
           </div>
           <input id="password" autoComplete="current-password" style={S.input} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           <button style={S.btn} disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
         </form>
+        {providers && !providers.reset && (
+          <p style={{ ...S.foot, marginTop: 12 }}>Forgot your password? Email <a href={`mailto:${BUSINESS.email}`} style={S.link}>{BUSINESS.email}</a> and we&apos;ll help.</p>
+        )}
         <p style={S.foot}>New to Mise? <a href="/start" style={S.link}>Get started</a></p>
       </div>
       <SiteFooter />
@@ -79,8 +83,6 @@ function LoginForm() {
   );
 }
 
-const divider = { display: "flex", alignItems: "center", gap: ".7rem", margin: "1.2rem 0 .6rem", fontWeight: 700, fontSize: ".85rem", color: "#72645C" };
-const rule = { flex: 1, height: 1, background: "rgba(34,26,21,.15)" };
 
 // useSearchParams() opts a page out of static generation unless it's wrapped
 // in Suspense — this is what "not found" flashes to while that resolves.
