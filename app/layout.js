@@ -1,3 +1,5 @@
+import CookieBanner from "@/components/CookieBanner";
+
 export const metadata = {
   title: "Mise — a weekly cooking collaborator",
   description: "Plan the week with a chef who talks it through with you, not a recipe database.",
@@ -23,12 +25,10 @@ export default function RootLayout({ children }) {
           stylesheet inside it and would otherwise silently fall back to a
           system font while the app itself renders in Nunito. */}
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600;1,700&display=swap"
-        />
+        {/* Self-hosted: no request to Google or any other font CDN. */}
+        <link rel="stylesheet" href="/fonts/fonts.css" />
+        <link rel="stylesheet" href="/base.css" />
+        <link rel="preload" href="/fonts/nunito.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>
       <body
         style={{
@@ -57,7 +57,10 @@ export default function RootLayout({ children }) {
           background: "transparent",
         }}
       >
+        {/* First tab stop on every page: jump past the header to the content. */}
+        <a href="#main" className="skip-link">Skip to content</a>
         {children}
+        <CookieBanner />
         <script
           // Registers the service worker for offline shell + installability.
           // Failing quietly is correct here — a PWA that can't install still

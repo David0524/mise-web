@@ -74,6 +74,7 @@ let delay = 0;
   for (const f of fs.readdirSync(OUT)) fs.unlinkSync(OUT + f);
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
   const ctx = await b.newContext({ serviceWorkers: 'block', viewport: { width: VW, height: VH }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  await ctx.addInitScript(() => { try { localStorage.setItem('mise:consent-v1', '{"optional":false}'); } catch (_) {} });
   const p = await ctx.newPage();
   p.on('pageerror', (e) => console.log('pageerror', e.message));
   await p.route('**/api/chat', async (route) => {
@@ -85,7 +86,7 @@ let delay = 0;
     if (delay) await new Promise((r) => setTimeout(r, delay));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ text: JSON.stringify(fn ? fn(prompt) : { say: 'ok' }) }) });
   });
-  await p.request.post(BASE + '/api/auth/signup', { data: { email: `film${Date.now()}@example.com`, password: 'password123' } });
+  await p.request.post(BASE + '/api/auth/signup', { data: { email: `film${Date.now()}@example.com`, password: 'password123', ageConfirmed: true, termsAccepted: true } });
   const profile = { people: 2, consistent: true, headcount: {}, nights: ['Tue', 'Thu', 'Sat'], time: 45, spice: 2, adventure: 3, restrictions: [], restrictionsNote: '', dislikes: '', healthConscious: false, equipment: ['Oven', 'Stovetop', 'Cast iron pan', 'Sheet pans'], smokeAlarm: true };
   await p.request.post(BASE + '/api/storage', { data: { key: 'mise:profile-v3', value: JSON.stringify({ profile, favorites: [], setupDone: true, savedAt: new Date().toISOString(), style: 'modern' }) } });
   await p.addStyleTag({ content: '' }).catch(() => {});

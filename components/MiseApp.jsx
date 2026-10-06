@@ -675,6 +675,7 @@ function sanitizeProfile(p, fallback) {
     restrictions: strs(p.restrictions, fallback.restrictions),
     equipment: strs(p.equipment, fallback.equipment),
     restrictionsNote: str(p.restrictionsNote),
+    dietaryConsentAt: typeof p.dietaryConsentAt === "string" ? p.dietaryConsentAt.slice(0, 40) : null,
     dislikes: str(p.dislikes),
     consistent: p.consistent !== false,
     headcount,
@@ -1663,6 +1664,32 @@ function GrowInput({ value, onChange, className = "", ...rest }) {
   );
 }
 
+/* Keyboard behaviour for a dialog, dropped inside it: focus moves into the
+   dialog when it opens, Escape closes it, and focus goes back to whatever
+   opened it when it closes. Renders an invisible marker to find its dialog. */
+function DialogKeys({ onClose, canClose = true }) {
+  const mark = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = canClose ? onClose : null;
+  useEffect(() => {
+    const opener = document.activeElement;
+    const box = mark.current?.parentElement;
+    /* Focus the dialog itself, not its first button: a dialog opened by
+       pressing Enter would otherwise receive that same keypress on its newly
+       focused Close button and shut immediately. Screen readers announce the
+       dialog's label from here, and Tab goes straight into it. */
+    if (box && !box.hasAttribute("tabindex")) box.setAttribute("tabindex", "-1");
+    box?.focus({ preventScroll: true });
+    const onKey = (e) => { if (e.key === "Escape" && closeRef.current) { e.stopPropagation(); closeRef.current(); } };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (opener && document.contains(opener)) opener.focus?.({ preventScroll: true });
+    };
+  }, []);
+  return <span ref={mark} hidden />;
+}
+
 function Chip({ active, children, onClick, sub }) {
   return (
     <button type="button" className={`chip${active ? " chip--on" : ""}`} aria-pressed={active} onClick={onClick}>
@@ -1944,7 +1971,7 @@ class ErrorBoundary extends React.Component {
     return (
       <div className="app">
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
-        <main className="main"><div className="stack">
+        <main id="main" className="main"><div className="stack">
           <section className="card card--big" role="alert">
             <h2>Something on this screen didn&apos;t load</h2>
             <p className="lead">Your week and your saved dishes are fine. Going back to the start usually sorts it.</p>
@@ -4618,7 +4645,7 @@ Respond with ONLY this JSON:
         {/* Echoes the shape of the hero card about to appear, rather than a bare
            spinner floating with nothing around it — consistent with the rest of
            the loading system instead of a one-off exception to it. */}
-        <main className="main"><div className="stack">
+        <main id="main" className="main"><div className="stack">
           <section className="card card--big">
             <div className="hero">
               <div className="hero__mark"><span className="ph" style={{ width: 104, height: 104, borderRadius: "50%", margin: "0 auto" }} /></div>
@@ -4923,7 +4950,7 @@ Respond with ONLY this JSON:
           >
             <MiseMark size={42} />
             <div className="hdr__word">
-              <span className="hdr__logo">Mise</span>
+              <span className="hdr__logo">Mise</span>{" "}
               <span className="hdr__tag">en place</span>
             </div>
           </button>
@@ -4959,7 +4986,7 @@ Respond with ONLY this JSON:
         </div>
       )}
 
-      <main className="main screen">
+      <main id="main" className="main screen">
         <h1 className="sr-focus" ref={headingRef} tabIndex={-1}>
           {view === "start" ? "Welcome" : NAV.find(([id]) => id === view)?.[1] || "Mise"}
         </h1>
@@ -5249,7 +5276,7 @@ function recapLines(profile) {
   }
 
   const r = [...(profile.restrictions || []), profile.restrictionsNote].filter(Boolean);
-  if (r.length) lines.push(`${r.join(", ")} — treated as absolute, never "mostly".`);
+  if (r.length) lines.push(`${r.join(", ")} — treated as absolute, never "mostly". I can still make mistakes, so check labels too.`);
   if (profile.dislikes) lines.push(`No ${profile.dislikes}. I won't sneak it in as "you won't taste it".`);
 
   const eq = profile.equipment || [];
@@ -5282,6 +5309,8 @@ function recapLines(profile) {
 }
 
 function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
+  const dietConsent = !!profile.dietaryConsentAt
+    || (profile.restrictions || []).length > 0 || !!profile.restrictionsNote;
   const last = STEPS.length - 1;
   const next = () => (step === last ? onDone() : setStep(step + 1));
 
@@ -5390,7 +5419,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === 2 && (
           <>
             <h2>How spicy do you like your food?</h2>
-            <p className="lead">I'll never go above this.</p>
+            <p className="lead">I'll aim to stay at or below this.</p>
             <Scale options={SPICE} value={profile.spice} onChange={(v) => set("spice", v)} name="Heat level" />
           </>
         )}
@@ -5412,19 +5441,39 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
           <>
             <h2>Anything you can't or won't eat?</h2>
             <p className="lead">I treat these as hard rules, not preferences.</p>
-            <div className="grid-2">
-              {RESTRICTIONS.map((r) => (
-                <Chip key={r} active={profile.restrictions.includes(r)} onClick={() => toggleIn("restrictions", r)}>
-                  {r}
-                </Chip>
-              ))}
-            </div>
-            <div className="field">
-              <label htmlFor="rn">Allergies or anything else I must avoid</label>
-              <input id="rn" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={profile.restrictionsNote}
-                onChange={(e) => set("restrictionsNote", e.target.value)}
-                placeholder="For example: no sesame, no alcohol" />
-            </div>
+            {/* Allergies and diets like halal or kosher can reveal health or
+                religion, so they need explicit consent before we store them.
+                Unticking forgets them. Profiles saved before this box existed
+                already hold what the person typed, so they show as ticked. */}
+            <label className="check">
+              <input type="checkbox" checked={dietConsent}
+                onChange={() => {
+                  if (dietConsent) { set("restrictions", []); set("restrictionsNote", ""); set("dietaryConsentAt", null); }
+                  else set("dietaryConsentAt", new Date().toISOString());
+                }} />
+              <span>Use what I tell you here about allergies and diet to plan my meals</span>
+            </label>
+            <p id="diet-note" className="aside-note">
+              {dietConsent
+                ? "I'm an AI and I can get things wrong. Always check labels and ingredients yourself, especially for a serious allergy."
+                : "Tick the box to tell me about allergies or diets. You can untick it any time and I'll forget them."}
+            </p>
+            <fieldset className="diet" disabled={!dietConsent} aria-describedby="diet-note">
+              <legend className="sr-only">Dietary needs and allergies</legend>
+              <div className="grid-2">
+                {RESTRICTIONS.map((r) => (
+                  <Chip key={r} active={profile.restrictions.includes(r)} onClick={() => toggleIn("restrictions", r)}>
+                    {r}
+                  </Chip>
+                ))}
+              </div>
+              <div className="field">
+                <label htmlFor="rn">Allergies or anything else I must avoid</label>
+                <input id="rn" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={profile.restrictionsNote}
+                  onChange={(e) => set("restrictionsNote", e.target.value)}
+                  placeholder="For example: no sesame, no alcohol" />
+              </div>
+            </fieldset>
             <div className="field">
               <label htmlFor="dl">Foods you just don't like</label>
               <input id="dl" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={profile.dislikes}
@@ -5442,7 +5491,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === 5 && (
           <>
             <h2>What do you have to cook with?</h2>
-            <p className="lead">I won't suggest a recipe that needs something you don't have.</p>
+            <p className="lead">I'll plan around what you have.</p>
             <div className="grid-2">
               {EQUIPMENT.map((e) => (
                 <Chip key={e} active={profile.equipment.includes(e)} onClick={() => toggleIn("equipment", e)}>
@@ -6150,6 +6199,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
                     </ul>
                   </div>
                 ))}
+                <p className="rec__ai">Written by AI. Check labels for allergens and cook meat, fish and eggs through.</p>
               </>
             )}
 
@@ -6286,6 +6336,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
           {sheetOpen && (lastAsk >= 0 || negotiating) && (
             <div className="rsheet__wrap" onClick={(e) => { if (e.target === e.currentTarget && !negotiating) setSheetOpen(false); }}>
               <div className="rsheet" role="dialog" aria-modal="true" aria-label="Change this recipe">
+                <DialogKeys onClose={() => setSheetOpen(false)} canClose={!negotiating} />
                 <div className="rsheet__grab" aria-hidden="true" />
                 <button className="rsheet__x" onClick={() => setSheetOpen(false)} aria-label="Close">Close</button>
                 <div className="rchat">
@@ -6713,6 +6764,7 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
 
       {phase === "steps" && miseOpen && (
         <div className="cask" role="dialog" aria-label="Ask Mise">
+          <DialogKeys onClose={() => setMiseOpen(false)} />
           <div className="cask__hd">
             <span className="cask__plate"><MiseAvatar mood={miseBusy ? "thinking" : "idle"} size={38} /></span>
             <div>
@@ -7483,7 +7535,77 @@ function Account() {
           {busy === "out" ? "Signing out…" : "Sign out"}
         </Btn>
       </div>
+      <YourData />
     </section>
+  );
+}
+
+/* Download everything, or delete everything. Deleting asks for the password
+   (a borrowed unlocked phone shouldn't be one tap from losing it all), cancels
+   billing on the server, and then wipes what this device kept too. */
+function YourData() {
+  const [confirming, setConfirming] = useState(false);
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const pwRef = useRef(null);
+
+  useEffect(() => { if (confirming) pwRef.current?.focus(); }, [confirming]);
+
+  const del = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't delete your account. Try again in a moment.");
+      try {
+        Object.keys(localStorage).filter((k) => k.startsWith("mise:")).forEach((k) => localStorage.removeItem(k));
+        sessionStorage.clear();
+      } catch (_) {}
+      try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch (_) {}
+      window.location.href = "/?deleted=1";
+    } catch (e2) {
+      setErr(e2.message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="yourdata">
+      <h3>Your data</h3>
+      <p className="hint">
+        Download a copy of everything Mise keeps about you, or delete your account. Deleting cancels your
+        subscription and erases your plans, recipes and settings. It can&apos;t be undone.{" "}
+        <a href="/privacy">Privacy Policy</a>
+      </p>
+      <div className="row">
+        <a className="btn btn--ghost btn--sm" href="/api/account/export" download>Download my data</a>
+        {!confirming && (
+          <Btn small variant="ghost" onClick={() => setConfirming(true)}>Delete my account</Btn>
+        )}
+      </div>
+      {confirming && (
+        <form className="yourdata__confirm" onSubmit={del}
+          onKeyDown={(e) => { if (e.key === "Escape" && !busy) { setConfirming(false); setPw(""); setErr(""); } }}>
+          <label htmlFor="del-pw">Enter your password to delete your account for good</label>
+          <input id="del-pw" ref={pwRef} type="password" autoComplete="current-password" required
+            value={pw} onChange={(e) => setPw(e.target.value)} />
+          {err && <p className="hint hint--err" role="alert">{err}</p>}
+          <div className="row">
+            <Btn small variant="ghost" onClick={() => { setConfirming(false); setPw(""); setErr(""); }} disabled={busy}>Keep my account</Btn>
+            <button type="submit" className="btn btn--sm btn--danger" disabled={busy || !pw}>
+              {busy ? "Deleting…" : "Delete everything"}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -8150,13 +8272,12 @@ function MisePanel({ thread, busy, onClose, onAsk, dish, asks = QUICK_ASKS.defau
 /* ---------------------------------------------------------------------- CSS */
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,600;1,700&display=swap');
+/* Nunito and Caveat are self-hosted: /fonts/fonts.css, linked in app/layout.js. */
 /* Caveat: the hand face for the canvas look. Headings, the wordmark and the
    step numbers only — never body copy. The house rule is that hand lettering
    is for the sign-off, not the text you have to read at the stove with your
    hands full; body stays Nunito in both looks so legibility is never the price
    of the style. */
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap');
 
 .app{
   /* Palette, weighted toward paper white. Surfaces are white on a warm
@@ -8286,7 +8407,7 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .sheet__hdr h1,.sheet__hdr h2{color:inherit}
 
 .app button:focus-visible,.app input:focus-visible,.app textarea:focus-visible,
-.app select:focus-visible,.app [tabindex]:focus-visible{outline:3px solid var(--hot);outline-offset:3px}
+.app select:focus-visible,.app [tabindex]:focus-visible,.app a:focus-visible{outline:3px solid var(--hot);outline-offset:3px}
 @media (prefers-contrast:more){.app button:focus-visible{outline-width:4px}}
 @media (prefers-reduced-motion:reduce){.app *{animation:none!important;transition:none!important}}
 
@@ -8499,6 +8620,18 @@ html{background:#FAF5F4}   /* literal: --paper is declared on .app, not :root */
 .btn--good:active:not(:disabled){transform:translateY(2px);
   box-shadow:0 0 0 var(--good-edge), var(--spec)}
 .btn--wide{width:100%}
+/* Only for the one irreversible action: deleting the account. A darker, sober
+   red rather than the brand persimmon, so it never reads as the "go" button. */
+.btn--danger{background:#8E2A16;box-shadow:0 2px 0 #5E1A0C, var(--spec), var(--lift-1)}
+a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;box-sizing:border-box}
+.yourdata{margin-top:1.4rem;padding-top:1rem;border-top:1px solid var(--rule-2)}
+.yourdata h3{margin:0 0 .3rem;font-size:1.02rem}
+.yourdata .hint{font-style:normal}
+.yourdata .hint a{color:var(--brick);font-weight:800}
+.yourdata__confirm{margin-top:.9rem}
+.yourdata__confirm label{display:block;font-weight:800;font-size:.92rem;margin-bottom:.35rem}
+.yourdata__confirm input{width:100%;max-width:340px;min-height:44px;border-radius:12px;border:1.5px solid #8A7D75;padding:.5rem .7rem;font:inherit;box-sizing:border-box}
+.hint--err{color:#7A2E1B;font-weight:700}
 .btn--sm{min-height:44px;padding:.5rem .9rem;font-size:.86em;border-radius:14px}
 /* The press animation is displacement, not decoration — but honor the setting. */
 @media(prefers-reduced-motion:reduce){.btn{transition:none}}
@@ -8574,6 +8707,12 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   box-shadow:0 0 0 4px rgba(180,71,34,.12);outline:none}
 @media (prefers-contrast:more){.app input[type=text],.app textarea,.app select{border-width:2px}}
 .check{display:flex;gap:.7rem;align-items:center;margin-top:1rem;cursor:pointer;min-height:48px}
+.rsheet:focus,.cask:focus{outline:none}
+.rec__ai{font-size:.8rem;font-weight:700;color:var(--muted);margin:.8rem 0 0;line-height:1.4}
+.diet{border:0;margin:0;padding:0;min-width:0}
+.diet:disabled{opacity:.45}
+.aside-note{font-size:.88rem;font-weight:700;color:var(--muted, #72645C);margin:.4rem 0 .9rem;line-height:1.45}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .check input{width:26px;height:26px;accent-color:var(--hot);flex:0 0 auto}
 .stepper{display:flex;align-items:center;gap:.2rem;margin-top:1rem;overflow:hidden;
   border:1px solid var(--rule);border-radius:18px;width:fit-content;background:var(--surface)}
@@ -8758,7 +8897,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .askbar__in:focus-within{box-shadow:0 0 0 2px var(--brick),0 12px 30px -12px rgba(34,26,21,.35)}
 .askbar__av{flex:0 0 auto;width:42px;height:42px;border-radius:50%;background:#fff;display:grid;place-items:end center;overflow:hidden;box-shadow:0 0 0 1px var(--rule)}
 .askbar .askbar__in input{flex:1;min-width:0;width:auto;min-height:0;border:none;background:none;outline:none;font-family:'Nunito',sans-serif;font-weight:700;font-size:16px;padding:.5rem 0;margin:0;box-shadow:none;border-radius:0}
-.askbar .askbar__in input::placeholder{color:#A99B93}
+.askbar .askbar__in input::placeholder{color:#72645C}
 .askbar__go{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:none;background:var(--brick);color:#fff;display:grid;place-items:center;cursor:pointer}
 .askbar__go:disabled{background:var(--sunk);color:#fff;cursor:default}
 .askbar__quick{display:flex;gap:.4rem;overflow-x:auto;padding:0 .1rem .5rem;scrollbar-width:none}

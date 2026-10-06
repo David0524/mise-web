@@ -30,6 +30,11 @@ export async function POST() {
     cancel_url: `${process.env.APP_URL}/pricing?checkout=cancelled`,
     client_reference_id: userId,
     subscription_data: { metadata: { userId } },
+    // Said again right above the pay button, so renewal is never a surprise.
+    custom_text: { submit: { message: "Renews every month until you cancel. Cancel any time in the app; you keep access until the end of the month you paid for." } },
+    // Set STRIPE_AUTOMATIC_TAX=1 once Stripe Tax is configured: tax is then
+    // calculated and shown here before payment, as the pricing page promises.
+    ...(process.env.STRIPE_AUTOMATIC_TAX === "1" ? { automatic_tax: { enabled: true } } : {}),
   });
 
   return NextResponse.json({ url: session.url });

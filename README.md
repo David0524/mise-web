@@ -112,6 +112,45 @@ is somewhere else — auth, storage, a specific prompt.
    paste the same env vars into Vercel's project settings, deploy.
    `npm run build` is what Vercel runs.
 
+## Legal, privacy and compliance
+
+Policy pages: `/privacy`, `/terms`, `/refunds`, `/cookies`. Every public page
+has a footer with the business details and policy links, and the site shows a
+cookie banner (`components/CookieBanner.jsx`).
+
+**Before launch, set these** (they show as bracketed placeholders until you do,
+on purpose, rather than invented details). They're `NEXT_PUBLIC_`, so rebuild
+after changing them:
+
+| Variable | Example |
+|---|---|
+| `NEXT_PUBLIC_BUSINESS_LEGAL_NAME` | `Mise Kitchen LLC` |
+| `NEXT_PUBLIC_BUSINESS_ADDRESS` | `123 Main St, Austin, TX 78701, USA` |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | `help@yourdomain.com` |
+| `NEXT_PUBLIC_PRIVACY_EMAIL` | optional; defaults to the support email |
+| `NEXT_PUBLIC_GOVERNING_LAW` | `the State of Texas, USA` |
+| `NEXT_PUBLIC_PRICE_LABEL` | optional; defaults to `$12 per month` |
+| `STRIPE_AUTOMATIC_TAX` | `1` once Stripe Tax is set up |
+
+- Signup requires "I'm 18 or older" and agreeing to the Terms; both are checked
+  again on the server and recorded on the `users` row (`age_confirmed_at`,
+  `terms_accepted_at`, `policy_version`). Bump `POLICY_VERSION` in
+  `lib/business.js` when a policy changes materially.
+- Allergies and diets are only stored after an explicit tick at setup; unticking deletes them.
+- People can download their data (`GET /api/account/export`) and delete their
+  account (`POST /api/account/delete`, password required; deletes the Stripe
+  customer, which cancels billing, then every row via `on delete cascade`).
+  Both are in the app under My Kitchen → Account → Your data.
+- The app sends no email. If you add any, include an unsubscribe link and only
+  send marketing to people who opted in.
+- Third parties and SDKs are listed in `docs/THIRD_PARTIES.md`. Use a paid
+  Gemini tier for launch (the free tier may use prompts to improve Google products).
+- Accessibility: `node qa/a11y.js` runs axe-core (WCAG 2.1 AA) on every page and
+  checks keyboard basics.
+
+Have a lawyer review the policies before launch; they're a strong, accurate
+starting point written from what the code actually does, not legal advice.
+
 ## Updating the cooking doctrine
 
 The skill (`weekly-cooking-collaborator/SKILL.md`, in the skill's own repo —

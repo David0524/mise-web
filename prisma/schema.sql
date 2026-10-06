@@ -15,6 +15,12 @@ create table if not exists users (
   created_at    timestamptz not null default now()
 );
 
+-- Consent records: when the person confirmed they're 18+ and accepted the
+-- Terms, and the policy version they saw (lib/business.js POLICY_VERSION).
+alter table users add column if not exists age_confirmed_at  timestamptz;
+alter table users add column if not exists terms_accepted_at timestamptz;
+alter table users add column if not exists policy_version    text;
+
 -- One row per user. status drives the paywall gate in every /api route.
 -- 'trialing' and 'active' both count as "let them in"; everything else doesn't.
 create table if not exists subscriptions (

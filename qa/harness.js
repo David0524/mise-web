@@ -13,6 +13,9 @@ const launch = () => chromium.launch({ executablePath: EXEC, headless: true, arg
    through seven setup steps. Every /api/chat exchange is recorded on p.log. */
 async function newUser(browser, profile = {}) {
   const ctx = await browser.newContext({ serviceWorkers: "block", viewport: { width: 1280, height: 900 } });
+  // Answer the cookie banner up front, as a returning visitor would have; on a
+  // first visit it sits over the bottom of the screen until answered.
+  await ctx.addInitScript(() => { try { localStorage.setItem("mise:consent-v1", '{"optional":false}'); } catch (_) {} });
   const p = await ctx.newPage();
   p.ctx = ctx;
   p.log = [];
@@ -27,7 +30,7 @@ async function newUser(browser, profile = {}) {
     p.log.push({ status: r.status(), prompt: req?.messages?.at(-1)?.content || "", tier: req?.tier, answer: text });
   });
   const email = `qa${Date.now()}${Math.floor(Math.random() * 1e4)}@example.com`;
-  await p.request.post(B + "/api/auth/signup", { data: { email, password: "password123" } });
+  await p.request.post(B + "/api/auth/signup", { data: { email, password: "password123", ageConfirmed: true, termsAccepted: true } });
   const base = {
     people: 1, consistent: true, headcount: {}, nights: ["Tue", "Thu", "Sat"], time: 45, spice: 2, adventure: 3,
     restrictions: [], restrictionsNote: "", dislikes: "", healthConscious: false,

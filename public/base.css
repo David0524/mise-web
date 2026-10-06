@@ -1,0 +1,5 @@
+/* Site-wide basics that every page needs before any page CSS loads. */
+.skip-link{position:absolute;left:12px;top:-60px;z-index:2147483001;background:#221A15;color:#fff;
+  padding:.6rem 1rem;border-radius:10px;font:800 .95rem 'Nunito',system-ui,sans-serif;text-decoration:none}
+.skip-link:focus{top:calc(12px + env(safe-area-inset-top))}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #B44722;outline-offset:2px}
