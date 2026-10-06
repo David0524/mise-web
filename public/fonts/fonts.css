@@ -1,0 +1,5 @@
+/* Self-hosted so loading a page never contacts Google (see /cookies, docs/THIRD_PARTIES.md).
+   Latin subsets, variable weight. */
+@font-face{font-family:"Nunito";src:url(/fonts/nunito.woff2) format("woff2");font-weight:200 1000;font-style:normal;font-display:swap}
+@font-face{font-family:"Nunito";src:url(/fonts/nunito-italic.woff2) format("woff2");font-weight:200 1000;font-style:italic;font-display:swap}
+@font-face{font-family:"Caveat";src:url(/fonts/caveat.woff2) format("woff2");font-weight:400 700;font-style:normal;font-display:swap}

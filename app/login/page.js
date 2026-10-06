@@ -2,6 +2,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { S, FilterDefs } from "@/lib/authStyles";
+import SiteFooter from "@/components/SiteFooter";
 
 function LoginForm() {
   const router = useRouter();
@@ -45,7 +46,7 @@ function LoginForm() {
   }
 
   return (
-    <main style={S.wrap}>
+    <main id="main" style={{ ...S.wrap, flexDirection: "column" }}>
       <FilterDefs />
       <form onSubmit={submit} style={S.card}>
         <h1 style={S.h1}>Sign in</h1>
@@ -53,13 +54,14 @@ function LoginForm() {
           <p style={S.notice}>You were signed out. Sign back in to keep going.</p>
         )}
         {err && <p style={S.error}>{err}</p>}
-        <label style={S.label}>Email</label>
-        <input style={S.input} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <label style={S.label}>Password</label>
-        <input style={S.input} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <label htmlFor="email" style={S.label}>Email</label>
+        <input id="email" autoComplete="email" style={S.input} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <label htmlFor="password" style={S.label}>Password</label>
+        <input id="password" autoComplete="current-password" style={S.input} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         <button style={S.btn} disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
         <p style={S.foot}>No account yet? <a href="/signup" style={S.link}>Sign up</a></p>
       </form>
+      <SiteFooter />
     </main>
   );
 }

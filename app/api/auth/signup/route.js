@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { POLICY_VERSION } from "@/lib/business";
+import { ensureConsentColumns } from "@/lib/consent";
 import {
   hashPassword, createSession, readCredentials, passwordBytes, PASSWORD_MAX_BYTES, EMAIL_RE,
 } from "@/lib/auth";
 
 export async function POST(req) {
   try {
-  const { email, password } = readCredentials(await req.json().catch(() => ({})));
+  const body = await req.json().catch(() => ({}));
+  const { email, password } = readCredentials(body);
+
+  // The form requires both boxes; check again here so a direct POST can't skip them.
+  if (body?.ageConfirmed !== true || body?.termsAccepted !== true) {
+    return NextResponse.json(
+      { error: "Please confirm you're 18 or older and agree to the Terms to create an account." },
+      { status: 400 }
+    );
+  }
 
   if (!email || !password || password.length < 8 || !password.trim()) {
     return NextResponse.json(
@@ -30,9 +41,11 @@ export async function POST(req) {
   }
 
   const hash = await hashPassword(password);
+  await ensureConsentColumns();
   const { rows } = await query(
-    "insert into users (email, password_hash) values ($1, $2) returning id",
-    [email, hash]
+    `insert into users (email, password_hash, age_confirmed_at, terms_accepted_at, policy_version)
+     values ($1, $2, now(), now(), $3) returning id`,
+    [email, hash, POLICY_VERSION]
   );
   const userId = rows[0].id;
 

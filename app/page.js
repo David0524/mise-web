@@ -1,4 +1,5 @@
 import { S, FilterDefs } from "@/lib/authStyles";
+import SiteFooter from "@/components/SiteFooter";
 
 /* Mise herself, in her "happy" expression — the same artwork the app uses, not
    a redrawn approximation, so the character a visitor meets here is exactly the
@@ -29,11 +30,17 @@ function MiseHello({ size = 132 }) {
   );
 }
 
-export default function Landing() {
+export default function Landing({ searchParams }) {
+  const deleted = searchParams?.deleted === "1";
   return (
-    <main style={S.wrap}>
+    <main id="main" style={{ ...S.wrap, flexDirection: "column" }}>
       <FilterDefs />
       <div style={{ ...S.card, maxWidth: 460, textAlign: "center", paddingTop: "2.4rem" }}>
+        {deleted && (
+          <p role="status" style={{ ...S.notice, marginBottom: "1rem" }}>
+            Your account and data have been deleted, and your subscription is cancelled.
+          </p>
+        )}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: ".4rem" }}>
           <MiseHello />
         </div>
@@ -55,6 +62,7 @@ export default function Landing() {
           Already have an account? <a href="/login" style={S.link}>Sign in</a>
         </p>
       </div>
+      <SiteFooter />
     </main>
   );
 }

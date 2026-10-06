@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { S, FilterDefs } from "@/lib/authStyles";
+import SiteFooter from "@/components/SiteFooter";
 
 export default function PricingPage() {
   const [busy, setBusy] = useState(false);
@@ -23,7 +24,7 @@ export default function PricingPage() {
   }
 
   return (
-    <main style={S.wrap}>
+    <main id="main" style={{ ...S.wrap, flexDirection: "column" }}>
       <FilterDefs />
       <div style={{ ...S.card, width: 380, textAlign: "center" }}>
         <h1 style={S.h1}>Mise</h1>
@@ -39,10 +40,21 @@ export default function PricingPage() {
             Cancel anytime. Manage it yourself, no email required.
           </p>
         </div>
+        <ul style={{ fontFamily: "system-ui, sans-serif", fontSize: 13.5, lineHeight: 1.5, color: "#51453D", textAlign: "left", margin: "0 0 .4rem", paddingLeft: "1.1rem" }}>
+          <li>Renews automatically every month at $12 until you cancel.</li>
+          <li>Cancel in the app any time; you keep access until the end of the month you paid for.</li>
+          <li>No setup or hidden fees. Any sales tax or VAT is shown at checkout before you pay.</li>
+          <li>Not happy? Full refund within 14 days of your first payment.</li>
+        </ul>
         <button style={S.btn} onClick={subscribe} disabled={busy}>
-          {busy ? "Starting checkout…" : "Subscribe"}
+          {busy ? "Starting checkout…" : "Subscribe for $12/month"}
         </button>
+        <p style={{ ...S.foot, fontSize: ".82rem", marginTop: 12 }}>
+          By subscribing you agree to the <a href="/terms" style={S.link}>Terms</a> and{" "}
+          <a href="/refunds" style={S.link}>Refund Policy</a>.
+        </p>
       </div>
+      <SiteFooter />
     </main>
   );
 }
