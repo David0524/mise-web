@@ -76,7 +76,7 @@ export async function POST(req) {
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const { messages, tier, maxTokens, sessionContext, userProvider, userKey, docSlices } = body || {};
+  const { messages, tier, maxTokens, sessionContext, userProvider, userKey, docSlices, json } = body || {};
   // Calls on the person's own key cost us nothing, so they aren't counted.
   const limited = userKey ? null : await overLimit(auth.userId, "chat");
   if (limited) {
@@ -163,6 +163,7 @@ export async function POST(req) {
       tier,
       maxTokens: tokenCap,
       deadlineAt,
+      json: json !== false,
       ...(byok ? { userKey } : {}),
     });
     /* Timing is here on purpose. The heaviest call in the app sits close to

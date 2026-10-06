@@ -117,7 +117,7 @@ const SCENARIOS = {
     run: async (p, c) => {
       await h.startWeek(p);
       const d = await h.dishes(p);
-      const mins = d.map((x) => Number((x.meta || "").match(/About (\d+)/)?.[1] || 0));
+      const mins = d.map((x) => Number((x.meta || "").match(/(?:About )?(\d+)\s*min/i)?.[1] || 0));
       c("every dish ≤ ~25 minutes", mins.every((m) => m && m <= 25), mins.join(", "));
     } },
 
@@ -252,7 +252,7 @@ async function readOpenRecipe(p) {
     const card = [...document.querySelectorAll(".card")].find((c) => c.querySelector(".hsteps"));
     if (!card) return null;
     return {
-      title: card.querySelector("h2")?.innerText, meta: card.querySelector(".lead")?.innerText,
+      title: card.querySelector("h2")?.innerText, meta: card.querySelector(".rec__meta, .lead")?.innerText,
       items: [...card.querySelectorAll(".comp__l2 li span")].map((e) => e.innerText),
       steps: [...card.querySelectorAll(".hstep__do")].map((e) => e.innerText),
       notes: [...card.querySelectorAll(".note, .stale, .learn")].map((e) => e.innerText),
