@@ -5,12 +5,12 @@ SR = 48000
 def load(path, a, b):
     raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(a), "-t", str(b - a), "-i", path, "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], capture_output=True).stdout
     return np.frombuffer(raw, np.float32).reshape(-1, 2).copy()
-A = load("assets/music/190.mp3", 7.71, 27.71)
-Bm = load("assets/music/190.mp3", 57.71 - .015, 66.71)
+A = load("assets/music/190.mp3", 7.71, 31.71)
+Bm = load("assets/music/190.mp3", 57.71 - .015, 69.71)
 xf = int(.015 * SR); r = np.linspace(0, 1, xf)[:, None]
 music = np.concatenate([A[:-xf], A[-xf:] * (1 - r) + Bm[:xf] * r, Bm[xf:]])
-N = int(29 * SR); music = np.pad(music, ((0, max(0, N - len(music))), (0, 0)))[:N]
-fo = int(.35 * SR); music[-fo:] *= np.linspace(1, 0, fo)[:, None] ** 2
+N = int(36 * SR); music = np.pad(music, ((0, max(0, N - len(music))), (0, 0)))[:N]
+fo = int(2.5 * SR); music[-fo:] *= np.linspace(1, 0, fo)[:, None] ** 1.5
 
 rng = np.random.default_rng(7)
 T = lambda d: np.arange(int(d * SR)) / SR
@@ -37,17 +37,18 @@ def swell(d=.35): n = int(d * SR); t = np.linspace(0, 1, n); return bp(rng.stand
 def stretch(): t = T(.3); f = 160 + 260 * t / .3; return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.sin(np.pi * t / .3) * .18
 
 B = lambda b: b * .5
-cues = [(B(1), whoosh(.9, 400, 2500, .14)), (B(3), pop()), (B(6), click()), (B(6), shutter()), (B(7), shutter()),
-        *[(B(9) + i * .06, paper()) for i in range(4)], *[(B(10) + i * .06, paper()) for i in range(4)],
-        (B(11), whoosh(.4, 600, 4000, .12)), (B(12), tick()), (B(13), click()), (B(16), thump()),
-        *[(B(17) + i * .13, tick()) for i in range(7)], (B(19), bloop(False)), (B(19.95), pop()), (B(20), stretch()),
-        (B(21), click()), *[(B(22) + i * .09, tick() * .5) for i in range(16)], (B(24), click()), (B(25), whoosh(.6, 300, 3000, .2)),
-        (B(26), whoosh(.5, 200, 2000, .16)), (B(27), stretch()), (B(29), click()), (B(29.5), click()), (B(30), whoosh(.3, 800, 5000, .1)),
-        (B(30.45), tick()), (B(30.75), tick()), (B(30.8), pop() * .6), (B(31), bloop(True)), (B(31.7), whoosh(.5, 500, 5000, .18)),
-        (B(33), click() * .7), (B(34), pop()), *[(B(34.3) + i * .07, tick() * .4) for i in range(6)], (B(35), whoosh(.3, 800, 5000, .1)),
-        (B(35.6), click()), (B(36), ding()), (B(37), tick()), (B(38), tick()), (B(39), ding(1568)), (B(39.6), swell(.5)),
-        (B(43), shutter()), (B(45), shutter()), (B(45.65), pop() * .7), (B(52), thump()), (B(54), pop()), (B(54.8), whoosh(.5, 500, 3000, .12)),
-        (B(55.8), pop() * .7)]
+key = lambda: tick() * .45
+typing = lambda b0, b1, n: [(B(b0) + (B(b1) - B(b0)) * i / n, key()) for i in range(n)]
+cues = [(B(1), whoosh(.9, 400, 2500, .14)), (B(3), pop()), (B(6), click()), (B(6), shutter()), (B(7), shutter()), (B(7.1), whoosh(.5, 300, 2500, .14)),
+        (B(8.2), click()), *typing(8.6, 11.1, 18), (B(11.6), click()), (B(12), bloop(True)), (B(12.9), pop()),
+        *[(B(13) + i * .08, paper()) for i in range(4)], (B(14), click()), (B(14.5), click()), (B(15.1), click()),
+        (B(16), thump()), (B(16), whoosh(.35, 600, 5000, .12)), (B(17.4), tick()), (B(18), tick()), (B(23.2), click()), (B(24), whoosh(.35, 600, 5000, .12)),
+        (B(25.6), click()), *typing(25.9, 27.6, 12), (B(27.9), pop() * .7), (B(28), whoosh(.4, 300, 3000, .12)), (B(29.4), pop()),
+        *[(B(29.7) + i * .1, paper()) for i in range(3)], (B(33.4), click()), (B(34), whoosh(.35, 300, 3000, .1)), (B(34.3), ding()),
+        (B(36), whoosh(.4, 300, 3000, .14)), (B(37.2), click()), (B(39), click()), (B(39.1), whoosh(.4, 300, 3000, .12)),
+        *typing(39.7, 41.3, 14), (B(41.5), pop() * .7), (B(42.7), pop()), (B(47.3), swell(.4)), (B(48), thump()),
+        (B(49), whoosh(.5, 200, 2000, .12)), (B(50), shutter()), (B(52), shutter()), (B(52.65), pop() * .7),
+        (B(60), thump()), (B(62), pop()), (B(62.8), whoosh(.5, 500, 3000, .12)), (B(63.8), pop() * .7), (B(64.4), ding(1046.5) * .7)]
 fx = np.zeros(N)
 for t0, s in cues:
     i = int(t0 * SR); s = s[:N - i]; fx[i:i + len(s)] += s

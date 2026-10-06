@@ -390,384 +390,320 @@ function pill(k, label, color = BRICK) {
 }
 const pillLabel = (k, ko = 0, dir = -1) => (pw, ph) => rise("Dinner, figured out.", { x: 0, y: ph / 2 - 33, w: pw, h: 74, k, ko, dir, style: "text-align:center;font:600 50px/66px Geist;color:#fff;letter-spacing:-.02em" });
 
-/* ---- OPEN (beats 0–16) */
-scene(0, 16, (t) => {
+
+/* ---- OPEN (beats 0–6): MISE. — the period wears the toque — squeezes into
+   its period, which springs into the brick pill: "Dinner, figured out." */
+scene(0, 6, (t) => {
   const b = t / BEAT;
   let html = "";
   const sq = io(seg(t, B(1), B(2.9)));
   if (b < 3) html += wordmark(sq, true) + hat(1 - step(t, B(2.55), 4, .8));
-  const pillK = step(t, B(3), 2.4, .62);
-  if (b >= 3 && b < 7.2) html += pill(pillK, pillLabel(out(seg(t, B(4), B(4.8)))));
-  // iris close over the label (6→6.5), snap open onto the table photo (7→7.4)
-  if (b >= 6 && b < 9) {
-    const R = 420, closeK = io(seg(t, B(6), B(6.5))), openK = step(t, B(7), 3.4, .7);
-    const open = b < 7 ? 1 - closeK : openK;
-    const sq2 = io(seg(t, B(8), B(9)));
-    const side = lerp(2 * R, 300, sq2), rad = lerp(R, 34, sq2);
-    if (b >= 7) html += `<div class="a" style="left:${W / 2 - side / 2}px;top:${H / 2 - side / 2}px;width:${side}px;height:${side}px;border-radius:${rad}px;background:url(${IMG("p08-table")}) center/cover"></div>`;
-    if (b < 8) html += `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">
-      <defs><clipPath id="ic"><circle cx="${W / 2}" cy="${H / 2}" r="${R}"/></clipPath></defs>
-      <g clip-path="url(#ic)">${iris(W / 2, H / 2, R, open)}</g></svg>`;
-  }
-  if (b >= 9) html += bento(t);
+  if (b >= 3) html += pill(step(t, B(3), 2.4, .62), pillLabel(out(seg(t, B(4), B(4.8)))));
   return html;
 });
 
-const DISHES = [
-  ["p06-steak-cooked", "Tue", "Steak bites"], ["p02-noodles", "Thu", "Ginger noodles"], ["p03-castiron", "Sat", "Skillet chicken"],
-  ["p04-roastveg", "Mon", "Roast veg"], ["p12-soup", "Wed", "Noodle soup"], ["p05-sheetpan", "Fri", "Sheet pan"],
-  ["p01-grainbowl", "Sun", "Grain bowl"], ["p09-pasta", "", "Pasta"], ["p08-table", "", ""],
-];
-function bentoRects(k) {
-  const g = 300, gap = 18, x0 = W / 2 - (3 * g + 2 * gap) / 2, y0 = H / 2 - (3 * g + 2 * gap) / 2;
-  const cell = (c, r) => [x0 + c * (g + gap), y0 + r * (g + gap), g, g];
-  const grid = [cell(1, 1), cell(1, 0), cell(2, 1), cell(1, 2), cell(0, 1), cell(0, 0), cell(2, 0), cell(2, 2), cell(0, 2)];
-  const L = 210, T = 150, Hd = 780, gp = 18;
-  const bento = [
-    [L + 470 + gp, T, 560, Hd],
-    [L + 470 + gp + 560 + gp, T, 470 - gp, (Hd - gp) / 2],
-    [L + 470 + gp + 560 + gp, T + (Hd + gp) / 2, 470 - gp, (Hd - gp) / 2],
-    [L, T + (Hd + gp) / 2, 470, (Hd - gp) / 2],
-    [L, T, 230, (Hd - gp) / 2],
-    [L + 240, T, 230, (Hd - gp) / 2],
-    [L + 470 + gp + 560 + gp, T + Hd + 40, 0, 0],
-    [L, T + Hd + 40, 0, 0], [L, T + Hd + 40, 0, 0],
-  ];
-  return grid.map((a, i) => a.map((v, j) => lerp(v, bento[i][j], k)));
+/* ===================================================================== v3
+   The demo: a large iPhone 15 Pro on the right running Mise — the app's real
+   flows (plan from the fridge, the shopping list, "make it dairy-free", asking
+   Mise at the stove), redrawn clean in its own type, colours and character —
+   and a big caption on the left so it reads with the sound off.
+   Phone screens are laid out in iOS points (393 × 852) and scaled by S. */
+const S = 1.13, SW = 393, SH = 852;
+const PCX = 1270, PCY = 540;                                   // phone centre
+const SX = PCX - SW * S / 2, SY = PCY - SH * S / 2;            // screen origin
+const NIGHT = "#3C3F63", WARNBG = "#FBEDE9";
+
+/* text typed between t0 and t1, a character at a time */
+const typed = (s, t, t0, t1) => s.slice(0, Math.round(clamp((t - t0) / (t1 - t0)) * s.length));
+const caret = (on) => on ? `<span style="display:inline-block;width:2px;height:1.05em;background:${BRICK};vertical-align:-.15em;margin-left:1px"></span>` : "";
+/* an iOS touch: a soft disc that settles, presses at t0 and releases with a ring */
+function touch(t, t0, x, y) {
+  if (t < t0 - .28 || t > t0 + .34) return "";
+  const inK = out(seg(t, t0 - .28, t0 - .08)), pr = step(t, t0, 7, .8) - step(t, t0 + .12, 6, .8);
+  const rel = seg(t, t0 + .12, t0 + .34), a = (1 - rel) * inK;
+  const d = 46 * (1 - pr * .18);
+  return `<div class="a" style="left:${x - d / 2}px;top:${y - d / 2}px;width:${d}px;height:${d}px;border-radius:50%;background:rgba(34,26,21,${.16 * a});box-shadow:0 0 0 1.5px rgba(255,255,255,${.7 * a})"></div>
+    ${rel > 0 ? `<div class="a" style="left:${x - 23 - rel * 16}px;top:${y - 23 - rel * 16}px;width:${46 + rel * 32}px;height:${46 + rel * 32}px;border-radius:50%;border:2px solid rgba(180,71,34,${.5 * (1 - rel)})"></div>` : ""}`;
 }
-function bento(t) {
-  const unfold = (i) => i === 0 ? 1 : i <= 4 ? step(t, B(9) + (i - 1) * .06, 2.6, .7) : step(t, B(10) + (i - 5) * .06, 2.6, .7);
-  const bk = io(seg(t, B(11), B(11.8)));
-  const rects = bentoRects(bk);
-  let html = "";
-  rects.forEach((r, i) => {
-    const u = unfold(i); if (u <= .001 || r[2] < 2) return;
-    const [x, y, w, h] = r;
-    const sx = i === 2 ? "0% 50%" : i === 4 ? "100% 50%" : i === 1 ? "50% 100%" : i === 3 ? "50% 0%" : "50% 50%";
-    const lift = i === 0 ? step(t, B(12), 3, .6) - step(t, B(13), 4, .7) : 0;
-    const press = i === 0 ? step(t, B(13), 6, .8) - step(t, B(13.25), 5, .8) : 0;
-    const s = 1 + lift * .02 - press * .03;
-    html += `<div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${lerp(26, 30, bk)}px;overflow:hidden;
-      transform-origin:${sx};transform:scale(${i === 0 ? s : 1},${i === 0 ? s : 1}) ${i ? (i <= 4 ? (i % 2 ? `scaleY(${u})` : `scaleX(${u})`) : `scale(${u})`) : ""};
-      background:url(${IMG(DISHES[i][0])}) center/cover"></div>`;
-    const chipK = step(t, B(11.4) + i * .05, 3.4, .55);
-    if (DISHES[i][1] && chipK > .01 && w > 50) {
-      const cw = 92, ch = 46, cx = x + 18, cy = y + 18;
-      html += `<div class="a" style="left:${cx}px;top:${cy}px;transform-origin:0 0;transform:scale(${chipK})">${glass({
-        x: 0, y: 0, w: cw, h: ch, r: 23, scale: 18, tint: .18,
-        bg: (ox, oy) => svgCover(IMG(DISHES[i][0]), x - cx, y - cy, w, h, ox, oy),
-        inner: `<div class="a" style="inset:0;display:grid;place-items:center;font:700 19px Geist;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)">${DISHES[i][1]}</div>`,
-      })}</div>`;
-    }
+const btn = (label, { x, y, w, h = 56, bg = BRICK, color = "#fff", press = 0, fs = 18 }) => `<div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${h * .32}px;background:${bg};color:${color};display:grid;place-items:center;font:800 ${fs}px Nunito;transform:scale(${1 - press * .04})">${label}</div>`;
+const pressOf = (t, t0) => step(t, t0, 7, .8) - step(t, t0 + .12, 6, .8);
+const card = (inner, { x, y, w, h, bg = "#fff", r = 22, extra = "" }) => `<div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;background:${bg};box-shadow:0 1px 0 ${RULE},0 10px 30px -14px rgba(34,26,21,.22);${extra}">${inner}</div>`;
+const iosStatus = (dark = false) => {
+  const c = dark ? "#fff" : INK;
+  return `<div class="a" style="left:0;top:0;width:${SW}px;height:54px;font:600 17px/54px Geist;color:${c}">
+    <span class="a" style="left:46px;top:2px">6:42</span>
+    <svg class="a" style="right:30px;top:21px" width="74" height="13" viewBox="0 0 74 13" fill="${c}">
+      <rect x="0" y="8" width="3" height="5" rx="1"/><rect x="5" y="6" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="13" rx="1"/>
+      <path d="M33 4.2a9 9 0 0 1 12 0l-1.4 1.5a7 7 0 0 0-9.2 0zM35.4 6.8a5.4 5.4 0 0 1 7.2 0L41.2 8.3a3.4 3.4 0 0 0-4.4 0zM39 9.2l1.6 1.7L39 12.6l-1.6-1.7z"/>
+      <rect x="50" y=".5" width="21" height="12" rx="3.5" fill="none" stroke="${c}" stroke-opacity=".4"/><rect x="52" y="2.5" width="14" height="8" rx="2"/><rect x="72" y="4.5" width="1.6" height="4" rx=".8" fill-opacity=".4"/></svg></div>`;
+};
+const appBar = (title = "") => `<div class="a" style="left:20px;top:60px">${logo(22)}</div>${title}`;
+const bigTitle = (s, y = 104, fs = 32) => `<div class="a" style="left:22px;top:${y}px;width:350px;font:900 ${fs}px/1.12 Nunito;letter-spacing:-.02em">${s}</div>`;
+
+/* ---------- screen: home — what needs using up */
+const FRIDGE = "Sirloin, garlic, half a lemon, parsley";
+function scrHome(t) {
+  const txt = typed(FRIDGE, t, B(8.6), B(11.1));
+  const focus = t >= B(8.2);
+  return `${appBar()}${bigTitle("What are we<br>cooking this week?")}
+    ${card(`<div class="a" style="left:18px;top:16px;font:900 12px Nunito;letter-spacing:.09em;color:${BRICK}">WHAT NEEDS USING UP?</div>
+      <div class="a" style="left:18px;top:42px;width:316px;font:700 20px/1.3 Nunito;color:${txt ? INK : "#B3A69E"}">${txt || "Half a cabbage, some scallions…"}${caret(focus && t < B(11.6))}</div>`,
+      { x: 18, y: 196, w: 357, h: 128, extra: focus ? `box-shadow:0 0 0 2px ${BRICK},0 10px 30px -14px rgba(34,26,21,.22)` : "" })}
+    <div class="a" style="left:18px;top:340px;display:flex;gap:8px">${["Tue · Thu · Sat", "2 people", "45 min"].map((c) => `<span style="padding:9px 14px;border-radius:999px;background:${SUNK};font:800 14px Nunito;color:${INK}">${c}</span>`).join("")}</div>
+    <div class="a" style="left:18px;top:404px;display:flex;align-items:center;gap:12px">${plate(46)}<span style="font:italic 700 16px Nunito;color:${MUTED}">I'll build the week around it.</span></div>
+    ${btn("Show me ideas", { x: 18, y: 730, w: 357, h: 58, press: pressOf(t, B(11.6)) })}`;
+}
+function scrThinking(t) {
+  const pulse = .5 + .5 * Math.sin(t * 9);
+  return `${appBar()}
+    <div class="a" style="left:${SW / 2 - 60}px;top:190px">${plate(120, "thinking")}</div>
+    <div class="a" style="left:0;top:330px;width:${SW}px;text-align:center;font:900 24px Nunito">Thinking through your week…</div>
+    <div class="a" style="left:0;top:368px;width:${SW}px;text-align:center;font:700 16px Nunito;color:${MUTED}">Planning around your sirloin</div>
+    ${[0, 1, 2].map((i) => `<div class="a" style="left:40px;top:${430 + i * 64}px;width:313px;height:48px;border-radius:16px;background:${SUNK};opacity:${.55 + .45 * ((pulse + i * .3) % 1)}"></div>`).join("")}`;
+}
+/* ---------- screen: ideas — Mise's note and four dishes */
+const IDEAS = [["Garlic Butter Steak Bites", "Seared sirloin, garlic, lemon", "20 min"], ["Lemon Herb Chicken", "Crisp skin, roasted lemon", "40 min"],
+  ["Crispy Gnocchi & Greens", "Pan-fried, garlicky spinach", "25 min"], ["Spicy Peanut Noodles", "Chili crisp, scallion", "20 min"]];
+const ADD_AT = [B(14), B(14.5)];
+function scrIdeas(t) {
+  const t0 = B(12.9);
+  const n = ADD_AT.filter((a) => t >= a + .06).length;
+  let h = `${appBar()}${bigTitle("Pick your week", 100, 30)}`;
+  const mk = step(t, t0, 3.2, .75);
+  h += `<div class="a" style="left:18px;top:${150 + (1 - mk) * 30}px;width:357px;display:flex;gap:10px;align-items:flex-start;transform-origin:0 0;transform:scale(${.96 + .04 * mk})">
+    <div style="flex:0 0 auto">${plate(42, "happy")}</div>
+    <div style="background:#fff;border-radius:6px 20px 20px 20px;padding:12px 14px;box-shadow:0 1px 0 ${RULE},0 8px 24px -14px rgba(34,26,21,.25);font:700 16px/1.35 Nunito">
+      <div style="font:900 11px Nunito;letter-spacing:.09em;color:${BRICK};margin-bottom:3px">MISE</div>Your sirloin is the star on Tuesday. The lemon and parsley carry into Thursday, so nothing's wasted.</div></div>`;
+  IDEAS.forEach(([title, blurb, time], i) => {
+    const k = step(t, t0 + .12 + i * .08, 3.2, .8);
+    const added = i < 2 && t >= ADD_AT[i] + .06, pr = i < 2 ? pressOf(t, ADD_AT[i]) : 0;
+    h += card(`<div class="a" style="left:18px;top:16px;width:230px;font:900 18px/1.2 Nunito">${title}</div>
+      <div class="a" style="left:18px;top:42px;width:230px;font:700 14px Nunito;color:${MUTED}">${blurb}</div>
+      <div class="a" style="left:18px;top:66px;font:800 13px Nunito;color:${MUTED}">${time}</div>
+      <div class="a" style="right:14px;top:30px;width:88px;height:40px;border-radius:999px;display:grid;place-items:center;font:900 15px Nunito;transform:scale(${1 - pr * .1});${added ? `background:${INK};color:#fff">Added ✓` : `background:${BRICK};color:#fff">Add`}</div>`,
+      { x: 18, y: 290 + i * 104 + (1 - k) * 50, w: 357, h: 92, extra: `opacity:${clamp(k * 3)}` });
   });
-  return html;
+  h += `<div class="a" style="left:0;top:690px;width:${SW}px;height:162px;background:linear-gradient(rgba(250,245,244,0),${PAPER} 40%)"></div>`;
+  h += btn(n ? `Plan my week · ${n} picked` : "Pick a few to plan", { x: 18, y: 730, w: 357, h: 58, bg: n ? BRICK : SUNK, color: n ? "#fff" : MUTED, press: pressOf(t, B(15.1)) });
+  return h;
 }
-
-/* ---- GLASS (beats 16–28) */
-const ICONS = [   // adjust · timer · list · share, as white strokes
-  `<path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="2.6" fill="#fff"/><circle cx="15" cy="17" r="2.6" fill="#fff"/>`,
-  `<circle cx="12" cy="13" r="8"/><path d="M12 13V9M10 3h4"/>`,
-  `<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="#fff"/><circle cx="4" cy="12" r="1" fill="#fff"/><circle cx="4" cy="18" r="1" fill="#fff"/>`,
-  `<path d="M12 3v12M7 8l5-5 5 5M5 13v7h14v-7"/>`,
-];
-const icon = (i, s = 40) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))">${ICONS[i]}</svg>`;
-
-/* "Tonight": types in as glass letters (17–18), melts into one droplet (19),
-   which falls to where the toolbar is born (19.5–20). */
-const TONIGHT = "Tonight", TN_SIZE = 270;
-function tonight(t, bg) {
-  const b = t / BEAT;
-  if (b < 17 || b >= 20) return "";
-  const base = H / 2 + TN_SIZE * .36;
-  const melt = io(seg(t, B(19), B(19.55)));
-  const fall = io(seg(t, B(19.5), B(20)));
-  const dropR = 60 * clamp(melt * 1.6);
-  const dy = lerp(H / 2, H - 150, fall), stretch = Math.sin(fall * Math.PI);
-  return glassBlob({
-    x: 0, y: 0, w: W, h: H, bg, goo: melt > 0 ? lerp(4, 16, clamp(melt * 4)) : 0, bezel: 34, scale: 44, tint: .24, shadow: .35,
-    draw: (ctx) => {
-      ctx.font = `900 ${TN_SIZE}px Archivo`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-      const ws = [...TONIGHT].map((ch) => ctx.measureText(ch).width), tw = ws.reduce((a, b) => a + b, 0) + 8 * 6;
-      let px = W / 2 - tw / 2;
-      const P = ws.map((w, i) => { const p = { ch: TONIGHT[i], cx: px + w / 2 }; px += w + 8; return p; });
-      P.forEach((p, i) => {
-        const ti = B(17) + i * .13, s = step(t, ti, 3.6, .7) * (1 - melt);
-        if (s <= .01) return;
-        const cx = lerp(p.cx, W / 2, melt), cy = lerp(base, H / 2 + TN_SIZE * .1, melt);
-        ctx.save(); ctx.translate(cx, cy - TN_SIZE * .35); ctx.scale(s, s); ctx.fillText(p.ch, 0, TN_SIZE * .35); ctx.restore();
-      });
-      if (dropR > 0) { ctx.beginPath(); ctx.ellipse(W / 2, dy, dropR * (1 - .12 * stretch), dropR * (1 + .22 * stretch), 0, 0, Math.PI * 2); ctx.fill(); }
-    },
+/* ---------- screen: shopping list */
+const SHOP = [["PRODUCE"], ["1 bunch", "parsley", "3d"], ["12 oz", "green beans"], ["5 oz", "baby spinach"], ["2", "lemons"],
+  ["PROTEIN"], ["1½ lb", "chicken thighs", "2d"], ["DAIRY"], ["1 stick", "butter"], ["1 wedge", "parmesan"]];
+const TICK_AT = [B(17.4), B(18)];
+function scrShop(t) {
+  const ticked = TICK_AT.map((a) => t >= a + .05);
+  const left = 8 - ticked.filter(Boolean).length;
+  let h = `${appBar()}${bigTitle("Shopping", 100, 32)}
+    <div class="a" style="left:22px;top:146px;font:800 16px Nunito;color:${MUTED}">${left} of 8 to buy · everything gets used</div>
+    <div class="a" style="left:22px;top:178px;width:349px;height:6px;border-radius:3px;background:${SUNK}"><div style="height:100%;width:${(8 - left) / 8 * 100}%;background:${BRICK};border-radius:3px"></div></div>
+    ${card(`<div class="a" style="left:16px;top:14px;font:900 11px Nunito;letter-spacing:.09em;color:${BRICK}">USE FIRST</div>
+      <div class="a" style="left:16px;top:34px;font:800 16px/1.3 Nunito">Parsley by Friday · chicken by Thursday</div>`, { x: 18, y: 200, w: 357, h: 70, bg: WARNBG })}`;
+  let y = 290, ti = 0;
+  for (const row of SHOP) {
+    if (row.length === 1) { h += `<div class="a" style="left:24px;top:${y + 8}px;font:900 12px Nunito;letter-spacing:.1em;color:${MUTED}">${row[0]}</div>`; y += 34; continue; }
+    const idx = row[1] === "parsley" ? 0 : row[1] === "green beans" ? 1 : -1;
+    const done = idx >= 0 && ticked[idx], pk = idx >= 0 ? step(t, TICK_AT[idx], 5, .55) : 0;
+    h += `<div class="a" style="left:22px;top:${y}px;width:349px;height:44px;display:flex;align-items:center;gap:14px;border-bottom:1px solid ${RULE};color:${done ? MUTED : INK}">
+      <div style="width:26px;height:26px;border-radius:9px;border:2px solid ${done ? BRICK : "#CDBFB8"};background:${done ? BRICK : "transparent"};display:grid;place-items:center;color:#fff;font:900 16px Nunito;transform:scale(${done ? .9 + .1 * pk : 1})">${done ? "✓" : ""}</div>
+      <div style="flex:1;font:700 17px Nunito;position:relative"><b style="font-weight:900">${row[0]}</b> ${row[1]}
+        ${done ? `<div class="a" style="left:0;top:50%;height:1.5px;width:${pk * 100}%;max-width:100%;background:${MUTED}"></div>` : ""}</div>
+      ${row[2] && !done ? `<span style="font:900 13px Nunito;color:${BRICK}">${row[2]}</span>` : ""}</div>`;
+    y += 44;
+  }
+  h += btn("Tonight: Steak bites  →", { x: 18, y: 760, w: 357, h: 56, press: pressOf(t, B(23.2)) });
+  return h;
+}
+/* ---------- screen: recipe, and the change sheet */
+const ING = ["1 lb sirloin, cubed", "3 tbsp butter", "4 cloves garlic, minced", "Handful of parsley", "½ lemon", "Salt and pepper"];
+const ASK = "Make it dairy-free";
+const OPTS = [["Olive oil + a splash of soy", "Soy brings back the depth butter gave", "Nothing new to buy", true], ["Vegan butter", "Same method, plant-based butter", "One new item"], ["Chimichurri finish", "Skip the baste, spoon herb sauce over", "+5 minutes"]];
+const PICK_AT = B(33.4), APPLY_AT = B(34);
+function scrRecipe(t) {
+  const ap = t >= APPLY_AT;
+  const sw = step(t, APPLY_AT, 3.2, .75);           // the ingredient swap
+  let h = `${appBar()}<div class="a" style="left:22px;top:98px;font:900 12px Nunito;letter-spacing:.09em;color:${BRICK}">TUESDAY</div>
+    ${bigTitle("Garlic Butter<br>Steak Bites", 118, 32)}
+    <div class="a" style="left:22px;top:196px;font:800 16px Nunito;color:${MUTED}">2 servings · 20 min${ap ? ` · <span style="color:${BRICK}">dairy-free</span>` : ""}</div>
+    <div class="a" style="left:22px;top:240px;font:900 12px Nunito;letter-spacing:.1em;color:${MUTED}">WHAT YOU NEED</div>`;
+  const rows = ap ? ["1 lb sirloin, cubed", "3 tbsp olive oil", "1 tsp soy sauce", ...ING.slice(2)] : ING;
+  rows.forEach((r, i) => {
+    let y = 266 + i * 44;
+    let inner = `<span>${r}</span>`, hi = 0;
+    if (ap && i === 1) { hi = 1; inner = rise("3 tbsp olive oil", { x: 0, y: 0, w: 300, h: 44, k: sw, style: "font:700 17px/44px Nunito" }) + rise("3 tbsp butter", { x: 0, y: 0, w: 300, h: 44, k: 1, ko: clamp(sw * 1.4), style: `font:700 17px/44px Nunito;text-decoration:line-through;color:${MUTED}` }); }
+    if (ap && i === 2) { hi = 1; inner = `<span style="display:inline-block;transform:translateX(${(1 - sw) * 30}px);opacity:${clamp(sw * 2)}">${r}</span>`; }
+    if (ap && i > 2) y = 266 + (i - 1 + sw) * 44;
+    const glow = hi ? clamp(step(t, APPLY_AT + .1, 2, .9)) * (1 - seg(t, B(35.4), B(36))) : 0;
+    h += `<div class="a" style="left:14px;top:${y}px;width:365px;height:44px;border-radius:12px;background:rgba(180,71,34,${.1 * glow});display:flex;align-items:center;gap:12px;padding:0 10px;box-sizing:border-box;font:700 17px Nunito">
+      <span style="width:6px;height:6px;border-radius:50%;background:${hi && glow > .05 ? BRICK : "#CDBFB8"};flex:0 0 auto"></span><div style="position:relative;flex:1;height:44px;line-height:44px">${inner}</div></div>`;
   });
-}
-
-/* The lock screen, laid out for any container size (full frame → phone screen). */
-function lockScreen(w, h, t) {
-  const s = Math.min(w, h) / 1080, wp = SEQ("v4", .2 + Math.max(0, t - B(25)));
-  const bg = (ox, oy) => svgCover(wp, 0, 0, w, h, ox, oy);
-  let html = `<svg class="a" style="left:0;top:0" width="${w}" height="${h}">${bg(0, 0)}<rect width="${w}" height="${h}" fill="rgba(20,12,8,.24)"/></svg>`;
-  html += rise("Tuesday, October 7", { x: 0, y: h * .1, w, h: 60 * s, k: out(seg(t, B(26.2), B(26.6))), style: `text-align:center;font:600 ${46 * s}px/${60 * s}px Geist;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.25)` });
-  const ck = step(t, B(26.35), 2.8, .6);
-  if (ck > .01) {
-    const fs = 330 * s, cy = h * .1 + 70 * s, ch = 300 * s;
-    html += glassBlob({ x: 0, y: cy, w, h: ch, bg: (ox, oy) => bg(ox, oy), bezel: 22 * s + 4, scale: 26 * s + 6, tint: .14, shadow: .12,
-      draw: (ctx) => { ctx.font = `700 ${fs}px Archivo`; ctx.textAlign = "center"; ctx.translate(w / 2, ch * .88); ctx.scale(lerp(.8, 1, ck), lerp(.8, 1, ck)); ctx.fillText("6:42", 0, 0); } });
+  h += btn("Start cooking", { x: 18, y: 600 + (ap ? 44 * sw : 0), w: 170, h: 52, fs: 17 }) + btn("Ask Mise", { x: 198, y: 600 + (ap ? 44 * sw : 0), w: 177, h: 52, bg: "#fff", color: INK, fs: 17 });
+  // ask bar
+  const typing = t >= B(25.6);
+  const q = typed(ASK, t, B(25.9), B(27.6));
+  h += `<div class="a" style="left:14px;top:752px;width:365px;height:56px;border-radius:28px;background:#fff;box-shadow:0 0 0 ${typing && t < B(28) ? 2 : 1}px ${typing && t < B(28) ? BRICK : RULE},0 10px 30px -12px rgba(34,26,21,.3);display:flex;align-items:center;gap:10px;padding:0 8px;box-sizing:border-box">
+    ${plate(40)}<span style="flex:1;font:700 16px Nunito;color:${q && t < B(28) ? INK : "#B3A69E"}">${q && t < B(28) ? q : "Ask Mise to change anything…"}${caret(typing && t < B(28))}</span>
+    <div style="width:38px;height:38px;border-radius:50%;background:${q && t < B(28) ? BRICK : SUNK};display:grid;place-items:center;transform:scale(${1 - pressOf(t, B(27.9)) * .12})"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>`;
+  // the sheet: your ask, Mise thinking, her three routes; picking one rewrites the recipe
+  const up = step(t, B(28), 2.6, .8) * (1 - io(seg(t, APPLY_AT - .05, APPLY_AT + .3)));
+  if (up > .002) {
+    const top = lerp(SH, 250, up);
+    const ans = t >= B(29.4), ak = step(t, B(29.4), 3, .8);
+    let s = `<div class="a" style="left:${SW / 2 - 20}px;top:8px;width:40px;height:5px;border-radius:3px;background:#D9CDC7"></div>
+      <div class="a" style="right:18px;top:26px;max-width:260px;padding:11px 16px;border-radius:20px 20px 6px 20px;background:${INK};color:#fff;font:800 16px Nunito">${ASK}</div>
+      <div class="a" style="left:18px;top:80px;display:flex;gap:10px;align-items:flex-start;width:357px">${plate(38, ans ? "idle" : "thinking")}
+        <div style="flex:1;position:relative;height:92px;font:700 16px/1.35 Nunito;padding-top:2px">${ans ? rise("The butter does two jobs here: browning and that glossy finish. Three ways to cover both:", { x: 0, y: 0, w: 300, h: 90, k: ak, style: "font:700 16px/1.38 Nunito" }) : `<span style="color:${MUTED}">Working it out…</span>`}</div></div>`;
+    if (ans) OPTS.forEach(([l, w, c, best], i) => {
+      const k = step(t, B(29.7) + i * .1, 3.2, .8), pr = best ? pressOf(t, PICK_AT) : 0;
+      s += `<div class="a" style="left:18px;top:${190 + i * 96 + (1 - k) * 40}px;width:357px;height:84px;border-radius:18px;background:#fff;box-sizing:border-box;padding:12px 14px;border:${best ? `2px solid ${BRICK}` : `1px solid ${RULE}`};opacity:${clamp(k * 3)};transform:scale(${1 - pr * .04})">
+        <div style="font:900 16px Nunito">${l}</div><div style="font:700 13.5px/1.3 Nunito;color:${MUTED};margin-top:3px">${w}</div>
+        <div style="font:800 12px Nunito;color:${best ? BRICK : MUTED};margin-top:4px">${c}</div>
+        ${best ? `<span class="a" style="right:12px;top:12px;padding:3px 8px;border-radius:999px;background:${BRICK};color:#fff;font:900 10.5px Nunito;letter-spacing:.06em">MISE'S PICK</span>` : ""}</div>`;
+    });
+    h += `<div class="a" style="left:0;top:0;width:${SW}px;height:${SH}px;background:rgba(34,26,21,${.18 * up})"></div>
+      <div class="a" style="left:0;top:${top}px;width:${SW}px;height:${SH}px;border-radius:30px 30px 0 0;background:${PAPER};box-shadow:0 -10px 40px rgba(34,26,21,.18)">${s}</div>`;
   }
-  // home bar → Live Activity (27): Mise's cook timer, with her tip
-  const hb = step(t, B(26.3), 3, .7), la = step(t, B(27), 2.4, .66);
-  if (hb > .01) {
-    const lw = lerp(230 * s * hb, 1000 * s, la), lh = lerp(10 * s, 200 * s, la), ly = lerp(h - 26 * s, h - 250 * s, la);
-    const lx = w / 2 - lw / 2, ik = step(t, B(27.25), 3.2, .7);
-    const left = 4 * 60 - Math.max(0, Math.floor((t - B(27.4)) * 2));
-    const ring = 1 - left / 240;
-    const inner = la < .3 ? "" : `
-      <div class="a" style="left:${24 * s}px;top:${(200 - 136) / 2 * s}px;transform-origin:50% 50%;transform:scale(${ik})">${plate(136 * s, "happy")}</div>
-      ${rise("Steak bites", { x: 184 * s, y: 42 * s, w: 560 * s, h: 52 * s, k: ik, style: `font:800 ${42 * s}px/${52 * s}px Nunito;color:#fff` })}
-      ${rise("Mise: flip at 2:00 — let the crust form.", { x: 184 * s, y: 102 * s, w: 600 * s, h: 40 * s, k: step(t, B(27.4), 3.2, .75), style: `font:600 ${29 * s}px/${40 * s}px Nunito;color:rgba(255,255,255,.86)` })}
-      <svg class="a" style="right:${30 * s}px;top:${30 * s}px;transform-origin:50% 50%;transform:scale(${ik})" width="${140 * s}" height="${140 * s}" viewBox="0 0 140 140">
-        <circle cx="70" cy="70" r="60" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="10"/>
-        <circle cx="70" cy="70" r="60" fill="none" stroke="${BRICK}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 60}" stroke-dashoffset="${2 * Math.PI * 60 * (1 - Math.max(.02, ring + .08 * ik))}" transform="rotate(-90 70 70)"/>
-        <text x="70" y="82" text-anchor="middle" font-family="Geist" font-weight="700" font-size="34" fill="#fff">${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}</text></svg>`;
-    html += la < .02
-      ? `<div class="a" style="left:${lx}px;top:${ly - lh / 2}px;width:${lw}px;height:${lh}px;border-radius:${lh / 2}px;background:rgba(255,255,255,.9)"></div>`
-      : glass({ x: lx, y: ly - lh / 2, w: lw, h: lh, r: Math.min(lh / 2, 64 * s), scale: 30, dark: .42, bg, inner });
-  }
-  return html;
+  // Mise's confirmation toast
+  const tk = step(t, APPLY_AT + .25, 3, .75) * (1 - io(seg(t, B(35.6), B(35.95))));
+  if (tk > .002) h += `<div class="a" style="left:14px;top:${lerp(-90, 56, tk)}px;width:365px;padding:12px 14px;box-sizing:border-box;border-radius:22px;background:${NIGHT};color:#fff;display:flex;gap:12px;align-items:center;box-shadow:0 14px 30px -10px rgba(34,26,21,.4)">
+    ${plate(40, "happy")}<div style="font:700 15px/1.3 Nunito">Done. Butter's out, and I took it off your shopping list.</div></div>`;
+  return h;
 }
-
-function glassScene(t) {
+/* ---------- screen: cook mode, and asking Mise at the stove */
+const COOK_Q = "How do I know they're done?";
+function scrCook(t) {
+  const run = Math.max(0, t - B(37.2)), left = Math.max(0, 120 - Math.floor(run));
+  const ring = run > 0 ? Math.min(1, run / 120) : 0;
+  let h = `<div class="a" style="left:18px;top:60px;padding:8px 14px;border-radius:999px;background:${SUNK};font:800 14px Nunito">Leave</div>
+    <div class="a" style="left:0;top:66px;width:${SW}px;text-align:center;font:900 15px Nunito">Steak Bites</div>
+    <div class="a" style="left:22px;top:118px;font:900 13px Nunito;letter-spacing:.1em;color:${BRICK}">STEP 3 OF 5</div>
+    <div class="a" style="left:22px;top:142px;width:349px;height:6px;border-radius:3px;background:${SUNK}"><div style="width:60%;height:100%;border-radius:3px;background:${BRICK}"></div></div>
+    <div class="a" style="left:22px;top:172px;width:349px;font:900 31px/1.15 Nunito;letter-spacing:-.015em">Sear in one layer, 2 minutes a side.</div>
+    <div class="a" style="left:22px;top:300px;font:italic 700 17px Nunito;color:${MUTED}">Crowding drops the heat.</div>
+    <svg class="a" style="left:${SW / 2 - 95}px;top:350px" width="190" height="190" viewBox="0 0 190 190">
+      <circle cx="95" cy="95" r="82" fill="#fff" stroke="${SUNK}" stroke-width="12"/>
+      <circle cx="95" cy="95" r="82" fill="none" stroke="${BRICK}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 82}" stroke-dashoffset="${2 * Math.PI * 82 * (1 - Math.max(.001, ring))}" transform="rotate(-90 95 95)" opacity="${run > 0 ? 1 : 0}"/>
+      <text x="95" y="108" text-anchor="middle" font-family="Geist" font-weight="700" font-size="40" fill="${INK}">${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}</text></svg>
+    ${btn(run > 0 ? "Pause timer" : "Start 2 min timer", { x: 96, y: 560, w: 200, h: 48, fs: 16, bg: run > 0 ? SUNK : BRICK, color: run > 0 ? INK : "#fff", press: pressOf(t, B(37.2)) })}
+    ${btn("Back", { x: 18, y: 760, w: 120, h: 54, bg: "#fff", color: INK, fs: 17 })}${btn("Next step", { x: 148, y: 760, w: 227, h: 54, fs: 17 })}
+    <div class="a" style="right:18px;top:680px;display:flex;align-items:center;gap:8px;padding:6px 16px 6px 6px;border-radius:999px;background:${BRICK};color:#fff;font:800 15px Nunito;box-shadow:0 10px 24px -8px rgba(180,71,34,.5);transform:scale(${1 - pressOf(t, B(39)) * .06})">${plate(38)}Stuck? Ask me</div>`;
+  // the stove sheet (the app's dark "at the stove" panel)
+  const up = step(t, B(39.1), 2.6, .8);
+  if (up > .002) {
+    const q = typed(COOK_Q, t, B(39.7), B(41.3)), sent = t >= B(41.6), ans = t >= B(42.7), ak = step(t, B(42.7), 3, .8);
+    let s = `<div class="a" style="left:18px;top:20px;display:flex;align-items:center;gap:12px">${plate(46, ans ? "happy" : sent ? "thinking" : "idle")}
+        <div><div style="font:900 18px Nunito">Mise</div><div style="font:700 13px Nunito;opacity:.7">At the stove · Steak Bites</div></div></div>
+      ${sent ? `<div class="a" style="right:18px;top:90px;padding:11px 16px;border-radius:20px 20px 6px 20px;background:rgba(255,255,255,.14);font:800 16px Nunito">${COOK_Q}</div>` : ""}
+      ${sent ? `<div class="a" style="left:18px;top:150px;width:357px;padding:16px 18px;box-sizing:border-box;border-radius:6px 22px 22px 22px;background:#fff;color:${INK}">
+        ${ans ? `<div style="position:relative;height:108px">${rise("Press one. It should feel like the base of your thumb, or 130°F inside. Pull them now: they keep cooking off the heat.", { x: 0, y: 0, w: 321, h: 108, k: ak, style: "font:800 19px/1.4 Nunito" })}</div>` : `<span style="font:700 16px Nunito;color:${MUTED}">Thinking…</span>`}</div>` : ""}
+      <div class="a" style="left:14px;bottom:30px;width:365px;height:54px;border-radius:27px;background:rgba(255,255,255,.12);display:flex;align-items:center;padding:0 18px;box-sizing:border-box;font:700 16px Nunito;color:${q && !sent ? "#fff" : "rgba(255,255,255,.5)"}">
+        <span style="flex:1">${q && !sent ? q : "What's happening in the pan?"}${caret(t >= B(39.6) && !sent)}</span>
+        <div style="width:38px;height:38px;border-radius:50%;background:${q && !sent ? BRICK : "rgba(255,255,255,.15)"};margin-right:-10px;transform:scale(${1 - pressOf(t, B(41.5)) * .12})"></div></div>`;
+    h += `<div class="a" style="left:0;top:0;width:${SW}px;height:${SH}px;background:rgba(34,26,21,${.25 * up})"></div>
+      <div class="a" style="left:0;top:${lerp(SH, 300, up)}px;width:${SW}px;height:${SH - 300}px;border-radius:30px 30px 0 0;background:${NIGHT};color:#fff">${s}</div>`;
+  }
+  return h;
+}
+/* where each tap lands, in screen points: [beat, x, y] */
+const TAPS = [[8.2, 196, 262], [11.6, 196, 758], [14, 316, 340], [14.5, 316, 444], [15.1, 196, 758], [17.4, 35, 324 + 0], [18, 35, 368], [23.2, 196, 788],
+  [25.6, 200, 780], [27.9, 355, 780], [33.4, 196, 280 + 40], [37.2, 196, 584], [39, 300, 700], [41.5, 355, 795]];
+/* the screen at time t, with transitions between screens */
+function screenAt(t) {
   const b = t / BEAT;
-  let html = "";
-  // the knob drags raw → cooked: cooked is revealed from the left edge up to the seam
-  const knob = springs(t, 0, [[B(22), .4, 2.2, .85], [B(22.7), 1, 1.8, .85]]);
-  const wipeX = b < 22 ? 0 : clamp(lerp(W / 2 - 880, W / 2 + 880, knob) + lerp(-80, 80, clamp(knob)), 0, W);
-  const raw = IMG("p07-steak-raw"), cooked = IMG("p06-steak-cooked");
-  const bg = (ox, oy) => b < 21
-    ? svgCover(cooked, 0, 0, W, H, ox, oy)
-    : svgCover(raw, 0, 0, W, H, ox, oy) +
-      `<clipPath id="wp${ox}_${oy}"><rect x="${ox}" y="${oy}" width="${wipeX}" height="${H}"/></clipPath>` +
-      svgCover(cooked, 0, 0, W, H, ox, oy, `clip-path="url(#wp${ox}_${oy})"`);
-  html += `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">${bg(0, 0)}</svg>`;
-  if (b >= 21 && b < 24.4 && wipeX > 2 && wipeX < W - 2) html += `<div class="a" style="left:${wipeX - 1.5}px;top:0;width:3px;height:${H}px;background:rgba(255,255,255,.85)"></div>`;
-  html += tonight(t, bg);
-  // toolbar (20) → slider (21) → collapses into the knob as it swells (24)
-  const tk = step(t, B(20), 2.6, .62), sk = io(seg(t, B(21.1), B(21.6))), col = io(seg(t, B(24.05), B(24.35)));
-  if (b >= 20 && b < 24.35) {
-    const w = lerp(lerp(120, lerp(520, 1840, sk), tk), 128, col), h = lerp(lerp(120, 104, tk), 104, col);
-    const x = W / 2 - w / 2, y = H - 150 - h / 2;
-    const inner = sk < .5
-      ? `<div class="a" style="inset:0;display:flex;justify-content:space-around;align-items:center;opacity:${clamp((tk - .4) * 3) * (1 - sk * 2)}">${[0, 1, 2, 3].map((i) => icon(i)).join("")}</div>`
-      : `<div class="a" style="left:40px;right:40px;top:${h / 2 - 3}px;height:6px;border-radius:3px;background:rgba(255,255,255,.55)"></div>`;
-    html += glass({ x, y, w, h, r: h / 2, scale: 52, tint: .26, bg, inner });
-    if (sk > .5 && col < 1) {
-      const lk = 1 - step(t, B(24), 5, .8);
-      html += `<div class="a" style="left:${W / 2 - 150}px;top:${y - 88}px;width:300px;height:60px;transform-origin:50% 100%;transform:scale(${lk})">${glass({ x: 0, y: 0, w: 300, h: 60, r: 30, scale: 18, tint: .3,
-        bg: (ox, oy) => bg(ox - (W / 2 - 150), oy - (y - 88)),
-        inner: `<div class="a" style="inset:0;display:grid;place-items:center;font:700 26px Geist;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)">Raw &nbsp;→&nbsp; Cooked</div>` })}</div>`;
-    }
+  const lay = (html, dx = 0, dy = 0, extra = "") => `<div class="a" style="left:${dx}px;top:${dy}px;width:${SW}px;height:${SH}px;background:${PAPER};overflow:hidden;${extra}">${html}</div>`;
+  let h = "";
+  if (b < 12.3) {
+    const ok = io(seg(t, B(11.9), B(12.3)));
+    h += lay(scrHome(t), 0, -ok * 60, `opacity:${1 - ok}`);
   }
-  // the knob → lens (24) → orb (25) → the clip opens inside → lock screen (26)
-  if (sk > .5 && b < 26.5) {
-    const kd = springs(t, 88, [[B(24), 128, 3, .6], [B(24.35), 300, 2.4, .6], [B(25), 560, 2.2, .62]]);
-    const rk = step(t, B(25), 2.2, .72);
-    const kcx = lerp(lerp(W / 2 - 880, W / 2 + 880, knob), W / 2, rk), kcy = lerp(H - 150, H / 2, rk);
-    const kx = kcx - kd / 2, ky = kcy - kd / 2;
-    const vr = step(t, B(25.2), 2.6, .72) * (kd / 2 - 16);
-    const ex = io(seg(t, B(26), B(26.5)));
-    if (ex < 1) {
-      const wp = vr > 1 ? SEQ("v4", .2 + Math.max(0, t - B(25))) : "";
-      const inner = vr > 1 ? `<svg class="a" style="left:0;top:0;overflow:visible" width="${kd}" height="${kd}"><defs><clipPath id="vc"><circle cx="${kd / 2}" cy="${kd / 2}" r="${vr}"/></clipPath></defs>
-        <g clip-path="url(#vc)">${svgCover(wp, -kx, -ky, W, H)}</g></svg>` : "";
-      html += glass({ x: kx, y: ky, w: kd, h: kd, r: kd / 2, scale: lerp(40, 90, clamp((kd - 88) / 200)), bezel: kd * .45, tint: .14, bg, inner });
-    }
-    if (ex > 0) {
-      const ew = lerp(2 * vr, W, ex), eh = lerp(2 * vr, H, ex), er = lerp(vr, 0, ex);
-      html += `<div class="a" style="left:${W / 2 - ew / 2}px;top:${H / 2 - eh / 2}px;width:${ew}px;height:${eh}px;border-radius:${er}px;overflow:hidden">
-        <svg class="a" style="left:${-(W / 2 - ew / 2)}px;top:${-(H / 2 - eh / 2)}px" width="${W}" height="${H}">${svgCover(SEQ("v4", .2 + Math.max(0, t - B(25))), 0, 0, W, H)}</svg></div>`;
-    }
+  if (b >= 11.9 && b < 13.3) {
+    const k = io(seg(t, B(11.9), B(12.3))), ok = io(seg(t, B(12.85), B(13.2)));
+    h += lay(scrThinking(t), 0, (1 - k) * 60 - ok * 60, `opacity:${k * (1 - ok)};background:transparent`);
   }
-  if (b >= 26.2) html += `<div class="a" style="left:0;top:0;width:${W}px;height:${H}px">${lockScreen(W, H, t)}</div>`;
-  // cursor: clicks "adjust" (21), rides the knob (22–24), long-presses (24)
-  if (b >= 20.3 && b < 24.6) {
-    const ix = W / 2 - 260 + 65, iy = H - 150;
-    const kx = lerp(W / 2 - 880, W / 2 + 880, knob);
-    const toKnob = io(seg(t, B(21.2), B(21.9)));
-    const ink = io(seg(t, B(20.3), B(20.85)));
-    let cx = lerp(W - 300, ix, ink), cy = lerp(H + 40, iy, ink);
-    cx = lerp(cx, kx, toKnob); cy = lerp(cy, H - 150, toKnob);
-    const press = (b >= 21 && b < 21.15) || (b >= 22 && b < 24.5) ? 1 : 0;
-    html += cursor(cx + 6, cy + 6, 1.7, press);
+  if (b >= 12.85 && b < 16.4) h += lay(scrIdeas(t), -io(seg(t, B(16), B(16.4))) * SW * .3, 0, `background:${b < 13 ? "transparent" : PAPER}`);
+  if (b >= 16 && b < 24.4) {
+    const inK = io(seg(t, B(16), B(16.4))), ok = io(seg(t, B(24), B(24.4)));
+    h += lay(scrShop(t), (1 - inK) * SW - ok * SW * .3, 0, "box-shadow:-20px 0 40px rgba(34,26,21,.12)");
   }
-  return html;
+  if (b >= 24 && b < 36.6) h += lay(scrRecipe(t), (1 - io(seg(t, B(24), B(24.4)))) * SW, 0, "box-shadow:-20px 0 40px rgba(34,26,21,.12)");
+  if (b >= 36) h += lay(scrCook(t), 0, (1 - step(t, B(36), 2.6, .85)) * SH, "box-shadow:0 -20px 40px rgba(34,26,21,.15)");
+  for (const [tb, x, y] of TAPS) h += touch(t, B(tb), x, y);
+  const dark = b >= 39.3 && b < 48;
+  h += `<div class="a" style="left:0;top:0;width:${SW}px;height:54px">${iosStatus(false)}</div>`;
+  return h + `<div class="a" style="left:${SW / 2 - 67}px;top:${SH - 13}px;width:134px;height:5px;border-radius:3px;background:${dark ? "rgba(255,255,255,.7)" : INK}"></div>`;
 }
-scene(16, 28, glassScene);
-
-/* ---- STAGE (beats 28–36): lock screen → phone; Brainstorm → Shopping; the
-   Island pinches off into a Mac window; drag the photo across; Start cooking */
-const PW = 400, PHH = 860, PY = 110;
-const MAC = { x: 860, y: 110, w: 940, h: 860 };
-const phoneX = (t) => springs(t, W / 2 - PW / 2, [[B(31), 300, 2.2, .8]]);
-const BS = [["p06-steak-cooked", "Steak bites", "Garlic butter, 20 min"], ["p02-noodles", "Ginger noodles", "Uses your scallions"], ["p03-castiron", "Skillet chicken", "One pan, lemony"]];
-function brainstorm(t) {
-  const added = [t >= B(29.05), t >= B(29.55), false];
-  const n = added.filter(Boolean).length;
-  return `${statusBar()}
-    <div class="a" style="left:22px;top:64px">${logo(26)}</div>
-    <div class="a" style="left:24px;top:110px;font:900 34px/1.1 Nunito;letter-spacing:-.02em">Brainstorm</div>
-    <div class="a" style="left:24px;top:154px;font:600 16px Nunito;color:${MUTED}">For Tue · Thu · Sat</div>
-    ${BS.map(([img, title, blurb], i) => {
-      const p = i < 2 ? step(t, B(29) + i * .5, 6, .8) - step(t, B(29.15) + i * .5, 5, .8) : 0;
-      return `<div class="a" style="left:18px;top:${196 + i * 128}px;width:364px;height:116px;border-radius:22px;background:#fff;box-shadow:0 1px 0 ${RULE},0 8px 24px -12px rgba(34,26,21,.18)">
-        <div class="a" style="left:14px;top:14px;width:88px;height:88px;border-radius:16px;background:url(${IMG(img)}) center/cover"></div>
-        <div class="a" style="left:116px;top:22px;width:150px;font:800 19px/1.15 Nunito">${title}</div>
-        <div class="a" style="left:116px;top:70px;width:150px;font:600 14px/1.2 Nunito;color:${MUTED}">${blurb}</div>
-        <div class="a" style="right:14px;top:38px;width:92px;height:40px;border-radius:999px;display:grid;place-items:center;font:800 15px Nunito;transform:scale(${1 - p * .1});
-          ${added[i] ? `background:${INK};color:#fff">Added ✓` : `background:${BRICK};color:#fff">Add it`}</div></div>`;
-    }).join("")}
-    <div class="a" style="left:18px;right:18px;bottom:104px;height:60px;border-radius:18px;background:${n ? BRICK : SUNK};color:${n ? "#fff" : MUTED};display:grid;place-items:center;font:800 19px Nunito">Plan my week${n ? ` · ${n} picked` : ""}</div>
-    <div class="a" style="right:18px;bottom:184px">${plate(64)}</div>
-    ${tabBar(0)}`;
+/* the iPhone 15 Pro around it */
+function iphone(screenHtml, rise = 0) {
+  const bz = 12 * S, w = SW * S, h = SH * S;
+  return `<div class="a" style="left:${SX - bz}px;top:${SY - bz + rise}px;width:${w + 2 * bz}px;height:${h + 2 * bz}px">
+    <div class="a" style="inset:-3px;border-radius:${(55 + 12) * S + 3}px;background:linear-gradient(135deg,#8C8580,#4A4440 40%,#6E6762 70%,#3A3532);box-shadow:0 50px 90px -30px rgba(34,26,21,.45),0 20px 40px -20px rgba(34,26,21,.3)"></div>
+    <div class="a" style="inset:0;border-radius:${(55 + 12) * S}px;background:#0A0908"></div>
+    <div class="a" style="left:${bz}px;top:${bz}px;width:${w}px;height:${h}px;border-radius:${55 * S}px;overflow:hidden;background:${PAPER}">
+      <div class="a app" style="left:0;top:0;width:${SW}px;height:${SH}px;transform-origin:0 0;transform:scale(${S})">${screenHtml}
+        <div class="a" style="left:${SW / 2 - 63}px;top:11px;width:126px;height:37px;border-radius:19px;background:#000"></div></div></div></div>`;
 }
-const tabBar = (on) => `<div class="a" style="left:0;right:0;bottom:0;height:86px;background:rgba(250,245,244,.94);border-top:1px solid ${RULE};display:flex;justify-content:space-around;align-items:center;font:700 13px Nunito;color:${MUTED}">
-  ${["Brainstorm", "My week", "Shopping", "Cooking"].map((l, i) => `<span style="${i === on ? `color:${INK}` : ""}">${l}</span>`).join("")}</div>`;
-function shopping(t, tipK) {
-  const t1 = t >= B(30.45), t2 = t >= B(30.75);
-  const bar = io(seg(t, B(30.45), B(30.95))) * 17;
-  return `${statusBar()}
-    <div class="a" style="left:22px;top:64px">${logo(26)}</div>
-    <div class="a" style="left:24px;top:110px;font:900 34px/1.1 Nunito;letter-spacing:-.02em">Shopping</div>
-    <div class="a" style="left:24px;top:154px;font:600 16px Nunito;color:${MUTED}">${t2 ? 2 : t1 ? 1 : 0} of 12 in the basket</div>
-    <div class="a" style="left:24px;right:24px;top:184px;height:6px;border-radius:3px;background:${SUNK}"><div style="height:100%;width:${bar}%;background:${BRICK};border-radius:3px"></div></div>
-    <div class="a" style="left:18px;top:206px;width:364px;height:120px;border-radius:20px;background:#fff;box-shadow:0 1px 0 ${RULE}">
-      <div class="a" style="left:8px;top:10px;width:150px;height:100px;border-radius:14px;background:url(${IMG("p06-steak-cooked")}) center/cover"></div>
-      <div class="a" style="left:174px;top:24px;font:900 12px Nunito;letter-spacing:.08em;color:${BRICK}">TONIGHT</div>
-      <div class="a" style="left:174px;top:44px;font:800 19px/1.15 Nunito;width:180px">Steak bites</div>
-      <div class="a" style="left:174px;top:72px;font:600 14px Nunito;color:${MUTED}">20 min · 2 servings</div></div>
-    <div class="a" style="left:20px;right:20px;top:340px">
-      ${ui.item("1 lb", "sirloin", t1)}${ui.item("1 bunch", "parsley", t2, "2d")}
-      ${ui.item("1 head", "garlic", false)}${ui.item("1 stick", "butter", false)}
-      ${ui.item("1", "lemon", false)}${ui.item("1 lb", "chicken thighs", false)}${ui.item("1 bag", "jasmine rice", false)}</div>
-    ${tipK > .01 ? `<div class="a" style="right:92px;bottom:186px;width:236px;padding:14px 16px;border-radius:20px 20px 6px 20px;background:#fff;box-shadow:0 12px 30px -8px rgba(34,26,21,.3),0 0 0 1px ${RULE};font:700 16px/1.3 Nunito;transform-origin:100% 100%;transform:scale(${tipK})">
-      <div style="font:900 11px Nunito;letter-spacing:.08em;color:${BRICK};margin-bottom:4px">MISE</div>No sirloin? Ribeye or flank work — cut them the same size.</div>` : ""}
-    <div class="a" style="right:18px;bottom:184px">${plate(64, tipK > .3 ? "happy" : "idle")}</div>
-    ${tabBar(2)}`;
+/* the caption on the left */
+const CAPS = [
+  { b0: 7.6, b1: 16, k: "PLAN", h: "Plan the week.", s: "Around what's already in your fridge." },
+  { b0: 16, b1: 24, k: "SHOP", h: "Shop once.", s: "One list. Nothing goes to waste." },
+  { b0: 24, b1: 36, k: "ADAPT", h: "Change anything.", s: "Just ask. Mise rewrites the recipe." },
+  { b0: 36, b1: 47.6, k: "COOK", h: "A chef beside you.", s: "Every step, right at the stove." },
+];
+function caption(t) {
+  let h = "";
+  CAPS.forEach((c, i) => {
+    const t0 = B(c.b0), t1 = B(c.b1);
+    if (t < t0 - .01 || t > t1 + .35) return;
+    const ko = io(seg(t, t1, t1 + .3)), L = 150, W0 = 820;
+    const k1 = out(seg(t, t0 + .05, t0 + .45)), k2 = out(seg(t, t0 + .15, t0 + .6)), k3 = out(seg(t, t0 + .3, t0 + .75));
+    h += rise(`0${i + 1} &nbsp;${c.k}`, { x: L, y: 400, w: W0, h: 40, k: k1, ko, style: `font:800 24px/40px Geist;letter-spacing:.14em;color:${BRICK}` });
+    h += rise(c.h, { x: L, y: 444, w: W0, h: 110, k: k2, ko, style: `font:800 90px/1.04 Geist;letter-spacing:-.04em;color:${INK}` });
+    h += rise(c.s, { x: L, y: 560, w: W0, h: 60, k: k3, ko, style: `font:500 36px/60px Geist;letter-spacing:-.015em;color:${MUTED}` });
+  });
+  return h;
 }
-function macWindow(t, { hideButton = false } = {}) {
-  const b = t / BEAT, M = MAC;
-  const mk = io(seg(t, B(32.2), B(32.9)));
-  if (b < 32.2) return "";
-  const h = 52 + (M.h - 52) * mk;
-  const drop = step(t, B(34), 3, .7);
-  const scroll = io(seg(t, B(34.3), B(34.9))) * 190;
-  const steps = ["Pat the sirloin dry; cut into 1-inch cubes.", "Season well with salt and pepper.", "Sear in a ripping-hot pan, 2 minutes a side.", "Add butter and garlic; baste for 1 minute.", "Finish with parsley and a squeeze of lemon."];
-  const fly = io(seg(t, B(35), B(35.45)));
-  const bw = lerp(120, 380, step(t, B(35.05), 2.6, .7)), bh = lerp(46, 80, fly);
-  const bx = lerp(M.w - 44 - 120, M.w / 2 - bw / 2, fly), by = lerp(52 + 9, M.h - 120, fly) - Math.sin(fly * Math.PI) * 40;
-  const press = step(t, B(35.6), 6, .8) - step(t, B(35.75), 5, .8);
-  return `<div class="a app" style="left:${M.x}px;top:${M.y}px;width:${M.w}px;height:${h}px;border-radius:18px;overflow:hidden;background:${PAPER};box-shadow:0 40px 80px -20px rgba(34,26,21,.35),0 0 0 1px rgba(34,26,21,.12)">
-    <div class="a" style="left:0;top:116px;width:${M.w}px;transform:translateY(${-scroll}px)">
-      <div style="margin:30px 44px 0;height:300px;border-radius:22px;background:${drop > .5 ? `url(${IMG("p06-steak-cooked")}) center/cover` : SUNK};outline:${drop > .5 ? "none" : `3px dashed #CDBFB8`};outline-offset:-10px;display:grid;place-items:center;color:${MUTED};font:700 20px Nunito;transform:scale(${drop > .5 ? 1 + (1 - drop) * .04 : 1})">${drop > .5 ? "" : "Drop a photo"}</div>
-      <div style="margin:26px 44px 4px;font:900 48px/1.1 Nunito;letter-spacing:-.02em">Garlic Butter Steak Bites</div>
-      <div style="margin:0 44px 18px;color:${MUTED};font:600 20px Nunito">2 servings · 20 min · Tuesday</div>
-      ${steps.map((s, i) => { const k = io(seg(t, B(34.4) + i * .08, B(34.4) + i * .08 + .3));
-        return `<div style="margin:0 44px;display:flex;gap:16px;padding:14px 0;border-top:1px solid ${RULE};clip-path:inset(0 ${(1 - k) * 100}% 0 0)"><b style="font:900 20px Nunito;width:26px;color:${BRICK}">${i + 1}</b><span style="font:600 20px Nunito">${s}</span></div>`; }).join("")}
-    </div>
-    <div class="a" style="left:0;top:52px;width:${M.w}px;height:64px;background:rgba(250,245,244,.96);border-bottom:1px solid ${RULE}">
-      <div class="a" style="left:28px;top:16px">${logo(28)}</div></div>
-    <div class="a" style="left:0;top:0;width:${M.w}px;height:52px;background:${INK};display:flex;align-items:center;gap:9px;padding:0 18px;box-sizing:border-box">
-      <i style="width:13px;height:13px;border-radius:50%;background:#ff5f57"></i><i style="width:13px;height:13px;border-radius:50%;background:#febc2e"></i><i style="width:13px;height:13px;border-radius:50%;background:#28c840"></i>
-      <div style="margin-left:24px;background:rgba(255,255,255,.1);border-radius:8px;padding:6px 16px;font:500 15px Geist;color:rgba(255,255,255,.75)">mise.app/cook/garlic-butter-steak-bites</div></div>
-    ${hideButton || mk < 1 ? "" : `<div class="a" style="left:${bx}px;top:${by}px;width:${bw}px;height:${bh}px;border-radius:${bh / 2}px;background:${mixHex(INK, BRICK, fly)};overflow:hidden;transform:scale(${1 - press * .06})">
-      ${rise("Cook ▸", { x: 0, y: bh / 2 - 15, w: bw, h: 30, k: 1, ko: fly > 0 ? io(seg(t, B(35), B(35.2))) : 0, style: "text-align:center;font:800 18px/30px Nunito;color:#fff" })}
-      ${fly > 0 ? rise("Start cooking", { x: 0, y: bh / 2 - 20, w: bw, h: 40, k: out(seg(t, B(35.15), B(35.45))), style: "text-align:center;font:800 28px/40px Nunito;color:#fff" }) : ""}</div>`}
-  </div>`;
+/* camera: [beat, scale, focus x, focus y in screen points]; focus lands on the phone's centre line */
+const SHOTS = [[7, 1, SW / 2, SH / 2], [8.4, 1.55, 196, 262], [11.3, 1, SW / 2, SH / 2], [13.1, 1.45, 196, 250], [14.2, 1.15, 196, 420], [15.6, 1, SW / 2, SH / 2],
+  [16.6, 1.45, 196, 300], [18.8, 1, SW / 2, SH / 2], [25.3, 1.6, 196, 760], [27.95, 1, SW / 2, SH / 2], [29.5, 1.5, 196, 470], [33, 1.3, 196, 480], [34, 1.55, 196, 360], [35.6, 1, SW / 2, SH / 2],
+  [39.3, 1.5, 196, 560], [44.2, 1.12, SW / 2, SH / 2], [45.6, 1, SW / 2, SH / 2]];
+function demoCam(t) {
+  const sp = (j) => springs(t, SHOTS[0][j], SHOTS.slice(1).map((r) => [B(r[0]), r[j], 1.1, .9]));
+  const s = sp(1), fx = SX + sp(2) * S, fy = SY + sp(3) * S;
+  const ax = PCX + (s - 1) * 190;          // zoomed shots sit further right, clear of the caption
+  return { s, x: ax - fx * s, y: PCY - fy * s };
 }
-function stage(t, { frozen = false } = {}) {
+function demo(t) {
   const b = t / BEAT;
-  let html = "";
-  // lock screen → phone (28): the full-frame screen shrinks; the bezel grows from its edge
-  const lk = io(seg(t, B(28), B(28.5)));
-  const px = phoneX(t);
-  const sx = lerp(0, px, lk), sy = lerp(0, PY, lk), sw = lerp(W, PW, lk), sh = lerp(H, PHH, lk);
-  const unlock = io(seg(t, B(28.45), B(28.85)));
-  const push = io(seg(t, B(30), B(30.35)));
-  const tipK = step(t, B(30.8), 3, .7) * (1 - io(seg(t, B(31.5), B(31.7))));
-  let screen = "";
-  if (unlock > 0) screen += `<div class="a" style="left:${-push * sw * .3}px;top:0;width:${sw}px;height:${sh}px">${brainstorm(t)}</div>`;
-  if (push > 0) screen += `<div class="a" style="left:${(1 - push) * sw}px;top:0;width:${sw}px;height:${sh}px;background:${PAPER};box-shadow:-20px 0 40px rgba(34,26,21,.12)">${shopping(t, tipK)}</div>`;
-  if (unlock < 1) screen += `<div class="a" style="left:0;top:${-unlock * sh}px;width:${sw}px;height:${sh}px;overflow:hidden">${lockScreen(sw, sh, t)}</div>`;
-  const island = b < 31 || b >= 32;
-  html += phone({ x: sx, y: sy, w: sw, h: sh, bz: 16 * lk, r: 58 * lk, screen, island: island && lk > .5, shadow: lk > .5 });
-  // the Island stretches like liquid and pinches off (31), flies right and becomes the window (32)
-  if (b >= 31 && b < 32.2) {
-    const icx = px + PW / 2, icy = PY + 14 + 18;
-    const pull = io(seg(t, B(31), B(31.7)));
-    const fk = io(seg(t, B(31.7), B(32.2)));
-    const dx = icx + pull * 190, dr = 18 + pull * 4;
-    const gx = lerp(dx, MAC.x + MAC.w / 2, fk), gy = lerp(icy, MAC.y + 26, fk) - Math.sin(fk * Math.PI) * 50;
-    const gw = lerp(2 * dr, MAC.w, fk * fk), gh = lerp(2 * dr, 52, fk);
-    html += `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">
-      <defs><filter id="goo"><feGaussianBlur stdDeviation="9"/><feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10"/></filter></defs>
-      <g filter="url(#goo)" fill="#000"><rect x="${icx - 62}" y="${icy - 18}" width="124" height="36" rx="18"/>
-        <rect x="${gx - gw / 2}" y="${gy - gh / 2}" width="${gw}" height="${gh}" rx="${Math.min(gh / 2, 18)}" fill="${fk > 0 ? mixHex("#000000", INK, fk) : "#000"}"/></g></svg>`;
-  }
-  html += macWindow(t, { hideButton: frozen });
-  if (frozen) return html;
-  // the dragged photo (long-press 33 → carried to the window 33.15–33.95)
-  if (b >= 33 && b < 34.1) {
-    const k = io(seg(t, B(33.15), B(33.95)));
-    const sx0 = 300 + 26, sy0 = PY + 216, ex = MAC.x + 44, ey = MAC.y + 116 + 30;
-    const dx = lerp(sx0, ex + 240, k), dy = lerp(sy0, ey + 60, k) - Math.sin(k * Math.PI) * 60;
-    const dw = lerp(150, 360, k), dh = dw * .66;
-    const lift = step(t, B(33), 5, .6);
-    html += `<div class="a" style="left:${dx}px;top:${dy}px;width:${dw}px;height:${dh}px;border-radius:16px;background:url(${IMG("p06-steak-cooked")}) center/cover;box-shadow:0 18px 40px rgba(34,26,21,.3);transform:rotate(${lerp(0, -3, k)}deg) scale(${1 + lift * .06})"></div>`;
-    html += cursor(dx + dw * .5, dy + dh * .55, 1.6, 1);
-  }
-  const btn = [MAC.x + MAC.w / 2 + 40, MAC.y + MAC.h - 80];
-  html += tour(t, [[B(28.6), PW + 400, H + 60], [B(28.75), W / 2 + 122, PY + 254], [B(29.25), W / 2 + 122, PY + 382], [B(29.9), W / 2 + 122, PY + 382]],
-    [[B(29), B(29.15)], [B(29.5), B(29.65)]]);
-  html += tour(t, [[B(32.4), 700, H + 60], [B(32.5), 300 + 100, PY + 270], [B(33), 300 + 100, PY + 270]], [[B(32.9), B(33)]]);
-  html += tour(t, [[B(34.1), MAC.x + 520, MAC.y + 116 + 220], [B(34.2), MAC.x + 560, MAC.y + 400], [B(35.15), btn[0], btn[1]], [B(36), btn[0], btn[1]]], [[B(35.6), B(35.8)]]);
-  return html;
+  const cam = demoCam(t);
+  const rise0 = (1 - step(t, B(7.1), 2.2, .78)) * 700;
+  // the stove sheet closes into black: the flood into the breakdown (47.6 → 48)
+  return `<div class="a" style="left:0;top:0;width:${W}px;height:${H}px;transform-origin:0 0;transform:translate(${cam.x}px,${cam.y}px) scale(${cam.s})">${iphone(screenAt(t), rise0)}</div>${caption(t)}`;
 }
-scene(28, 36, (t) => stage(t));
-
-/* ---- STATUS (36–40): the Start cooking button becomes one black shape */
-const ST_T = [36, 37, 38, 39].map(B);
-function statusLabel(i, t, w, h) {
-  const g = (inner) => `<div style="display:flex;align-items:center;justify-content:center;gap:22px;height:${h}px;font:700 52px Geist;color:#fff;letter-spacing:-.02em;white-space:nowrap">${inner}</div>`;
-  if (i === 0) return g(`${check(60)}Planned`);
-  if (i === 1) {
-    const bar = io(seg(t, ST_T[1] + .1, ST_T[1] + .45));
-    return g(`Shopping <span style="color:rgba(255,255,255,.55)">2/12</span>`) + `<div class="a" style="left:60px;right:60px;bottom:22px;height:6px;border-radius:3px;background:rgba(255,255,255,.16)"><div style="height:100%;width:${bar * 17}%;background:${BRICK};border-radius:3px"></div></div>`;
+scene(6, 48, (t) => {
+  const b = t / BEAT;
+  let html = demo(t);
+  // iris: closes over the pill label (6–6.5), opens (7) onto the demo, its circle growing past the corners
+  if (b < 7.7) {
+    const closeK = io(seg(t, B(6), B(6.5))), openK = out(seg(t, B(7), B(7.35)));
+    const open = b < 7 ? 1 - closeK : openK, R = lerp(420, 1250, out(seg(t, B(7), B(7.5))));
+    const under = b < 7 ? `<div class="a" style="inset:0;background:${PAPER}"></div>${pill(1, pillLabel(1))}` : html;
+    html = `<div class="a" style="inset:0;background:${PAPER}"></div>
+      <svg class="a" style="left:0;top:0" width="${W}" height="${H}"><defs><clipPath id="ia"><circle cx="${W / 2}" cy="${H / 2}" r="${R * Math.max(.02, open)}"/></clipPath></defs></svg>
+      ${b < 7 ? under : `<div class="a" style="inset:0;clip-path:circle(${R * open * 1.02}px at ${W / 2}px ${H / 2}px)">${under}</div>`}
+      <svg class="a" style="left:0;top:0" width="${W}" height="${H}"><defs><clipPath id="ic"><circle cx="${W / 2}" cy="${H / 2}" r="${R}"/></clipPath></defs>
+        <g clip-path="url(#ic)">${open < .995 ? iris(W / 2, H / 2, R, open) : ""}</g></svg>`;
+    if (b >= 7) html = html.replace(`<div class="a" style="inset:0;background:${PAPER}"></div>`, `<div class="a" style="inset:0;background:${PAPER}"></div>`);
   }
-  if (i === 2) {
-    const sweep = io(seg(t, ST_T[2] + .05, ST_T[2] + .45)), sec = 7 * 60 + 42 - Math.floor(Math.max(0, t - ST_T[2] - .25) * 2);
-    return g(`<svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="7"/>
-      <circle cx="32" cy="32" r="26" fill="none" stroke="${BRICK}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 26}" stroke-dashoffset="${2 * Math.PI * 26 * (1 - sweep * .62)}" transform="rotate(-90 32 32)"/></svg>
-      Cooking <span style="font-variant-numeric:tabular-nums;color:rgba(255,255,255,.55)">${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}</span>`);
+  // flood: a black circle from the phone grows past the corners (47.6 → 48)
+  if (b >= 47.55) {
+    const k = io(seg(t, B(47.55), B(48))), R = lerp(40, Math.hypot(W, H), k);
+    html += `<div class="a" style="left:${PCX - R}px;top:${PCY - R}px;width:${2 * R}px;height:${2 * R}px;border-radius:50%;background:${INK}"></div>`;
   }
-  return `<div style="height:${h}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font:700 46px Geist;color:#fff">${check(64)}Dinner</div>`;
-}
-scene(36, 40, (t) => {
-  const drop = step(t, B(36), 2.2, .9);
-  let html = `<div class="a" style="left:0;top:0;width:${W}px;height:${H}px;transform-origin:50% 0;transform:translateY(${drop * H * 1.1}px) scale(${1 - drop * .05})">${stage(B(35.98), { frozen: true })}</div>`;
-  const mv = step(t, B(36), 2.4, .78);
-  const cx = lerp(MAC.x + MAC.w / 2, W / 2, mv), cy = lerp(MAC.y + MAC.h - 80, H / 2, mv);
-  const w = springs(t, 380, [[B(36), 480, 2.6, .7], [B(37), 700, 2.6, .7], [B(38), 640, 2.6, .7], [B(39), 270, 2.4, .66]]);
-  const h = springs(t, 80, [[B(36), 132, 2.6, .7], [B(39), 270, 2.4, .66]]);
-  let labels = "";
-  for (let i = 0; i < 4; i++) {
-    const k = step(t, ST_T[i] + .06, 3.4, .8), ko = i < 3 ? io(seg(t, ST_T[i + 1], ST_T[i + 1] + .16)) : 0;
-    if (k < .001 || ko >= 1) continue;
-    const lh = i === 3 ? 270 : 132;
-    labels += `<div class="a" style="left:0;top:${(h - lh) / 2 + (1 - k) * lh * .9 - ko * lh * .9}px;width:${w}px;height:${lh}px">${statusLabel(i, t, w, lh)}</div>`;
-  }
-  html += `<div class="a" style="left:${cx - w / 2}px;top:${cy - h / 2}px;width:${w}px;height:${h}px;border-radius:${h / 2}px;background:${mixHex(BRICK, INK, seg(t, B(36), B(36.25)))};overflow:hidden">${labels}</div>`;
   return html;
 });
 
-/* ---- KITCHEN (beats 40–48) */
+/* ---- KITCHEN (beats 49–60): black → the phone on the real counter; the iris
+   opens onto real cooking; then Mise, right there with you. */
 const PH = { x: 820, y: 280, w: 320, h: 660, rot: -9 };
 const V2_IN = 0.15;
 function v2Track(tc) {
@@ -777,34 +713,28 @@ function v2Track(tc) {
   return [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
 }
 function kitchenPhone(t) {
-  const x = Math.max(0, t - B(42)), slow = B(45.6) - B(42);
+  const x = Math.max(0, t - B(49)), slow = B(52.6) - B(49);
   const tc = V2_IN + Math.min(x, slow) + Math.max(0, x - slow) * .35;
   const [dx, dy] = v2Track(tc);
   return { x: PH.x + dx, y: PH.y + dy, w: PH.w, h: PH.h, rot: PH.rot, tc };
 }
-/* Black flood (40) and its one-beat hold (41): the Dinner ✓ circle expands past the corners in 0.3 s. */
-scene(40, 42, (t) => {
-  const k = io(seg(t, B(40), B(40) + .3)), R = lerp(135, Math.hypot(W, H) * .6, k);
-  return `<div class="a" style="inset:0;background:var(--paper)"></div>
-    <div class="a" style="left:${W / 2 - R}px;top:${H / 2 - R}px;width:${2 * R}px;height:${2 * R}px;border-radius:50%;background:${INK}"></div>`;
-});
-scene(42, 52, (t) => {
+scene(49, 60, (t) => {
   const b = t / BEAT;
   const P = kitchenPhone(t);
   let html = `<canvas class="a" data-vid="v2" data-t="${P.tc}" style="left:0;top:0;width:${W}px;height:${H}px"></canvas>`;
-  const shrink = io(seg(t, B(42), B(42.8)));
+  const shrink = io(seg(t, B(49), B(49.8)));
   const cx = P.x + P.w / 2, cy = P.y + P.h / 2;
   if (shrink < 1) {
     const w = lerp(W * 1.3, P.w + 28, shrink), h = lerp(H * 1.6, P.h + 28, shrink);
     html += `<div class="a" style="left:${lerp(W / 2, cx, shrink) - w / 2}px;top:${lerp(H / 2, cy, shrink) - h / 2}px;width:${w}px;height:${h}px;border-radius:${lerp(0, 60, shrink)}px;background:${INK};transform:rotate(${P.rot * shrink}deg)"></div>`;
     return html;
   }
-  const open = io(seg(t, B(43), B(43.7))) * (1 - io(seg(t, B(45), B(45.6))));
+  const open = io(seg(t, B(50), B(50.7))) * (1 - io(seg(t, B(52), B(52.6))));
   const R = P.w * .44;
-  const clip = b < 44 ? ["v3", .3 + (t - B(43))] : ["v1", .6 + (t - B(44))];
+  const clip = b < 51 ? ["v3", .3 + (t - B(50))] : ["v1", .6 + (t - B(51))];
   // when the iris has closed: Mise, right there at the counter with you
-  const mk = step(t, B(45.65), 3, .62), bk = step(t, B(46.05), 3, .72);
-  const mise = b < 45.6 ? "" : `<div class="a" style="inset:0;background:${PAPER}"></div>
+  const mk = step(t, B(52.65), 3, .62), bk = step(t, B(53.05), 3, .72);
+  const mise = b < 52.6 ? "" : `<div class="a" style="inset:0;background:${PAPER}"></div>
     <div class="a" style="left:20px;top:64px">${logo(20)}</div>
     <div class="a" style="left:${P.w / 2 - 70}px;top:${P.h * .2}px;transform-origin:50% 100%;transform:scale(${mk})">${plate(140, "happy")}</div>
     <div class="a" style="left:22px;right:22px;top:${P.h * .2 + 162}px;padding:18px 18px;border-radius:22px 22px 22px 22px;background:#fff;box-shadow:0 12px 30px -10px rgba(34,26,21,.28),0 0 0 1px ${RULE};transform-origin:50% 0;transform:scale(${bk})">
@@ -812,7 +742,7 @@ scene(42, 52, (t) => {
       <div style="font:700 19px/1.32 Nunito">Nice knife work. Go a little finer for the garnish — about 3&nbsp;mm.</div></div>
     <div class="a" style="left:22px;right:22px;bottom:30px;height:54px;border-radius:27px;background:#fff;box-shadow:0 0 0 1px ${RULE};display:flex;align-items:center;padding:0 20px;font:600 16px Nunito;color:${MUTED};transform:scale(${bk})">Ask me anything…</div>`;
   const scr = `<div class="a" style="inset:0;background:${INK}"></div>
-    ${b < 45.6 ? `<canvas class="a" data-vid="${clip[0]}" data-t="${clip[1]}" style="left:${P.w / 2 - R}px;top:${P.h / 2 - R}px;width:${2 * R}px;height:${2 * R}px;clip-path:circle(50%)"></canvas>
+    ${b < 52.6 ? `<canvas class="a" data-vid="${clip[0]}" data-t="${clip[1]}" style="left:${P.w / 2 - R}px;top:${P.h / 2 - R}px;width:${2 * R}px;height:${2 * R}px;clip-path:circle(50%)"></canvas>
     <svg class="a" style="left:0;top:0" width="${P.w}" height="${P.h}">
       <defs><clipPath id="kc"><circle cx="${P.w / 2}" cy="${P.h / 2}" r="${R}"/></clipPath></defs>
       <g clip-path="url(#kc)">${iris(P.w / 2, P.h / 2, R, open)}</g></svg>` : mise}`;
@@ -822,63 +752,58 @@ scene(42, 52, (t) => {
   return html;
 });
 
-/* ---- RETURN (48–54): the phone contracts into the pill; pill → dot; the
-   letters spring back out. The last frame is the first frame. */
-scene(52, 58, (t) => {
+const CTA = "Coming soon to iPhone";
+function cta(t) {
+  const k = out(seg(t, B(64.4), B(65))), k2 = out(seg(t, B(64.7), B(65.3)));
+  return rise(CTA, { x: 0, y: 760, w: W, h: 60, k, style: `text-align:center;font:600 40px/60px Geist;letter-spacing:-.015em;color:${MUTED}` })
+    + `<div class="a" style="left:${W / 2 - 60 * k2}px;top:740px;width:${120 * k2}px;height:3px;border-radius:2px;background:${BRICK}"></div>`;
+}
+/* ---- RETURN (60–72): the phone contracts into the pill; pill → dot; the
+   letters spring back out, and the call to action rises beneath. */
+scene(60, 72, (t) => {
   const b = t / BEAT;
-  if (b >= 57) return wordmark(0, true) + hat(1);
+  if (b >= 65) return wordmark(0, true) + hat(1) + cta(t);
   let html = "";
-  if (b < 54.8) {
+  if (b < 62.8) {
     // phone (as the camera left it: centred, rotated, ×s) → brick pill
-    const ck = step(t, B(52), 2.6, .72), P = kitchenPhone(B(51.99)), s = camera(B(51.99)).s;
+    const ck = step(t, B(60), 2.6, .72), P = kitchenPhone(B(59.99)), s = camera(B(59.99)).s;
     const w0 = (P.w + 28) * s, h0 = (P.h + 28) * s;
-    const back = b >= 54 ? step(t, B(54), 2.8, .8) : 0;      // pill → period
+    const back = b >= 62 ? step(t, B(62), 2.8, .8) : 0;      // pill → period
     const D = wordLayout().dot;
     const pw = lerp(lerp(w0, 760, ck), D.w, back), ph = lerp(lerp(h0, 150, ck), D.h, back);
     const pcx = lerp(W / 2, D.x + D.w / 2, back), pcy = lerp(H / 2, D.y + D.h / 2, back);
     const rr = lerp(lerp(60 * s, 75, ck), D.h * .18, back);
-    const lk = out(seg(t, B(52.3), B(52.8))), ko = io(seg(t, B(53), B(53.5)));
-    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(52), B(52.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
+    const lk = out(seg(t, B(60.3), B(60.8))), ko = io(seg(t, B(61), B(61.5)));
+    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(60), B(60.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
       ${back < .01 ? pillLabel(lk, ko, 1)(pw, ph) : ""}</div>`;
     return html;
   }
-  const k = 1 - step(t, B(54.8), 2.1, .6);
-  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(55.8), 3, .55));
+  const k = 1 - step(t, B(62.8), 2.1, .6);
+  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(63.8), 3, .55)) + cta(t);
 });
 
-/* ------------------------------------------------------------- camera */
+/* ------------------------------------------------------------- camera
+   (the demo has its own camera inside it; this one is the kitchen push-in) */
 function camera(t) {
   const b = t / BEAT;
-  if (b >= 13.6 && b < 16) {
-    const k = io(seg(t, B(13.6), B(16)));
-    const r = bentoRects(1)[0];
-    const s = lerp(1, Math.max(W / r[2], H / r[3]), k);
-    const fx = r[0] + r[2] / 2, fy = r[1] + r[3] / 2;
-    return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
-  }
-  if (b >= 45.6 && b < 52) {
+  if (b >= 52.6 && b < 60) {
     // a long, decelerating push-in on Mise: fast at first, still drifting at the cut
-    const k = Math.sin(Math.PI / 2 * seg(t, B(45.6), B(52))) ** 1.6, P = kitchenPhone(t);
+    const k = Math.sin(Math.PI / 2 * seg(t, B(52.6), B(60))) ** 1.6, P = kitchenPhone(t);
     const s = lerp(1, H / (P.h + 40) * 1.06, k), fx = P.x + P.w / 2, fy = P.y + P.h / 2;
     return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
   }
   return { s: 1, x: 0, y: 0 };
 }
+/* one beat of black between the demo and the kitchen (48–49) */
+scene(48, 49, () => `<div class="a" style="inset:0;background:${INK}"></div>`);
 
 /* --------------------------------------------------------------- seek */
 async function renderFrame(t) {
   gid = 0; NEED.clear();
   const sc = SCENES.find((s) => t >= s.t0 && t < s.t1) || SCENES[SCENES.length - 1];
   let html = sc.fn(t);
-  const b = t / BEAT;
-  if (b >= 5 && b < 6.6) {
-    const k = io(seg(t, B(5), B(5.9)));
-    html += cursor(lerp(W + 40, W / 2 + 120, k), lerp(H - 60, H / 2 + 20, k), 1.6, b >= 6 && b < 6.3 ? 1 : 0);
-  }
-  if (b >= 11.8 && b < 14.6) {
-    const r = bentoRects(1)[0], k = io(seg(t, B(11.8), B(12.6)));
-    html += cursor(lerp(W / 2 + 300, r[0] + r[2] * .58, k), lerp(H - 120, r[1] + r[3] * .55, k), 1.6, b >= 13 && b < 13.3 ? 1 : 0);
-  }
+  // the opening tap on the pill (6): an iOS touch, not a cursor
+  html += touch(t, B(6), W / 2 + 230, H / 2 + 30);
   await Promise.all([...NEED].map(preload));
   const cam = camera(t);
   const world = document.getElementById("world");
