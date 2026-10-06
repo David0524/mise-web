@@ -88,11 +88,11 @@ async function startWeek(p, { fridge = "", cravings = "", request = "" } = {}) {
 /* The candidate cards on Brainstorm: title, blurb, why, meta line. */
 const dishes = (p) => p.$$eval("article.dish", (els) => els.map((e) => ({
   title: e.querySelector("h3")?.innerText, blurb: e.querySelector(".dish__b")?.innerText,
-  why: e.querySelector(".dish__why")?.innerText, meta: e.querySelector(".dish__meta")?.innerText,
+  why: e.dataset.why, meta: e.querySelector(".dish__meta")?.innerText,
 })));
 
 async function pickAndShop(p, n = 3) {
-  const adds = p.getByRole("button", { name: "Add it", exact: true });
+  const adds = p.locator(".dish__add:not(.dish__add--on)");
   const count = Math.min(n, await adds.count());
   for (let i = 0; i < count; i++) { await adds.first().click(); await p.waitForTimeout(200); }
   await p.locator(".wiz button").last().click(); await p.waitForTimeout(800);   // Plan my week
@@ -118,15 +118,14 @@ async function openRecipe(p, titleRe) {
   });
 }
 
-/* Ask for a recipe change from the Cooking page. Returns Mise's reaction and
-   the routes she offers ({label, what, cost, best}). */
+/* Ask for a recipe change from the Cooking page, through the pinned ask bar.
+   The exchange opens as a sheet; returns Mise's reaction and the routes she
+   offers ({label, what, cost, best}). */
 async function proposeChange(p, instruction) {
-  const fold = p.getByRole("button", { name: /Want to change something/ });
-  if (!(await p.locator(".rchat, .opts").count()) && (await fold.count())) { await fold.click(); await p.waitForTimeout(300); }
-  const box = p.getByPlaceholder(/./).last();
+  const box = p.locator("#ra");
   await box.fill(instruction); await box.press("Enter");
   await idle(p);
-  const say = await p.$$eval(".rchat .bub--mise p", (els) => els.map((e) => e.innerText).at(-1) || "");
+  const say = await p.$$eval(".rsheet .rsheet__say", (els) => els.map((e) => e.innerText).at(-1) || "");
   const options = await p.$$eval(".opts .opt", (els) => els.map((e) => ({
     label: e.querySelector(".opt__lab")?.innerText, what: e.querySelector(".opt__what")?.innerText,
     cost: e.querySelector(".opt__cost")?.innerText, best: e.classList.contains("opt--best"),
@@ -134,22 +133,26 @@ async function proposeChange(p, instruction) {
   return { say, options };
 }
 
-/* Pick one of the offered routes (by index, default the one she'd pick). */
+/* Pick one of the offered routes (by index, default the one she'd pick). The
+   sheet closes on success and her reply shows as a toast; if it stays open
+   (an error, or she asked something back), read the sheet instead. */
 async function pickOption(p, index = null) {
   const opts = p.locator(".opts .opt");
   const best = p.locator(".opts .opt--best");
   await ((index == null && (await best.count())) ? best.first() : opts.nth(index ?? 0)).click();
   await idle(p, 120000);
-  return p.$$eval(".rchat .bub--mise p", (els) => els.slice(-2).map((e) => e.innerText));
+  const toast = await p.$$eval(".rtoast p", (els) => els.map((e) => e.innerText));
+  if (toast.length) return toast;
+  return p.$$eval(".rsheet .rsheet__say", (els) => els.slice(-2).map((e) => e.innerText));
 }
 
 /* Ask Mise and return her latest reply. Two different boxes: the sheet (#mq)
    everywhere, and the cook-mode bubble (#cq) at the stove. */
 async function askMise(p, question) {
-  const inCook = (await p.locator(".cbubble, #cq").count()) > 0;
+  const inCook = (await p.locator(".cooknav__mise, #cq").count()) > 0;
   const input = inCook ? "#cq" : "#mq";
   if (!(await p.locator(input).count())) {
-    await p.locator(inCook ? ".cbubble" : ".fab").first().click({ force: true });
+    await p.locator(inCook ? ".cooknav__mise" : ".fab").first().click({ force: true });
     await p.waitForTimeout(500);
   }
   let reply = "";

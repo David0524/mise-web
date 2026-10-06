@@ -147,3 +147,22 @@ planned, per user, with prompt caching and model tiering already built into
 `/api/chat`. At meaningful scale that's a small fraction of a $12/month
 subscription, but it's a real bill instead of a free tier, and worth
 watching once real usage starts.
+
+## Mise's voice (cook mode)
+
+Cook mode reads each step aloud. With a neural voice configured it uses
+`/api/tts` (see `lib/tts.js`); otherwise it falls back to the phone's built-in
+voice.
+
+- `OPENAI_API_KEY` set → OpenAI `gpt-4o-mini-tts` (best: natural, and it takes a
+  direction for tone). Optional: `OPENAI_TTS_VOICE` (default `coral`),
+  `OPENAI_TTS_MODEL`.
+- otherwise, the existing `GEMINI_API_KEY(S)` → Gemini TTS
+  (`gemini-2.5-flash-preview-tts`, voice `Sulafat`; override with
+  `GEMINI_TTS_MODEL` / `GEMINI_TTS_VOICE`).
+- `TTS_PROVIDER=openai|gemini|none` forces a choice.
+
+Audio plays through an `<audio>` element in a "playback" audio session, so it
+isn't muted by the iPhone's ring/silent switch. In the iOS app that's set
+natively in `ios/App/App/AppDelegate.swift` (rebuild the app in Xcode to pick
+it up); in Safari it uses `navigator.audioSession` (iOS 17+).
