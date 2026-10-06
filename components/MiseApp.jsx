@@ -3725,7 +3725,36 @@ Respond with ONLY this JSON:
 
   /* ---------------------------------------------------------------- recipes */
 
+  /* One request per dish at a time. Opening a dish while its background prefetch
+     was still out used to fire a second, identical request — double the cost, and
+     on a rate-limited key the two collided and one failed, so a recipe that was
+     on its way showed an error instead. Now the open joins the request already
+     running (with the visible loading state), and only a deliberate rewrite
+     starts a fresh one. */
+  const recipeInflight = useRef(new Map());
   async function getRecipe(dishId, opts = {}) {
+    const running = recipeInflight.current.get(dishId);
+    if (running && !opts.force) {
+      if (opts.quiet) return running;
+      const dish = candidates.find((c) => c.id === dishId);
+      mark("recipe", dishId);
+      setBusy(`Writing ${dish?.title || "the recipe"}`);
+      try { await running; } catch (e) {
+        // The background attempt failed: now that they're waiting on it, try for real.
+        if (recipeInflight.current.get(dishId) === running) recipeInflight.current.delete(dishId);
+        setBusy(""); mark("recipe", null);
+        return getRecipe(dishId, { ...opts, force: true });
+      }
+      setBusy(""); mark("recipe", null);
+      return;
+    }
+    const job = buildRecipe(dishId, opts);
+    recipeInflight.current.set(dishId, job);
+    try { return await job; } finally {
+      if (recipeInflight.current.get(dishId) === job) recipeInflight.current.delete(dishId);
+    }
+  }
+  async function buildRecipe(dishId, opts = {}) {
     const gen = weekGenRef.current;   // see startNewWeek
     const dish = candidates.find((c) => c.id === dishId);
     if (!dish) return;   // must precede mark(), or the flag sticks on forever
@@ -4785,7 +4814,7 @@ Respond with ONLY this JSON:
             onStartCooking={() => setCooking(true)}
             shoppingSignature={shoppingSignature}
             hasList={shopping.length > 0}
-            onRewrite={() => getRecipe(cookingId)}
+            onRewrite={() => getRecipe(cookingId, { force: true })}
             onAddToList={(names) => {
               const guard = restrictionGuard(profile);
               const ok = names.filter((n) => n && !guard.hits(n).length);
