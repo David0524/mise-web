@@ -6,7 +6,7 @@ const { chromium } = require('/opt/node22/lib/node_modules/@playwright/mcp/node_
   p.on('pageerror', e => console.log('pageerror', e.message));
   p.on('console', m => { if (m.type() === 'error') console.log('console', m.text()); });
   await p.goto('http://localhost:8123/film.html');
-  const off = parseFloat(process.argv[2] || '0.35'), from = +(process.argv[3] || 0), to = +(process.argv[4] || 71);
+  const off = parseFloat(process.argv[2] || '0.35'), from = +(process.argv[3] || 0), to = +(process.argv[4] || 103);
   for (let i = from; i <= to; i++) {
     const t = (i + off) * 0.5;
     await p.evaluate((t) => window.seek(t), t);

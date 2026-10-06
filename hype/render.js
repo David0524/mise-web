@@ -3,7 +3,7 @@
 // JPEG into ffmpeg, which averages each group of 4 (tmix) and keeps one per frame.
 const { chromium } = require('/opt/node22/lib/node_modules/@playwright/mcp/node_modules/playwright');
 const { spawn } = require('child_process');
-const FPS = 60, SUB = 4, DUR = 36, N = FPS * DUR;
+const FPS = 60, SUB = 4, DUR = 52, N = FPS * DUR;
 const k = +process.argv[2], n = +process.argv[3];
 const f0 = Math.floor(k * N / n), f1 = Math.floor((k + 1) * N / n);
 (async () => {

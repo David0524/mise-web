@@ -391,16 +391,78 @@ function pill(k, label, color = BRICK) {
 const pillLabel = (k, ko = 0, dir = -1) => (pw, ph) => rise("Dinner, figured out.", { x: 0, y: ph / 2 - 33, w: pw, h: 74, k, ko, dir, style: "text-align:center;font:600 50px/66px Geist;color:#fff;letter-spacing:-.02em" });
 
 
-/* ---- OPEN (beats 0–6): MISE. — the period wears the toque — squeezes into
-   its period, which springs into the brick pill: "Dinner, figured out." */
-scene(0, 6, (t) => {
+/* ---- OPEN (beats 0–16) */
+scene(0, 16, (t) => {
   const b = t / BEAT;
   let html = "";
   const sq = io(seg(t, B(1), B(2.9)));
   if (b < 3) html += wordmark(sq, true) + hat(1 - step(t, B(2.55), 4, .8));
-  if (b >= 3) html += pill(step(t, B(3), 2.4, .62), pillLabel(out(seg(t, B(4), B(4.8)))));
+  const pillK = step(t, B(3), 2.4, .62);
+  if (b >= 3 && b < 7.2) html += pill(pillK, pillLabel(out(seg(t, B(4), B(4.8)))));
+  // iris close over the label (6→6.5), snap open onto the table photo (7→7.4)
+  if (b >= 6 && b < 9) {
+    const R = 420, closeK = io(seg(t, B(6), B(6.5))), openK = step(t, B(7), 3.4, .7);
+    const open = b < 7 ? 1 - closeK : openK;
+    const sq2 = io(seg(t, B(8), B(9)));
+    const side = lerp(2 * R, 300, sq2), rad = lerp(R, 34, sq2);
+    if (b >= 7) html += `<div class="a" style="left:${W / 2 - side / 2}px;top:${H / 2 - side / 2}px;width:${side}px;height:${side}px;border-radius:${rad}px;background:url(${IMG("p08-table")}) center/cover"></div>`;
+    if (b < 8) html += `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">
+      <defs><clipPath id="ic"><circle cx="${W / 2}" cy="${H / 2}" r="${R}"/></clipPath></defs>
+      <g clip-path="url(#ic)">${iris(W / 2, H / 2, R, open)}</g></svg>`;
+  }
+  if (b >= 9) html += bento(t);
   return html;
 });
+
+const DISHES = [
+  ["p06-steak-cooked", "Tue", "Steak bites"], ["p02-noodles", "Thu", "Ginger noodles"], ["p03-castiron", "Sat", "Skillet chicken"],
+  ["p04-roastveg", "Mon", "Roast veg"], ["p12-soup", "Wed", "Noodle soup"], ["p05-sheetpan", "Fri", "Sheet pan"],
+  ["p01-grainbowl", "Sun", "Grain bowl"], ["p09-pasta", "", "Pasta"], ["p08-table", "", ""],
+];
+function bentoRects(k) {
+  const g = 300, gap = 18, x0 = W / 2 - (3 * g + 2 * gap) / 2, y0 = H / 2 - (3 * g + 2 * gap) / 2;
+  const cell = (c, r) => [x0 + c * (g + gap), y0 + r * (g + gap), g, g];
+  const grid = [cell(1, 1), cell(1, 0), cell(2, 1), cell(1, 2), cell(0, 1), cell(0, 0), cell(2, 0), cell(2, 2), cell(0, 2)];
+  const L = 210, T = 150, Hd = 780, gp = 18;
+  const bento = [
+    [L + 470 + gp, T, 560, Hd],
+    [L + 470 + gp + 560 + gp, T, 470 - gp, (Hd - gp) / 2],
+    [L + 470 + gp + 560 + gp, T + (Hd + gp) / 2, 470 - gp, (Hd - gp) / 2],
+    [L, T + (Hd + gp) / 2, 470, (Hd - gp) / 2],
+    [L, T, 230, (Hd - gp) / 2],
+    [L + 240, T, 230, (Hd - gp) / 2],
+    [L + 470 + gp + 560 + gp, T + Hd + 40, 0, 0],
+    [L, T + Hd + 40, 0, 0], [L, T + Hd + 40, 0, 0],
+  ];
+  return grid.map((a, i) => a.map((v, j) => lerp(v, bento[i][j], k)));
+}
+function bento(t) {
+  const unfold = (i) => i === 0 ? 1 : i <= 4 ? step(t, B(9) + (i - 1) * .06, 2.6, .7) : step(t, B(10) + (i - 5) * .06, 2.6, .7);
+  const bk = io(seg(t, B(11), B(11.8)));
+  const rects = bentoRects(bk);
+  let html = "";
+  rects.forEach((r, i) => {
+    const u = unfold(i); if (u <= .001 || r[2] < 2) return;
+    const [x, y, w, h] = r;
+    const sx = i === 2 ? "0% 50%" : i === 4 ? "100% 50%" : i === 1 ? "50% 100%" : i === 3 ? "50% 0%" : "50% 50%";
+    const lift = i === 0 ? step(t, B(12), 3, .6) - step(t, B(13), 4, .7) : 0;
+    const press = i === 0 ? step(t, B(13), 6, .8) - step(t, B(13.25), 5, .8) : 0;
+    const s = 1 + lift * .02 - press * .03;
+    html += `<div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${lerp(26, 30, bk)}px;overflow:hidden;
+      transform-origin:${sx};transform:scale(${i === 0 ? s : 1},${i === 0 ? s : 1}) ${i ? (i <= 4 ? (i % 2 ? `scaleY(${u})` : `scaleX(${u})`) : `scale(${u})`) : ""};
+      background:url(${IMG(DISHES[i][0])}) center/cover"></div>`;
+    const chipK = step(t, B(11.4) + i * .05, 3.4, .55);
+    if (DISHES[i][1] && chipK > .01 && w > 50) {
+      const cw = 92, ch = 46, cx = x + 18, cy = y + 18;
+      html += `<div class="a" style="left:${cx}px;top:${cy}px;transform-origin:0 0;transform:scale(${chipK})">${glass({
+        x: 0, y: 0, w: cw, h: ch, r: 23, scale: 18, tint: .18,
+        bg: (ox, oy) => svgCover(IMG(DISHES[i][0]), x - cx, y - cy, w, h, ox, oy),
+        inner: `<div class="a" style="inset:0;display:grid;place-items:center;font:700 19px Geist;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)">${DISHES[i][1]}</div>`,
+      })}</div>`;
+    }
+  });
+  return html;
+}
 
 /* ===================================================================== v3
    The demo: a large iPhone 15 Pro on the right running Mise — the app's real
@@ -649,11 +711,11 @@ const CAPS = [
   { b0: 24, b1: 36, k: "ADAPT", h: "Change anything.", s: "Just ask. Mise rewrites the recipe." },
   { b0: 36, b1: 47.6, k: "COOK", h: "A chef beside you.", s: "Every step, right at the stove." },
 ];
-function caption(t) {
+function caption(t, cut = false) {
   let h = "";
   CAPS.forEach((c, i) => {
     const t0 = B(c.b0), t1 = B(c.b1);
-    if (t < t0 - .01 || t > t1 + .35) return;
+    if (t < t0 - .01 || t > t1 + .35 || (cut && t >= t1)) return;
     const ko = io(seg(t, t1, t1 + .3)), L = 150, W0 = 820;
     const k1 = out(seg(t, t0 + .05, t0 + .45)), k2 = out(seg(t, t0 + .15, t0 + .6)), k3 = out(seg(t, t0 + .3, t0 + .75));
     h += rise(`0${i + 1} &nbsp;${c.k}`, { x: L, y: 400, w: W0, h: 40, k: k1, ko, style: `font:800 24px/40px Geist;letter-spacing:.14em;color:${BRICK}` });
@@ -672,37 +734,57 @@ function demoCam(t) {
   const ax = PCX + (s - 1) * 190;          // zoomed shots sit further right, clear of the caption
   return { s, x: ax - fx * s, y: PCY - fy * s };
 }
-function demo(t) {
+function demo(t, cut = false) {
   const b = t / BEAT;
   const cam = demoCam(t);
-  const rise0 = (1 - step(t, B(7.1), 2.2, .78)) * 700;
+  const rise0 = 0;
   // the stove sheet closes into black: the flood into the breakdown (47.6 → 48)
-  return `<div class="a" style="left:0;top:0;width:${W}px;height:${H}px;transform-origin:0 0;transform:translate(${cam.x}px,${cam.y}px) scale(${cam.s})">${iphone(screenAt(t), rise0)}</div>${caption(t)}`;
+  const enter = (1 - io(seg(t, B(7), B(7.32)))) * W * .7;
+  return `<div class="a" style="left:${enter}px;top:0;width:${W}px;height:${H}px"><div class="a" style="left:0;top:0;width:${W}px;height:${H}px;transform-origin:0 0;transform:translate(${cam.x}px,${cam.y}px) scale(${cam.s})">${iphone(screenAt(t), rise0)}</div></div>${caption(t, cut)}`;
 }
-scene(6, 48, (t) => {
+/* The demo was laid out on a 40-beat clock (7 → 48). The film gives it more
+   room: it plays slower, and two full-frame cooking shots cut in between
+   sections. warp() maps film time → demo time, piecewise. */
+const WARP = [[20, 7], [32, 16], [36, 16], [46, 24], [60, 36], [64, 36], [78, 47.55], [79, 48], [80, 49]];
+function warp(t) {
   const b = t / BEAT;
-  let html = demo(t);
-  // iris: closes over the pill label (6–6.5), opens (7) onto the demo, its circle growing past the corners
-  if (b < 7.7) {
-    const closeK = io(seg(t, B(6), B(6.5))), openK = out(seg(t, B(7), B(7.35)));
-    const open = b < 7 ? 1 - closeK : openK, R = lerp(420, 1250, out(seg(t, B(7), B(7.5))));
-    const under = b < 7 ? `<div class="a" style="inset:0;background:${PAPER}"></div>${pill(1, pillLabel(1))}` : html;
-    html = `<div class="a" style="inset:0;background:${PAPER}"></div>
-      <svg class="a" style="left:0;top:0" width="${W}" height="${H}"><defs><clipPath id="ia"><circle cx="${W / 2}" cy="${H / 2}" r="${R * Math.max(.02, open)}"/></clipPath></defs></svg>
-      ${b < 7 ? under : `<div class="a" style="inset:0;clip-path:circle(${R * open * 1.02}px at ${W / 2}px ${H / 2}px)">${under}</div>`}
-      <svg class="a" style="left:0;top:0" width="${W}" height="${H}"><defs><clipPath id="ic"><circle cx="${W / 2}" cy="${H / 2}" r="${R}"/></clipPath></defs>
-        <g clip-path="url(#ic)">${open < .995 ? iris(W / 2, H / 2, R, open) : ""}</g></svg>`;
-    if (b >= 7) html = html.replace(`<div class="a" style="inset:0;background:${PAPER}"></div>`, `<div class="a" style="inset:0;background:${PAPER}"></div>`);
+  for (let i = 0; i < WARP.length - 1; i++) {
+    const [f0, d0] = WARP[i], [f1, d1] = WARP[i + 1];
+    if (b < f1) return B(d0 + (d1 - d0) * clamp((b - f0) / (f1 - f0)));
   }
-  // flood: a black circle from the phone grows past the corners (47.6 → 48)
+  return B(49);
+}
+/* cooking, full frame, between demo sections — with a caption */
+const footCap = (t, t0, h1, h2) => rise(h1, { x: 150, y: 700, w: 1600, h: 120, k: out(seg(t, t0 + .1, t0 + .5)), style: "font:800 100px/120px Geist;letter-spacing:-.04em;color:#fff;text-shadow:0 2px 30px rgba(0,0,0,.35)" })
+  + rise(h2, { x: 150, y: 826, w: 1600, h: 64, k: out(seg(t, t0 + .3, t0 + .75)), style: "font:500 44px/64px Geist;letter-spacing:-.015em;color:rgba(255,255,255,.88);text-shadow:0 2px 20px rgba(0,0,0,.35)" });
+const shade = `<div class="a" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.5))"></div>`;
+scene(32, 36, (t) => `<canvas class="a" data-vid="v3" data-t="${.2 + (t - B(32)) * .9}" style="left:0;top:0;width:${W}px;height:${H}px;transform:scale(${1.04 - .04 * seg(t, B(32), B(36))});transform-origin:60% 50%"></canvas>${shade}${footCap(t, B(32), "Real food.", "Not another recipe app.")}`);
+scene(60, 64, (t) => `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">${svgCover(SEQ("v4", .3 + (t - B(60)) * .9), 0, 0, W, H)}</svg>${shade}${footCap(t, B(60), "Restaurant-good.", "On a Tuesday.")}`);
+/* meet Mise (16–19): on the drop, Tuesday's steak bites full frame, and her card */
+scene(16, 20.5, (t) => {
+  const b = t / BEAT, ok = io(seg(t, B(20), B(20.5)));
+  const ck = step(t, B(16.4), 2.6, .72), tk = out(seg(t, B(16.9), B(17.4))), sk = out(seg(t, B(17.2), B(17.7)));
+  let h = (b >= 20 ? `<div class="a" style="inset:0;background:${PAPER}"></div>` + demo(warp(t)) : "") + `<div class="a" style="left:${-ok * W}px;top:0;width:${W}px;height:${H}px;overflow:hidden">
+    <svg class="a" style="left:0;top:0" width="${W}" height="${H}">${svgCover(IMG("p06-steak-cooked"), -W * .02 * seg(t, B(16), B(20.5)), 0, W * 1.04, H * 1.04)}</svg>
+    <div class="a" style="inset:0;background:linear-gradient(90deg,rgba(20,12,8,.62),rgba(20,12,8,.1) 60%)"></div>
+    <div class="a" style="left:150px;top:300px;transform-origin:0 100%;transform:scale(${ck})">${plate(190, "happy")}</div>
+    ${rise("Meet Mise.", { x: 150, y: 520, w: 1400, h: 130, k: tk, style: "font:800 116px/130px Geist;letter-spacing:-.045em;color:#fff" })}
+    ${rise("Your sous chef, right in your pocket.", { x: 150, y: 660, w: 1400, h: 66, k: sk, style: "font:500 46px/66px Geist;letter-spacing:-.015em;color:rgba(255,255,255,.9)" })}</div>`;
+  return h;
+});
+scene(20, 80, (t) => {
+  const td = warp(t), b = td / BEAT;
+  const fb = t / BEAT, cut = (fb >= 36 && fb < 37) || (fb >= 64 && fb < 65);   // just after a cooking cut
+  let html = `<div class="a" style="inset:0;background:${PAPER}"></div>` + demo(td, cut);
+  // flood: a black circle from the phone grows past the corners
   if (b >= 47.55) {
-    const k = io(seg(t, B(47.55), B(48))), R = lerp(40, Math.hypot(W, H), k);
+    const k = io(seg(td, B(47.55), B(48))), R = lerp(40, Math.hypot(W, H), k);
     html += `<div class="a" style="left:${PCX - R}px;top:${PCY - R}px;width:${2 * R}px;height:${2 * R}px;border-radius:50%;background:${INK}"></div>`;
   }
   return html;
 });
 
-/* ---- KITCHEN (beats 49–60): black → the phone on the real counter; the iris
+/* ---- KITCHEN (beats 80–92): black → the phone on the real counter; the iris
    opens onto real cooking; then Mise, right there with you. */
 const PH = { x: 820, y: 280, w: 320, h: 660, rot: -9 };
 const V2_IN = 0.15;
@@ -713,28 +795,28 @@ function v2Track(tc) {
   return [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
 }
 function kitchenPhone(t) {
-  const x = Math.max(0, t - B(49)), slow = B(52.6) - B(49);
+  const x = Math.max(0, t - B(80)), slow = B(83.6) - B(80);
   const tc = V2_IN + Math.min(x, slow) + Math.max(0, x - slow) * .35;
   const [dx, dy] = v2Track(tc);
   return { x: PH.x + dx, y: PH.y + dy, w: PH.w, h: PH.h, rot: PH.rot, tc };
 }
-scene(49, 60, (t) => {
+scene(80, 92, (t) => {
   const b = t / BEAT;
   const P = kitchenPhone(t);
   let html = `<canvas class="a" data-vid="v2" data-t="${P.tc}" style="left:0;top:0;width:${W}px;height:${H}px"></canvas>`;
-  const shrink = io(seg(t, B(49), B(49.8)));
+  const shrink = io(seg(t, B(80), B(80.8)));
   const cx = P.x + P.w / 2, cy = P.y + P.h / 2;
   if (shrink < 1) {
     const w = lerp(W * 1.3, P.w + 28, shrink), h = lerp(H * 1.6, P.h + 28, shrink);
     html += `<div class="a" style="left:${lerp(W / 2, cx, shrink) - w / 2}px;top:${lerp(H / 2, cy, shrink) - h / 2}px;width:${w}px;height:${h}px;border-radius:${lerp(0, 60, shrink)}px;background:${INK};transform:rotate(${P.rot * shrink}deg)"></div>`;
     return html;
   }
-  const open = io(seg(t, B(50), B(50.7))) * (1 - io(seg(t, B(52), B(52.6))));
+  const open = io(seg(t, B(81), B(81.7))) * (1 - io(seg(t, B(83), B(83.6))));
   const R = P.w * .44;
-  const clip = b < 51 ? ["v3", .3 + (t - B(50))] : ["v1", .6 + (t - B(51))];
+  const clip = b < 82 ? ["v3", .3 + (t - B(81))] : ["v1", .6 + (t - B(82))];
   // when the iris has closed: Mise, right there at the counter with you
-  const mk = step(t, B(52.65), 3, .62), bk = step(t, B(53.05), 3, .72);
-  const mise = b < 52.6 ? "" : `<div class="a" style="inset:0;background:${PAPER}"></div>
+  const mk = step(t, B(83.65), 3, .62), bk = step(t, B(84.05), 3, .72);
+  const mise = b < 83.6 ? "" : `<div class="a" style="inset:0;background:${PAPER}"></div>
     <div class="a" style="left:20px;top:64px">${logo(20)}</div>
     <div class="a" style="left:${P.w / 2 - 70}px;top:${P.h * .2}px;transform-origin:50% 100%;transform:scale(${mk})">${plate(140, "happy")}</div>
     <div class="a" style="left:22px;right:22px;top:${P.h * .2 + 162}px;padding:18px 18px;border-radius:22px 22px 22px 22px;background:#fff;box-shadow:0 12px 30px -10px rgba(34,26,21,.28),0 0 0 1px ${RULE};transform-origin:50% 0;transform:scale(${bk})">
@@ -742,7 +824,7 @@ scene(49, 60, (t) => {
       <div style="font:700 19px/1.32 Nunito">Nice knife work. Go a little finer for the garnish — about 3&nbsp;mm.</div></div>
     <div class="a" style="left:22px;right:22px;bottom:30px;height:54px;border-radius:27px;background:#fff;box-shadow:0 0 0 1px ${RULE};display:flex;align-items:center;padding:0 20px;font:600 16px Nunito;color:${MUTED};transform:scale(${bk})">Ask me anything…</div>`;
   const scr = `<div class="a" style="inset:0;background:${INK}"></div>
-    ${b < 52.6 ? `<canvas class="a" data-vid="${clip[0]}" data-t="${clip[1]}" style="left:${P.w / 2 - R}px;top:${P.h / 2 - R}px;width:${2 * R}px;height:${2 * R}px;clip-path:circle(50%)"></canvas>
+    ${b < 83.6 ? `<canvas class="a" data-vid="${clip[0]}" data-t="${clip[1]}" style="left:${P.w / 2 - R}px;top:${P.h / 2 - R}px;width:${2 * R}px;height:${2 * R}px;clip-path:circle(50%)"></canvas>
     <svg class="a" style="left:0;top:0" width="${P.w}" height="${P.h}">
       <defs><clipPath id="kc"><circle cx="${P.w / 2}" cy="${P.h / 2}" r="${R}"/></clipPath></defs>
       <g clip-path="url(#kc)">${iris(P.w / 2, P.h / 2, R, open)}</g></svg>` : mise}`;
@@ -754,48 +836,53 @@ scene(49, 60, (t) => {
 
 const CTA = "Coming soon to iPhone";
 function cta(t) {
-  const k = out(seg(t, B(64.4), B(65))), k2 = out(seg(t, B(64.7), B(65.3)));
+  const k = out(seg(t, B(96.4), B(97))), k2 = out(seg(t, B(96.7), B(97.3)));
   return rise(CTA, { x: 0, y: 760, w: W, h: 60, k, style: `text-align:center;font:600 40px/60px Geist;letter-spacing:-.015em;color:${MUTED}` })
     + `<div class="a" style="left:${W / 2 - 60 * k2}px;top:740px;width:${120 * k2}px;height:3px;border-radius:2px;background:${BRICK}"></div>`;
 }
-/* ---- RETURN (60–72): the phone contracts into the pill; pill → dot; the
+/* ---- RETURN (92–104): the phone contracts into the pill; pill → dot; the
    letters spring back out, and the call to action rises beneath. */
-scene(60, 72, (t) => {
+scene(92, 104, (t) => {
   const b = t / BEAT;
-  if (b >= 65) return wordmark(0, true) + hat(1) + cta(t);
+  if (b >= 97) return wordmark(0, true) + hat(1) + cta(t);
   let html = "";
-  if (b < 62.8) {
+  if (b < 94.8) {
     // phone (as the camera left it: centred, rotated, ×s) → brick pill
-    const ck = step(t, B(60), 2.6, .72), P = kitchenPhone(B(59.99)), s = camera(B(59.99)).s;
+    const ck = step(t, B(92), 2.6, .72), P = kitchenPhone(B(91.99)), s = camera(B(91.99)).s;
     const w0 = (P.w + 28) * s, h0 = (P.h + 28) * s;
-    const back = b >= 62 ? step(t, B(62), 2.8, .8) : 0;      // pill → period
+    const back = b >= 94 ? step(t, B(94), 2.8, .8) : 0;      // pill → period
     const D = wordLayout().dot;
     const pw = lerp(lerp(w0, 760, ck), D.w, back), ph = lerp(lerp(h0, 150, ck), D.h, back);
     const pcx = lerp(W / 2, D.x + D.w / 2, back), pcy = lerp(H / 2, D.y + D.h / 2, back);
     const rr = lerp(lerp(60 * s, 75, ck), D.h * .18, back);
-    const lk = out(seg(t, B(60.3), B(60.8))), ko = io(seg(t, B(61), B(61.5)));
-    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(60), B(60.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
+    const lk = out(seg(t, B(92.3), B(92.8))), ko = io(seg(t, B(93), B(93.5)));
+    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(92), B(92.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
       ${back < .01 ? pillLabel(lk, ko, 1)(pw, ph) : ""}</div>`;
     return html;
   }
-  const k = 1 - step(t, B(62.8), 2.1, .6);
-  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(63.8), 3, .55)) + cta(t);
+  const k = 1 - step(t, B(94.8), 2.1, .6);
+  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(95.8), 3, .55)) + cta(t);
 });
 
 /* ------------------------------------------------------------- camera
    (the demo has its own camera inside it; this one is the kitchen push-in) */
 function camera(t) {
   const b = t / BEAT;
-  if (b >= 52.6 && b < 60) {
+  if (b >= 13.6 && b < 16) {
+    const k = io(seg(t, B(13.6), B(16)));
+    const r = bentoRects(1)[0];
+    const s = lerp(1, Math.max(W / r[2], H / r[3]), k);
+    const fx = r[0] + r[2] / 2, fy = r[1] + r[3] / 2;
+    return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
+  }
+  if (b >= 83.6 && b < 92) {
     // a long, decelerating push-in on Mise: fast at first, still drifting at the cut
-    const k = Math.sin(Math.PI / 2 * seg(t, B(52.6), B(60))) ** 1.6, P = kitchenPhone(t);
+    const k = Math.sin(Math.PI / 2 * seg(t, B(83.6), B(92))) ** 1.6, P = kitchenPhone(t);
     const s = lerp(1, H / (P.h + 40) * 1.06, k), fx = P.x + P.w / 2, fy = P.y + P.h / 2;
     return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
   }
   return { s: 1, x: 0, y: 0 };
 }
-/* one beat of black between the demo and the kitchen (48–49) */
-scene(48, 49, () => `<div class="a" style="inset:0;background:${INK}"></div>`);
 
 /* --------------------------------------------------------------- seek */
 async function renderFrame(t) {
@@ -804,6 +891,7 @@ async function renderFrame(t) {
   let html = sc.fn(t);
   // the opening tap on the pill (6): an iOS touch, not a cursor
   html += touch(t, B(6), W / 2 + 230, H / 2 + 30);
+  { const r = bentoRects(1)[0]; const c = camera(t); html += touch(t, B(13), r[0] + r[2] * .55, r[1] + r[3] * .55); }
   await Promise.all([...NEED].map(preload));
   const cam = camera(t);
   const world = document.getElementById("world");
