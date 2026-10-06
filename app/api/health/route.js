@@ -21,7 +21,10 @@ export async function GET() {
   out.checks.session_secret = { ok: !!process.env.SESSION_SECRET };
   if (!process.env.SESSION_SECRET) out.ok = false;
   out.checks.app_url = { ok: /^https?:\/\//.test(process.env.APP_URL || ""), value: process.env.APP_URL || null };
-  out.checks.ai = { ok: !!(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEYS) };
+  const provider = process.env.AI_PROVIDER || "anthropic";
+  const keyFor = { gemini: process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEYS, mistral: process.env.MISTRAL_API_KEY,
+    anthropic: process.env.ANTHROPIC_API_KEY, openai: process.env.OPENAI_API_KEY };
+  out.checks.ai = { ok: !!keyFor[provider], provider };
   out.checks.stripe = { ok: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET) };
   out.sign_in = providers();
   return NextResponse.json(out, { status: out.ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });

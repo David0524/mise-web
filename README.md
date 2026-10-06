@@ -113,6 +113,14 @@ is somewhere else — auth, storage, a specific prompt.
    paste the same env vars into Vercel's project settings, deploy.
    `npm run build` is what Vercel runs.
 
+## Trying Mistral (free tier, testing only)
+
+Set `AI_PROVIDER=mistral` and `MISTRAL_API_KEY` (console.mistral.ai → API Keys,
+on the free "Experiment" plan). Uses `mistral-large-latest`, with
+`mistral-small-latest` for light calls; override with `MISTRAL_MODEL` /
+`MISTRAL_FAST_MODEL`. The free plan requires letting Mistral train on what's
+sent, so use it with test data only. Switch back with `AI_PROVIDER=gemini`.
+
 ## Usage limits
 
 Each account can make up to 120 AI calls per 10 minutes and 600 per day, and

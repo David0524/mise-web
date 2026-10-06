@@ -5,6 +5,7 @@ import { buildDoctrine } from "@/lib/doctrine";
 import * as anthropic from "@/lib/providers/anthropic";
 import * as gemini from "@/lib/providers/gemini";
 import * as openai from "@/lib/providers/openai";
+import * as mistral from "@/lib/providers/mistral";
 
 /* This route exists for exactly one reason: the artifact version had to call
    Claude directly from the browser with no key, because Claude.ai's runtime
@@ -17,7 +18,7 @@ import * as openai from "@/lib/providers/openai";
    components/MiseApp.jsx, the doctrine, parseJSON's truncation repair) is
    completely unaware which one is actually answering. Set AI_PROVIDER=gemini
    to use Google's free tier; leave it unset (or "anthropic") to use Claude. */
-const PROVIDERS = { anthropic, gemini, openai };
+const PROVIDERS = { anthropic, gemini, openai, mistral };
 const serverProvider =
   (Object.hasOwn(PROVIDERS, process.env.AI_PROVIDER || "") && PROVIDERS[process.env.AI_PROVIDER]) || PROVIDERS.anthropic;
 
