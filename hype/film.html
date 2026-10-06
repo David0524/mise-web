@@ -863,32 +863,81 @@ scene(84, 96, (t) => {
 
 const CTA = "Coming soon to iPhone";
 function cta(t) {
-  const k = out(seg(t, B(100.4), B(101))), k2 = out(seg(t, B(100.7), B(101.3)));
+  const k = out(seg(t, B(112.4), B(113))), k2 = out(seg(t, B(112.7), B(113.3)));
   return rise(CTA, { x: 0, y: 760, w: W, h: 60, k, style: `text-align:center;font:600 40px/60px Geist;letter-spacing:-.015em;color:${MUTED}` })
     + `<div class="a" style="left:${W / 2 - 60 * k2}px;top:740px;width:${120 * k2}px;height:3px;border-radius:2px;background:${BRICK}"></div>`;
 }
-/* ---- RETURN (96–108): the phone contracts into the pill; pill → dot; the
-   letters spring back out, and the call to action rises beneath. */
-scene(96, 108, (t) => {
+
+/* ---- PAYOFF (96–108). The film opened by planning a week; it ends with the
+   week cooked. On the beat's return: real plating, "Then you sit down." Then the
+   seven dinners come back as a row of nights, and a brick check stamps each one,
+   Monday to Sunday, climbing with the beat — and what the week gave you. */
+scene(96, 100, (t) => {
+  const k = seg(t, B(96), B(100));
+  return `<canvas class="a" data-vid="v1" data-t="${.35 + (t - B(96)) * .85}" style="left:0;top:0;width:${W}px;height:${H}px;transform:scale(${1.07 - .07 * k});transform-origin:50% 45%"></canvas>${shade}${footCap(t, B(96), "Then you sit down.", "That was always the point.")}`;
+});
+const WEEK = [["Mon", "p04-roastveg", "Roast veg & farro"], ["Tue", "p06-steak-cooked", "Berbere steak bites"], ["Wed", "p12-soup", "Berbere lentil stew"],
+  ["Thu", "p02-noodles", "Ginger noodles"], ["Fri", "p05-sheetpan", "Sheet-pan supper"], ["Sat", "p03-castiron", "Skillet chicken"], ["Sun", "p01-grainbowl", "Berbere-honey sprouts"]];
+const CW = 232, CH = 356, CG = 18, CX0 = (W - (7 * CW + 6 * CG)) / 2, CY = 352;
+const STAMP_AT = (i) => B(101) + i * B(.5);
+function weekCards(t, gone = 0) {
+  let h = "";
+  WEEK.forEach(([day, img, name], i) => {
+    const inK = step(t, B(100) + i * .05, 2.8, .72);
+    const x = CX0 + i * (CW + CG), cx = x + CW / 2, cy = CY + CH / 2;
+    // collapse into the middle, outer cards first
+    const ck = io(seg(t, B(108) + Math.abs(3 - i) * .03 * -1 + .09, B(108) + .42));
+    const gx = lerp(cx, W / 2, ck), gy = lerp(cy, H / 2, ck), sc = (1 - ck) * (.92 + .08 * inK);
+    if (sc <= .01 || inK <= .001) return;
+    const sk = step(t, STAMP_AT(i), 4.2, .5);     // the stamp lands
+    const done = t >= STAMP_AT(i);
+    h += `<div class="a" style="left:${gx - CW / 2}px;top:${gy - CH / 2 + (1 - inK) * 90}px;width:${CW}px;height:${CH}px;transform:scale(${sc});opacity:${clamp(inK * 2)};z-index:${10 - Math.abs(3 - i)}">
+      <div class="a" style="inset:0;border-radius:24px;overflow:hidden;background:url(${IMG(img)}) center/cover;box-shadow:0 24px 50px -24px rgba(34,26,21,.45)">
+        <div class="a" style="inset:0;background:linear-gradient(180deg,rgba(20,12,8,.05) 40%,rgba(20,12,8,.62))"></div>
+        <div class="a" style="inset:0;background:rgba(34,26,21,${.22 * clamp(sk)})"></div>
+        <div class="a" style="left:16px;top:14px;padding:6px 12px;border-radius:999px;background:rgba(250,245,244,.92);font:800 17px Nunito;color:${INK}">${day}</div>
+        <div class="a" style="left:16px;right:14px;bottom:16px;font:800 19px/1.2 Nunito;color:#fff">${name}</div></div>
+      ${done ? `<div class="a" style="left:${CW / 2 - 40}px;top:${CH / 2 - 52}px;width:80px;height:80px;transform:scale(${lerp(1.8, 1, clamp(sk))}) rotate(${(1 - clamp(sk)) * -14}deg);opacity:${clamp(sk * 2.5)}">${check(80)}</div>` : ""}
+    </div>`;
+  });
+  return h;
+}
+scene(100, 108, (t) => {
   const b = t / BEAT;
-  if (b >= 101) return wordmark(0, true) + hat(1) + cta(t);
-  let html = "";
-  if (b < 98.8) {
-    // phone (as the camera left it: centred, rotated, ×s) → brick pill
-    const ck = step(t, B(96), 2.6, .72), P = kitchenPhone(B(95.99)), s = camera(B(95.99)).s;
-    const w0 = (P.w + 28) * s, h0 = (P.h + 28) * s;
-    const back = b >= 98 ? step(t, B(98), 2.8, .8) : 0;      // pill → period
+  const t1 = out(seg(t, B(100.2), B(100.7))), swap = io(seg(t, B(104.6), B(104.9))), t2 = out(seg(t, B(104.8), B(105.3)));
+  const lift = io(seg(t, B(107.7), B(108)));
+  let h = `<div class="a" style="inset:0;background:${PAPER}"></div>`;
+  h += rise("Your week.", { x: 0, y: 186, w: W, h: 120, k: t1, ko: Math.max(swap, lift), style: `text-align:center;font:800 100px/120px Geist;letter-spacing:-.045em;color:${INK}` });
+  h += rise(`Seven dinners. <span style="color:${BRICK}">Cooked.</span>`, { x: 0, y: 186, w: W, h: 120, k: t2, ko: lift, style: `text-align:center;font:800 100px/120px Geist;letter-spacing:-.045em;color:${INK}` });
+  const tally = [["3", "new flavors"], ["1", "new technique"], ["0", "food wasted"]];
+  tally.forEach(([n, l], i) => {
+    const k = out(seg(t, B(105.6) + i * .14, B(105.6) + i * .14 + .4));
+    h += rise(`<b style="font-weight:800;color:${INK}">${n}</b> ${l}`, { x: W / 2 - 600 + i * 400, y: 760, w: 400, h: 64, k, ko: lift,
+      style: `text-align:center;font:500 44px/64px Geist;letter-spacing:-.02em;color:${MUTED}` });
+  });
+  h += weekCards(t);
+  return h;
+});
+/* ---- RETURN (108–118): the week folds into the brick pill — "Dinner, figured
+   out." — which becomes the period; MISE. springs back and the call to action rises. */
+scene(108, 118, (t) => {
+  const b = t / BEAT;
+  if (b >= 113) return wordmark(0, true) + hat(1) + cta(t);
+  if (b < 110.8) {
+    const gk = step(t, B(108.2), 2.6, .66);
+    const back = b >= 110 ? step(t, B(110), 2.8, .8) : 0;      // pill → period
     const D = wordLayout().dot;
-    const pw = lerp(lerp(w0, 760, ck), D.w, back), ph = lerp(lerp(h0, 150, ck), D.h, back);
+    const pw = lerp(lerp(40, 760, gk), D.w, back), ph = lerp(lerp(40, 150, gk), D.h, back);
     const pcx = lerp(W / 2, D.x + D.w / 2, back), pcy = lerp(H / 2, D.y + D.h / 2, back);
-    const rr = lerp(lerp(60 * s, 75, ck), D.h * .18, back);
-    const lk = out(seg(t, B(96.3), B(96.8))), ko = io(seg(t, B(97), B(97.5)));
-    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(96), B(96.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
+    const lk = out(seg(t, B(108.6), B(109.1))), ko = io(seg(t, B(109.5), B(109.9)));
+    let h = `<div class="a" style="inset:0;background:${PAPER}"></div>`;
+    if (b < 108.6) h += weekCards(t);
+    h += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(lerp(75, D.h * .18, back), ph / 2)}px;background:${BRICK};overflow:hidden;z-index:20">
       ${back < .01 ? pillLabel(lk, ko, 1)(pw, ph) : ""}</div>`;
-    return html;
+    return h;
   }
-  const k = 1 - step(t, B(98.8), 2.1, .6);
-  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(99.8), 3, .55)) + cta(t);
+  const k = 1 - step(t, B(110.8), 2.1, .6);
+  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(111.8), 3, .55)) + cta(t);
 });
 
 /* ------------------------------------------------------------- camera

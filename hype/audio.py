@@ -6,10 +6,10 @@ def load(path, a, b):
     raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(a), "-t", str(b - a), "-i", path, "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], capture_output=True).stdout
     return np.frombuffer(raw, np.float32).reshape(-1, 2).copy()
 A = load("assets/music/190.mp3", 7.71, 49.71)
-Bm = load("assets/music/190.mp3", 57.71 - .015, 69.71)
+Bm = load("assets/music/190.mp3", 57.71 - .015, 74.71)
 xf = int(.015 * SR); r = np.linspace(0, 1, xf)[:, None]
 music = np.concatenate([A[:-xf], A[-xf:] * (1 - r) + Bm[:xf] * r, Bm[xf:]])
-N = int(54 * SR); music = np.pad(music, ((0, max(0, N - len(music))), (0, 0)))[:N]
+N = int(59 * SR); music = np.pad(music, ((0, max(0, N - len(music))), (0, 0)))[:N]
 fo = int(2.5 * SR); music[-fo:] *= np.linspace(1, 0, fo)[:, None] ** 1.5
 
 rng = np.random.default_rng(7)
@@ -58,7 +58,12 @@ cues = [(B(1), whoosh(.9, 400, 2500, .14)), (B(3), pop()), (B(6), click()), (B(6
         (B(64), whoosh(.3, 300, 3000, .1)), (B(68), whoosh(.4, 300, 3000, .14)), (D(40.2), click()), (D(42), click()), (D(42.1), whoosh(.4, 300, 3000, .12)),
         *typing(42.7, 44.3, 14), (D(44.5), pop() * .7), (D(45.7), pop()), (D(50.3), swell(.4)), (D(51), thump()),
         (B(84), whoosh(.5, 200, 2000, .12)), (B(85), shutter()), (B(87), shutter()), (B(87.65), pop() * .7),
-        (B(96), thump()), (B(98), pop()), (B(98.8), whoosh(.5, 500, 3000, .12)), (B(99.8), pop() * .7), (B(100.4), ding(1046.5) * .7)]
+        (B(96), thump()), (B(96), whoosh(.4, 300, 3000, .12)), (B(100), whoosh(.4, 500, 4000, .12)),
+        *[(B(100) + i * .05, paper()) for i in range(7)],
+        *[(B(101) + i * B(.5), ding(f) * .55) for i, f in enumerate([523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77])],
+        (B(104.6), whoosh(.3, 600, 5000, .1)), *[(B(105.6) + i * .14, tick()) for i in range(3)],
+        (B(108), whoosh(.45, 300, 3000, .14)), (B(108.2), pop()), (B(110), pop()), (B(110.8), whoosh(.5, 500, 3000, .12)),
+        (B(111.8), pop() * .7), (B(112.4), ding(1046.5) * .7)]
 fx = np.zeros(N)
 for t0, s in cues:
     i = int(t0 * SR); s = s[:N - i]; fx[i:i + len(s)] += s

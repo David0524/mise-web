@@ -1,8 +1,8 @@
-# Mise launch film — beat map (v5)
+# Mise launch film — beat map (v6)
 
-1920×1080 · 60 fps · 120 BPM · 108 beats · 54.0 s
+1920×1080 · 60 fps · 120 BPM · 118 beats · 59.0 s
 Track: Mixkit #190 "Electro Dreams". Edit: 7.71–49.71 s (build → drop at beat 16 → the whole
-drop section, uncut, into the first bar of the breakdown) + splice to 57.71–69.71 s (breakdown → the return on beat 96), 2.5 s fade.
+drop section, uncut, into the first bar of the breakdown) + splice to 57.71–74.71 s (breakdown → the return on beat 96), 2.5 s fade.
 The demo keeps its own 40-beat clock; `WARP` in film.html stretches it (≈1.4× slower) and
 leaves room for two full-frame cooking cuts. Rows below give film beats.
 Beat b starts at t = b × 0.5 s.
@@ -32,7 +32,9 @@ in the app, Geist for captions, the toque mark, and Mise's own avatar.
 | 68–82 | 04 COOK · "A chef beside you." / "She teaches you as you cook." | Cook mode, step 3, **Worth learning: leave the brown bits — in step 4 they become your pan sauce**; the 2-min timer; "How do I know they're done?"; Mise answers at the stove | keys, pop |
 | 82–84 | BREAKDOWN | Black floods out of the phone; a beat of black | swell, thump |
 | 84–96 | KITCHEN | The phone on the real counter; iris opens fully onto the chopping clip; Mise at the counter; slow push-in | shutters, pop |
-| **96**–108 | RETURN + END | Phone → pill → period → MISE. springs back, toque lands; "Coming soon to iPhone" | hit, pop, ding |
+| **96**–100 | PAYOFF | On the beat's return: real plating footage, "Then you sit down. That was always the point." | thump |
+| 100–108 | | The week comes back as seven day cards; a brick check stamps each night, Mon→Sun, climbing a scale on the beat. "Your week." → "Seven dinners. Cooked." Tally: 3 new flavors · 1 new technique · 0 food wasted | paper, 7 rising dings, ticks |
+| 108–118 | RETURN + END | The cards fold into the brick pill "Dinner, figured out." → period → MISE. springs back, toque lands; "Coming soon to iPhone" | whoosh, pop, ding |
 
 No crossfades, blur-ins, glows or 3D flips. Taps are iOS touches, not a cursor.
 Replace before release: the end-card line (`CTA` in film.html) once there's a date or a URL,
