@@ -10,16 +10,23 @@ export default function Refunds() {
       title="Refund Policy"
       intro={`We want ${B.product} to be worth it. If it isn't, here's exactly what happens to your money.`}
     >
-      <h2>Your first payment: 14-day refund</h2>
+      <h2>Your $1 first month</h2>
       <p>
-        If you're not happy, email <a href={`mailto:${B.email}`}>{B.email}</a> within 14 days of your first payment
-        and we'll refund it in full, no questions asked. We'll cancel the subscription at the same time.
+        New subscribers pay $1 for their first 30 days. Cancel any time in those 30 days and you won't be charged the
+        full price at all. If you'd like the $1 back too, just ask.
+      </p>
+
+      <h2>Your first full payment: 14-day refund</h2>
+      <p>
+        If you're not happy, email <a href={`mailto:${B.email}`}>{B.email}</a> within 14 days of your first full-price
+        payment (monthly or yearly) and we'll refund it in full, no questions asked. We'll cancel the subscription at
+        the same time.
       </p>
 
       <h2>Renewals</h2>
       <p>
-        After that, monthly renewals aren't refunded, including for part of a month. When you cancel, you keep using
-        Mise until the end of the month you've paid for, and you're never charged again.
+        After that, renewals aren't refunded, including for part of a month or year. When you cancel, you keep using
+        Mise until the end of the period you've paid for, and you're never charged again.
       </p>
 
       <h2>When we always refund</h2>

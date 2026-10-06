@@ -1,15 +1,16 @@
 "use client";
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { S, FilterDefs } from "@/lib/authStyles";
 import SiteFooter from "@/components/SiteFooter";
+import AuthOptions from "@/components/AuthOptions";
 
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
+  const next = /^\/(?![/\\])/.test(params.get("next") || "") ? params.get("next") : "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(params.get("error") || "");
   const [busy, setBusy] = useState(false);
 
   async function submit(e) {
@@ -37,10 +38,11 @@ function LoginForm() {
             : "Couldn't sign in.")
         );
       }
-      router.push("/app");
+      // /auth/finish brings over anything set up before signing in, then
+      // goes to the app or the paywall.
+      window.location.href = `/auth/finish${next ? `?next=${encodeURIComponent(next)}` : ""}`;
     } catch (e) {
       setErr(e.message);
-    } finally {
       setBusy(false);
     }
   }
@@ -48,23 +50,37 @@ function LoginForm() {
   return (
     <main id="main" style={{ ...S.wrap, flexDirection: "column" }}>
       <FilterDefs />
-      <form onSubmit={submit} style={S.card}>
-        <h1 style={S.h1}>Sign in</h1>
+      <div style={S.card}>
+        <h1 style={S.h1}>Welcome back</h1>
+        <p style={{ ...S.sub, marginBottom: "1rem" }}>Sign in to your kitchen.</p>
         {params.get("reason") === "expired" && (
-          <p style={S.notice}>You were signed out. Sign back in to keep going.</p>
+          <p style={{ ...S.notice, marginBottom: 12 }}>You were signed out. Sign back in to keep going.</p>
         )}
-        {err && <p style={S.error}>{err}</p>}
-        <label htmlFor="email" style={S.label}>Email</label>
-        <input id="email" autoComplete="email" style={S.input} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        <label htmlFor="password" style={S.label}>Password</label>
-        <input id="password" autoComplete="current-password" style={S.input} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-        <button style={S.btn} disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-        <p style={S.foot}>No account yet? <a href="/signup" style={S.link}>Sign up</a></p>
-      </form>
+        {params.get("reset") === "1" && (
+          <p style={{ ...S.notice, marginBottom: 12 }}>Password changed. Any other devices have been signed out.</p>
+        )}
+        {err && <p style={{ ...S.error, marginBottom: 12 }} role="alert">{err}</p>}
+        <AuthOptions from="/login" next={next} />
+        <div style={divider}><span style={rule} /><span>or with email</span><span style={rule} /></div>
+        <form onSubmit={submit}>
+          <label htmlFor="email" style={{ ...S.label, marginTop: 0 }}>Email</label>
+          <input id="email" autoComplete="email" style={S.input} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <label htmlFor="password" style={S.label}>Password</label>
+            <a href="/forgot" style={{ ...S.link, fontSize: ".85rem" }}>Forgot password?</a>
+          </div>
+          <input id="password" autoComplete="current-password" style={S.input} type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <button style={S.btn} disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
+        </form>
+        <p style={S.foot}>New to Mise? <a href="/start" style={S.link}>Get started</a></p>
+      </div>
       <SiteFooter />
     </main>
   );
 }
+
+const divider = { display: "flex", alignItems: "center", gap: ".7rem", margin: "1.2rem 0 .6rem", fontWeight: 700, fontSize: ".85rem", color: "#72645C" };
+const rule = { flex: 1, height: 1, background: "rgba(34,26,21,.15)" };
 
 // useSearchParams() opts a page out of static generation unless it's wrapped
 // in Suspense — this is what "not found" flashes to while that resolves.
@@ -75,4 +91,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

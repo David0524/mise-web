@@ -17,7 +17,8 @@ lives in `ios/` for the native build.
 - **A real paywall exists now**, which was structurally impossible in the
   artifact version: `/app` is a Server Component that checks your session
   and Stripe subscription status before it ever sends the app's code to
-  the browser. `SKIP_PAYWALL=1` bypasses this everywhere for local testing.
+  the browser. There's no switch to turn it off: testers use an access code
+  (`VIP26` by default) on the paywall's "Have a code?" link.
 - **Three interchangeable AI providers**, not one. `lib/providers/{gemini,
   anthropic,openai}.js` all take the same `(messages, systemBlocks, opts)`
   shape and return the same plain string, so nothing upstream — any prompt
@@ -105,12 +106,50 @@ is somewhere else — auth, storage, a specific prompt.
 
 4. **Copy `.env.example` to `.env.local`** and fill it in — see the comments
    on each variable there for what's required vs. optional. Generate
-   `SESSION_SECRET` with `openssl rand -base64 32`. Set `SKIP_PAYWALL=1`
-   while testing locally so you're not blocked by Stripe.
+   `SESSION_SECRET` with `openssl rand -base64 32`. Locally, get past the
+   paywall with the access code `VIP26`.
 
 5. **Deploy.** Push this folder to a GitHub repo, connect it to Vercel,
    paste the same env vars into Vercel's project settings, deploy.
    `npm run build` is what Vercel runs.
+
+## Onboarding, sign-in and the paywall
+
+**The flow:** landing → `/start` (intro → kitchen setup → app tour → create
+account) → `/pricing` (paywall) → `/app`. Until the account exists, setup is
+saved on the device (`mise:guest:*` in localStorage); `/auth/finish` copies it
+to the new account after any sign-in, never overwriting an existing kitchen.
+
+**Pricing** (`lib/billing.js`): $12/month or $120/year. New subscribers pay $1
+for the first 30 days (a 30-day Stripe trial plus a one-time $1 line item),
+once per account. Prices are defined inline, so only `STRIPE_SECRET_KEY` and the
+webhook are required; set `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_YEARLY` to use
+dashboard prices instead. Test a real checkout in Stripe test mode before launch.
+
+**Access codes:** `ACCESS_CODES` (comma-separated, case-insensitive) unlocks the
+app without paying. Defaults to `VIP26`. Redeemed codes are stored on the
+account (`subscriptions.access_code`).
+
+**Sign-in methods.** Each button shows a friendly "isn't set up yet" message
+until its variables are set.
+
+| Method | Variables | Where to get them |
+|---|---|---|
+| Email + password | (none) | built in |
+| Forgot password | `RESEND_API_KEY`, `EMAIL_FROM` (e.g. `Mise <hello@yourdomain.com>`) | resend.com, verify your domain |
+| Google | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Cloud Console → OAuth client (Web). Redirect URI: `https://yourdomain.com/api/auth/google/callback` |
+| Apple | `APPLE_CLIENT_ID` (Services ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (.p8 contents) | Apple Developer → Identifiers → Services ID with Sign in with Apple; Return URL: `https://yourdomain.com/api/auth/apple/callback` |
+| Phone (SMS code) | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SID` | Twilio Console → Verify → create a service |
+
+`APP_URL` must be the exact public origin (it builds the callback URLs).
+
+For local testing only, `DEV_FAKE_SMS=1` accepts the code `000000` and
+`DEV_LOG_EMAILS=1` prints emails to the server log. Both refuse to run when
+`APP_URL` is https.
+
+Accounts link automatically: Google or Apple with a verified email matching an
+existing account signs into that account. A password reset signs out every
+other device. Schema changes apply themselves on first request (`lib/schema.js`).
 
 ## Legal, privacy and compliance
 

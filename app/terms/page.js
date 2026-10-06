@@ -17,11 +17,14 @@ export default function Terms() {
       </p>
 
       <h2>Your subscription</h2>
+      <p>Mise needs a subscription (or an access code we've given you) to use.</p>
       <ul>
-        <li><strong>Price:</strong> {B.price}, shown before you subscribe. Any sales tax or VAT that applies where you live is shown at checkout before you pay. There are no other fees.</li>
-        <li><strong>Renewal:</strong> your subscription renews automatically each month, on the same day you started, and is charged to the card you gave Stripe until you cancel.</li>
-        <li><strong>Cancelling:</strong> any time, yourself, in My Kitchen → Manage subscription. No email or call needed. You keep access until the end of the period you've already paid for, and you won't be charged again.</li>
+        <li><strong>Plans:</strong> {B.price}, shown before you subscribe. Any sales tax or VAT that applies where you live is shown at checkout before you pay. There are no other fees.</li>
+        <li><strong>Your first month:</strong> new subscribers pay $1 for their first 30 days. When those 30 days end, the plan you chose starts at its normal price and is charged to the card you gave Stripe. The $1 offer is once per account.</li>
+        <li><strong>Renewal:</strong> after that, your subscription renews automatically every month or every year, depending on your plan, until you cancel.</li>
+        <li><strong>Cancelling:</strong> any time, yourself, in My Kitchen → Manage subscription. No email or call needed. Cancel during your $1 month and you won't be charged the full price. You keep access until the end of the period you've already paid for.</li>
         <li><strong>Price changes:</strong> we'll tell you at least 30 days before a new price applies to you. If you don't want to pay it, cancel before then.</li>
+        <li><strong>Access codes</strong> are personal, can't be exchanged for money, and we may end them with reasonable notice.</li>
         <li><strong>Refunds:</strong> see the <a href="/refunds">Refund Policy</a>.</li>
       </ul>
 

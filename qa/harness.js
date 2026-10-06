@@ -31,6 +31,8 @@ async function newUser(browser, profile = {}) {
   });
   const email = `qa${Date.now()}${Math.floor(Math.random() * 1e4)}@example.com`;
   await p.request.post(B + "/api/auth/signup", { data: { email, password: "password123", ageConfirmed: true, termsAccepted: true } });
+  // The paywall applies to everyone now; the test account gets in with the access code.
+  await p.request.post(B + "/api/billing/redeem", { data: { code: "VIP26" } });
   const base = {
     people: 1, consistent: true, headcount: {}, nights: ["Tue", "Thu", "Sat"], time: 45, spice: 2, adventure: 3,
     restrictions: [], restrictionsNote: "", dislikes: "", healthConscious: false,

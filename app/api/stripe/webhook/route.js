@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { query } from "@/lib/db";
+import { ensureSchema } from "@/lib/schema";
 
 /* The only place subscription status actually changes. Everything else in the
    app just reads what this wrote. Signature verification is not optional —
@@ -29,6 +30,7 @@ export async function POST(req) {
   const NEWER = `coalesce(subscriptions.stripe_event_created, 0) <= excluded.stripe_event_created`;
 
   try {
+    await ensureSchema();
     switch (event.type) {
       // Fired once, right after successful checkout. Links the Stripe customer
       // to our user id AND grants access: signup always pre-creates a 'none'
@@ -40,10 +42,13 @@ export async function POST(req) {
         const userId = session.client_reference_id;
         if (userId && session.customer) {
           await query(
-            `insert into subscriptions (user_id, status, stripe_customer_id, stripe_subscription_id, stripe_event_created)
-             values ($1, 'active', $2, $3, $4)
+            // intro_used: any completed checkout spends the $1 first month,
+            // so cancelling and resubscribing doesn't get it again.
+            `insert into subscriptions (user_id, status, stripe_customer_id, stripe_subscription_id, stripe_event_created, intro_used)
+             values ($1, 'active', $2, $3, $4, true)
              on conflict (user_id) do update set
                status = case when ${NEWER} then 'active' else subscriptions.status end,
+               intro_used = true,
                stripe_customer_id = excluded.stripe_customer_id,
                stripe_subscription_id = excluded.stripe_subscription_id,
                stripe_event_created = greatest(coalesce(subscriptions.stripe_event_created, 0), excluded.stripe_event_created),

@@ -15,12 +15,6 @@ create table if not exists users (
   created_at    timestamptz not null default now()
 );
 
--- Consent records: when the person confirmed they're 18+ and accepted the
--- Terms, and the policy version they saw (lib/business.js POLICY_VERSION).
-alter table users add column if not exists age_confirmed_at  timestamptz;
-alter table users add column if not exists terms_accepted_at timestamptz;
-alter table users add column if not exists policy_version    text;
-
 -- One row per user. status drives the paywall gate in every /api route.
 -- 'trialing' and 'active' both count as "let them in"; everything else doesn't.
 create table if not exists subscriptions (
@@ -85,3 +79,39 @@ create table if not exists revoked_sessions (
   expires_at  timestamptz not null
 );
 create index if not exists idx_revoked_sessions_expires on revoked_sessions(expires_at);
+
+-- ---------------------------------------------------------------------------
+-- Added later. lib/schema.js applies the same statements automatically on the
+-- first auth request, so an existing database doesn't need this re-run.
+
+-- Consent records: when the person confirmed they're 18+ and accepted the
+-- Terms, and the policy version they saw (lib/business.js POLICY_VERSION).
+alter table users add column if not exists age_confirmed_at  timestamptz;
+alter table users add column if not exists terms_accepted_at timestamptz;
+alter table users add column if not exists policy_version    text;
+
+-- Sign in with Google / Apple / phone.
+alter table users alter column email drop not null;
+alter table users alter column password_hash drop not null;
+alter table users add column if not exists phone      text;
+alter table users add column if not exists google_sub text;
+alter table users add column if not exists apple_sub  text;
+create unique index if not exists users_phone_key      on users(phone)      where phone is not null;
+create unique index if not exists users_google_sub_key on users(google_sub) where google_sub is not null;
+create unique index if not exists users_apple_sub_key  on users(apple_sub)  where apple_sub is not null;
+-- Sessions issued before this are dead (set on password reset).
+alter table users add column if not exists tokens_valid_after timestamptz;
+
+-- Access codes (ACCESS_CODES, default VIP26) and the one-time $1 first month.
+alter table subscriptions add column if not exists access_code text;
+alter table subscriptions add column if not exists access_code_at timestamptz;
+alter table subscriptions add column if not exists intro_used boolean not null default false;
+
+-- Forgot password. Only a SHA-256 of the emailed token is stored.
+create table if not exists password_resets (
+  token_hash text primary key,
+  user_id    uuid not null references users(id) on delete cascade,
+  expires_at timestamptz not null,
+  used_at    timestamptz
+);
+create index if not exists idx_password_resets_user on password_resets(user_id);
