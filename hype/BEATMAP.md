@@ -22,7 +22,7 @@ in the app, Geist for captions, the toque mark, and Mise's own avatar.
 |---|---|---|---|
 | 0–5 | OPEN | **MISE.** (brick period wearing the toque) squeezes into its period → brick pill "Dinner, figured out." | squeeze, pop |
 | 6–8 | | Tap; iris closes, snaps open onto the dinner table; circle squares off | click, shutter |
-| 9–15 | WEEK | Grid of dishes unfolds like a map → bento week, glass day chips; tap Tuesday; zoom in | paper, click |
+| 9–15 | WEEK | Grid of dishes unfolds like a map → bento week, glass day chips; tap Tuesday; its tile grows to fill the frame | paper, click |
 | **16**–20 | MEET MISE (DROP) | Steak bites full frame; Mise springs in: "Meet Mise. Your sous chef, right in your pocket." | thump, pop |
 | 20–36 | 01 PLAN · "Never boring." | The iPhone slides in. Type "Sirloin, garlic, half a lemon, parsley"; Mise thinks. The week's draw: Gochujang · savoy cabbage · learn a quick pickle — tap **Draw again** — Berbere · Brussels sprouts · learn a pan sauce from the fond. Mise: "You'd never have picked it, so we'll use it three different ways." Three dishes, three formats (seared / braised / roasted). Add, Add, Plan my week | keys, taps, whoosh |
 | 36–40 | CUT | Chopping parsley, full frame: "Food you wouldn't have thought of. Every single week." | swish |
@@ -31,7 +31,7 @@ in the app, Geist for captions, the toque mark, and Mise's own avatar.
 | 64–68 | CUT | Basting in the pan, full frame: "Restaurant-good. On a Tuesday." | swish |
 | 68–82 | 04 COOK · "A chef beside you." / "She teaches you as you cook." | Cook mode, step 3, **Worth learning: leave the brown bits — in step 4 they become your pan sauce**; the 2-min timer; "How do I know they're done?"; Mise answers at the stove | keys, pop |
 | 82–84 | BREAKDOWN | Black floods out of the phone; a beat of black | swell, thump |
-| 84–96 | KITCHEN | The phone on the real counter; iris onto chopping, then plating; Mise at the counter; slow push-in | shutters, pop |
+| 84–96 | KITCHEN | The phone on the real counter; iris opens fully onto the chopping clip; Mise at the counter; slow push-in | shutters, pop |
 | **96**–108 | RETURN + END | Phone → pill → period → MISE. springs back, toque lands; "Coming soon to iPhone" | hit, pop, ding |
 
 No crossfades, blur-ins, glows or 3D flips. Taps are iOS touches, not a cursor.

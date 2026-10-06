@@ -224,7 +224,7 @@ const preload = (u) => {
    previous edge's extension meets the rim → V_i. Closing shrinks and turns
    the hexagon; at 0 the blades meet in the middle. */
 function iris(cx, cy, R, open, color = INK, seam = "rgba(255,255,255,.14)") {
-  const a = Math.max(0.001, open) * R * 1.02, rot = (1 - open) * Math.PI / 6;
+  const a = Math.max(0.001, open) * R * 1.2, rot = (1 - open) * Math.PI / 6;
   const V = [...Array(6)].map((_, i) => {
     const th = rot + i * Math.PI / 3 - Math.PI / 2;
     return [cx + a * Math.cos(th), cy + a * Math.sin(th)];
@@ -443,15 +443,18 @@ function bento(t) {
   let html = "";
   rects.forEach((r, i) => {
     const u = unfold(i); if (u <= .001 || r[2] < 2) return;
-    const [x, y, w, h] = r;
+    // Tuesday's tile grows to fill the frame (13.6 → 16), landing exactly on the
+    // full-frame photo the next scene opens with
+    const ex = i === 0 ? io(seg(t, B(13.6), B(16))) : 0;
+    const [x, y, w, h] = ex ? [lerp(r[0], 0, ex), lerp(r[1], 0, ex), lerp(r[2], W, ex), lerp(r[3], H, ex)] : r;
     const sx = i === 2 ? "0% 50%" : i === 4 ? "100% 50%" : i === 1 ? "50% 100%" : i === 3 ? "50% 0%" : "50% 50%";
     const lift = i === 0 ? step(t, B(12), 3, .6) - step(t, B(13), 4, .7) : 0;
     const press = i === 0 ? step(t, B(13), 6, .8) - step(t, B(13.25), 5, .8) : 0;
     const s = 1 + lift * .02 - press * .03;
-    html += `<div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${lerp(26, 30, bk)}px;overflow:hidden;
+    html += `<div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${lerp(26, 30, bk) * (1 - ex)}px;overflow:hidden;${ex ? "z-index:5;" : ""}
       transform-origin:${sx};transform:scale(${i === 0 ? s : 1},${i === 0 ? s : 1}) ${i ? (i <= 4 ? (i % 2 ? `scaleY(${u})` : `scaleX(${u})`) : `scale(${u})`) : ""};
       background:url(${IMG(DISHES[i][0])}) center/cover"></div>`;
-    const chipK = step(t, B(11.4) + i * .05, 3.4, .55);
+    const chipK = step(t, B(11.4) + i * .05, 3.4, .55) * (1 - clamp(ex * 4));
     if (DISHES[i][1] && chipK > .01 && w > 50) {
       const cw = 92, ch = 46, cx = x + 18, cy = y + 18;
       html += `<div class="a" style="left:${cx}px;top:${cy}px;transform-origin:0 0;transform:scale(${chipK})">${glass({
@@ -787,7 +790,7 @@ scene(16, 20.5, (t) => {
   const b = t / BEAT, ok = io(seg(t, B(20), B(20.5)));
   const ck = step(t, B(16.4), 2.6, .72), tk = out(seg(t, B(16.9), B(17.4))), sk = out(seg(t, B(17.2), B(17.7)));
   let h = (b >= 20 ? `<div class="a" style="inset:0;background:${PAPER}"></div>` + demo(warp(t)) : "") + `<div class="a" style="left:${-ok * W}px;top:0;width:${W}px;height:${H}px;overflow:hidden">
-    <svg class="a" style="left:0;top:0" width="${W}" height="${H}">${svgCover(IMG("p06-steak-cooked"), -W * .02 * seg(t, B(16), B(20.5)), 0, W * 1.04, H * 1.04)}</svg>
+    <svg class="a" style="left:0;top:0" width="${W}" height="${H}">${svgCover(IMG("p06-steak-cooked"), -W * .02 * seg(t, B(16), B(20.5)), -H * .02 * seg(t, B(16), B(20.5)), W * (1 + .04 * seg(t, B(16), B(20.5))), H * (1 + .04 * seg(t, B(16), B(20.5))))}</svg>
     <div class="a" style="inset:0;background:linear-gradient(90deg,rgba(20,12,8,.62),rgba(20,12,8,.1) 60%)"></div>
     <div class="a" style="left:150px;top:300px;transform-origin:0 100%;transform:scale(${ck})">${plate(190, "happy")}</div>
     ${rise("Meet Mise.", { x: 150, y: 520, w: 1400, h: 130, k: tk, style: "font:800 116px/130px Geist;letter-spacing:-.045em;color:#fff" })}
@@ -837,7 +840,7 @@ scene(84, 96, (t) => {
   }
   const open = io(seg(t, B(85), B(85.7))) * (1 - io(seg(t, B(87), B(87.6))));
   const R = P.w * .44;
-  const clip = b < 86 ? ["v3", .3 + (t - B(85))] : ["v1", .6 + (t - B(86))];
+  const clip = ["v3", .3 + (t - B(85))];
   // when the iris has closed: Mise, right there at the counter with you
   const mk = step(t, B(87.65), 3, .62), bk = step(t, B(88.05), 3, .72);
   const mise = b < 87.6 ? "" : `<div class="a" style="inset:0;background:${PAPER}"></div>
@@ -892,13 +895,6 @@ scene(96, 108, (t) => {
    (the demo has its own camera inside it; this one is the kitchen push-in) */
 function camera(t) {
   const b = t / BEAT;
-  if (b >= 13.6 && b < 16) {
-    const k = io(seg(t, B(13.6), B(16)));
-    const r = bentoRects(1)[0];
-    const s = lerp(1, Math.max(W / r[2], H / r[3]), k);
-    const fx = r[0] + r[2] / 2, fy = r[1] + r[3] / 2;
-    return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
-  }
   if (b >= 84 && b < 96) {
     // a slow drift over the counter from the start, then a long, decelerating
     // push-in on Mise: fast at first, still drifting at the cut
