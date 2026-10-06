@@ -874,7 +874,8 @@ function cta(t) {
    Monday to Sunday, climbing with the beat — and what the week gave you. */
 scene(96, 100, (t) => {
   const k = seg(t, B(96), B(100));
-  return `<canvas class="a" data-vid="v1" data-t="${.35 + (t - B(96)) * .85}" style="left:0;top:0;width:${W}px;height:${H}px;transform:scale(${1.07 - .07 * k});transform-origin:50% 45%"></canvas>${shade}${footCap(t, B(96), "Then you sit down.", "That was always the point.")}`;
+  // friends passing plates round the table — the dinner the whole film was for
+  return `<canvas class="a" data-vid="v5" data-t="${.2 + (t - B(96))}" style="left:0;top:0;width:${W}px;height:${H}px;transform:scale(${1.08 - .06 * k});transform-origin:42% 40%"></canvas><div class="a" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(12,8,6,.72));"></div>${footCap(t, B(96), "Then you sit down.", "That was always the point.")}`;
 });
 const WEEK = [["Mon", "p04-roastveg", "Roast veg & farro"], ["Tue", "p06-steak-cooked", "Berbere steak bites"], ["Wed", "p12-soup", "Berbere lentil stew"],
   ["Thu", "p02-noodles", "Ginger noodles"], ["Fri", "p05-sheetpan", "Sheet-pan supper"], ["Sat", "p03-castiron", "Skillet chicken"], ["Sun", "p01-grainbowl", "Berbere-honey sprouts"]];
@@ -972,7 +973,7 @@ async function renderFrame(t) {
   await document.fonts.ready;
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 }
-const VIDS = { v1: "v1-plate", v2: "v2-marble", v3: "v3-chop", v4: "v4-baste" };
+const VIDS = { v1: "v1-plate", v2: "v2-marble", v3: "v3-chop", v4: "v4-baste", v5: "v5-dinner" };
 const vidEl = {};
 async function loadVideos() {
   window.V2TRACK = await (await fetch("assets/video/v2track.json")).json();

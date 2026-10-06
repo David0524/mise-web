@@ -32,7 +32,7 @@ in the app, Geist for captions, the toque mark, and Mise's own avatar.
 | 68–82 | 04 COOK · "A chef beside you." / "She teaches you as you cook." | Cook mode, step 3, **Worth learning: leave the brown bits — in step 4 they become your pan sauce**; the 2-min timer; "How do I know they're done?"; Mise answers at the stove | keys, pop |
 | 82–84 | BREAKDOWN | Black floods out of the phone; a beat of black | swell, thump |
 | 84–96 | KITCHEN | The phone on the real counter; iris opens fully onto the chopping clip; Mise at the counter; slow push-in | shutters, pop |
-| **96**–100 | PAYOFF | On the beat's return: real plating footage, "Then you sit down. That was always the point." | thump |
+| **96**–100 | PAYOFF | On the beat's return: friends passing plates round a dinner table (v5-dinner), "Then you sit down. That was always the point." | thump |
 | 100–108 | | The week comes back as seven day cards; a brick check stamps each night, Mon→Sun, climbing a scale on the beat. "Your week." → "Seven dinners. Cooked." Tally: 3 new flavors · 1 new technique · 0 food wasted | paper, 7 rising dings, ticks |
 | 108–118 | RETURN + END | The cards fold into the brick pill "Dinner, figured out." → period → MISE. springs back, toque lands; "Coming soon to iPhone" | whoosh, pop, ding |
 
