@@ -1,47 +1,103 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { S, FilterDefs } from "@/lib/authStyles";
-import SiteFooter from "@/components/SiteFooter";
+import { FilterDefs } from "@/lib/authStyles";
 import MiseHello from "@/components/MiseHello";
 
-/* The paywall. Everyone lands here after making an account, and anyone whose
-   subscription has lapsed is sent back here by /app.
+/* The paywall: a sheet that slides up over a blurred preview of the person's
+   own week, built from the setup they just finished.
 
-   Honest by construction: the price you'll pay after the first month, when
-   that starts, and how to cancel are all on screen before the button, in
-   type the same size as the offer. Two plans, neither pre-selected as a trick
-   (monthly is the default because it's the smaller commitment). */
+   What it's built on (paywall research, Oct 2026):
+   - Shown right after value, and personalised: contextual paywalls convert
+     ~3x cold ones; personalised beat generic by 15%+. So the backdrop is
+     THEIR kitchen and the headline uses their answers.
+   - An outcome headline, not "Go premium".
+   - Two plans, a clear winner, longest plan selected by default with its
+     per-month price (default-to-annual moved annual share 37% -> 63%).
+   - A "how your first month works" timeline with explicit cancellation,
+     which correlates with more trial starts and fewer surprised customers.
+   - One sticky CTA. Secondary links small, but present and readable.
+   Everything that costs money is on screen before the button: no hidden
+   renewal, no pre-ticked anything, no fake reviews or countdowns. */
 
-const PLANS = [
-  { id: "monthly", label: "Monthly", price: "$12", per: "/month", sub: "Billed monthly" },
-  { id: "yearly", label: "Yearly", price: "$120", per: "/year", sub: "$10 a month, billed yearly", badge: "2 months free" },
-];
+const DAY = { Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday", Fri: "Friday", Sat: "Saturday", Sun: "Sunday" };
+const ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const PERKS = [
-  ["A week of dinners, planned around you", "Your nights, your people, your kitchen. Never a generic meal plan."],
-  ["One shopping list that gets used up", "Ingredients shared across the week, so the dill doesn't die in the drawer."],
-  ["Change anything by asking", "Swap an ingredient, make it milder, lose the buns. The recipe and the list follow."],
-  ["Cook mode at the stove", "Big steps, running timers, and a voice that reads them out."],
-];
+const PLANS = {
+  yearly: { id: "yearly", label: "Yearly", price: "$120", per: "/year", eq: "$10/month", badge: "2 months free" },
+  monthly: { id: "monthly", label: "Monthly", price: "$12", per: "/month", eq: "Billed monthly" },
+};
+
+function useKitchen() {
+  const [k, setK] = useState(null);
+  useEffect(() => {
+    fetch("/api/storage?key=mise:profile-v3").then((r) => (r.ok ? r.json() : null)).then((j) => {
+      try { setK(JSON.parse(j?.value || "{}").profile || {}); } catch { setK({}); }
+    }).catch(() => setK({}));
+  }, []);
+  return k;
+}
+
+function pitch(k) {
+  const nights = ORDER.filter((d) => (k?.nights || []).includes(d));
+  const n = nights.length || 3;
+  const people = Number(k?.people) || 2;
+  const avoid = (k?.restrictions || []).slice(0, 2).join(" and ").toLowerCase();
+  return {
+    nights,
+    line: `${n} ${avoid ? `${avoid} ` : ""}dinner${n === 1 ? "" : "s"} a week for ${people === 1 ? "you" : people}, planned around your kitchen.`,
+  };
+}
+
+/* The blurred "your week, ready to go" behind the sheet. Decorative. */
+function Backdrop({ k }) {
+  const { nights } = pitch(k);
+  const days = nights.length ? nights : ["Tue", "Thu", "Sat"];
+  return (
+    <div className="bd" aria-hidden="true">
+      <div className="bd__hdr"><span className="bd__logo">Mise</span><span className="bd__av" /></div>
+      <div className="bd__card">
+        <p className="bd__k">This week</p>
+        <p className="bd__h">Your {days.length} nights, planned</p>
+        {days.map((d, i) => (
+          <div key={d} className="bd__row">
+            <span className="bd__day">{DAY[d]}</span>
+            <span className="bd__dish" style={{ width: `${62 - i * 7}%` }} />
+          </div>
+        ))}
+      </div>
+      <div className="bd__card">
+        <p className="bd__k">Shopping list</p>
+        {[78, 64, 70, 52, 66].map((w, i) => (
+          <div key={i} className="bd__item"><span className="bd__box" /><span className="bd__line" style={{ width: `${w}%` }} /></div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function Paywall() {
   const params = useSearchParams();
-  const [plan, setPlan] = useState("monthly");
+  const kitchen = useKitchen();
+  const [plan, setPlan] = useState("yearly");
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [codeOpen, setCodeOpen] = useState(false);
   const [code, setCode] = useState("");
   const [codeMsg, setCodeMsg] = useState("");
+  const [up, setUp] = useState(false);
 
   useEffect(() => {
     fetch("/api/billing/status").then((r) => r.json()).then(setStatus).catch(() => setStatus({ signedIn: false, introEligible: true }));
+    const t = setTimeout(() => setUp(true), 60);
+    return () => clearTimeout(t);
   }, []);
 
   const intro = status ? status.introEligible !== false : true;
-  const chosen = PLANS.find((p) => p.id === plan);
-  const renewDate = new Date(Date.now() + 30 * 864e5).toLocaleDateString(undefined, { month: "long", day: "numeric" });
+  const p = PLANS[plan];
+  const startDate = new Date(Date.now() + 30 * 864e5).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const { line } = pitch(kitchen || {});
 
   async function subscribe() {
     if (status && !status.signedIn) { window.location.href = "/start"; return; }
@@ -76,108 +132,105 @@ function Paywall() {
     window.location.href = "/login";
   }
 
+  const active = status?.active;
+
   return (
-    <main id="main" style={{ ...S.wrap, flexDirection: "column", justifyContent: "flex-start", paddingTop: "2.2rem" }}>
+    <div className="pwx">
       <FilterDefs />
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <div className="pw" style={{ ...S.card, maxWidth: 460 }}>
-        <div className="pw__hero">
-          <MiseHello size={92} />
-          {params.get("checkout") === "cancelled" && (
-            <p style={{ ...S.notice, margin: "0 0 .8rem" }}>No charge was made. Pick up where you left off whenever you like.</p>
-          )}
-          {status?.active ? (
+      <Backdrop k={kitchen} />
+      <div className="pwx__scrim" aria-hidden="true" />
+
+      <main id="main" className={`sheet${up ? " sheet--up" : ""}`} role="dialog" aria-modal="true" aria-labelledby="pw-h">
+        <span className="sheet__grab" aria-hidden="true" />
+        <div className="sheet__body">
+          <div className="sheet__top">
+            <span className="sheet__mise"><MiseHello size={46} label="" /></span>
+            <div>
+              {params.get("checkout") === "cancelled" && <p className="sheet__note">No charge was made. Ready when you are.</p>}
+              <h1 id="pw-h" className="sheet__h">
+                {active ? "You're all set." : intro ? <>Your first month is <span className="hl">$1</span></> : "Pick up where you left off."}
+              </h1>
+              <p className="sheet__sub">{active ? "Your kitchen is open." : kitchen ? line : "Your week, planned around your kitchen."}</p>
+            </div>
+          </div>
+
+          {!active && (
             <>
-              <h1 className="pw__h">You&apos;re all set.</h1>
-              <p className="pw__sub">Your kitchen is open.</p>
-              <a href="/app" className="pw__cta" style={{ display: "block", textAlign: "center", textDecoration: "none" }}>Go to my kitchen</a>
-            </>
-          ) : (
-            <>
-              <h1 className="pw__h">{intro ? <>Your first month is <span className="pw__hl">$1</span>.</> : "Keep cooking with Mise."}</h1>
-              <p className="pw__sub">
-                {intro ? "Then $12 a month or $120 a year. Cancel any time, right in the app." : "$12 a month or $120 a year. Cancel any time, right in the app."}
-              </p>
+              <ul className="ben">
+                <li><Ico d="M4 6h16M4 12h16M4 18h10" />Week planned</li>
+                <li><Ico d="M5 7h14l-1.5 11h-11zM9 7a3 3 0 0 1 6 0" />One list</li>
+                <li><Ico d="M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" />Cook mode</li>
+              </ul>
+
+              <div className="plans" role="radiogroup" aria-label="Choose a plan">
+                {Object.values(PLANS).map((o) => (
+                  <button key={o.id} type="button" role="radio" aria-checked={plan === o.id}
+                    className={`plan${plan === o.id ? " plan--on" : ""}`} onClick={() => setPlan(o.id)}>
+                    {o.badge && <span className="plan__badge">{o.badge}</span>}
+                    <span className="plan__dot" aria-hidden="true" />
+                    <span className="plan__l">{o.label}</span>
+                    <span className="plan__p">{o.price}<small>{o.per}</small></span>
+                    <span className="plan__eq">{o.eq}</span>
+                  </button>
+                ))}
+              </div>
+
+              {intro ? (
+                <ol className="tl" aria-label="How your first month works">
+                  <li className="tl__i tl__i--now"><span className="tl__dot" aria-hidden="true" /><strong>Today</strong><span>$1 for 30 days</span></li>
+                  <li className="tl__i"><span className="tl__dot" aria-hidden="true" /><strong>Before {startDate}</strong><span>Cancel free in My Kitchen</span></li>
+                  <li className="tl__i"><span className="tl__dot" aria-hidden="true" /><strong>{startDate}</strong><span>{p.price}{p.per} begins</span></li>
+                </ol>
+              ) : (
+                <p className="renew">Renews at {p.price}{p.per} until you cancel. Cancel any time in My Kitchen.</p>
+              )}
             </>
           )}
         </div>
 
-        {!status?.active && (
-          <>
-            <div className="pw__plans" role="radiogroup" aria-label="Choose a plan">
-              {PLANS.map((p) => (
-                <button key={p.id} type="button" role="radio" aria-checked={plan === p.id}
-                  className={`pw__plan${plan === p.id ? " pw__plan--on" : ""}`} onClick={() => setPlan(p.id)}>
-                  {p.badge && <span className="pw__badge">{p.badge}</span>}
-                  <span className="pw__radio" aria-hidden="true" />
-                  <span className="pw__pl">{p.label}</span>
-                  <span className="pw__pp">{p.price}<span className="pw__per">{p.per}</span></span>
-                  <span className="pw__ps">{p.sub}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="pw__today" aria-live="polite">
-              {intro ? (
-                <>
-                  <div className="pw__row"><span>Due today</span><strong>$1.00</strong></div>
-                  <div className="pw__row pw__row--muted"><span>From {renewDate}</span><span>{chosen.price}{chosen.per}</span></div>
-                </>
-              ) : (
-                <div className="pw__row"><span>Due today</span><strong>{chosen.price}.00</strong></div>
-              )}
-            </div>
-
-            {err && <p style={{ ...S.error, marginTop: 12 }} role="alert">{err}</p>}
-            <button className="pw__cta" onClick={subscribe} disabled={!!busy}>
-              {busy === "pay" ? "Opening checkout…" : status && !status.signedIn ? "Get started" : intro ? "Start my $1 month" : `Subscribe for ${chosen.price}${chosen.per}`}
+        <div className="sheet__foot">
+          {err && <p className="err" role="alert">{err}</p>}
+          {active ? (
+            <a href="/app" className="cta">Go to my kitchen</a>
+          ) : (
+            <button className="cta" onClick={subscribe} disabled={!!busy}>
+              {busy === "pay" ? "Opening secure checkout…" : status && !status.signedIn ? "Get started" : intro ? "Start my $1 month" : `Subscribe · ${p.price}${p.per}`}
             </button>
-
-            <p className="pw__fine">
-              {intro
-                ? `$1 today for 30 days. Then ${chosen.price}${chosen.per}, renewing automatically until you cancel. `
-                : `Renews automatically at ${chosen.price}${chosen.per} until you cancel. `}
-              Cancel any time in My Kitchen; you keep access until the end of the period you paid for. Any tax is shown at checkout before you pay.{" "}
-              <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a>
+          )}
+          {!active && (
+            <p className="fine">
+              {intro ? `$1 today, then ${p.price}${p.per} from ${startDate}.` : `${p.price}${p.per}.`} Any tax is shown at checkout.{" "}
+              <a href="/terms">Terms</a> · <a href="/refunds">Refunds</a> · <a href="/privacy">Privacy</a>
             </p>
+          )}
 
-            <ul className="pw__perks">
-              {PERKS.map(([h, p]) => (
-                <li key={h}>
-                  <span className="pw__tick" aria-hidden="true">
-                    <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  </span>
-                  <span><strong>{h}</strong><span className="pw__pd">{p}</span></span>
-                </li>
-              ))}
-            </ul>
+          {!active && (codeOpen ? (
+            <form onSubmit={redeem} className="code">
+              <label htmlFor="code" className="sr">Access code</label>
+              <input id="code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Access code"
+                autoComplete="off" autoCapitalize="characters" spellCheck="false" autoFocus />
+              <button disabled={!code.trim() || busy === "code"}>{busy === "code" ? "…" : "Apply"}</button>
+              {codeMsg && <p className="code__err" role="alert">{codeMsg}</p>}
+            </form>
+          ) : null)}
+          <p className="links">
+            {!active && !codeOpen && <><button type="button" className="lnk" onClick={() => setCodeOpen(true)}>Have a code?</button><span aria-hidden="true"> · </span></>}
+            {status?.signedIn
+              ? <button type="button" className="lnk" onClick={signOut}>Sign out</button>
+              : <a className="lnk" href="/login?next=/pricing">Sign in</a>}
+          </p>
+        </div>
+      </main>
+    </div>
+  );
+}
 
-            <div className="pw__code">
-              {!codeOpen ? (
-                <button type="button" className="pw__link" onClick={() => setCodeOpen(true)}>Have a code?</button>
-              ) : (
-                <form onSubmit={redeem} className="pw__codeform">
-                  <label htmlFor="code" className="pw__codelab">Access code</label>
-                  <div className="pw__coderow">
-                    <input id="code" value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off"
-                      autoCapitalize="characters" spellCheck="false" className="pw__codein" autoFocus />
-                    <button className="pw__apply" disabled={!code.trim() || busy === "code"}>{busy === "code" ? "…" : "Apply"}</button>
-                  </div>
-                  {codeMsg && <p className="pw__codeerr" role="alert">{codeMsg}</p>}
-                </form>
-              )}
-            </div>
-          </>
-        )}
-
-        {status?.signedIn ? (
-          <p className="pw__acct">Wrong account? <button type="button" className="pw__link" onClick={signOut}>Sign out</button></p>
-        ) : status ? (
-          <p className="pw__acct">Already a member? <a href="/login?next=/pricing">Sign in</a></p>
-        ) : null}
-      </div>
-      <SiteFooter />
-    </main>
+function Ico({ d }) {
+  return (
+    <span className="ben__i" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    </span>
   );
 }
 
@@ -186,49 +239,81 @@ export default function PricingPage() {
 }
 
 const CSS = `
-.pw{font-family:'Nunito',system-ui,sans-serif;color:#221A15;padding:1.8rem 1.4rem 1.4rem}
-.pw__hero{text-align:center}
-.pw__h{font-weight:900;font-size:1.95rem;letter-spacing:-.03em;line-height:1.1;margin:.5rem 0 .4rem}
-.pw__hl{color:#B44722}
-.pw__sub{font-weight:700;color:#51453D;margin:0 0 1.3rem;line-height:1.45}
-.pw__plans{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
-.pw__plan{position:relative;text-align:left;font:inherit;color:inherit;cursor:pointer;border-radius:20px;
-  padding:1rem .9rem .9rem;background:rgba(255,255,255,.7);border:2px solid rgba(34,26,21,.14);
-  display:flex;flex-direction:column;gap:.15rem;transition:border-color .15s,box-shadow .15s,transform .12s}
-.pw__plan:active{transform:scale(.985)}
-.pw__plan--on{border-color:#B44722;background:#fff;box-shadow:0 10px 26px -14px rgba(180,71,34,.55)}
-.pw__radio{position:absolute;top:.9rem;right:.85rem;width:18px;height:18px;border-radius:50%;border:2px solid #8A7D75;box-sizing:border-box}
-.pw__plan--on .pw__radio{border:6px solid #B44722}
-.pw__badge{position:absolute;top:-.62rem;left:.8rem;background:#573C56;color:#fff;font-size:.7rem;font-weight:900;
-  letter-spacing:.02em;padding:.18rem .55rem;border-radius:99px}
-.pw__pl{font-weight:800;font-size:.9rem;color:#573C56}
-.pw__pp{font-weight:900;font-size:1.6rem;letter-spacing:-.03em;line-height:1.1}
-.pw__per{font-size:.85rem;font-weight:800;color:#72645C;letter-spacing:0}
-.pw__ps{font-size:.8rem;font-weight:700;color:#72645C}
-.pw__today{margin:1rem 0 0;padding:.8rem .95rem;border-radius:16px;background:rgba(244,235,233,.85)}
-.pw__row{display:flex;justify-content:space-between;font-weight:800;font-size:.97rem}
-.pw__row--muted{font-weight:700;color:#51453D;font-size:.9rem;margin-top:.25rem}
-.pw__cta{width:100%;margin-top:1rem;padding:.95rem;border-radius:18px;border:0;background:#B44722;color:#fff;
-  font:800 1.06rem 'Nunito',system-ui,sans-serif;cursor:pointer;box-sizing:border-box;
-  box-shadow:0 2px 0 #813318,inset 0 1px 0 rgba(255,255,255,.25),0 12px 28px -12px rgba(180,71,34,.6)}
-.pw__cta:disabled{opacity:.6;cursor:wait}
-.pw__fine{font-size:.8rem;font-weight:600;color:#51453D;line-height:1.5;margin:.8rem 0 0;text-align:center}
-.pw__fine a,.pw__acct a{color:#9A3B1B;font-weight:800}
-.pw__perks{list-style:none;margin:1.4rem 0 0;padding:1.1rem 0 0;border-top:1px solid rgba(34,26,21,.1);display:flex;flex-direction:column;gap:.85rem}
-.pw__perks li{display:flex;gap:.7rem;align-items:flex-start;font-size:.95rem;line-height:1.4}
-.pw__tick{flex:0 0 auto;width:24px;height:24px;border-radius:50%;background:rgba(180,71,34,.12);color:#B44722;display:grid;place-items:center;margin-top:1px}
-.pw__pd{display:block;font-weight:600;color:#51453D;font-size:.88rem}
-.pw__code{margin-top:1.2rem;text-align:center}
-.pw__link{background:none;border:0;padding:.3rem;font:800 .92rem 'Nunito',system-ui,sans-serif;color:#9A3B1B;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-.pw__codeform{text-align:left}
-.pw__codelab{display:block;font-weight:800;font-size:.85rem;color:#573C56;margin-bottom:.35rem}
-.pw__coderow{display:flex;gap:.5rem}
-.pw__codein{flex:1;min-width:0;min-height:46px;border-radius:14px;border:1px solid #8A7D75;padding:0 .8rem;
-  font:800 1rem 'Nunito',system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.85);color:#221A15}
-.pw__apply{min-height:46px;padding:0 1.1rem;border-radius:14px;border:2px solid #221A15;background:#fff;font:800 .95rem 'Nunito',system-ui,sans-serif;cursor:pointer;color:#221A15}
-.pw__apply:disabled{opacity:.5;cursor:default}
-.pw__codeerr{color:#7A2E1B;font-weight:700;font-size:.88rem;margin:.4rem 0 0}
-.pw__acct{text-align:center;font-weight:700;font-size:.88rem;color:#51453D;margin:1rem 0 0}
-.pw button:focus-visible,.pw a:focus-visible,.pw input:focus-visible{outline:3px solid #B44722;outline-offset:2px}
-@media (max-width:360px){.pw__plans{grid-template-columns:1fr}}
+.pwx{position:relative;min-height:100vh;min-height:100dvh;overflow:hidden;background:#F6EFE3;font-family:'Nunito',system-ui,sans-serif;color:#221A15}
+/* The person's week, behind glass. */
+.bd{position:absolute;inset:0;padding:calc(1rem + env(safe-area-inset-top)) 1rem 0;max-width:520px;margin:0 auto;filter:blur(2.5px) saturate(1.05);transform:scale(1.02)}
+.bd__hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.bd__logo{font:italic 800 1.8rem 'Nunito',sans-serif}
+.bd__av{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid rgba(34,26,21,.15)}
+.bd__card{background:#fff;border-radius:26px;padding:1.1rem;margin-bottom:.9rem;box-shadow:0 14px 34px -18px rgba(34,26,21,.3)}
+.bd__k{margin:0;font-size:.7rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:#B44722}
+.bd__h{margin:.2rem 0 .7rem;font-weight:900;font-size:1.3rem}
+.bd__row{display:flex;align-items:center;gap:.8rem;padding:.65rem 0;border-top:1px solid rgba(34,26,21,.08)}
+.bd__day{font-weight:800;width:5.5rem;font-size:.9rem}
+.bd__dish{height:12px;border-radius:6px;background:linear-gradient(90deg,#EE9265,#B44722)}
+.bd__item{display:flex;align-items:center;gap:.7rem;padding:.45rem 0}
+.bd__box{width:18px;height:18px;border-radius:5px;border:2px solid #8A7D75}
+.bd__line{height:10px;border-radius:5px;background:rgba(34,26,21,.18)}
+.pwx__scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(34,26,21,.05),rgba(34,26,21,.45))}
+
+/* The sheet. */
+.sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:520px;max-height:calc(100dvh - 2.5rem - env(safe-area-inset-top));
+  display:flex;flex-direction:column;background:#FFFDF9;border-radius:30px 30px 0 0;
+  box-shadow:0 -18px 50px -12px rgba(34,26,21,.35);transform:translateY(104%);transition:transform .5s cubic-bezier(.2,.9,.25,1)}
+.sheet--up{transform:none}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+@media (min-width:640px){.sheet{bottom:1.5rem;border-radius:30px}}
+.sheet__grab{display:block;width:42px;height:5px;border-radius:3px;background:rgba(34,26,21,.18);margin:.6rem auto 0;flex:0 0 auto}
+.sheet__body{overflow-y:auto;padding:.7rem 1.2rem .5rem;-webkit-overflow-scrolling:touch}
+.sheet__top{display:flex;gap:.85rem;align-items:flex-start}
+.sheet__mise{flex:0 0 auto;margin-top:-.2rem}
+.sheet__note{margin:0 0 .35rem;font-size:.85rem;font-weight:800;color:#573C56}
+.sheet__h{margin:0;font-weight:900;font-size:1.5rem;line-height:1.15;letter-spacing:-.025em}
+.hl{color:#B44722;white-space:nowrap}
+.sheet__sub{margin:.3rem 0 0;font-weight:700;font-size:.88rem;line-height:1.4;color:#51453D}
+
+.ben{list-style:none;margin:.85rem 0 0;padding:0;display:flex;gap:.4rem;flex-wrap:wrap}
+.ben li{display:flex;gap:.35rem;align-items:center;font-weight:800;font-size:.8rem;background:rgba(180,71,34,.07);border-radius:99px;padding:.25rem .65rem .25rem .3rem}
+.ben__i{width:22px;height:22px;border-radius:50%;background:#fff;color:#B44722;display:grid;place-items:center;flex:0 0 auto}
+.ben__i svg{width:14px;height:14px}
+
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1.1rem}
+.plan{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:.05rem;text-align:left;font:inherit;color:inherit;cursor:pointer;
+  padding:.85rem .85rem .75rem;border-radius:18px;background:#fff;border:2px solid rgba(34,26,21,.13);transition:border-color .15s,box-shadow .15s,background .15s}
+.plan--on{border-color:#B44722;background:rgba(180,71,34,.045);box-shadow:0 10px 24px -16px rgba(180,71,34,.7)}
+.plan__dot{position:absolute;top:.8rem;right:.8rem;width:20px;height:20px;border-radius:50%;border:2px solid #8A7D75;box-sizing:border-box;transition:border .15s}
+.plan--on .plan__dot{border:6px solid #B44722}
+.plan__badge{position:absolute;top:-.6rem;left:.7rem;font-size:.68rem;font-weight:900;color:#fff;background:#573C56;border-radius:99px;padding:.15rem .5rem}
+.plan__l{font-weight:900;font-size:.88rem;color:#573C56}
+.plan__p{font-weight:900;font-size:1.45rem;letter-spacing:-.02em;white-space:nowrap;line-height:1.15}
+.plan__p small{font-size:.75rem;font-weight:800;color:#72645C;letter-spacing:0}
+.plan__eq{font-size:.78rem;font-weight:700;color:#72645C}
+
+.tl{list-style:none;margin:1rem 0 .2rem;padding:0;display:grid;grid-template-columns:repeat(3,1fr);position:relative}
+.tl::before{content:"";position:absolute;left:7px;right:calc(33.3% - 7px);top:6px;height:2px;background:linear-gradient(90deg,#B44722,rgba(34,26,21,.18))}
+.tl__i{position:relative;display:flex;flex-direction:column;gap:.1rem;padding-right:.4rem;font-size:.76rem;font-weight:700;color:#51453D;line-height:1.3}
+.tl__i strong{color:#221A15;font-weight:900;font-size:.82rem;margin-top:.35rem}
+.tl__dot{position:relative;z-index:1;width:14px;height:14px;border-radius:50%;background:#FFFDF9;border:3px solid rgba(34,26,21,.25);box-sizing:border-box}
+.tl__i--now .tl__dot{background:#B44722;border-color:#B44722}
+.renew{margin:1rem 0 0;font-weight:700;font-size:.88rem;color:#51453D}
+
+.sheet__foot{padding:.5rem 1.2rem calc(.7rem + env(safe-area-inset-bottom));background:#FFFDF9;border-radius:0 0 30px 30px}
+.cta{display:block;width:100%;box-sizing:border-box;text-align:center;text-decoration:none;padding:.95rem;border-radius:18px;border:0;cursor:pointer;
+  background:#B44722;color:#fff;font:900 1.08rem 'Nunito',system-ui,sans-serif;letter-spacing:-.005em;
+  box-shadow:0 2px 0 #813318,inset 0 1px 0 rgba(255,255,255,.25),0 14px 30px -14px rgba(180,71,34,.75);transition:transform .12s}
+.cta:active{transform:translateY(2px)}
+.cta:disabled{opacity:.65;cursor:wait}
+.fine{margin:.55rem 0 0;text-align:center;font-size:.76rem;font-weight:600;color:#51453D;line-height:1.45}
+.fine a{color:#51453D;font-weight:800}
+.links{margin:.15rem 0 0;text-align:center;font-size:.85rem;color:#72645C}
+.lnk{background:none;border:0;padding:.35rem .2rem;font:800 .85rem 'Nunito',system-ui,sans-serif;color:#9A3B1B;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.code{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+.code input{flex:1;min-width:0;min-height:44px;border-radius:12px;border:1px solid #8A7D75;padding:0 .8rem;font:800 .95rem 'Nunito',system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#221A15;background:#fff}
+.code input::placeholder{letter-spacing:0;text-transform:none;color:#72645C;font-weight:700}
+.code button{min-height:44px;padding:0 1rem;border-radius:12px;border:2px solid #221A15;background:#fff;color:#221A15;font:800 .9rem 'Nunito',system-ui,sans-serif;cursor:pointer}
+.code button:disabled{opacity:.5;cursor:default}
+.code__err{flex-basis:100%;margin:0;color:#7A2E1B;font-weight:700;font-size:.85rem}
+.err{margin:0 0 .6rem;color:#7A2E1B;font-weight:700;font-size:.9rem;background:rgba(238,146,101,.2);border:1px solid #EE9265;border-radius:12px;padding:.55rem .7rem}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sheet button:focus-visible,.sheet a:focus-visible,.sheet input:focus-visible{outline:3px solid #B44722;outline-offset:2px}
 `;
