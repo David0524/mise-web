@@ -7,3 +7,9 @@ assets/video/*.webm
 dbg.js
 vdbg.js
 gtest.js
+assets/seq/
+render/
+audio/
+sheet/
+sheet.png
+mise-launch.mp4

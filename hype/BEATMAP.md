@@ -5,6 +5,13 @@ Track: Mixkit #190 "Electro Dreams" (exactly 120.00 BPM).
 Edit: 7.71–27.71 s (build → drop at 15.71) + splice to 59.71–66.71 s (last 2 bars of the breakdown → the return at 63.71).
 Beat b starts at t = b × 0.5 s.
 
+Brand: Mise's own palette (paper #FAF5F4, ink #221A15, brick #B44722), Nunito for app UI,
+the toque mark, and Mise herself (the app's line-art avatar, ported path-for-path).
+The period of MISE. is brick and wears the toque; the pill it becomes is brick.
+Mise appears three times, never as decoration: her tip in the Live Activity (27),
+a substitution tip on the shopping list (30–31), and at the counter after the iris
+closes (45–47) — "your sous chef".
+
 | Beat | Section | On screen (cursor action in **bold**) | SFX |
 |---|---|---|---|
 | 0 | OPEN | **MISE.** on warm off-white. Same frame as the last. | — |
