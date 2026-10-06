@@ -1854,7 +1854,6 @@ function Skeleton({ title, note, rows = 6 }) {
   return (
     <section className="card" aria-busy="true">
       <h2>{title}</h2>
-      <p className="lead">{note}</p>
       <LoadBar label={title} />
       <ul className="skel" aria-hidden="true">
         {Array.from({ length: rows }).map((_, i) => (
@@ -1875,7 +1874,6 @@ function Fold({ title, note, open, onToggle, children, tone = "" }) {
       <button className="fold__hd" onClick={onToggle} aria-expanded={open}>
         <span className="fold__t">
           <span className="fold__h2">{title}</span>
-          {note && <span className="fold__note">{note}</span>}
         </span>
         <span className={`fold__chev${open ? " fold__chev--open" : ""}`} aria-hidden="true">▾</span>
       </button>
@@ -2129,6 +2127,10 @@ function App() {
   const [swapTarget, setSwapTarget] = useState(null);   // {item, mode}
   const [scrollTarget, setScrollTarget] = useState(null);
   const [weekId, setWeekId] = useState(null);
+  /* A week is in progress once there's a draw. It stays, on every tab and
+     across reloads, until "New week" is pressed. */
+  const hasWeek = !!weekId || candidates.length > 0;
+  const [newWeekAsk, setNewWeekAsk] = useState(false);
   /* The current week's draw. Persisted onto the archived week so future draws can
      weight against it — without that, the weighting has no history and week
      twelve looks exactly like week one again. */
@@ -2868,7 +2870,9 @@ not the names:
     setRecipeAsks(Object.fromEntries(Object.entries(obj(d.recipeAsks))
       .map(([id, xs]) => [id, arr(xs).map(str).filter(Boolean)])));
     setShoppingMenu(typeof d.shoppingMenu === "string" ? d.shoppingMenu : null);
-    if (WEEK_VIEWS.includes(d.view)) setView(d.view);
+    // The week stays where it was left until "New week" is pressed: open on its
+    // last tab, or Brainstorm, never on the start screen that offers a fresh draw.
+    setView(WEEK_VIEWS.includes(d.view) && d.view !== "thisweek" ? d.view : (Object.keys(obj(d.week)).length ? "week" : "ideas"));
   }
 
   useEffect(() => {
@@ -4984,7 +4988,7 @@ Respond with ONLY this JSON:
               control it looks like. */}
           <button
             className="hdr__mark"
-            onClick={() => setView("start")}
+            onClick={() => setView(hasWeek && !ONBOARD ? (Object.keys(week).length ? "week" : "ideas") : "start")}
             aria-label="Mise en place — back to the start"
             title="Back to the start"
           >
@@ -4994,6 +4998,12 @@ Respond with ONLY this JSON:
               <span className="hdr__tag">en place</span>
             </div>
           </button>
+          {!ONBOARD && hasWeek && (
+            <button className="newwk" onClick={() => setNewWeekAsk(true)}>
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" /></svg>
+              New week
+            </button>
+          )}
           {!ONBOARD && <button
             className={`profile${view === "me" ? " profile--on" : ""}`}
             onClick={() => setView(view === "me" ? "ideas" : "me")}
@@ -5153,6 +5163,21 @@ Respond with ONLY this JSON:
           tap. So it moved to a 3px line across the very top: same information,
           zero chrome, nothing covered. The label stays in the DOM for screen
           readers via aria-live, just not painted. */}
+      {newWeekAsk && (
+        <div className="rsheet__wrap no-print" onClick={(e) => { if (e.target === e.currentTarget) setNewWeekAsk(false); }}>
+          <div className="rsheet nwsheet" role="dialog" aria-modal="true" aria-labelledby="nw-h">
+            <DialogKeys onClose={() => setNewWeekAsk(false)} />
+            <div className="rsheet__grab" aria-hidden="true" />
+            <h2 id="nw-h">Start a new week?</h2>
+            <p className="lead">This week&apos;s plan, list and recipes are cleared. Ratings and history stay.</p>
+            <div className="nwsheet__btns">
+              <Btn wide onClick={() => { setNewWeekAsk(false); startNewWeek(); }}>Start a new week</Btn>
+              <Btn wide variant="ghost" onClick={() => setNewWeekAsk(false)}>Keep this week</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
       {busy && busy !== "mise" && !hasLocalIndicator && (
         <div className="topbar no-print" role="status" aria-live="polite">
           <span className="topbar__run" />
@@ -5183,17 +5208,17 @@ function Intro({ onDone }) {
         </div>
       ),
       h: "Nobody needs a whole bunch of dill for one dish.",
-      p: "I'm Mise. I help you figure out what to cook this week — and I plan it so the things you buy actually get used up, instead of half a bunch wilting in the drawer.",
+      p: "I'm Mise. I plan your week so everything you buy gets used.",
     },
     {
       art: <MiseAvatar mood="thinking" size={104} />,
       h: "I'm not a recipe search box.",
-      p: "We talk it through. I'll suggest a few dishes worth cooking, you tell me what you think, and I'll change them — swap an ingredient, make one milder, drop the one that doesn't appeal. Nothing is locked in until you say so.",
+      p: "I suggest. You react. I change anything.",
     },
     {
       art: <MiseAvatar mood="happy" size={104} />,
       h: "First, tell me about your kitchen.",
-      p: "A few quick questions — who's eating, what you can't stand, what you actually own to cook with. Every answer changes what I suggest, and I'll show you exactly how before we start.",
+      p: "A few quick questions, then we cook.",
     },
   ];
 
@@ -5260,7 +5285,7 @@ function Tour({ profile, onBack, onDone }) {
     {
       k: "Plan",
       h: "Every week starts with a conversation.",
-      p: `Tell me what's in the fridge or what you're craving. I'll pitch ${n} dinners for ${who}${avoid ? `, all ${avoid}` : ""}, and you keep, swap or toss any of them.`,
+      p: `${n} dinners for ${who}${avoid ? `, all ${avoid}` : ""}. Keep or swap any of them.`,
       art: (
         <div className="tmock">
           <div className="tmock__say"><MiseAvatar mood="happy" size={30} /><span>{n} nights for {who}. How about these?</span></div>
@@ -5275,7 +5300,7 @@ function Tour({ profile, onBack, onDone }) {
     {
       k: "Shop",
       h: "One list. Nothing left to wilt.",
-      p: "I plan the week so ingredients carry across dishes, then hand you one shopping list sorted the way a store is laid out.",
+      p: "Ingredients carry across dishes, so nothing goes to waste.",
       art: (
         <div className="tmock">
           {[["1 bunch cilantro", "used in 2 dinners"], ["3 limes", "tacos + rice bowls"], ["1 knob ginger", "keeps for next week"]].map(([a, b], j) => (
@@ -5290,7 +5315,7 @@ function Tour({ profile, onBack, onDone }) {
     {
       k: "Change",
       h: "Change anything. Just ask.",
-      p: "Out of buns? Want it milder? Say so in plain words. The recipe and your shopping list both update.",
+      p: "The recipe and your list update together.",
       art: (
         <div className="tmock">
           <div className="tmock__me">Make it milder, please</div>
@@ -5301,7 +5326,7 @@ function Tour({ profile, onBack, onDone }) {
     {
       k: "Cook",
       h: "I'll be right there at the stove.",
-      p: "Big, one-at-a-time steps you can read from across the counter, timers that keep running, and a voice that reads it all out.",
+      p: "Big steps, running timers, read out loud.",
       art: (
         <div className="tmock tmock--cook">
           <span className="tmock__step">Step 3 of 6</span>
@@ -5313,7 +5338,7 @@ function Tour({ profile, onBack, onDone }) {
     {
       k: "Learn",
       h: "Rate it, and next week gets better.",
-      p: "Tell me how dinner went. I remember what you loved and what was missing, and the next week leans that way.",
+      p: "Next week leans toward what you loved.",
       art: (
         <div className="tmock">
           <div className="tmock__stars" aria-hidden="true">★★★★<span>★</span></div>
@@ -5385,20 +5410,17 @@ function CreateAccount({ onTour }) {
         <div className="hero">
           <div className="hero__mark"><MiseAvatar mood="happy" size={88} /></div>
           <h2 className="hero__h">Save your kitchen.</h2>
-          <p className="hero__sub">Make an account to keep everything you just told me. Next you&apos;ll pick a plan; your first month is $1.</p>
         </div>
         {err && <p className="acct__err" role="alert">{err}</p>}
         <ConsentChecks adult={adult} setAdult={setAdult} terms={terms} setTerms={setTerms} />
         <div className="acct__opts">
           <AuthOptions consent={ok} disabled={!ok} from="/start" />
         </div>
-        {!ok && <p className="acct__hint">Tick both boxes to continue.</p>}
         <form onSubmit={submit} className="acct__form">
           <label htmlFor="su-email">Email</label>
           <input id="su-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           <label htmlFor="su-pw">Password</label>
-          <input id="su-pw" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
-          <p className="acct__hint acct__hint--left">At least 8 characters.</p>
+          <input id="su-pw" type="password" autoComplete="new-password" minLength={8} required placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
           <Btn wide type="submit" disabled={busy || !ok}>{busy ? "Creating…" : "Create my account"}</Btn>
         </form>
         <p className="acct__foot">
@@ -5495,7 +5517,7 @@ function recapLines(profile) {
   }
 
   const r = [...(profile.restrictions || []), profile.restrictionsNote].filter(Boolean);
-  if (r.length) lines.push(`${r.join(", ")} — treated as absolute, never "mostly". I can still make mistakes, so check labels too.`);
+  if (r.length) lines.push(`${r.join(", ")} — treated as absolute, never "mostly".`);
   if (profile.dislikes) lines.push(`No ${profile.dislikes}. I won't sneak it in as "you won't taste it".`);
 
   const eq = profile.equipment || [];
@@ -5561,25 +5583,11 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === 0 && (
           <>
             <h2>How many people are you cooking for?</h2>
-            <p className="lead">
-              {profile.consistent
-                ? "This changes more than portion size."
-                : "Your usual number — you'll set each night separately on the next step."}
-            </p>
             <div className="stepper">
               <button onClick={() => set("people", Math.max(1, profile.people - 1))} aria-label="Fewer people">−</button>
               <span aria-live="polite">{profile.people}</span>
               <button onClick={() => set("people", Math.min(12, profile.people + 1))} aria-label="More people">+</button>
             </div>
-            <p className="hint">
-              {!profile.consistent
-                ? "I'll scale each night on its own."
-                : profile.people === 1
-                ? "Cooking for one means package sizes are the real problem. I'll design around them."
-                : profile.people <= 4
-                ? "At this size, pan capacity and different tastes matter more than package sizes."
-                : "This is a make-ahead problem. I'll lean on things that hold."}
-            </p>
             <label className="check">
               <input type="checkbox" checked={!profile.consistent} onChange={() => set("consistent", !profile.consistent)} />
               <span>The number changes from night to night</span>
@@ -5590,7 +5598,6 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === 1 && (
           <>
             <h2>Which nights will you cook?</h2>
-            <p className="lead">You can change this any week.</p>
             <div className="grid-days">
               {DAYS.map((d) => (
                 <Chip key={d} active={profile.nights.includes(d)} onClick={() => toggleIn("nights", d)}>
@@ -5601,9 +5608,6 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
             {!profile.consistent && profile.nights.length > 0 && (
               <>
                 <h3>How many on each night?</h3>
-                <p className="hint">
-                  I'll scale each recipe to its own night and buy for the real total.
-                </p>
                 <div className="counts">
                   {orderDays(profile.nights).map((d) => {
                     const n = Number(profile.headcount?.[d]) || profile.people;
@@ -5638,7 +5642,6 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === 2 && (
           <>
             <h2>How spicy do you like your food?</h2>
-            <p className="lead">I'll aim to stay at or below this.</p>
             <Scale options={SPICE} value={profile.spice} onChange={(v) => set("spice", v)} name="Heat level" />
           </>
         )}
@@ -5646,7 +5649,6 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === 3 && (
           <>
             <h2>How adventurous are you feeling?</h2>
-            <p className="lead">How far from familiar do you want to go?</p>
             <Scale
               options={ADVENTURE}
               value={profile.adventure}
@@ -5659,7 +5661,6 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === 4 && (
           <>
             <h2>Anything you can't or won't eat?</h2>
-            <p className="lead">I treat these as hard rules, not preferences.</p>
             {/* Allergies and diets like halal or kosher can reveal health or
                 religion, so they need explicit consent before we store them.
                 Unticking forgets them. Profiles saved before this box existed
@@ -5672,12 +5673,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
                 }} />
               <span>Use what I tell you here about allergies and diet to plan my meals</span>
             </label>
-            <p id="diet-note" className="aside-note">
-              {dietConsent
-                ? "I'm an AI and I can get things wrong. Always check labels and ingredients yourself, especially for a serious allergy."
-                : "Tick the box to tell me about allergies or diets. You can untick it any time and I'll forget them."}
-            </p>
-            <fieldset className="diet" disabled={!dietConsent} aria-describedby="diet-note">
+            <fieldset className="diet" disabled={!dietConsent}>
               <legend className="sr-only">Dietary needs and allergies</legend>
               <div className="grid-2">
                 {RESTRICTIONS.map((r) => (
@@ -5710,7 +5706,6 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === 5 && (
           <>
             <h2>What do you have to cook with?</h2>
-            <p className="lead">I'll plan around what you have.</p>
             <div className="grid-2">
               {EQUIPMENT.map((e) => (
                 <Chip key={e} active={profile.equipment.includes(e)} onClick={() => toggleIn("equipment", e)}>
@@ -5728,9 +5723,6 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
         {step === last && (
           <>
             <h2>Here&apos;s your kitchen</h2>
-            <p className="lead">
-              All of this comes from what you just told me.
-            </p>
             <ul className="kitrecap">
               {recapLines(profile).map((line, i) => (
                 <li key={i} className="kitrecap__i" style={{ animationDelay: `${i * 90}ms` }}>
@@ -5774,7 +5766,6 @@ function ThisWeek({ thisWeek, setThisWeek, profile, onEdit, onGo, busy }) {
     <div className="stack">
       <section className="card card--big">
         <h2>Just this week</h2>
-        <p className="lead">All optional.</p>
 
         <div className="field">
           <label htmlFor="fr">What's in the kitchen that needs using up?</label>
@@ -5792,7 +5783,6 @@ function ThisWeek({ thisWeek, setThisWeek, profile, onEdit, onGo, busy }) {
           <label htmlFor="rq">Is there a dish you already want to make?</label>
           <input id="rq" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={thisWeek.request} onChange={(e) => upd("request", e.target.value)}
             placeholder="Chicken katsu. Beef stew. My grandmother's rice." />
-          <p className="hint">I'll build the week around it.</p>
         </div>
 
         <div className="recap">
@@ -5834,7 +5824,6 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
   if (!candidates.length && !busy)
     return (
       <Empty title="No ideas yet">
-        <p>Tell me about your week and I'll suggest a few dishes to pick from.</p>
         <Btn onClick={onStart}>Start this week</Btn>
       </Empty>
     );
@@ -5849,7 +5838,6 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
       <div className="stack">
         <section className="card">
           <h2>Thinking through your week</h2>
-          <p className="lead">Working out a spine for the week and a few dishes to react to.</p>
           <LoadBar label="Putting your week together" kind="ideas" />
           <DishSkeleton count={5} />
         </section>
@@ -5876,7 +5864,6 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
                   — but it isn't a label the person has to accept. */}
               <p className="seed__v">{cap(seed.pantry)}</p>
               <p className="seed__veg">with {seed.vegetable}</p>
-              <p className="seed__t">Learn: {seed.technique}</p>
             </div>
           )}
 
@@ -5968,7 +5955,7 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
       <section className="card">
         <h2>Want something different?</h2>
         <div className="field">
-          <label htmlFor="rq2">A dish you'd like to make</label>
+          <label htmlFor="rq2" className="sr-only">A dish you'd like to make</label>
           <div className="field__row">
             <input id="rq2" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={request} onChange={(e) => setRequest(e.target.value)}
               placeholder="Chicken katsu" />
@@ -5978,7 +5965,7 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
           </div>
         </div>
         <div className="field">
-          <label htmlFor="fb2">Or tell me in your own words</label>
+          <label htmlFor="fb2" className="sr-only">Anything else to change</label>
           <textarea id="fb2" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" rows="2" value={draft} onChange={(e) => setDraft(e.target.value)}
             placeholder="I like the tostadas but Thursday feels too heavy" />
         </div>
@@ -5998,7 +5985,7 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
 
 function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, onCook, shopping, onAskMise, onNewWeek, countFor, onCount, totalCovers, onSuggestOrder, onShareWeek }) {
   if (!chosen.length)
-    return <Empty title="Nothing picked yet"><p>Go to Ideas and add the dishes you like.</p></Empty>;
+    return <Empty title="Nothing picked yet"><p>Pick dishes in Brainstorm first.</p></Empty>;
 
   const filled = Object.values(week).filter(Boolean).length;
   const nights = profile.nights.length ? orderDays(profile.nights) : DAYS;
@@ -6011,7 +5998,6 @@ function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, on
             <MiseAvatar mood={busy ? "thinking" : "idle"} size={46} />
             <div>
               <h2>Not sure about the order?</h2>
-              <p className="hint">I&apos;ll fill the days in by what spoils first.</p>
             </div>
           </div>
           <div className="row">
@@ -6030,10 +6016,7 @@ function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, on
 
       <section className="card">
         <h2>Put your dishes on days</h2>
-        <p className="lead">
-          Cook the delicate things early — fish and soft herbs won't wait until Saturday.
-          {!profile.consistent && ` Each night is scaled to its own headcount — ${totalCovers} servings in total this week.`}
-        </p>
+        {!profile.consistent && <p className="lead">{totalCovers} servings this week.</p>}
         {/* Stated in the UI rather than left to the model to mention: a night can
             legitimately be left empty, or repeat a dish. Not the point of the app,
             but people shouldn't feel obliged to fill every slot with something new. */}
@@ -6086,21 +6069,8 @@ function WeekView({ profile, chosen, candidates, week, setWeek, onShop, busy, on
           {busy ? "Working…" : shopping.length ? "Rebuild my shopping list" : "Make my shopping list"}
         </Btn>
       </div>
-      {!chosen.length && <p className="hint">Pick at least one dish in Ideas first.</p>}
-      {!!chosen.length && !filled && (
-        <p className="hint">
-          Nothing on a day yet — I&apos;ll shop for all {chosen.length} picked{" "}
-          {chosen.length === 1 ? "dish" : "dishes"}.
-        </p>
-      )}
+      {!chosen.length && <p className="hint">Pick at least one dish in Brainstorm first.</p>}
 
-      {shopping.length > 0 && (
-        <p className="hint hint--center">
-          Done with this week?{" "}
-          <button className="linkish" onClick={onNewWeek}>Start a new one</button>{" "}
-          — this week stays in History.
-        </p>
-      )}
     </div>
   );
 }
@@ -6133,7 +6103,7 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
   if (!shopping.length)
     return (
       <Empty title="No list yet">
-        <p>Pick your dishes in Ideas, then build the list from My Week — I only shop once the menu is agreed.</p>
+        <p>Pick dishes in Brainstorm first.</p>
       </Empty>
     );
 
@@ -6170,7 +6140,7 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
           <h2>Shopping List</h2>
           <Btn small variant="ghost" onClick={onPrint}>Print this list</Btn>
         </div>
-        <p className="lead">{left} still to buy. Tap any line to change it.</p>
+        <p className="lead">{left} to buy</p>
 
         {groups.map(([sec, items]) => (
           <div key={sec} className="sec">
@@ -6239,7 +6209,6 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
           <MiseAvatar mood={busy ? "thinking" : "idle"} size={46} />
           <div>
             <h2>Want to change something?</h2>
-            <p className="hint">I&apos;ll update the recipes to match.</p>
           </div>
         </div>
 
@@ -6255,7 +6224,7 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
         </div>
 
         <div className="field">
-          <label htmlFor="sa">Or say it in your own words</label>
+          <label htmlFor="sa" className="sr-only">Ask for a change</label>
           <div className="field__row">
             <input id="sa" type="text" autoComplete="off" autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
               placeholder="I don't want a whole bunch of dill"
@@ -6270,11 +6239,6 @@ function Shop({ shopping, setShopping, busy, onAsk, onPrint, useFirst, building,
           {recipesReady ? "Start cooking" : "Go to the recipes"}
         </Btn>
       </div>
-      <p className="hint hint--center">
-        {prefetching > 0
-          ? "I'm writing your recipes now — they'll be ready by the time you've shopped."
-          : "Your recipes are written and waiting."}
-      </p>
     </div>
   );
 }
@@ -6365,7 +6329,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
   const alreadyRated = favorites.some((f) => f.title === dish?.title);
 
   if (!list.length)
-    return <Empty title="Nothing to cook yet"><p>Pick some dishes in Ideas and I'll write the recipes.</p></Empty>;
+    return <Empty title="Nothing to cook yet"><p>Pick dishes in Brainstorm first.</p></Empty>;
 
   const toggleStep = (i) =>
     setDoneSteps((d) => ({ ...d, [cookingId]: { ...(d[cookingId] || {}), [i]: !(d[cookingId] || {})[i] } }));
@@ -6419,7 +6383,6 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
                     </ul>
                   </div>
                 ))}
-                <p className="rec__ai">Written by AI. Check labels for allergens and cook meat, fish and eggs through.</p>
               </>
             )}
 
@@ -6483,7 +6446,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
               <>
                 <div className="sec-head">
                   <h3 className="sec-h">Steps</h3>
-                  <span className="hint">{(rec.steps || []).length} steps · swipe →</span>
+                  <span className="hint">{(rec.steps || []).length} steps</span>
                 </div>
                 <ol className="hsteps">
                   {(rec.steps || []).map((s, i) => {
@@ -6625,7 +6588,6 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
           </div>
 
           <div className="later" ref={ratingRef}>
-            <span className="later__tab">After you've eaten</span>
           </div>
 
           <Fold
@@ -6635,7 +6597,6 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
             open={openFold === "rate" || scrollTarget === "rating"}
             onToggle={() => setOpenFold(openFold === "rate" ? null : "rate")}
           >
-            {!alreadyRated && <p className="lead">This shapes what I suggest next week.</p>}
             <div className="stars" role="radiogroup" aria-label="Rating out of five">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button key={n} role="radio" aria-checked={rating === n}
@@ -7085,12 +7046,8 @@ function LeftoversView({ haveOnHand, setHaveOnHand, ideas, recipes, onGet, onExp
     <div className="stack">
       <section className="card card--big">
         <h2>What's left in the fridge?</h2>
-        <p className="lead">
-          Type whatever you've got — rough amounts are fine. A leftover is a head start on a new
-          meal, not the same plate again.
-        </p>
         <div className="field">
-          <label htmlFor="lo">Leftover ingredients</label>
+          <label htmlFor="lo" className="sr-only">Leftover ingredients</label>
           <textarea autoCapitalize="sentences" autoCorrect="on" spellCheck="true" id="lo" rows="3" value={haveOnHand} onChange={(e) => setHaveOnHand(e.target.value)}
             placeholder="Two cooked chicken thighs, half a cabbage, cold rice, some cilantro" />
         </div>
@@ -7190,7 +7147,6 @@ function LeftoversView({ haveOnHand, setHaveOnHand, ideas, recipes, onGet, onExp
                         <Btn small onClick={() => onAdopt(i, rec)}>
                           Cook this
                         </Btn>
-                        <span className="hint">Adds it to your week so you can rate it after.</span>
                       </div>
                     </div>
                   )}
@@ -7307,10 +7263,6 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
         <MiseAvatar mood="idle" size={46} />
         <div>
           <h2>Start a new week?</h2>
-          <p className="hint">
-            Keeps your setup, favourites and everything below. Clears the current
-            plan, list and recipes.
-          </p>
         </div>
       </div>
       <div className="row">
@@ -7333,10 +7285,6 @@ function HistoryView({ history, currentWeekId, onOpenWeek, onNewWeek, storageOk,
       <div className="stack">
         {warning}
         <Empty title="Nothing saved yet">
-          <p>
-            Once you build a shopping list, that week gets saved here automatically —
-            what you planned, what you rated, what stuck.
-          </p>
         </Empty>
         {newWeekBar}
       </div>
@@ -7531,9 +7479,6 @@ function AiSource() {
         <h2>Use your own API key</h2>
         <Btn small variant="ghost" onClick={() => setOpen(false)}>Close</Btn>
       </div>
-      <p className="lead">
-        Optional. Runs Mise on your own account instead of ours — your model, your billing.
-      </p>
 
       {saved ? (
         <>
@@ -7620,13 +7565,13 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
         open={open.setup}
         onToggle={() => toggle("setup")}
       >
-        <div className="card__head">
-          <p className="lead">
-            {savedAt
-              ? `Saved ${fmtDate(new Date(savedAt), { month: "long", day: "numeric" })}. Used automatically next week.`
-              : "Used automatically every week."}
-          </p>
-          <Btn small variant="ghost" onClick={onEdit}>Change</Btn>
+        <div className="setup-edit">
+          <Btn onClick={onEdit}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style={{ verticalAlign: "-3px", marginRight: 6 }}>
+              <path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            </svg>
+            Edit my setup
+          </Btn>
         </div>
         {/* Same packed tile grid as the start screen. Big numbers get their own
             small tiles; anything that's really a list (nights, equipment) spans
@@ -7806,11 +7751,7 @@ function YourData() {
   return (
     <div className="yourdata">
       <h3>Your data</h3>
-      <p className="hint">
-        Download a copy of everything Mise keeps about you, or delete your account. Deleting cancels your
-        subscription and erases your plans, recipes and settings. It can&apos;t be undone.{" "}
-        <a href="/privacy">Privacy Policy</a>
-      </p>
+      
       <div className="row">
         <a className="btn btn--ghost btn--sm" href="/api/account/export" download>Download my data</a>
         {!confirming && (
@@ -8350,7 +8291,6 @@ function SwapDialog({ item, mode, onCancel, onSubmit, busy }) {
           <MiseAvatar mood="idle" size={44} />
           <div>
             <h2>Swap {item}?</h2>
-            <p className="hint">Tell me why and I&apos;ll work around it.</p>
           </div>
           <button className="cask__x" onClick={onCancel} ref={closeRef}>Close</button>
         </div>
@@ -8935,6 +8875,14 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 @media (prefers-contrast:more){.app input[type=text],.app textarea,.app select{border-width:2px}}
 .check{display:flex;gap:.7rem;align-items:center;margin-top:1rem;cursor:pointer;min-height:48px}
 .rsheet:focus,.cask:focus{outline:none}
+.newwk{display:inline-flex;align-items:center;gap:.35rem;min-height:40px;padding:0 .85rem;margin-left:auto;margin-right:.55rem;border-radius:999px;
+  border:1.5px solid var(--brick);background:#fff;color:var(--brick);font:800 .88rem 'Nunito',system-ui,sans-serif;cursor:pointer}
+.newwk:active{transform:translateY(1px)}
+.nwsheet{padding:1rem 1.3rem calc(1.2rem + env(safe-area-inset-bottom))}
+.nwsheet h2{margin:.4rem 0 .3rem}
+.nwsheet__btns{display:flex;flex-direction:column;gap:.55rem;margin-top:1rem}
+.setup-edit{margin:0 0 .9rem}
+.setup-edit .btn{width:100%}
 
 /* Onboarding tour sketches and the account screen. */
 .tour__k{margin:0 0 .6rem;text-align:center;font-size:.72rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--brick)}
@@ -8971,13 +8919,12 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .acct__or span{flex:1;height:1px;background:var(--rule-2)}
 .acct__form label{display:block;font-weight:800;font-size:.85rem;color:var(--plum);margin:.7rem 0 .3rem}
 .acct__form input{width:100%;box-sizing:border-box;min-height:48px;border-radius:14px;border:1px solid #8A7D75;padding:0 .85rem;font:700 1rem 'Nunito',system-ui,sans-serif;background:#fff;color:var(--ink)}
+.acct__form .btn{margin-top:1.1rem}
 .acct__foot{text-align:center;font-weight:700;font-size:.88rem;color:var(--muted);margin:1rem 0 0}
 .acct__foot a{color:var(--brick);font-weight:800}
 .acct__back{display:inline;padding:0;min-height:0;font-size:inherit;color:var(--brick);font-weight:800}
-.rec__ai{font-size:.8rem;font-weight:700;color:var(--muted);margin:.8rem 0 0;line-height:1.4}
 .diet{border:0;margin:0;padding:0;min-width:0}
 .diet:disabled{opacity:.45}
-.aside-note{font-size:.88rem;font-weight:700;color:var(--muted, #72645C);margin:.4rem 0 .9rem;line-height:1.45}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .check input{width:26px;height:26px;accent-color:var(--hot);flex:0 0 auto}
 .stepper{display:flex;align-items:center;gap:.2rem;margin-top:1rem;overflow:hidden;
