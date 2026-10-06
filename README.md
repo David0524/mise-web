@@ -159,7 +159,7 @@ For local testing only, `DEV_FAKE_SMS=1` accepts the code `000000` and
 
 Accounts link automatically: Google or Apple with a verified email matching an
 existing account signs into that account. A password reset signs out every
-other device. Schema changes apply themselves on first request (`lib/schema.js`).
+other device. The whole schema applies itself on the first signed-in request (`lib/schema.js`), so a database set up from an older `schema.sql` catches up without re-running it.
 
 ## Legal, privacy and compliance
 
