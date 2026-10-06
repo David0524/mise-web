@@ -414,9 +414,9 @@ scene(0, 16, (t) => {
 });
 
 const DISHES = [
-  ["p13-cabbage", "Tue", "Charred cabbage"], ["p02-noodles", "Thu", "Ginger noodles"], ["p03-castiron", "Sat", "Skillet chicken"],
+  ["p06-steak-cooked", "Tue", "Steak bites"], ["p02-noodles", "Thu", "Ginger noodles"], ["p03-castiron", "Sat", "Skillet chicken"],
   ["p04-roastveg", "Mon", "Roast veg"], ["p12-soup", "Wed", "Noodle soup"], ["p05-sheetpan", "Fri", "Sheet pan"],
-  ["p01-grainbowl", "Sun", "Grain bowl"], ["p09-pasta", "", "Pasta"], ["p06-steak-cooked", "", "Steak bites"],
+  ["p01-grainbowl", "Sun", "Grain bowl"], ["p09-pasta", "", "Pasta"], ["p08-table", "", ""],
 ];
 function bentoRects(k) {
   const g = 300, gap = 18, x0 = W / 2 - (3 * g + 2 * gap) / 2, y0 = H / 2 - (3 * g + 2 * gap) / 2;
@@ -518,12 +518,12 @@ function lockScreen(w, h, t) {
   if (hb > .01) {
     const lw = lerp(230 * s * hb, 1000 * s, la), lh = lerp(10 * s, 200 * s, la), ly = lerp(h - 26 * s, h - 250 * s, la);
     const lx = w / 2 - lw / 2, ik = step(t, B(27.25), 3.2, .7);
-    const left = 12 * 60 - Math.max(0, Math.floor((t - B(27.4)) * 2));
-    const ring = 1 - left / 720;
+    const left = 4 * 60 - Math.max(0, Math.floor((t - B(27.4)) * 2));
+    const ring = 1 - left / 240;
     const inner = la < .3 ? "" : `
       <div class="a" style="left:${24 * s}px;top:${(200 - 136) / 2 * s}px;transform-origin:50% 50%;transform:scale(${ik})">${plate(136 * s, "happy")}</div>
-      ${rise("Charred cabbage", { x: 184 * s, y: 42 * s, w: 560 * s, h: 52 * s, k: ik, style: `font:800 ${42 * s}px/${52 * s}px Nunito;color:#fff` })}
-      ${rise("Mise: flip at 6:00 — deep-brown edges.", { x: 184 * s, y: 102 * s, w: 600 * s, h: 40 * s, k: step(t, B(27.4), 3.2, .75), style: `font:600 ${29 * s}px/${40 * s}px Nunito;color:rgba(255,255,255,.86)` })}
+      ${rise("Steak bites", { x: 184 * s, y: 42 * s, w: 560 * s, h: 52 * s, k: ik, style: `font:800 ${42 * s}px/${52 * s}px Nunito;color:#fff` })}
+      ${rise("Mise: flip at 2:00 — let the crust form.", { x: 184 * s, y: 102 * s, w: 600 * s, h: 40 * s, k: step(t, B(27.4), 3.2, .75), style: `font:600 ${29 * s}px/${40 * s}px Nunito;color:rgba(255,255,255,.86)` })}
       <svg class="a" style="right:${30 * s}px;top:${30 * s}px;transform-origin:50% 50%;transform:scale(${ik})" width="${140 * s}" height="${140 * s}" viewBox="0 0 140 140">
         <circle cx="70" cy="70" r="60" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="10"/>
         <circle cx="70" cy="70" r="60" fill="none" stroke="${BRICK}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 60}" stroke-dashoffset="${2 * Math.PI * 60 * (1 - Math.max(.02, ring + .08 * ik))}" transform="rotate(-90 70 70)"/>
@@ -538,21 +538,22 @@ function lockScreen(w, h, t) {
 function glassScene(t) {
   const b = t / BEAT;
   let html = "";
-  const knob = springs(t, 0, [[B(22), .18, 2.2, .8], [B(22.6), .62, 1.6, .85], [B(23.3), .5, 3, .7]]);
-  const wipeX = lerp(330, W - 330, knob);
-  const raw = IMG("p07-steak-raw"), ready = IMG("p06-steak-cooked"), cab = IMG("p13-cabbage");
+  // the knob drags raw → cooked: cooked is revealed from the left edge up to the seam
+  const knob = springs(t, 0, [[B(22), .4, 2.2, .85], [B(22.7), 1, 1.8, .85]]);
+  const wipeX = b < 22 ? 0 : clamp(lerp(W / 2 - 880, W / 2 + 880, knob) + lerp(-80, 80, clamp(knob)), 0, W);
+  const raw = IMG("p07-steak-raw"), cooked = IMG("p06-steak-cooked");
   const bg = (ox, oy) => b < 21
-    ? svgCover(cab, 0, 0, W, H, ox, oy)
-    : svgCover(ready, 0, 0, W, H, ox, oy) +
+    ? svgCover(cooked, 0, 0, W, H, ox, oy)
+    : svgCover(raw, 0, 0, W, H, ox, oy) +
       `<clipPath id="wp${ox}_${oy}"><rect x="${ox}" y="${oy}" width="${wipeX}" height="${H}"/></clipPath>` +
-      svgCover(raw, 0, 0, W, H, ox, oy, `clip-path="url(#wp${ox}_${oy})"`);
+      svgCover(cooked, 0, 0, W, H, ox, oy, `clip-path="url(#wp${ox}_${oy})"`);
   html += `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">${bg(0, 0)}</svg>`;
-  if (b >= 21 && b < 24.4) html += `<div class="a" style="left:${wipeX - 1.5}px;top:0;width:3px;height:${H}px;background:rgba(255,255,255,.85)"></div>`;
+  if (b >= 21 && b < 24.4 && wipeX > 2 && wipeX < W - 2) html += `<div class="a" style="left:${wipeX - 1.5}px;top:0;width:3px;height:${H}px;background:rgba(255,255,255,.85)"></div>`;
   html += tonight(t, bg);
   // toolbar (20) → slider (21) → collapses into the knob as it swells (24)
   const tk = step(t, B(20), 2.6, .62), sk = io(seg(t, B(21.1), B(21.6))), col = io(seg(t, B(24.05), B(24.35)));
   if (b >= 20 && b < 24.35) {
-    const w = lerp(lerp(120, lerp(520, 1260, sk), tk), 128, col), h = lerp(lerp(120, 104, tk), 104, col);
+    const w = lerp(lerp(120, lerp(520, 1840, sk), tk), 128, col), h = lerp(lerp(120, 104, tk), 104, col);
     const x = W / 2 - w / 2, y = H - 150 - h / 2;
     const inner = sk < .5
       ? `<div class="a" style="inset:0;display:flex;justify-content:space-around;align-items:center;opacity:${clamp((tk - .4) * 3) * (1 - sk * 2)}">${[0, 1, 2, 3].map((i) => icon(i)).join("")}</div>`
@@ -562,14 +563,14 @@ function glassScene(t) {
       const lk = 1 - step(t, B(24), 5, .8);
       html += `<div class="a" style="left:${W / 2 - 150}px;top:${y - 88}px;width:300px;height:60px;transform-origin:50% 100%;transform:scale(${lk})">${glass({ x: 0, y: 0, w: 300, h: 60, r: 30, scale: 18, tint: .3,
         bg: (ox, oy) => bg(ox - (W / 2 - 150), oy - (y - 88)),
-        inner: `<div class="a" style="inset:0;display:grid;place-items:center;font:700 26px Geist;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)">Raw &nbsp;→&nbsp; Ready</div>` })}</div>`;
+        inner: `<div class="a" style="inset:0;display:grid;place-items:center;font:700 26px Geist;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)">Raw &nbsp;→&nbsp; Cooked</div>` })}</div>`;
     }
   }
   // the knob → lens (24) → orb (25) → the clip opens inside → lock screen (26)
   if (sk > .5 && b < 26.5) {
     const kd = springs(t, 88, [[B(24), 128, 3, .6], [B(24.35), 300, 2.4, .6], [B(25), 560, 2.2, .62]]);
     const rk = step(t, B(25), 2.2, .72);
-    const kcx = b < 24 ? lerp(W / 2 - 590, W / 2 + 590, knob) : W / 2, kcy = lerp(H - 150, H / 2, rk);
+    const kcx = lerp(lerp(W / 2 - 880, W / 2 + 880, knob), W / 2, rk), kcy = lerp(H - 150, H / 2, rk);
     const kx = kcx - kd / 2, ky = kcy - kd / 2;
     const vr = step(t, B(25.2), 2.6, .72) * (kd / 2 - 16);
     const ex = io(seg(t, B(26), B(26.5)));
@@ -589,7 +590,7 @@ function glassScene(t) {
   // cursor: clicks "adjust" (21), rides the knob (22–24), long-presses (24)
   if (b >= 20.3 && b < 24.6) {
     const ix = W / 2 - 260 + 65, iy = H - 150;
-    const kx = lerp(W / 2 - 590, W / 2 + 590, knob);
+    const kx = lerp(W / 2 - 880, W / 2 + 880, knob);
     const toKnob = io(seg(t, B(21.2), B(21.9)));
     const ink = io(seg(t, B(20.3), B(20.85)));
     let cx = lerp(W - 300, ix, ink), cy = lerp(H + 40, iy, ink);
@@ -606,7 +607,7 @@ scene(16, 28, glassScene);
 const PW = 400, PHH = 860, PY = 110;
 const MAC = { x: 860, y: 110, w: 940, h: 860 };
 const phoneX = (t) => springs(t, W / 2 - PW / 2, [[B(31), 300, 2.2, .8]]);
-const BS = [["p13-cabbage", "Charred cabbage", "Crispy edges, 30 min"], ["p02-noodles", "Ginger noodles", "Uses your scallions"], ["p03-castiron", "Skillet chicken", "One pan, lemony"]];
+const BS = [["p06-steak-cooked", "Steak bites", "Garlic butter, 20 min"], ["p02-noodles", "Ginger noodles", "Uses your scallions"], ["p03-castiron", "Skillet chicken", "One pan, lemony"]];
 function brainstorm(t) {
   const added = [t >= B(29.05), t >= B(29.55), false];
   const n = added.filter(Boolean).length;
@@ -638,16 +639,16 @@ function shopping(t, tipK) {
     <div class="a" style="left:24px;top:154px;font:600 16px Nunito;color:${MUTED}">${t2 ? 2 : t1 ? 1 : 0} of 12 in the basket</div>
     <div class="a" style="left:24px;right:24px;top:184px;height:6px;border-radius:3px;background:${SUNK}"><div style="height:100%;width:${bar}%;background:${BRICK};border-radius:3px"></div></div>
     <div class="a" style="left:18px;top:206px;width:364px;height:120px;border-radius:20px;background:#fff;box-shadow:0 1px 0 ${RULE}">
-      <div class="a" style="left:8px;top:10px;width:150px;height:100px;border-radius:14px;background:url(${IMG("p13-cabbage")}) center/cover"></div>
+      <div class="a" style="left:8px;top:10px;width:150px;height:100px;border-radius:14px;background:url(${IMG("p06-steak-cooked")}) center/cover"></div>
       <div class="a" style="left:174px;top:24px;font:900 12px Nunito;letter-spacing:.08em;color:${BRICK}">TONIGHT</div>
-      <div class="a" style="left:174px;top:44px;font:800 19px/1.15 Nunito;width:180px">Charred cabbage</div>
-      <div class="a" style="left:174px;top:72px;font:600 14px Nunito;color:${MUTED}">30 min · 2 servings</div></div>
+      <div class="a" style="left:174px;top:44px;font:800 19px/1.15 Nunito;width:180px">Steak bites</div>
+      <div class="a" style="left:174px;top:72px;font:600 14px Nunito;color:${MUTED}">20 min · 2 servings</div></div>
     <div class="a" style="left:20px;right:20px;top:340px">
-      ${ui.item("1 head", "green cabbage", t1)}${ui.item("1 bunch", "dill", t2, "2d")}
-      ${ui.item("1 lb", "chicken thighs", false)}${ui.item("2 cans", "chickpeas", false)}
-      ${ui.item("1", "lemon", false)}${ui.item("1 bulb", "garlic", false)}${ui.item("1 bag", "jasmine rice", false)}</div>
+      ${ui.item("1 lb", "sirloin", t1)}${ui.item("1 bunch", "parsley", t2, "2d")}
+      ${ui.item("1 head", "garlic", false)}${ui.item("1 stick", "butter", false)}
+      ${ui.item("1", "lemon", false)}${ui.item("1 lb", "chicken thighs", false)}${ui.item("1 bag", "jasmine rice", false)}</div>
     ${tipK > .01 ? `<div class="a" style="right:92px;bottom:186px;width:236px;padding:14px 16px;border-radius:20px 20px 6px 20px;background:#fff;box-shadow:0 12px 30px -8px rgba(34,26,21,.3),0 0 0 1px ${RULE};font:700 16px/1.3 Nunito;transform-origin:100% 100%;transform:scale(${tipK})">
-      <div style="font:900 11px Nunito;letter-spacing:.08em;color:${BRICK};margin-bottom:4px">MISE</div>No dill? Parsley and lemon zest will do the same job.</div>` : ""}
+      <div style="font:900 11px Nunito;letter-spacing:.08em;color:${BRICK};margin-bottom:4px">MISE</div>No sirloin? Ribeye or flank work — cut them the same size.</div>` : ""}
     <div class="a" style="right:18px;bottom:184px">${plate(64, tipK > .3 ? "happy" : "idle")}</div>
     ${tabBar(2)}`;
 }
@@ -658,16 +659,16 @@ function macWindow(t, { hideButton = false } = {}) {
   const h = 52 + (M.h - 52) * mk;
   const drop = step(t, B(34), 3, .7);
   const scroll = io(seg(t, B(34.3), B(34.9))) * 190;
-  const steps = ["Heat the oven to 450°F with a sheet pan inside.", "Cut the cabbage into 4 wedges through the core.", "Oil, salt, and roast cut-side down, 12 minutes.", "Flip; brush with miso butter, 6 more minutes.", "Finish with dill, lemon, and flaky salt."];
+  const steps = ["Pat the sirloin dry; cut into 1-inch cubes.", "Season well with salt and pepper.", "Sear in a ripping-hot pan, 2 minutes a side.", "Add butter and garlic; baste for 1 minute.", "Finish with parsley and a squeeze of lemon."];
   const fly = io(seg(t, B(35), B(35.45)));
   const bw = lerp(120, 380, step(t, B(35.05), 2.6, .7)), bh = lerp(46, 80, fly);
   const bx = lerp(M.w - 44 - 120, M.w / 2 - bw / 2, fly), by = lerp(52 + 9, M.h - 120, fly) - Math.sin(fly * Math.PI) * 40;
   const press = step(t, B(35.6), 6, .8) - step(t, B(35.75), 5, .8);
   return `<div class="a app" style="left:${M.x}px;top:${M.y}px;width:${M.w}px;height:${h}px;border-radius:18px;overflow:hidden;background:${PAPER};box-shadow:0 40px 80px -20px rgba(34,26,21,.35),0 0 0 1px rgba(34,26,21,.12)">
     <div class="a" style="left:0;top:116px;width:${M.w}px;transform:translateY(${-scroll}px)">
-      <div style="margin:30px 44px 0;height:300px;border-radius:22px;background:${drop > .5 ? `url(${IMG("p13-cabbage")}) center/cover` : SUNK};outline:${drop > .5 ? "none" : `3px dashed #CDBFB8`};outline-offset:-10px;display:grid;place-items:center;color:${MUTED};font:700 20px Nunito;transform:scale(${drop > .5 ? 1 + (1 - drop) * .04 : 1})">${drop > .5 ? "" : "Drop a photo"}</div>
-      <div style="margin:26px 44px 4px;font:900 48px/1.1 Nunito;letter-spacing:-.02em">Charred Cabbage Wedges</div>
-      <div style="margin:0 44px 18px;color:${MUTED};font:600 20px Nunito">2 servings · 30 min · Tuesday</div>
+      <div style="margin:30px 44px 0;height:300px;border-radius:22px;background:${drop > .5 ? `url(${IMG("p06-steak-cooked")}) center/cover` : SUNK};outline:${drop > .5 ? "none" : `3px dashed #CDBFB8`};outline-offset:-10px;display:grid;place-items:center;color:${MUTED};font:700 20px Nunito;transform:scale(${drop > .5 ? 1 + (1 - drop) * .04 : 1})">${drop > .5 ? "" : "Drop a photo"}</div>
+      <div style="margin:26px 44px 4px;font:900 48px/1.1 Nunito;letter-spacing:-.02em">Garlic Butter Steak Bites</div>
+      <div style="margin:0 44px 18px;color:${MUTED};font:600 20px Nunito">2 servings · 20 min · Tuesday</div>
       ${steps.map((s, i) => { const k = io(seg(t, B(34.4) + i * .08, B(34.4) + i * .08 + .3));
         return `<div style="margin:0 44px;display:flex;gap:16px;padding:14px 0;border-top:1px solid ${RULE};clip-path:inset(0 ${(1 - k) * 100}% 0 0)"><b style="font:900 20px Nunito;width:26px;color:${BRICK}">${i + 1}</b><span style="font:600 20px Nunito">${s}</span></div>`; }).join("")}
     </div>
@@ -675,7 +676,7 @@ function macWindow(t, { hideButton = false } = {}) {
       <div class="a" style="left:28px;top:16px">${logo(28)}</div></div>
     <div class="a" style="left:0;top:0;width:${M.w}px;height:52px;background:${INK};display:flex;align-items:center;gap:9px;padding:0 18px;box-sizing:border-box">
       <i style="width:13px;height:13px;border-radius:50%;background:#ff5f57"></i><i style="width:13px;height:13px;border-radius:50%;background:#febc2e"></i><i style="width:13px;height:13px;border-radius:50%;background:#28c840"></i>
-      <div style="margin-left:24px;background:rgba(255,255,255,.1);border-radius:8px;padding:6px 16px;font:500 15px Geist;color:rgba(255,255,255,.75)">mise.app/cook/charred-cabbage</div></div>
+      <div style="margin-left:24px;background:rgba(255,255,255,.1);border-radius:8px;padding:6px 16px;font:500 15px Geist;color:rgba(255,255,255,.75)">mise.app/cook/garlic-butter-steak-bites</div></div>
     ${hideButton || mk < 1 ? "" : `<div class="a" style="left:${bx}px;top:${by}px;width:${bw}px;height:${bh}px;border-radius:${bh / 2}px;background:${mixHex(INK, BRICK, fly)};overflow:hidden;transform:scale(${1 - press * .06})">
       ${rise("Cook ▸", { x: 0, y: bh / 2 - 15, w: bw, h: 30, k: 1, ko: fly > 0 ? io(seg(t, B(35), B(35.2))) : 0, style: "text-align:center;font:800 18px/30px Nunito;color:#fff" })}
       ${fly > 0 ? rise("Start cooking", { x: 0, y: bh / 2 - 20, w: bw, h: 40, k: out(seg(t, B(35.15), B(35.45))), style: "text-align:center;font:800 28px/40px Nunito;color:#fff" }) : ""}</div>`}
@@ -719,7 +720,7 @@ function stage(t, { frozen = false } = {}) {
     const dx = lerp(sx0, ex + 240, k), dy = lerp(sy0, ey + 60, k) - Math.sin(k * Math.PI) * 60;
     const dw = lerp(150, 360, k), dh = dw * .66;
     const lift = step(t, B(33), 5, .6);
-    html += `<div class="a" style="left:${dx}px;top:${dy}px;width:${dw}px;height:${dh}px;border-radius:16px;background:url(${IMG("p13-cabbage")}) center/cover;box-shadow:0 18px 40px rgba(34,26,21,.3);transform:rotate(${lerp(0, -3, k)}deg) scale(${1 + lift * .06})"></div>`;
+    html += `<div class="a" style="left:${dx}px;top:${dy}px;width:${dw}px;height:${dh}px;border-radius:16px;background:url(${IMG("p06-steak-cooked")}) center/cover;box-shadow:0 18px 40px rgba(34,26,21,.3);transform:rotate(${lerp(0, -3, k)}deg) scale(${1 + lift * .06})"></div>`;
     html += cursor(dx + dw * .5, dy + dh * .55, 1.6, 1);
   }
   const btn = [MAC.x + MAC.w / 2 + 40, MAC.y + MAC.h - 80];
@@ -776,7 +777,8 @@ function v2Track(tc) {
   return [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
 }
 function kitchenPhone(t) {
-  const tc = V2_IN + Math.max(0, t - B(42));
+  const x = Math.max(0, t - B(42)), slow = B(45.6) - B(42);
+  const tc = V2_IN + Math.min(x, slow) + Math.max(0, x - slow) * .35;
   const [dx, dy] = v2Track(tc);
   return { x: PH.x + dx, y: PH.y + dy, w: PH.w, h: PH.h, rot: PH.rot, tc };
 }
@@ -786,7 +788,7 @@ scene(40, 42, (t) => {
   return `<div class="a" style="inset:0;background:var(--paper)"></div>
     <div class="a" style="left:${W / 2 - R}px;top:${H / 2 - R}px;width:${2 * R}px;height:${2 * R}px;border-radius:50%;background:${INK}"></div>`;
 });
-scene(42, 48, (t) => {
+scene(42, 52, (t) => {
   const b = t / BEAT;
   const P = kitchenPhone(t);
   let html = `<canvas class="a" data-vid="v2" data-t="${P.tc}" style="left:0;top:0;width:${W}px;height:${H}px"></canvas>`;
@@ -822,26 +824,26 @@ scene(42, 48, (t) => {
 
 /* ---- RETURN (48–54): the phone contracts into the pill; pill → dot; the
    letters spring back out. The last frame is the first frame. */
-scene(48, 54, (t) => {
+scene(52, 58, (t) => {
   const b = t / BEAT;
-  if (b >= 53) return wordmark(0, true) + hat(1);
+  if (b >= 57) return wordmark(0, true) + hat(1);
   let html = "";
-  if (b < 50.8) {
+  if (b < 54.8) {
     // phone (as the camera left it: centred, rotated, ×s) → brick pill
-    const ck = step(t, B(48), 2.6, .72), P = kitchenPhone(B(47.99)), s = H / (P.h + 40);
+    const ck = step(t, B(52), 2.6, .72), P = kitchenPhone(B(51.99)), s = camera(B(51.99)).s;
     const w0 = (P.w + 28) * s, h0 = (P.h + 28) * s;
-    const back = b >= 50 ? step(t, B(50), 2.8, .8) : 0;      // pill → period
+    const back = b >= 54 ? step(t, B(54), 2.8, .8) : 0;      // pill → period
     const D = wordLayout().dot;
     const pw = lerp(lerp(w0, 760, ck), D.w, back), ph = lerp(lerp(h0, 150, ck), D.h, back);
     const pcx = lerp(W / 2, D.x + D.w / 2, back), pcy = lerp(H / 2, D.y + D.h / 2, back);
     const rr = lerp(lerp(60 * s, 75, ck), D.h * .18, back);
-    const lk = out(seg(t, B(48.3), B(48.8))), ko = io(seg(t, B(49), B(49.5)));
-    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(48), B(48.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
+    const lk = out(seg(t, B(52.3), B(52.8))), ko = io(seg(t, B(53), B(53.5)));
+    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(52), B(52.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
       ${back < .01 ? pillLabel(lk, ko, 1)(pw, ph) : ""}</div>`;
     return html;
   }
-  const k = 1 - step(t, B(50.8), 2.1, .6);
-  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(51.8), 3, .55));
+  const k = 1 - step(t, B(54.8), 2.1, .6);
+  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(55.8), 3, .55));
 });
 
 /* ------------------------------------------------------------- camera */
@@ -854,9 +856,10 @@ function camera(t) {
     const fx = r[0] + r[2] / 2, fy = r[1] + r[3] / 2;
     return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
   }
-  if (b >= 45.6 && b < 48) {
-    const k = io(seg(t, B(45.6), B(47.6))), P = kitchenPhone(t);
-    const s = lerp(1, H / (P.h + 40), k), fx = P.x + P.w / 2, fy = P.y + P.h / 2;
+  if (b >= 45.6 && b < 52) {
+    // a long, decelerating push-in on Mise: fast at first, still drifting at the cut
+    const k = Math.sin(Math.PI / 2 * seg(t, B(45.6), B(52))) ** 1.6, P = kitchenPhone(t);
+    const s = lerp(1, H / (P.h + 40) * 1.06, k), fx = P.x + P.w / 2, fy = P.y + P.h / 2;
     return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
   }
   return { s: 1, x: 0, y: 0 };
