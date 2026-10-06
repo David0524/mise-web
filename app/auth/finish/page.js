@@ -17,6 +17,8 @@ export default function Finish() {
         const s = await (await fetch("/api/billing/status")).json();
         if (!s.signedIn) dest = "/login";
         else if (s.active) dest = "/app";
+        // Onboarding before the paywall, always.
+        else if (s.setupDone === false) dest = "/start";
       } catch (_) { setMsg("Taking you to Mise…"); }
       const next = new URLSearchParams(window.location.search).get("next");
       if (dest === "/app" && next && /^\/(?![/\\])/.test(next)) dest = next;

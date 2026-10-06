@@ -1928,6 +1928,9 @@ function Scale({ options, value, onChange, name }) {
    account after sign-up. One flag, read by the two storage calls and the bits
    of chrome that only make sense once you're signed in. */
 let GUEST = false;
+/* Onboarding for someone already signed in who hasn't set up yet: same flow,
+   saved to their account, and it ends at the paywall rather than sign-up. */
+let ONBOARD = false;
 
 async function apiStorageGet(key) {
   if (GUEST) return { value: guestGet(key) };
@@ -1953,7 +1956,7 @@ async function apiStorageSet(key, value) {
     const e = new Error(
       res.status === 401 ? "You've been signed out, so your changes aren't being saved. Sign in again to keep them."
         : res.status === 413 ? "That's too much to save in one go."
-        : "Couldn't save your changes just now."
+        : `Couldn't save your changes just now${data.code ? ` (error ${data.code})` : res.status ? ` (error ${res.status})` : ""}.`
     );
     e.status = res.status;
     throw e;
@@ -2000,8 +2003,9 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-export default function MiseApp({ guest = false }) {
+export default function MiseApp({ guest = false, onboarding = false }) {
   GUEST = guest;
+  ONBOARD = guest || onboarding;
   /* Remounting App via the key is the reset: fresh state, a fresh load from
      storage, and the default screen — rather than re-rendering the exact state
      that just threw. */
@@ -2065,6 +2069,7 @@ function App() {
      sign-in with an error) picks up at making the account. */
   useEffect(() => {
     if (GUEST && loaded && setupDone && view === "start") setView("account");
+    if (!GUEST && ONBOARD && loaded && setupDone && view === "start") window.location.href = "/pricing";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, setupDone]);
 
@@ -4709,7 +4714,7 @@ Respond with ONLY this JSON:
             setupDone={setupDone}
             profile={profile}
             onSetup={() => { setView("setup"); setStep(0); }}
-            onWeek={() => setView(GUEST ? "account" : "thisweek")}
+            onWeek={() => { if (GUEST) setView("account"); else if (ONBOARD) window.location.href = "/pricing"; else setView("thisweek"); }}
           />
         )}
 
@@ -4727,13 +4732,19 @@ Respond with ONLY this JSON:
               setSetupDone(true);
               persist({ setupDone: true });
               // Onboarding goes on to the tour, then making the account.
-              setView(GUEST ? "tour" : "thisweek");
+              setView(ONBOARD ? "tour" : "thisweek");
             }}
           />
         )}
 
         {v === "tour" && (
-          <Tour profile={profile} onBack={() => { setView("setup"); setStep(STEPS.length - 1); }} onDone={() => setView("account")} />
+          <Tour profile={profile} onBack={() => { setView("setup"); setStep(STEPS.length - 1); }}
+            onDone={async () => {
+              if (GUEST) { setView("account"); return; }
+              // Signed in already: make sure the last answers are saved, then the plan.
+              await persist({ setupDone: true }).catch(() => {});
+              window.location.href = "/pricing";
+            }} />
         )}
 
         {v === "account" && <CreateAccount onTour={() => setView("tour")} />}
@@ -4983,7 +4994,7 @@ Respond with ONLY this JSON:
               <span className="hdr__tag">en place</span>
             </div>
           </button>
-          {!GUEST && <button
+          {!ONBOARD && <button
             className={`profile${view === "me" ? " profile--on" : ""}`}
             onClick={() => setView(view === "me" ? "ideas" : "me")}
             aria-label="My Kitchen — your setup and saved dishes"
@@ -5039,7 +5050,7 @@ Respond with ONLY this JSON:
       {/* The bubble sat on top of the loading bar. Hidden while the global
           indicator is up — you can't ask her anything mid-request anyway, since
           every control is disabled until it returns. */}
-      {!GUEST && view !== "start" && !(busy && busy !== "mise" && !hasLocalIndicator) && !(view === "cook" && cookingId && recipes[cookingId]) && (
+      {!ONBOARD && view !== "start" && !(busy && busy !== "mise" && !hasLocalIndicator) && !(view === "cook" && cookingId && recipes[cookingId]) && (
         <button
           className={`fab no-print${hasCta ? " fab--overcta" : ""}${fabPhase === "dance" ? " fab--dance" : ""}${fabPhase === "small" ? " fab--small" : ""}`}
           onClick={() => setMiseOpen(true)}
@@ -5053,7 +5064,7 @@ Respond with ONLY this JSON:
         </button>
       )}
 
-      {!GUEST && view !== "start" && (
+      {!ONBOARD && view !== "start" && (
         /* Bottom tab bar. It sits at the bottom because that is where every
            phone app of the last decade has put primary navigation, and this
            app's whole audience premise — usable by a college student and by
@@ -5330,7 +5341,7 @@ function Tour({ profile, onBack, onDone }) {
       <div className="wizbar">
         <div className="wizbar__in">
           <Btn variant="ghost" onClick={() => (i === 0 ? onBack() : setI(i - 1))}>Back</Btn>
-          <Btn onClick={() => (i === last ? onDone() : setI(i + 1))}>{i === last ? "Save my kitchen" : "Next"}</Btn>
+          <Btn onClick={() => (i === last ? onDone() : setI(i + 1))}>{i === last ? (GUEST ? "Save my kitchen" : "Choose my plan") : "Next"}</Btn>
         </div>
         <p className="wizbar__cap">
           <button type="button" className="linkish tour__skip" onClick={onDone}>{i === last ? " " : "Skip the tour"}</button>
@@ -5382,7 +5393,6 @@ function CreateAccount({ onTour }) {
           <AuthOptions consent={ok} disabled={!ok} from="/start" />
         </div>
         {!ok && <p className="acct__hint">Tick both boxes to continue.</p>}
-        <div className="acct__or"><span />or with email<span /></div>
         <form onSubmit={submit} className="acct__form">
           <label htmlFor="su-email">Email</label>
           <input id="su-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -5448,7 +5458,7 @@ function Start({ savedAt, setupDone, profile, onSetup, onWeek }) {
               )}
             </div>
             <div className="row">
-              <Btn onClick={onWeek}>{GUEST ? "Make my account" : "Start this week"}</Btn>
+              <Btn onClick={onWeek}>{GUEST ? "Make my account" : ONBOARD ? "Choose my plan" : "Start this week"}</Btn>
               <Btn variant="ghost" onClick={onSetup}>Change my setup</Btn>
             </div>
           </>
@@ -5742,7 +5752,7 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
             <Btn variant="ghost" onClick={() => setStep(step - 1)}>Back</Btn>
           )}
           <Btn onClick={next} wide={step === 0}>
-            {step === last ? (GUEST ? "Next" : "Show me this week") : "Next"}
+            {step === last ? (ONBOARD ? "Next" : "Show me this week") : "Next"}
           </Btn>
         </div>
         {/* Only claimed when it's true — this line used to show even while every

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /* Continue with Apple / Google / phone. Shared by the sign-in page and the
    last step of onboarding.
@@ -25,7 +25,18 @@ const PhoneIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M10.5 18.5h3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
 );
 
-export default function AuthOptions({ consent = false, disabled = false, from = "/login", next = "", onNeedConsent }) {
+/* Which methods this deployment has set up (see /api/auth/providers). Only
+   those get a button: a button that can only fail is worse than none. */
+export function useProviders() {
+  const [p, setP] = useState(null);
+  useEffect(() => {
+    fetch("/api/auth/providers").then((r) => r.json()).then(setP).catch(() => setP({}));
+  }, []);
+  return p;
+}
+
+export default function AuthOptions({ consent = false, disabled = false, from = "/login", next = "", onNeedConsent, divider = "or with email" }) {
+  const available = useProviders();
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [sent, setSent] = useState("");
@@ -62,13 +73,15 @@ export default function AuthOptions({ consent = false, disabled = false, from = 
 
   const go = (provider) => (e) => { if (disabled) { e.preventDefault(); return; } };
 
+  if (!available || !(available.apple || available.google || available.phone)) return null;
+
   return (
     <div className="ao">
-      <a href={disabled ? undefined : `/api/auth/apple?${q}`} onClick={go("apple")} aria-disabled={disabled || undefined}
-        className="ao__b ao__b--apple" role="button"><AppleLogo /> Continue with Apple</a>
-      <a href={disabled ? undefined : `/api/auth/google?${q}`} onClick={go("google")} aria-disabled={disabled || undefined}
-        className="ao__b ao__b--google" role="button"><GoogleLogo /> Continue with Google</a>
-      {!phoneOpen ? (
+      {available.apple && <a href={disabled ? undefined : `/api/auth/apple?${q}`} onClick={go("apple")} aria-disabled={disabled || undefined}
+        className="ao__b ao__b--apple" role="button"><AppleLogo /> Continue with Apple</a>}
+      {available.google && <a href={disabled ? undefined : `/api/auth/google?${q}`} onClick={go("google")} aria-disabled={disabled || undefined}
+        className="ao__b ao__b--google" role="button"><GoogleLogo /> Continue with Google</a>}
+      {!available.phone ? null : !phoneOpen ? (
         <button type="button" className="ao__b ao__b--phone" disabled={disabled} onClick={() => setPhoneOpen(true)}>
           <PhoneIcon /> Continue with phone
         </button>
@@ -98,6 +111,7 @@ export default function AuthOptions({ consent = false, disabled = false, from = 
         </form>
       )}
       {err && <p className="ao__err" role="alert">{err}</p>}
+      {divider && <div className="ao__or"><span />{divider}<span /></div>}
       <style dangerouslySetInnerHTML={{ __html: AO_CSS }} />
     </div>
   );
@@ -122,6 +136,8 @@ const AO_CSS = `
 .ao__go:disabled{opacity:.5;cursor:default}
 .ao__fine{font-size:.8rem;font-weight:600;color:#51453D;margin:.45rem 0 0}
 .ao__link{background:none;border:0;padding:0;font:800 .8rem 'Nunito',system-ui,sans-serif;color:#9A3B1B;cursor:pointer;text-decoration:underline}
+.ao__or{display:flex;align-items:center;gap:.7rem;margin:.7rem 0 0;font-weight:700;font-size:.85rem;color:#72645C}
+.ao__or span{flex:1;height:1px;background:rgba(34,26,21,.15)}
 .ao__err{color:#7A2E1B;font-weight:700;font-size:.9rem;margin:.2rem 0 0;background:rgba(238,146,101,.2);border:1px solid #EE9265;border-radius:12px;padding:.55rem .7rem}
 .ao a:focus-visible,.ao button:focus-visible,.ao input:focus-visible{outline:3px solid #B44722;outline-offset:2px}
 `;
