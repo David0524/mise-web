@@ -1672,11 +1672,63 @@ function Chip({ active, children, onClick, sub }) {
   );
 }
 
-function Working({ label }) {
+/* Loading patter. AI waits here run 5–45 seconds, and a single static label
+   ("Writing…") reads as stuck after the first few. Rotating kitchen-flavoured
+   lines, specific to what's actually happening, make the wait feel like work in
+   progress. The real label stays for screen readers; the patter is decoration,
+   hidden from them so it isn't announced every couple of seconds. */
+const PATTER = {
+  ideas: ["Rummaging through the pantry…", "Taste-testing a few wild ideas…", "Pairing what you have with something unexpected…",
+    "Sketching out the week…", "Making sure no two nights feel the same…", "Swapping notes with the spice rack…", "Sharpening the knives…", "Nearly ready to show you…"],
+  swap: ["Flipping through the recipe box…", "Looking for something with more spark…", "Checking it fits the rest of the week…", "Almost found it…"],
+  shopping: ["Walking the aisles…", "Checking what only comes by the bunch…", "Counting garlic cloves…", "Making sure nothing goes to waste…", "Sorting it by aisle…", "Double-checking the fridge…"],
+  recipe: ["Preheating the oven…", "Measuring things out…", "Scaling it to your kitchen…", "Working out the timing…", "Tasting for salt…", "Writing it like a chef would explain it…"],
+  change: ["Thinking like a line cook…", "Tasting it a few different ways…", "Weighing your options…", "Checking what else would work…"],
+  apply: ["Rewriting the recipe…", "Swapping it in…", "Re-tasting…", "Updating your shopping list…"],
+  ask: ["Thinking…", "Picturing your pan…", "Checking her notes…"],
+  order: ["Lining up the week…", "Putting the delicate things first…", "Sorting by what spoils soonest…"],
+  leftovers: ["Peeking in the fridge…", "Seeing what these could become…", "Giving the leftovers a sniff test…", "Dreaming up round two…"],
+  card: ["Plating up your week…", "Finding the good light…"],
+  generic: ["Stirring…", "Simmering…", "Almost there…"],
+};
+function patterKind(label = "") {
+  if (/Putting some ideas|Putting your week|Rethinking|Finding dishes like/.test(label)) return "ideas";
+  if (/Finding something instead/.test(label)) return "swap";
+  if (/package sizes|Adjusting the list|shopping list/.test(label)) return "shopping";
+  if (/^Writing /.test(label)) return "recipe";
+  if (/Reworking it/.test(label)) return "apply";
+  if (/Thinking it through|Working it out/.test(label)) return "change";
+  if (/best order/.test(label)) return "order";
+  if (/could become|what happened/.test(label)) return "leftovers";
+  if (/Making your card/.test(label)) return "card";
+  if (/^Thinking$/.test(label)) return "ask";
+  return "generic";
+}
+/* The current line for a kind: changes every ~2.4s, starting at a random line so
+   a repeat wait doesn't replay the same opening. */
+function usePatter(kind, ms = 2400) {
+  const lines = PATTER[kind] || PATTER.generic;
+  const [i, setI] = useState(() => Math.floor(Math.random() * lines.length));
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => n + 1), ms);
+    return () => clearInterval(t);
+  }, [ms]);
+  return lines[i % lines.length];
+}
+
+/* Just the rotating line, for small status slots (a sheet header). */
+function Patter({ kind }) {
+  const line = usePatter(kind);
+  return <span key={line} className="working__line">{line}</span>;
+}
+
+function Working({ label, kind }) {
+  const line = usePatter(kind || patterKind(label));
   return (
     <p className="working" role="status" aria-live="polite">
       <span className="working__dots" aria-hidden="true"><i /><i /><i /></span>
-      {label}
+      <span className="sr">{label}</span>
+      <span key={line} className="working__line" aria-hidden="true">{line}</span>
     </p>
   );
 }
@@ -1743,7 +1795,8 @@ function DishSkeleton({ count = 4 }) {
 
    Its own component so the once-a-second tick re-renders 40 lines of bar
    rather than the whole Ideas tree with its five skeleton cards. */
-function LoadBar({ label = "Working on it" }) {
+function LoadBar({ label = "Working on it", kind }) {
+  const line = usePatter(kind || patterKind(label));
   const [secs, setSecs] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setSecs((s) => s + 1), 1000);
@@ -1761,7 +1814,8 @@ function LoadBar({ label = "Working on it" }) {
       </div>
       {/* Only past 25s, and only because by then the wait is unusual enough
           that knowing it's the free tier prevents a pointless reload. */}
-      {secs >= 25 && <p className="lbar__note">Still going — this one can take a while.</p>}
+      <p key={line} className="lbar__line" aria-hidden="true">{line}</p>
+      {secs >= 25 && <p className="lbar__note">Still going — the good ones take a minute.</p>}
     </div>
   );
 }
@@ -5498,7 +5552,7 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
         <section className="card">
           <h2>Thinking through your week</h2>
           <p className="lead">Working out a spine for the week and a few dishes to react to.</p>
-          <LoadBar label="Putting your week together" />
+          <LoadBar label="Putting your week together" kind="ideas" />
           <DishSkeleton count={5} />
         </section>
       </div>
@@ -6219,7 +6273,7 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
                   {negotiating && (
                     <div className="says">
                       <MiseAvatar mood="thinking" size={40} />
-                      <div className="bub bub--mise bub--wait"><Working label="Working it out" /></div>
+                      <div className="bub bub--mise bub--wait"><Working label="Working it out" kind={recipeChat?.some((m) => m.who === "me" && /^Let's do:/.test(m.text) && recipeChat.indexOf(m) >= lastAsk) ? "apply" : "change"} /></div>
                     </div>
                   )}
                 </div>
@@ -6634,7 +6688,7 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
             <span className="cask__plate"><MiseAvatar mood={miseBusy ? "thinking" : "idle"} size={38} /></span>
             <div>
               <strong>Mise</strong>
-              <span>{miseBusy ? "Thinking…" : `On step ${idx + 1}`}</span>
+              <span>{miseBusy ? <Patter kind="ask" /> : `On step ${idx + 1}`}</span>
             </div>
             <button className="cask__x" onClick={() => setMiseOpen(false)} aria-label="Close">Close</button>
           </div>
@@ -7977,7 +8031,7 @@ function MisePanel({ thread, busy, onClose, onAsk, dish, asks = QUICK_ASKS.defau
     : "idle";
 
   const status = busy
-    ? "Thinking…"
+    ? <Patter kind="ask" />
     : mood === "worried"
     ? "On it — let's save this"
     : dish
@@ -8041,7 +8095,7 @@ function MisePanel({ thread, busy, onClose, onAsk, dish, asks = QUICK_ASKS.defau
         {busy && (
           <div className="says">
             <MiseAvatar mood="thinking" size={40} />
-            <div className="bub bub--mise bub--wait"><Working label="Thinking" /></div>
+            <div className="bub bub--mise bub--wait"><Working label="Thinking" kind="ask" /></div>
           </div>
         )}
         <div ref={endRef} />
@@ -9683,6 +9737,10 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    the navigation for the whole duration of any load. Indeterminate on purpose
    — there's no progress to report on a single POST, so it travels rather than
    fills. */
+.working__line,.lbar__line{display:inline-block;animation:patterIn .35s ease-out}
+.lbar__line{display:block;margin:.55rem 0 0;font-family:'Nunito',sans-serif;font-weight:800;font-size:.92em;color:var(--ink-2)}
+@keyframes patterIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.working__line,.lbar__line{animation:none}}
 .topbar{position:fixed;top:0;left:0;right:0;height:3px;z-index:30;overflow:hidden;
   background:rgba(34,26,21,.08)}
 .topbar__run{position:absolute;inset:0;display:block;

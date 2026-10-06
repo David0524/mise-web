@@ -68,7 +68,7 @@ async function settle(p, ms) {
   await p.waitForTimeout(800);
   while (Date.now() - t0 < ms) {
     const busy = await p.$(".topbar, .ph, .skel, [aria-busy=true]");
-    const working = /Working…|Writing |Putting some ideas|Checking package|Thinking/.test(await p.innerText("body"));
+    const working = !!(await p.$(".working, .lbar")) || /Working…|Writing |Putting some ideas|Checking package|Thinking/.test(await p.innerText("body"));
     if (!busy && !working) return true;
     await p.waitForTimeout(700);
   }
