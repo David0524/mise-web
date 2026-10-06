@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { guestGet, guestSet } from "@/lib/guest";
+import AuthOptions from "@/components/AuthOptions";
+import ConsentChecks from "@/components/ConsentChecks";
 
 /* The one definition of the app's directional daylight, shared with the
    sign-in / sign-up / pricing pages so the app and its front door are lit the
@@ -1920,7 +1923,14 @@ function Scale({ options, value, onChange, name }) {
 
 /* =========================================================================== */
 
+/* Onboarding runs before there's an account (/start renders <MiseApp guest />).
+   Then everything is kept on this device and /auth/finish copies it to the
+   account after sign-up. One flag, read by the two storage calls and the bits
+   of chrome that only make sense once you're signed in. */
+let GUEST = false;
+
 async function apiStorageGet(key) {
+  if (GUEST) return { value: guestGet(key) };
   const res = await fetch(`/api/storage?key=${encodeURIComponent(key)}`);
   if (!res.ok) throw new Error("storage unavailable");
   return res.json();
@@ -1930,6 +1940,10 @@ async function apiStorageGet(key) {
    the person as "saved". The error carries the status so callers can say
    which kind of failure it was. */
 async function apiStorageSet(key, value) {
+  if (GUEST) {
+    if (!guestSet(key, value)) { const e = new Error("Couldn't save on this device."); e.status = 507; throw e; }
+    return { ok: true, value };
+  }
   const res = await fetch("/api/storage", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ key, value }),
@@ -1986,7 +2000,8 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-export default function MiseApp() {
+export default function MiseApp({ guest = false }) {
+  GUEST = guest;
   /* Remounting App via the key is the reset: fresh state, a fresh load from
      storage, and the default screen — rather than re-rendering the exact state
      that just threw. */
@@ -2046,6 +2061,13 @@ function App() {
      profile they never filled in. This flag only becomes true when setup is
      actually completed. */
   const [setupDone, setSetupDone] = useState(false);
+  /* A guest who already finished setup (came back, or bounced off a Google
+     sign-in with an error) picks up at making the account. */
+  useEffect(() => {
+    if (GUEST && loaded && setupDone && view === "start") setView("account");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, setupDone]);
+
 
   /* Visual style. Two complete looks, not a colour tweak:
        "modern" — the original: cool paper, glass panels, soft shadows.
@@ -4687,7 +4709,7 @@ Respond with ONLY this JSON:
             setupDone={setupDone}
             profile={profile}
             onSetup={() => { setView("setup"); setStep(0); }}
-            onWeek={() => setView("thisweek")}
+            onWeek={() => setView(GUEST ? "account" : "thisweek")}
           />
         )}
 
@@ -4704,10 +4726,17 @@ Respond with ONLY this JSON:
               // not the autosave timer having fired at some point.
               setSetupDone(true);
               persist({ setupDone: true });
-              setView("thisweek");
+              // Onboarding goes on to the tour, then making the account.
+              setView(GUEST ? "tour" : "thisweek");
             }}
           />
         )}
+
+        {v === "tour" && (
+          <Tour profile={profile} onBack={() => { setView("setup"); setStep(STEPS.length - 1); }} onDone={() => setView("account")} />
+        )}
+
+        {v === "account" && <CreateAccount onTour={() => setView("tour")} />}
 
         {v === "thisweek" && (
           <ThisWeek
@@ -4954,7 +4983,7 @@ Respond with ONLY this JSON:
               <span className="hdr__tag">en place</span>
             </div>
           </button>
-          <button
+          {!GUEST && <button
             className={`profile${view === "me" ? " profile--on" : ""}`}
             onClick={() => setView(view === "me" ? "ideas" : "me")}
             aria-label="My Kitchen — your setup and saved dishes"
@@ -4965,7 +4994,8 @@ Respond with ONLY this JSON:
               <path d="M4.5 20.5c1.2-4 4-6 7.5-6s6.3 2 7.5 6" fill="none" stroke="currentColor"
                 strokeWidth="1.9" strokeLinecap="round" />
             </svg>
-          </button>
+          </button>}
+          {GUEST && <a className="hdr__signin" href="/login">Sign in</a>}
         </div>
       </header>
 
@@ -5009,7 +5039,7 @@ Respond with ONLY this JSON:
       {/* The bubble sat on top of the loading bar. Hidden while the global
           indicator is up — you can't ask her anything mid-request anyway, since
           every control is disabled until it returns. */}
-      {view !== "start" && !(busy && busy !== "mise" && !hasLocalIndicator) && !(view === "cook" && cookingId && recipes[cookingId]) && (
+      {!GUEST && view !== "start" && !(busy && busy !== "mise" && !hasLocalIndicator) && !(view === "cook" && cookingId && recipes[cookingId]) && (
         <button
           className={`fab no-print${hasCta ? " fab--overcta" : ""}${fabPhase === "dance" ? " fab--dance" : ""}${fabPhase === "small" ? " fab--small" : ""}`}
           onClick={() => setMiseOpen(true)}
@@ -5023,7 +5053,7 @@ Respond with ONLY this JSON:
         </button>
       )}
 
-      {view !== "start" && (
+      {!GUEST && view !== "start" && (
         /* Bottom tab bar. It sits at the bottom because that is where every
            phone app of the last decade has put primary navigation, and this
            app's whole audience premise — usable by a college student and by
@@ -5192,6 +5222,185 @@ function Intro({ onDone }) {
   );
 }
 
+/* -------------------------------------------------------------------- TOUR */
+
+/* After setup, before the account: a walk through what the app actually does,
+   one screen per part of the week, each with a small working-looking sketch
+   built from their own answers (their nights, their headcount, what they
+   avoid) rather than a stock screenshot. Same card, dots and pinned buttons as
+   the intro, so the whole of onboarding feels like one thing. */
+function tourDishes(profile) {
+  const r = (profile.restrictions || []).join(" ").toLowerCase();
+  if (/vegan/.test(r)) return ["Crispy tofu rice bowls", "Charred corn tacos", "Coconut chickpea curry"];
+  if (/vegetarian/.test(r)) return ["Crispy halloumi tacos", "Lemony white bean pasta", "Miso mushroom rice bowls"];
+  if (/pescatarian/.test(r)) return ["Crispy fish tacos", "Miso salmon rice bowls", "Lemony white bean pasta"];
+  return ["Gochujang chicken thighs", "Crispy fish tacos", "Lemony white bean pasta"];
+}
+
+function Tour({ profile, onBack, onDone }) {
+  const [i, setI] = useState(0);
+  const nights = orderDays(profile.nights);
+  const n = nights.length || 3;
+  const who = `${profile.people} ${profile.people === 1 ? "person" : "people"}`;
+  const dishes = tourDishes(profile);
+  const avoid = [...(profile.restrictions || [])].slice(0, 2).join(" and ").toLowerCase();
+
+  const screens = [
+    {
+      k: "Plan",
+      h: "Every week starts with a conversation.",
+      p: `Tell me what's in the fridge or what you're craving. I'll pitch ${n} dinners for ${who}${avoid ? `, all ${avoid}` : ""}, and you keep, swap or toss any of them.`,
+      art: (
+        <div className="tmock">
+          <div className="tmock__say"><MiseAvatar mood="happy" size={30} /><span>{n} nights for {who}. How about these?</span></div>
+          {dishes.map((d, j) => (
+            <div key={d} className={`tmock__dish${j === 0 ? " tmock__dish--on" : ""}`}>
+              <span>{d}</span><span className="tmock__pill">{j === 0 ? "Keep" : j === 1 ? "Keep" : "Swap"}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      k: "Shop",
+      h: "One list. Nothing left to wilt.",
+      p: "I plan the week so ingredients carry across dishes, then hand you one shopping list sorted the way a store is laid out.",
+      art: (
+        <div className="tmock">
+          {[["1 bunch cilantro", "used in 2 dinners"], ["3 limes", "tacos + rice bowls"], ["1 knob ginger", "keeps for next week"]].map(([a, b], j) => (
+            <div key={a} className="tmock__item">
+              <span className={`tmock__box${j === 0 ? " tmock__box--on" : ""}`} aria-hidden="true" />
+              <span className="tmock__it">{a}<small>{b}</small></span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      k: "Change",
+      h: "Change anything. Just ask.",
+      p: "Out of buns? Want it milder? Say so in plain words. The recipe and your shopping list both update.",
+      art: (
+        <div className="tmock">
+          <div className="tmock__me">Make it milder, please</div>
+          <div className="tmock__say"><MiseAvatar mood="happy" size={30} /><span>Done. Swapped the chili crisp for toasted sesame, and took it off your list.</span></div>
+        </div>
+      ),
+    },
+    {
+      k: "Cook",
+      h: "I'll be right there at the stove.",
+      p: "Big, one-at-a-time steps you can read from across the counter, timers that keep running, and a voice that reads it all out.",
+      art: (
+        <div className="tmock tmock--cook">
+          <span className="tmock__step">Step 3 of 6</span>
+          <span className="tmock__timer">08:00</span>
+          <span className="tmock__do">Simmer until it coats a spoon.</span>
+        </div>
+      ),
+    },
+    {
+      k: "Learn",
+      h: "Rate it, and next week gets better.",
+      p: "Tell me how dinner went. I remember what you loved and what was missing, and the next week leans that way.",
+      art: (
+        <div className="tmock">
+          <div className="tmock__stars" aria-hidden="true">★★★★<span>★</span></div>
+          <div className="tmock__say"><MiseAvatar mood="thinking" size={30} /><span>Noted: a bit more acid next time. I&apos;ll plan for it.</span></div>
+        </div>
+      ),
+    },
+  ];
+
+  const s = screens[i];
+  const last = screens.length - 1;
+  return (
+    <div className="stack wiz-pad">
+      <section className="card card--big stepin" key={i}>
+        <p className="tour__k">{s.k}</p>
+        <div className="tour__art">{s.art}</div>
+        <div className="hero">
+          <h2 className="hero__h">{s.h}</h2>
+          <p className="hero__sub">{s.p}</p>
+        </div>
+      </section>
+      <div className="dots" role="group" aria-label={`Screen ${i + 1} of ${screens.length}`}>
+        {screens.map((_, j) => <span key={j} className={`dots__d${j === i ? " dots__d--on" : ""}`} aria-hidden="true" />)}
+      </div>
+      <div className="wizbar">
+        <div className="wizbar__in">
+          <Btn variant="ghost" onClick={() => (i === 0 ? onBack() : setI(i - 1))}>Back</Btn>
+          <Btn onClick={() => (i === last ? onDone() : setI(i + 1))}>{i === last ? "Save my kitchen" : "Next"}</Btn>
+        </div>
+        <p className="wizbar__cap">
+          <button type="button" className="linkish tour__skip" onClick={onDone}>{i === last ? " " : "Skip the tour"}</button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* The end of onboarding: make the account that keeps all of it. Says up front
+   that a plan comes next, and what it costs, rather than springing it after. */
+function CreateAccount({ onTour }) {
+  const [adult, setAdult] = useState(false);
+  const [terms, setTerms] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(() => {
+    try { return new URLSearchParams(window.location.search).get("error") || ""; } catch (_) { return ""; }
+  });
+  const ok = adult && terms;
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!ok) { setErr("Tick both boxes above first."); return; }
+    setBusy(true); setErr("");
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, ageConfirmed: adult, termsAccepted: terms }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't create your account.");
+      window.location.href = "/auth/finish";
+    } catch (e2) { setErr(e2.message); setBusy(false); }
+  }
+
+  return (
+    <div className="stack">
+      <section className="card card--big stepin acct">
+        <div className="hero">
+          <div className="hero__mark"><MiseAvatar mood="happy" size={88} /></div>
+          <h2 className="hero__h">Save your kitchen.</h2>
+          <p className="hero__sub">Make an account to keep everything you just told me. Next you&apos;ll pick a plan; your first month is $1.</p>
+        </div>
+        {err && <p className="acct__err" role="alert">{err}</p>}
+        <ConsentChecks adult={adult} setAdult={setAdult} terms={terms} setTerms={setTerms} />
+        <div className="acct__opts">
+          <AuthOptions consent={ok} disabled={!ok} from="/start" />
+        </div>
+        {!ok && <p className="acct__hint">Tick both boxes to continue.</p>}
+        <div className="acct__or"><span />or with email<span /></div>
+        <form onSubmit={submit} className="acct__form">
+          <label htmlFor="su-email">Email</label>
+          <input id="su-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <label htmlFor="su-pw">Password</label>
+          <input id="su-pw" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <p className="acct__hint acct__hint--left">At least 8 characters.</p>
+          <Btn wide type="submit" disabled={busy || !ok}>{busy ? "Creating…" : "Create my account"}</Btn>
+        </form>
+        <p className="acct__foot">
+          Already have an account? <a href="/login">Sign in</a>
+          <span aria-hidden="true"> · </span>
+          <button type="button" className="linkish acct__back" onClick={onTour}>Back to the tour</button>
+        </p>
+      </section>
+    </div>
+  );
+}
+
 function Start({ savedAt, setupDone, profile, onSetup, onWeek }) {
   if (!setupDone) return <Intro onDone={onSetup} />;
 
@@ -5239,7 +5448,7 @@ function Start({ savedAt, setupDone, profile, onSetup, onWeek }) {
               )}
             </div>
             <div className="row">
-              <Btn onClick={onWeek}>Start this week</Btn>
+              <Btn onClick={onWeek}>{GUEST ? "Make my account" : "Start this week"}</Btn>
               <Btn variant="ghost" onClick={onSetup}>Change my setup</Btn>
             </div>
           </>
@@ -5533,13 +5742,14 @@ function Setup({ profile, set, toggleIn, step, setStep, onDone, storageOk }) {
             <Btn variant="ghost" onClick={() => setStep(step - 1)}>Back</Btn>
           )}
           <Btn onClick={next} wide={step === 0}>
-            {step === last ? "Show me this week" : "Next"}
+            {step === last ? (GUEST ? "Next" : "Show me this week") : "Next"}
           </Btn>
         </div>
         {/* Only claimed when it's true — this line used to show even while every
             save was being rejected. */}
         <p className="hint hint--save">
-          {storageOk === false ? "Your answers aren't saving right now — check you're signed in." : "Your answers are saved for next week."}
+          {GUEST ? "Saved on this device until you make your account."
+            : storageOk === false ? "Your answers aren't saving right now — check you're signed in." : "Your answers are saved for next week."}
         </p>
       </div>
     </div>
@@ -7550,7 +7760,14 @@ function YourData() {
   const [err, setErr] = useState("");
   const pwRef = useRef(null);
 
-  useEffect(() => { if (confirming) pwRef.current?.focus(); }, [confirming]);
+  // Accounts made with Google, Apple or a phone number have no password to
+  // type, so they confirm by typing DELETE instead.
+  const [hasPassword, setHasPassword] = useState(true);
+  useEffect(() => {
+    if (!confirming) return;
+    pwRef.current?.focus();
+    fetch("/api/auth/me").then((r) => r.json()).then((j) => { if (j?.user && j.user.hasPassword === false) setHasPassword(false); }).catch(() => {});
+  }, [confirming]);
 
   const del = async (e) => {
     e.preventDefault();
@@ -7560,7 +7777,7 @@ function YourData() {
       const res = await fetch("/api/account/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: pw }),
+        body: JSON.stringify(hasPassword ? { password: pw } : { confirm: pw.trim().toUpperCase() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn't delete your account. Try again in a moment.");
@@ -7593,8 +7810,8 @@ function YourData() {
       {confirming && (
         <form className="yourdata__confirm" onSubmit={del}
           onKeyDown={(e) => { if (e.key === "Escape" && !busy) { setConfirming(false); setPw(""); setErr(""); } }}>
-          <label htmlFor="del-pw">Enter your password to delete your account for good</label>
-          <input id="del-pw" ref={pwRef} type="password" autoComplete="current-password" required
+          <label htmlFor="del-pw">{hasPassword ? "Enter your password to delete your account for good" : "Type DELETE to delete your account for good"}</label>
+          <input id="del-pw" ref={pwRef} type={hasPassword ? "password" : "text"} autoComplete={hasPassword ? "current-password" : "off"} required
             value={pw} onChange={(e) => setPw(e.target.value)} />
           {err && <p className="hint hint--err" role="alert">{err}</p>}
           <div className="row">
@@ -8708,6 +8925,45 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 @media (prefers-contrast:more){.app input[type=text],.app textarea,.app select{border-width:2px}}
 .check{display:flex;gap:.7rem;align-items:center;margin-top:1rem;cursor:pointer;min-height:48px}
 .rsheet:focus,.cask:focus{outline:none}
+
+/* Onboarding tour sketches and the account screen. */
+.tour__k{margin:0 0 .6rem;text-align:center;font-size:.72rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--brick)}
+.tour__art{display:flex;justify-content:center;margin:0 0 1.1rem}
+.tmock{width:100%;max-width:330px;background:var(--surface, #fff);border:1px solid var(--rule-2);border-radius:20px;padding:.85rem;
+  box-shadow:0 14px 34px -18px rgba(34,26,21,.35);display:flex;flex-direction:column;gap:.5rem;text-align:left;font-size:.92rem}
+.tmock__say{display:flex;gap:.55rem;align-items:flex-start;font-weight:700;line-height:1.4}
+.tmock__say span{background:rgba(87,60,86,.08);border-radius:4px 14px 14px 14px;padding:.45rem .65rem}
+.tmock__me{align-self:flex-end;background:var(--brick);color:#fff;font-weight:800;border-radius:14px 14px 4px 14px;padding:.45rem .7rem}
+.tmock__dish{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-weight:800;padding:.55rem .7rem;border-radius:12px;border:1px solid var(--rule-2)}
+.tmock__dish--on{border-color:var(--brick);background:rgba(180,71,34,.06)}
+.tmock__pill{font-size:.72rem;font-weight:900;color:var(--plum);background:rgba(87,60,86,.1);border-radius:99px;padding:.15rem .5rem}
+.tmock__item{display:flex;gap:.6rem;align-items:center;padding:.3rem .2rem}
+.tmock__box{width:20px;height:20px;border-radius:6px;border:2px solid #8A7D75;flex:0 0 auto}
+.tmock__box--on{background:var(--good, #2F6B4F);border-color:var(--good, #2F6B4F)}
+.tmock__it{display:flex;flex-direction:column;font-weight:800;line-height:1.25}
+.tmock__it small{font-weight:700;color:var(--muted);font-size:.78rem}
+.tmock--cook{align-items:center;text-align:center;gap:.2rem;padding:1.1rem .9rem}
+.tmock__step{font-size:.75rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tmock__timer{font-size:3rem;font-weight:900;letter-spacing:-.03em;color:var(--brick);font-variant-numeric:tabular-nums;line-height:1.05}
+.tmock__do{font-weight:800}
+.tmock__stars{font-size:1.7rem;color:var(--brick);letter-spacing:.1em}
+.tmock__stars span{color:var(--rule)}
+.wizbar__cap:has(.tour__skip){text-align:center}
+.tour__skip{font-size:.85rem;padding:.2rem 0;min-height:0;color:var(--muted);text-align:center;width:100%}
+.hdr__signin{font-weight:800;color:var(--brick);text-decoration:none;padding:.6rem .4rem;min-height:44px;display:inline-flex;align-items:center}
+.acct{max-width:440px;margin:0 auto}
+.acct .hero__h{font-size:1.6em}
+.acct__opts{margin-top:1rem}
+.acct__err{color:#7A2E1B;font-weight:700;background:rgba(238,146,101,.2);border:1px solid #EE9265;border-radius:12px;padding:.6rem .75rem;margin:0 0 .6rem}
+.acct__hint{font-size:.82rem;font-weight:700;color:var(--muted);text-align:center;margin:.5rem 0 0}
+.acct__hint--left{text-align:left;margin:.3rem 0 .4rem}
+.acct__or{display:flex;align-items:center;gap:.7rem;margin:1.2rem 0 .5rem;font-weight:700;font-size:.85rem;color:var(--muted)}
+.acct__or span{flex:1;height:1px;background:var(--rule-2)}
+.acct__form label{display:block;font-weight:800;font-size:.85rem;color:var(--plum);margin:.7rem 0 .3rem}
+.acct__form input{width:100%;box-sizing:border-box;min-height:48px;border-radius:14px;border:1px solid #8A7D75;padding:0 .85rem;font:700 1rem 'Nunito',system-ui,sans-serif;background:#fff;color:var(--ink)}
+.acct__foot{text-align:center;font-weight:700;font-size:.88rem;color:var(--muted);margin:1rem 0 0}
+.acct__foot a{color:var(--brick);font-weight:800}
+.acct__back{display:inline;padding:0;min-height:0;font-size:inherit;color:var(--brick);font-weight:800}
 .rec__ai{font-size:.8rem;font-weight:700;color:var(--muted);margin:.8rem 0 0;line-height:1.4}
 .diet{border:0;margin:0;padding:0;min-width:0}
 .diet:disabled{opacity:.45}

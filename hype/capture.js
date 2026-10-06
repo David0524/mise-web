@@ -87,6 +87,7 @@ let delay = 0;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ text: JSON.stringify(fn ? fn(prompt) : { say: 'ok' }) }) });
   });
   await p.request.post(BASE + '/api/auth/signup', { data: { email: `film${Date.now()}@example.com`, password: 'password123', ageConfirmed: true, termsAccepted: true } });
+  await p.request.post(BASE + '/api/billing/redeem', { data: { code: 'VIP26' } });
   const profile = { people: 2, consistent: true, headcount: {}, nights: ['Tue', 'Thu', 'Sat'], time: 45, spice: 2, adventure: 3, restrictions: [], restrictionsNote: '', dislikes: '', healthConscious: false, equipment: ['Oven', 'Stovetop', 'Cast iron pan', 'Sheet pans'], smokeAlarm: true };
   await p.request.post(BASE + '/api/storage', { data: { key: 'mise:profile-v3', value: JSON.stringify({ profile, favorites: [], setupDone: true, savedAt: new Date().toISOString(), style: 'modern' }) } });
   await p.addStyleTag({ content: '' }).catch(() => {});

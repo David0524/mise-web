@@ -10,7 +10,7 @@ const fs = require("fs");
 const { B, launch, newUser, tab } = require("./harness");
 
 const AXE = fs.readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
-const PUBLIC = ["/", "/login", "/signup", "/pricing", "/privacy", "/terms", "/refunds", "/cookies"];
+const PUBLIC = ["/", "/login", "/pricing", "/forgot", "/reset?token=x", "/auth/consent", "/start", "/privacy", "/terms", "/refunds", "/cookies"];
 const SIZES = { phone: { width: 390, height: 844 }, desktop: { width: 1280, height: 900 } };
 
 async function audit(p, label, out) {
@@ -42,7 +42,7 @@ async function audit(p, label, out) {
   {
     const ctx = await browser.newContext({ viewport: SIZES.phone, serviceWorkers: "block" });
     const p = await ctx.newPage();
-    await p.goto(B + "/signup", { waitUntil: "networkidle" });
+    await p.goto(B + "/login", { waitUntil: "networkidle" });
     await p.keyboard.press("Tab");
     const first = await p.evaluate(() => document.activeElement?.textContent?.trim());
     checks.push({ check: "first Tab is the skip link", ok: first === "Skip to content", got: first });
@@ -52,12 +52,13 @@ async function audit(p, label, out) {
     await p.locator("[aria-label='Cookie choices'] button", { hasText: "Essential only" }).focus();
     await p.keyboard.press("Enter");
     checks.push({ check: "banner dismissed from keyboard", ok: (await p.locator("[aria-label='Cookie choices']").count()) === 0 });
-    // Both consent boxes required: submitting without them doesn't create an account.
-    await p.fill("input[type=email]", `kb${Date.now()}@example.com`);
-    await p.fill("input[type=password]", "password123");
-    await p.keyboard.press("Enter");
-    await p.waitForTimeout(600);
-    checks.push({ check: "signup blocked until boxes ticked", ok: p.url().endsWith("/signup") });
+    // Onboarding account step: sign-up stays disabled until both boxes are ticked.
+    await p.goto(B + "/start", { waitUntil: "networkidle" });
+    await p.evaluate(() => localStorage.setItem("mise:guest:mise:profile-v3", JSON.stringify({ profile: { people: 2, nights: ["Tue"] }, setupDone: true, savedAt: new Date().toISOString() })));
+    await p.reload({ waitUntil: "networkidle" }); await p.waitForTimeout(800);
+    await audit(p, "phone /start account step", found);
+    const createDisabled = await p.locator("button", { hasText: "Create my account" }).isDisabled().catch(() => null);
+    checks.push({ check: "create account disabled until boxes ticked", ok: createDisabled === true, got: createDisabled });
     await ctx.close();
   }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { POLICY_VERSION } from "@/lib/business";
-import { ensureConsentColumns } from "@/lib/consent";
+import { ensureSchema } from "@/lib/schema";
 import {
   hashPassword, createSession, readCredentials, passwordBytes, PASSWORD_MAX_BYTES, EMAIL_RE,
 } from "@/lib/auth";
@@ -41,7 +41,7 @@ export async function POST(req) {
   }
 
   const hash = await hashPassword(password);
-  await ensureConsentColumns();
+  await ensureSchema();
   const { rows } = await query(
     `insert into users (email, password_hash, age_confirmed_at, terms_accepted_at, policy_version)
      values ($1, $2, now(), now(), $3) returning id`,

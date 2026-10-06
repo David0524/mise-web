@@ -19,7 +19,7 @@ export default function Privacy() {
       <h2>What we collect</h2>
       <h3>Information you give us</h3>
       <ul>
-        <li><strong>Account:</strong> your email address and a password. We store only a one-way hash of the password, never the password itself.</li>
+        <li><strong>Account:</strong> your email address and a password, or, if you sign in with Google, Apple or your phone, your account id from that provider, the email it shares with us, or your phone number. We store only a one-way hash of any password, never the password itself.</li>
         <li><strong>Your kitchen profile:</strong> how many people you cook for, which nights, how much time, heat and adventure preferences, the equipment you own, foods you dislike, and any dietary needs or allergies you choose to tell us.</li>
         <li><strong>What you cook:</strong> your weekly plans, shopping lists, recipes, ratings, notes and any photos you add to a rating.</li>
         <li><strong>What you ask Mise:</strong> the questions and change requests you type or dictate.</li>
@@ -89,6 +89,9 @@ export default function Privacy() {
           <tr><td>Database provider</td><td>Storing your account and data</td><td>Everything listed under "What we collect"</td></tr>
           <tr><td>Stripe</td><td>Payments and subscriptions</td><td>Email, payment details, billing address</td></tr>
           <tr><td>Google (Gemini API)</td><td>Generating plans, recipes and answers; voice</td><td>The content of each request</td></tr>
+          <tr><td>Google / Apple sign-in</td><td>Signing in, if you choose it</td><td>Their sign-in request; they tell us your account id and email</td></tr>
+          <tr><td>Twilio</td><td>Texting sign-in codes</td><td>Your phone number</td></tr>
+          <tr><td>Resend</td><td>Password reset emails</td><td>Your email address</td></tr>
           <tr><td>OpenAI / Anthropic</td><td>Only if you add your own key, or for voice if configured</td><td>The content of each request</td></tr>
         </tbody>
       </table>
@@ -140,7 +143,7 @@ export default function Privacy() {
 
       <h2>Emails</h2>
       <p>
-        Mise doesn't send marketing email. Stripe sends payment receipts. If we ever start sending newsletters or
+        Mise doesn't send marketing email. We only email you a password reset link when you ask for one, and Stripe sends payment receipts. If we ever start sending newsletters or
         product updates, they'll be opt-in and every one will include an unsubscribe link.
       </p>
 

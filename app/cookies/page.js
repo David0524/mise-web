@@ -17,6 +17,8 @@ export default function Cookies() {
           <tr><td><code>mise_session</code></td><td>Cookie (essential)</td><td>Keeps you signed in. Can't be read by scripts on the page.</td><td>30 days, or until you sign out</td></tr>
           <tr><td><code>mise:consent-v1</code></td><td>Browser storage (essential)</td><td>Remembers your answer to the cookie banner.</td><td>Until you clear it</td></tr>
           <tr><td><code>mise:byok-v1</code></td><td>Browser storage (essential, only if used)</td><td>Your own AI key, if you add one. Never sent to our database.</td><td>Until you remove it</td></tr>
+          <tr><td><code>mise:guest:*</code></td><td>Browser storage (essential)</td><td>Your kitchen setup while you're getting started, before you've made an account. Moved to your account and deleted from the browser when you sign up.</td><td>Until you sign up or clear it</td></tr>
+          <tr><td><code>mise_oauth_*</code>, <code>mise_pending</code></td><td>Cookie (essential)</td><td>Keeps a Google, Apple or phone sign-in secure while it completes.</td><td>10 minutes</td></tr>
           <tr><td>App files cache</td><td>Service worker (essential)</td><td>Keeps the app icon and install details so Mise can be added to your home screen. Pages and your data are never cached.</td><td>Replaced on each update</td></tr>
         </tbody>
       </table>

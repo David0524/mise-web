@@ -32,9 +32,13 @@ export async function POST(req) {
     );
     const row = rows[0];
     if (!row) { await clearSession(); return NextResponse.json({ ok: true }); }
-    if (!password || !(await verifyPassword(password, row.password_hash))) {
+    // Google / Apple / phone accounts have no password: they type DELETE instead.
+    const confirmed = row.password_hash
+      ? !!password && (await verifyPassword(password, row.password_hash))
+      : body?.confirm === "DELETE";
+    if (!confirmed) {
       recordLoginFailure(keys);
-      return NextResponse.json({ error: "That password isn't right." }, { status: 401 });
+      return NextResponse.json({ error: row.password_hash ? "That password isn't right." : "Type DELETE to confirm." }, { status: 401 });
     }
     clearLoginFailures(keys);
 
