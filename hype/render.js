@@ -5,7 +5,9 @@ const { chromium } = require('/opt/node22/lib/node_modules/@playwright/mcp/node_
 const { spawn } = require('child_process');
 const FPS = 60, SUB = 4, DUR = 54, N = FPS * DUR;
 const k = +process.argv[2], n = +process.argv[3];
-const f0 = Math.floor(k * N / n), f1 = Math.floor((k + 1) * N / n);
+// optional FROM/TO (frame numbers) re-renders only part of the film
+const A0 = +(process.env.FROM || 0), A1 = +(process.env.TO || N);
+const f0 = A0 + Math.floor(k * (A1 - A0) / n), f1 = A0 + Math.floor((k + 1) * (A1 - A0) / n);
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
   const p = await b.newPage({ viewport: { width: 1920, height: 1080 } });
@@ -14,7 +16,7 @@ const f0 = Math.floor(k * N / n), f1 = Math.floor((k + 1) * N / n);
   await p.evaluate(() => window.ready);
   const ff = spawn('ffmpeg', ['-v', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS * SUB), '-c:v', 'mjpeg', '-i', '-',
     '-vf', `tmix=frames=${SUB},select='eq(mod(n\\,${SUB})\\,${SUB - 1})',setpts=N/${FPS}/TB`, '-r', String(FPS),
-    '-c:v', 'libx264', '-crf', '14', '-preset', 'medium', '-pix_fmt', 'yuv420p', `render/seg_${k}.mp4`], { stdio: ['pipe', 'inherit', 'inherit'] });
+    '-c:v', 'libx264', '-crf', '14', '-preset', 'medium', '-pix_fmt', 'yuv420p', `render/${process.env.PREFIX || 'seg'}_${k}.mp4`], { stdio: ['pipe', 'inherit', 'inherit'] });
   const t0 = Date.now();
   for (let f = f0; f < f1; f++) {
     for (let j = 0; j < SUB; j++) {

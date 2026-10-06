@@ -816,16 +816,18 @@ function v2Track(tc) {
   const a = p[clamp(i, 0, p.length - 1)], b = p[clamp(i + 1, 0, p.length - 1)];
   return [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
 }
-function kitchenPhone(t) {
-  const x = Math.max(0, t - B(84)), slow = B(87.6) - B(84);
-  const tc = V2_IN + Math.min(x, slow) + Math.max(0, x - slow) * .35;
-  const [dx, dy] = v2Track(tc);
-  return { x: PH.x + dx, y: PH.y + dy, w: PH.w, h: PH.h, rot: PH.rot, tc };
+/* The counter is a still plate (one sharp frame of the marble clip): the
+   handheld footage, slowed to last, stepped visibly and the phone pinned to it
+   jittered. A still table under a smooth camera move reads as steadier and
+   more real. The phone sits where the clip's own track put it at that frame. */
+function kitchenPhone() {
+  const [dx, dy] = v2Track(V2_IN);
+  return { x: PH.x + dx, y: PH.y + dy, w: PH.w, h: PH.h, rot: PH.rot };
 }
 scene(84, 96, (t) => {
   const b = t / BEAT;
   const P = kitchenPhone(t);
-  let html = `<canvas class="a" data-vid="v2" data-t="${P.tc}" style="left:0;top:0;width:${W}px;height:${H}px"></canvas>`;
+  let html = `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">${svgCover(IMG("marble-plate"), 0, 0, W, H)}</svg>`;
   const shrink = io(seg(t, B(84), B(84.8)));
   const cx = P.x + P.w / 2, cy = P.y + P.h / 2;
   if (shrink < 1) {
@@ -897,10 +899,12 @@ function camera(t) {
     const fx = r[0] + r[2] / 2, fy = r[1] + r[3] / 2;
     return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
   }
-  if (b >= 87.6 && b < 96) {
-    // a long, decelerating push-in on Mise: fast at first, still drifting at the cut
+  if (b >= 84 && b < 96) {
+    // a slow drift over the counter from the start, then a long, decelerating
+    // push-in on Mise: fast at first, still drifting at the cut
     const k = Math.sin(Math.PI / 2 * seg(t, B(87.6), B(96))) ** 1.6, P = kitchenPhone(t);
-    const s = lerp(1, H / (P.h + 40) * 1.06, k), fx = P.x + P.w / 2, fy = P.y + P.h / 2;
+    const drift = 1 + .035 * seg(t, B(84), B(96));
+    const s = lerp(1, H / (P.h + 40) * 1.06, k) * drift, fx = P.x + P.w / 2, fy = P.y + P.h / 2;
     return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
   }
   return { s: 1, x: 0, y: 0 };
@@ -948,7 +952,7 @@ async function drawVideos(root) {
     c.getContext("2d").drawImage(v, (w - v.videoWidth * s) / 2, (h - v.videoHeight * s) / 2, v.videoWidth * s, v.videoHeight * s);
   }
 }
-const ALL_IMG = ["p01-grainbowl","p02-noodles","p03-castiron","p04-roastveg","p05-sheetpan","p06-steak-cooked","p07-steak-raw","p08-table","p09-pasta","p10-kitchen","p11-herbs","p12-soup","p13-cabbage"];
+const ALL_IMG = ["marble-plate", "p01-grainbowl","p02-noodles","p03-castiron","p04-roastveg","p05-sheetpan","p06-steak-cooked","p07-steak-raw","p08-table","p09-pasta","p10-kitchen","p11-herbs","p12-soup","p13-cabbage"];
 window.ready = Promise.all(ALL_IMG.map((n) => preload(IMG(n))))
   .then(() => Promise.all(['800 100px Archivo', '600 20px Geist', '700 20px Nunito', 'italic 600 20px Nunito'].map((f) => document.fonts.load(f))))
   .then(loadVideos);

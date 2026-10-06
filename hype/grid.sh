@@ -1,5 +1,6 @@
 #!/bin/bash
 # grid.sh name "t1,t2,t3,t4" → stills of those beats tiled 2x2 into scratch/name.png
+curl -s -o /dev/null localhost:8123/serve.js || { (nohup node "$(dirname "$0")/serve.js" >/dev/null 2>&1 &); sleep 1; }
 S=/tmp/claude-0/-home-user-mise-web/4c6135d7-dafc-52ee-8f7c-fde55f386cd2/scratchpad
 args=""; i=0
 for b in ${2//,/ }; do t=$(python3 -c "print($b*0.5)"); args="$args,$t:g$i"; i=$((i+1)); done
