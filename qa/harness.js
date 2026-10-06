@@ -30,7 +30,7 @@ async function newUser(browser, profile = {}) {
     p.log.push({ status: r.status(), prompt: req?.messages?.at(-1)?.content || "", tier: req?.tier, answer: text });
   });
   const email = `qa${Date.now()}${Math.floor(Math.random() * 1e4)}@example.com`;
-  await p.request.post(B + "/api/auth/signup", { data: { email, password: "password123", ageConfirmed: true, termsAccepted: true } });
+  await p.request.post(B + "/api/auth/signup", { data: { email, password: "Kitchen-qa-2026", ageConfirmed: true, termsAccepted: true } });
   // The paywall applies to everyone now; the test account gets in with the access code.
   await p.request.post(B + "/api/billing/redeem", { data: { code: "VIP26" } });
   const base = {

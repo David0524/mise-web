@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { POLICY_VERSION } from "@/lib/business";
 import { ensureSchema } from "@/lib/schema";
+import { checkEmail, passwordError } from "@/lib/credentials";
 import {
-  hashPassword, createSession, readCredentials, passwordBytes, PASSWORD_MAX_BYTES, EMAIL_RE,
+  hashPassword, createSession, readCredentials,
 } from "@/lib/auth";
 
 export async function POST(req) {
@@ -19,21 +20,11 @@ export async function POST(req) {
     );
   }
 
-  if (!email || !password || password.length < 8 || !password.trim()) {
-    return NextResponse.json(
-      { error: "Enter an email and a password of at least 8 characters." },
-      { status: 400 }
-    );
-  }
-  if (email.length > 254 || !EMAIL_RE.test(email)) {
-    return NextResponse.json({ error: "That doesn't look like an email address." }, { status: 400 });
-  }
-  if (passwordBytes(password) > PASSWORD_MAX_BYTES) {
-    return NextResponse.json(
-      { error: "That password is too long — keep it under 72 characters (fewer if it uses emoji)." },
-      { status: 400 }
-    );
-  }
+  // Same rules as the sign-up screen (lib/credentials.js), checked again here.
+  const em = checkEmail(email);
+  if (!em.ok) return NextResponse.json({ error: em.error }, { status: 400 });
+  const pwErr = passwordError(password, email);
+  if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 });
 
   const existing = await query("select id from users where email = $1", [email]);
   if (existing.rows.length) {

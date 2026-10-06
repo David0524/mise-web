@@ -3,10 +3,13 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { S, FilterDefs } from "@/lib/authStyles";
 import SiteFooter from "@/components/SiteFooter";
+import { NewPasswordFields, credentialsReady } from "@/components/CredentialFields";
 
 function ResetForm() {
   const token = useSearchParams().get("token") || "";
   const [pw, setPw] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const ready = credentialsReady({ password: pw, confirm, needEmail: false });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -29,10 +32,10 @@ function ResetForm() {
         <p style={S.sub}>This signs you out on every other device.</p>
         {!token && <p style={S.error}>This link is missing its code. <a href="/forgot" style={S.link}>Ask for a new one</a>.</p>}
         {err && <p style={S.error} role="alert">{err} {/expired|valid/.test(err) && <a href="/forgot" style={S.link}>Get a new link</a>}</p>}
-        <label htmlFor="password" style={S.label}>New password</label>
-        <input id="password" type="password" autoComplete="new-password" minLength={8} required style={S.input} value={pw} onChange={(e) => setPw(e.target.value)} />
-        <p style={{ ...S.foot, textAlign: "left", marginTop: 6 }}>At least 8 characters.</p>
-        <button style={S.btn} disabled={busy || !token}>{busy ? "Saving…" : "Save and sign in"}</button>
+        <div className="rs"><NewPasswordFields idPrefix="rs" password={pw} setPassword={setPw} confirm={confirm} setConfirm={setConfirm} /></div>
+        <style dangerouslySetInnerHTML={{ __html: `.rs .cf label{display:block;font:800 .85rem 'Nunito',system-ui,sans-serif;color:#573C56;margin:16px 0 6px}
+          .rs .cf input{width:100%;padding:.8rem .95rem;border-radius:16px;border:1px solid #8A7D75;background:rgba(255,255,255,.8);font:600 1rem 'Nunito',system-ui,sans-serif;color:#221A15;box-sizing:border-box}` }} />
+        <button style={S.btn} disabled={busy || !token || !ready}>{busy ? "Saving…" : "Save and sign in"}</button>
       </form>
       <SiteFooter />
     </main>
