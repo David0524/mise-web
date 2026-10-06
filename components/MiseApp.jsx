@@ -1597,6 +1597,72 @@ ${bodyHtml}</body></html>`;
   }
 }
 
+/* ------------------------------------------------- printing on iPhone/iPad
+   Saved to the Home Screen (or wrapped as the iOS app), WebKit ignores
+   print() altogether: no dialog, no error, nothing. So there the same document
+   is built as a PDF and handed to the share sheet, which has Print, Save to
+   Files and Messages. jsPDF is only fetched on those devices, ahead of time,
+   because iOS only lets a tap open the share sheet within a moment of it. */
+function isIosApp() {
+  if (typeof window === "undefined") return false;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const installed = navigator.standalone === true || window.matchMedia?.("(display-mode: standalone)").matches
+    || !!window.Capacitor?.isNativePlatform?.();
+  return ios && installed;
+}
+let JsPDF = null;
+function preloadPdf() {
+  if (JsPDF || !isIosApp()) return Promise.resolve(JsPDF);
+  return import("jspdf").then((m) => (JsPDF = m.jsPDF || m.default)).catch(() => null);
+}
+
+/* doc: { title, sub, sections: [{ h, items: [string], kind: "box" | "num" }], notes: [[label, text]] } */
+function buildPdf(doc) {
+  const pdf = new JsPDF({ unit: "pt", format: "letter" });
+  const W = pdf.internal.pageSize.getWidth(), H = pdf.internal.pageSize.getHeight(), M = 54;
+  let y = M;
+  const room = (h) => { if (y + h > H - M) { pdf.addPage(); y = M; } };
+  const text = (str, { size = 11, style = "normal", x = M, w = W - 2 * M, gap = 4, color = 0 } = {}) => {
+    pdf.setFont("helvetica", style); pdf.setFontSize(size); pdf.setTextColor(color);
+    const lines = pdf.splitTextToSize(String(str), w);
+    for (const line of lines) { room(size * 1.3); pdf.text(line, x, y + size); y += size * 1.3; }
+    y += gap;
+  };
+  text(doc.title, { size: 22, style: "bold", gap: 2 });
+  if (doc.sub) text(doc.sub, { size: 11, color: 90, gap: 10 });
+  for (const sec of doc.sections) {
+    room(40); y += 8;
+    text(sec.h, { size: 13, style: "bold", gap: 2 });
+    pdf.setDrawColor(0); pdf.setLineWidth(0.8); pdf.line(M, y, W - M, y); y += 8;
+    sec.items.forEach((it, i) => {
+      room(18);
+      if (sec.kind === "box") { pdf.setLineWidth(0.8); pdf.rect(M, y + 2, 10, 10); }
+      else { pdf.setFont("helvetica", "bold"); pdf.setFontSize(11); pdf.setTextColor(0); pdf.text(`${i + 1}.`, M, y + 11); }
+      text(it, { x: M + 20, w: W - 2 * M - 20, gap: 5 });
+    });
+  }
+  for (const [label, t] of doc.notes || []) { y += 6; text(label, { style: "bold", gap: 0 }); text(t, { gap: 4 }); }
+  return pdf.output("blob");
+}
+
+async function sharePdf(doc) {
+  if (!JsPDF) await preloadPdf();
+  if (!JsPDF) return false;
+  const name = `${doc.title.replace(/[^\w -]+/g, "").trim() || "Mise"}.pdf`;
+  const file = new File([buildPdf(doc)], name, { type: "application/pdf" });
+  try {
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: doc.title }); return true; }
+  } catch (e) {
+    if (e?.name === "AbortError") return true; // they closed the sheet
+  }
+  // No share sheet: open it in the PDF viewer, which has its own share button.
+  const url = URL.createObjectURL(file);
+  const a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return true;
+}
+
 function printShoppingList(shopping, profile) {
   const groups = SECTIONS.map((s) => [s, shopping.filter((i) => i.section === s)]).filter(([, v]) => v.length);
   const body = `<h1>Shopping List</h1>
@@ -1604,6 +1670,14 @@ function printShoppingList(shopping, profile) {
 ${groups.map(([sec, items]) => `<section><h2>${esc(sec)}</h2><ul class="box">${items
     .map((i) => `<li>${esc([i.qty, i.item].filter(Boolean).join(" "))}${Number(i.days) <= 3 ? ` — use by ${esc(daysFromNow(i.days))}` : ""}</li>`)
     .join("")}</ul></section>`).join("")}`;
+  if (isIosApp()) return sharePdf({
+    title: "Shopping List",
+    sub: `For ${profile.people} ${profile.people === 1 ? "person" : "people"} · ${fmtDate(new Date(), { year: "numeric", month: "long", day: "numeric" })}`,
+    sections: groups.map(([sec, items]) => ({
+      h: sec, kind: "box",
+      items: items.map((i) => `${[i.qty, i.item].filter(Boolean).join(" ")}${Number(i.days) <= 3 ? ` (use by ${daysFromNow(i.days)})` : ""}`),
+    })),
+  });
   return printDoc("Shopping List", body);
 }
 
@@ -1616,6 +1690,15 @@ ${(rec.components || []).map((c) => `<section><h2>${esc(c.name || "Ingredients")
     .map((s) => `<li>${esc(s.do)}${s.why ? ` <span class="why">${esc(s.why)}</span>` : ""}</li>`).join("")}</ol></section>
 ${rec.assembly ? `<p><strong>Putting it together.</strong> ${esc(rec.assembly)}</p>` : ""}
 ${rec.seasoning ? `<p><strong>Taste and adjust.</strong> ${esc(rec.seasoning)}</p>` : ""}`;
+  if (isIosApp()) return sharePdf({
+    title: rec.title || "Recipe",
+    sub: [rec.servings, rec.time].filter(Boolean).join(" · "),
+    sections: [
+      ...(rec.components || []).map((c) => ({ h: c.name || "Ingredients", kind: "box", items: c.items || [] })),
+      { h: "Steps", kind: "num", items: (rec.steps || []).map((st) => (st.why ? `${st.do} (${st.why})` : st.do)) },
+    ],
+    notes: [rec.assembly && ["Putting it together.", rec.assembly], rec.seasoning && ["Taste and adjust.", rec.seasoning]].filter(Boolean),
+  });
   return printDoc(rec.title || "Recipe", body);
 }
 
@@ -2063,6 +2146,9 @@ function App() {
      profile they never filled in. This flag only becomes true when setup is
      actually completed. */
   const [setupDone, setSetupDone] = useState(false);
+  // On an installed iPhone/iPad app, Print goes through a PDF; fetch the
+  // builder now so the tap can open the share sheet straight away.
+  useEffect(() => { preloadPdf(); }, []);
   /* A guest who already finished setup (came back, or bounced off a Google
      sign-in with an error) picks up at making the account. */
   useEffect(() => {
