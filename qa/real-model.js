@@ -15,7 +15,7 @@ const path = require("path");
 const h = require("./harness");
 const fake = process.env.MOCK ? require("./fake-model") : null;
 
-const OUT = path.join(__dirname, "out");
+const OUT = process.env.QA_OUT || path.join(__dirname, "out");
 fs.mkdirSync(OUT, { recursive: true });
 
 /* ---------------------------------------------------------------- checks */
