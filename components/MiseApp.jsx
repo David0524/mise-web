@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { guestGet, guestSet } from "@/lib/guest";
 import AuthOptions from "@/components/AuthOptions";
 import ConsentChecks from "@/components/ConsentChecks";
+import { EmailField, NewPasswordFields, credentialsReady } from "@/components/CredentialFields";
 
 /* The one definition of the app's directional daylight, shared with the
    sign-in / sign-up / pricing pages so the app and its front door are lit the
@@ -5556,15 +5557,18 @@ function CreateAccount({ onTour }) {
   const [terms, setTerms] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(() => {
     try { return new URLSearchParams(window.location.search).get("error") || ""; } catch (_) { return ""; }
   });
   const ok = adult && terms;
+  const ready = ok && credentialsReady({ email, password, confirm });
 
   async function submit(e) {
     e.preventDefault();
     if (!ok) { setErr("Tick both boxes above first."); return; }
+    if (!credentialsReady({ email, password, confirm })) { setErr("Check your email and password above."); return; }
     setBusy(true); setErr("");
     try {
       const res = await fetch("/api/auth/signup", {
@@ -5590,11 +5594,9 @@ function CreateAccount({ onTour }) {
           <AuthOptions consent={ok} disabled={!ok} from="/start" />
         </div>
         <form onSubmit={submit} className="acct__form">
-          <label htmlFor="su-email">Email</label>
-          <input id="su-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          <label htmlFor="su-pw">Password</label>
-          <input id="su-pw" type="password" autoComplete="new-password" minLength={8} required placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <Btn wide type="submit" disabled={busy || !ok}>{busy ? "Creating…" : "Create my account"}</Btn>
+          <EmailField id="su-email" value={email} onChange={setEmail} />
+          <NewPasswordFields idPrefix="su" password={password} setPassword={setPassword} confirm={confirm} setConfirm={setConfirm} email={email} />
+          <Btn wide type="submit" disabled={busy || !ready}>{busy ? "Creating…" : "Create my account"}</Btn>
         </form>
         <p className="acct__foot">
           Already have an account? <a href="/login">Sign in</a>
@@ -9111,6 +9113,8 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .acct__hint--left{text-align:left;margin:.3rem 0 .4rem}
 .acct__or{display:flex;align-items:center;gap:.7rem;margin:1.2rem 0 .5rem;font-weight:700;font-size:.85rem;color:var(--muted)}
 .acct__or span{flex:1;height:1px;background:var(--rule-2)}
+.acct__form .cf label{display:block;font-weight:800;font-size:.85rem;color:var(--plum);margin:.7rem 0 .3rem}
+.acct__form .cf input{width:100%;box-sizing:border-box;min-height:48px;border-radius:14px;border:1px solid #8A7D75;padding:0 .85rem;font:700 1rem 'Nunito',system-ui,sans-serif;background:#fff;color:var(--ink)}
 .acct__form label{display:block;font-weight:800;font-size:.85rem;color:var(--plum);margin:.7rem 0 .3rem}
 .acct__form input{width:100%;box-sizing:border-box;min-height:48px;border-radius:14px;border:1px solid #8A7D75;padding:0 .85rem;font:700 1rem 'Nunito',system-ui,sans-serif;background:#fff;color:var(--ink)}
 .acct__form .btn{margin-top:1.1rem}

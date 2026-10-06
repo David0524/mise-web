@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { hashPassword, createSession, passwordBytes, PASSWORD_MAX_BYTES } from "@/lib/auth";
+import { hashPassword, createSession } from "@/lib/auth";
+import { passwordError } from "@/lib/credentials";
 import { ensureSchema } from "@/lib/schema";
 import { sha256b64url } from "@/lib/identity";
 
@@ -11,8 +12,8 @@ export async function POST(req) {
     const body = await req.json().catch(() => ({}));
     const token = typeof body?.token === "string" ? body.token : "";
     const password = typeof body?.password === "string" ? body.password : "";
-    if (password.length < 8 || !password.trim()) return NextResponse.json({ error: "Use at least 8 characters." }, { status: 400 });
-    if (passwordBytes(password) > PASSWORD_MAX_BYTES) return NextResponse.json({ error: "That password is too long — keep it under 72 characters." }, { status: 400 });
+    const pwErr = passwordError(password);
+    if (pwErr) return NextResponse.json({ error: pwErr }, { status: 400 });
     if (!token || token.length > 100) return NextResponse.json({ error: "That reset link isn't valid. Ask for a new one." }, { status: 400 });
 
     await ensureSchema();
