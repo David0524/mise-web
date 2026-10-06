@@ -5,11 +5,11 @@ SR = 48000
 def load(path, a, b):
     raw = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(a), "-t", str(b - a), "-i", path, "-f", "f32le", "-ac", "2", "-ar", str(SR), "-"], capture_output=True).stdout
     return np.frombuffer(raw, np.float32).reshape(-1, 2).copy()
-A = load("assets/music/190.mp3", 7.71, 47.71)
+A = load("assets/music/190.mp3", 7.71, 49.71)
 Bm = load("assets/music/190.mp3", 57.71 - .015, 69.71)
 xf = int(.015 * SR); r = np.linspace(0, 1, xf)[:, None]
 music = np.concatenate([A[:-xf], A[-xf:] * (1 - r) + Bm[:xf] * r, Bm[xf:]])
-N = int(52 * SR); music = np.pad(music, ((0, max(0, N - len(music))), (0, 0)))[:N]
+N = int(54 * SR); music = np.pad(music, ((0, max(0, N - len(music))), (0, 0)))[:N]
 fo = int(2.5 * SR); music[-fo:] *= np.linspace(1, 0, fo)[:, None] ** 1.5
 
 rng = np.random.default_rng(7)
@@ -39,7 +39,7 @@ def stretch(): t = T(.3); f = 160 + 260 * t / .3; return np.sin(2 * np.pi * np.c
 B = lambda b: b * .5
 key = lambda: tick() * .45
 # the demo runs on its own 40-beat clock; map its beats onto the film (same table as WARP in film.html)
-SEGS = [(20, 7, 32, 16), (36, 16, 46, 24), (46, 24, 60, 36), (64, 36, 78, 47.55), (78, 47.55, 79, 48), (79, 48, 80, 49)]
+SEGS = [(20, 7, 36, 19), (40, 19, 50, 27), (50, 27, 64, 39), (68, 39, 82, 50.55), (82, 50.55, 83, 51), (83, 51, 84, 52)]
 def D(d):
     for f0, d0, f1, d1 in SEGS:
         if d0 <= d <= d1 and d1 > d0: return B(f0 + (d - d0) * (f1 - f0) / (d1 - d0))
@@ -50,14 +50,15 @@ cues = [(B(1), whoosh(.9, 400, 2500, .14)), (B(3), pop()), (B(6), click()), (B(6
         (B(11), whoosh(.4, 600, 4000, .12)), (B(12), tick()), (B(13), click()), (B(16), thump()), (B(16.4), pop()),
         (B(20), whoosh(.4, 500, 4000, .14)),
         (D(8.2), click()), *typing(8.6, 11.1, 18), (D(11.6), click()), (D(12), bloop(True)), (D(12.9), pop()),
-        *[(D(13) + i * .08, paper()) for i in range(4)], (D(14), click()), (D(14.5), click()), (D(15.1), click()),
-        (B(32), whoosh(.3, 300, 3000, .1)), (B(36), whoosh(.35, 600, 5000, .12)), (D(17.4), tick()), (D(18), tick()), (D(23.2), click()), (D(24), whoosh(.35, 600, 5000, .12)),
-        (D(25.6), click()), *typing(25.9, 27.6, 12), (D(27.9), pop() * .7), (D(28), whoosh(.4, 300, 3000, .12)), (D(29.4), pop()),
-        *[(D(29.7) + i * .1, paper()) for i in range(3)], (D(33.4), click()), (D(34), whoosh(.35, 300, 3000, .1)), (D(34.3), ding()),
-        (B(60), whoosh(.3, 300, 3000, .1)), (B(64), whoosh(.4, 300, 3000, .14)), (D(37.2), click()), (D(39), click()), (D(39.1), whoosh(.4, 300, 3000, .12)),
-        *typing(39.7, 41.3, 14), (D(41.5), pop() * .7), (D(42.7), pop()), (D(47.3), swell(.4)), (D(48), thump()),
-        (B(80), whoosh(.5, 200, 2000, .12)), (B(81), shutter()), (B(83), shutter()), (B(83.65), pop() * .7),
-        (B(92), thump()), (B(94), pop()), (B(94.8), whoosh(.5, 500, 3000, .12)), (B(95.8), pop() * .7), (B(96.4), ding(1046.5) * .7)]
+        *[(D(13) + i * .08, paper()) for i in range(3)], (D(14), click()), (D(14.05), whoosh(.35, 600, 5000, .14)), (D(14.3), pop()),
+        *[(D(14.4) + i * .1, paper()) for i in range(3)], (D(17), click()), (D(17.5), click()), (D(18.1), click()),
+        (B(36), whoosh(.3, 300, 3000, .1)), (B(40), whoosh(.35, 600, 5000, .12)), (D(20.4), tick()), (D(21), tick()), (D(26.2), click()), (D(27), whoosh(.35, 600, 5000, .12)),
+        (D(28.6), click()), *typing(28.9, 30.6, 12), (D(30.9), pop() * .7), (D(31), whoosh(.4, 300, 3000, .12)), (D(32.4), pop()),
+        *[(D(32.7) + i * .1, paper()) for i in range(3)], (D(36.4), click()), (D(37), whoosh(.35, 300, 3000, .1)), (D(37.3), ding()),
+        (B(64), whoosh(.3, 300, 3000, .1)), (B(68), whoosh(.4, 300, 3000, .14)), (D(40.2), click()), (D(42), click()), (D(42.1), whoosh(.4, 300, 3000, .12)),
+        *typing(42.7, 44.3, 14), (D(44.5), pop() * .7), (D(45.7), pop()), (D(50.3), swell(.4)), (D(51), thump()),
+        (B(84), whoosh(.5, 200, 2000, .12)), (B(85), shutter()), (B(87), shutter()), (B(87.65), pop() * .7),
+        (B(96), thump()), (B(98), pop()), (B(98.8), whoosh(.5, 500, 3000, .12)), (B(99.8), pop() * .7), (B(100.4), ding(1046.5) * .7)]
 fx = np.zeros(N)
 for t0, s in cues:
     i = int(t0 * SR); s = s[:N - i]; fx[i:i + len(s)] += s

@@ -524,69 +524,89 @@ function scrThinking(t) {
     ${[0, 1, 2].map((i) => `<div class="a" style="left:40px;top:${430 + i * 64}px;width:313px;height:48px;border-radius:16px;background:${SUNK};opacity:${.55 + .45 * ((pulse + i * .3) % 1)}"></div>`).join("")}`;
 }
 /* ---------- screen: ideas — Mise's note and four dishes */
-const IDEAS = [["Garlic Butter Steak Bites", "Seared sirloin, garlic, lemon", "20 min"], ["Lemon Herb Chicken", "Crisp skin, roasted lemon", "40 min"],
-  ["Crispy Gnocchi & Greens", "Pan-fried, garlicky spinach", "25 min"], ["Spicy Peanut Noodles", "Chili crisp, scallion", "20 min"]];
-const ADD_AT = [B(14), B(14.5)];
+/* The week's draw: a flavour base they'd never have picked, a vegetable to use
+   across the week and a technique to learn. "Draw again" rolls a new one. */
+const DRAWS = [
+  { base: "Gochujang", veg: "with savoy cabbage", learn: "Learn: a 20-minute quick pickle",
+    note: "Gochujang this week: sweet heat, deep and funky.",
+    dishes: [["Gochujang Butter Noodles", "Glossy, spicy, quick", "TOSSED", "15 min"], ["Crispy Cabbage Pancakes", "Lacy edges, spicy dip", "PAN-FRIED", "25 min"], ["Gochujang Salmon", "With quick pickles", "BROILED", "20 min"]] },
+  { base: "Berbere", veg: "with Brussels sprouts", learn: "Learn: a pan sauce from the fond",
+    note: "Berbere is a warm Ethiopian spice blend. You'd never have picked it, so we'll use it three different ways.",
+    dishes: [["Berbere Steak Bites", "Your sirloin, pan sauce", "SEARED", "20 min"], ["Berbere Red Lentil Stew", "Silky, with a jammy egg", "BRAISED", "40 min"], ["Berbere-Honey Sprouts", "Roasted hard, sticky glaze", "ROASTED", "25 min"]] },
+];
+const REDRAW_AT = B(14), ADD_AT = [B(17), B(17.5)];
 function scrIdeas(t) {
-  const t0 = B(12.9);
+  const t0 = B(12.9), roll = io(seg(t, REDRAW_AT + .05, REDRAW_AT + .35)), t1 = REDRAW_AT + .3;
   const n = ADD_AT.filter((a) => t >= a + .06).length;
-  let h = `${appBar()}${bigTitle("Pick your week", 100, 30)}`;
-  const mk = step(t, t0, 3.2, .75);
-  h += `<div class="a" style="left:18px;top:${150 + (1 - mk) * 30}px;width:357px;display:flex;gap:10px;align-items:flex-start;transform-origin:0 0;transform:scale(${.96 + .04 * mk})">
-    <div style="flex:0 0 auto">${plate(42, "happy")}</div>
-    <div style="background:#fff;border-radius:6px 20px 20px 20px;padding:12px 14px;box-shadow:0 1px 0 ${RULE},0 8px 24px -14px rgba(34,26,21,.25);font:700 16px/1.35 Nunito">
-      <div style="font:900 11px Nunito;letter-spacing:.09em;color:${BRICK};margin-bottom:3px">MISE</div>Your sirloin is the star on Tuesday. The lemon and parsley carry into Thursday, so nothing's wasted.</div></div>`;
-  IDEAS.forEach(([title, blurb, time], i) => {
-    const k = step(t, t0 + .12 + i * .08, 3.2, .8);
-    const added = i < 2 && t >= ADD_AT[i] + .06, pr = i < 2 ? pressOf(t, ADD_AT[i]) : 0;
-    h += card(`<div class="a" style="left:18px;top:16px;width:230px;font:900 18px/1.2 Nunito">${title}</div>
-      <div class="a" style="left:18px;top:42px;width:230px;font:700 14px Nunito;color:${MUTED}">${blurb}</div>
-      <div class="a" style="left:18px;top:66px;font:800 13px Nunito;color:${MUTED}">${time}</div>
-      <div class="a" style="right:14px;top:30px;width:88px;height:40px;border-radius:999px;display:grid;place-items:center;font:900 15px Nunito;transform:scale(${1 - pr * .1});${added ? `background:${INK};color:#fff">Added ✓` : `background:${BRICK};color:#fff">Add`}</div>`,
-      { x: 18, y: 290 + i * 104 + (1 - k) * 50, w: 357, h: 92, extra: `opacity:${clamp(k * 3)}` });
+  let h = `${appBar()}`;
+  // the draw card (the app's own dark "THIS WEEK'S DRAW" card)
+  const ck = step(t, t0, 3.2, .8), pr = pressOf(t, REDRAW_AT);
+  const face = (d, k, ko) => rise(d.base, { x: 18, y: 34, w: 300, h: 36, k, ko, style: "font:900 28px/36px Nunito;letter-spacing:-.01em" })
+    + rise(d.veg, { x: 18, y: 70, w: 300, h: 24, k, ko, style: "font:800 16px/24px Nunito;opacity:.85" })
+    + rise(d.learn, { x: 18, y: 98, w: 320, h: 22, k, ko, style: "font:italic 700 14px/22px Nunito;opacity:.72" });
+  h += `<div class="a" style="left:18px;top:${96 + (1 - ck) * 30}px;width:357px;height:132px;border-radius:22px;background:${NIGHT};color:#fff;overflow:hidden;box-shadow:0 14px 30px -14px rgba(60,63,99,.6)">
+    <div class="a" style="left:18px;top:14px;font:900 11px Nunito;letter-spacing:.1em;color:#F0B49A">THIS WEEK'S DRAW</div>
+    ${t < REDRAW_AT + .2 ? face(DRAWS[0], 1, roll) : ""}${roll > 0 ? face(DRAWS[1], roll, 0) : ""}
+    <div class="a" style="right:14px;top:12px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.16);font:800 12.5px Nunito;transform:scale(${1 - pr * .1})">↻ Draw again</div></div>`;
+  // Mise's note, rewritten for the new draw
+  const d = t < t1 ? DRAWS[0] : DRAWS[1];
+  const mk = t < t1 ? step(t, t0 + .1, 3.2, .75) : step(t, t1 + .2, 3.2, .75);
+  h += `<div class="a" style="left:18px;top:${244 + (1 - mk) * 20}px;width:357px;display:flex;gap:10px;align-items:flex-start;opacity:${clamp(mk * 3)}">
+    <div style="flex:0 0 auto">${plate(40, "happy")}</div>
+    <div style="background:#fff;border-radius:6px 20px 20px 20px;padding:11px 14px;box-shadow:0 1px 0 ${RULE},0 8px 24px -14px rgba(34,26,21,.25);font:700 15.5px/1.35 Nunito">
+      <div style="font:900 11px Nunito;letter-spacing:.09em;color:${BRICK};margin-bottom:3px">MISE</div>${d.note}</div></div>`;
+  // three dishes, each a different format; the old week drops away on a redraw
+  d.dishes.forEach(([title, blurb, fmt, time], i) => {
+    const k = t < t1 ? step(t, t0 + .15 + i * .08, 3.2, .8) * (1 - io(seg(t, REDRAW_AT + .05 + i * .03, REDRAW_AT + .25 + i * .03))) : step(t, t1 + .3 + i * .1, 3.2, .8);
+    const added = t >= t1 && i < 2 && t >= ADD_AT[i] + .06, ap = t >= t1 && i < 2 ? pressOf(t, ADD_AT[i]) : 0;
+    h += card(`<div class="a" style="left:18px;top:14px;width:240px;font:900 17.5px/1.2 Nunito">${title}</div>
+      <div class="a" style="left:18px;top:39px;width:240px;font:700 13.5px Nunito;color:${MUTED}">${blurb}</div>
+      <div class="a" style="left:18px;top:62px;font:900 11.5px Nunito;letter-spacing:.07em;color:${BRICK}">${fmt} <span style="color:${MUTED};letter-spacing:0;font-weight:800">· ${time}</span></div>
+      <div class="a" style="right:14px;top:26px;width:84px;height:38px;border-radius:999px;display:grid;place-items:center;font:900 15px Nunito;transform:scale(${1 - ap * .1});${added ? `background:${INK};color:#fff">Added ✓` : `background:${BRICK};color:#fff">Add`}</div>`,
+      { x: 18, y: 352 + i * 100 + (1 - k) * 40, w: 357, h: 88, extra: `opacity:${clamp(k * 3)}` });
   });
   h += `<div class="a" style="left:0;top:690px;width:${SW}px;height:162px;background:linear-gradient(rgba(250,245,244,0),${PAPER} 40%)"></div>`;
-  h += btn(n ? `Plan my week · ${n} picked` : "Pick a few to plan", { x: 18, y: 730, w: 357, h: 58, bg: n ? BRICK : SUNK, color: n ? "#fff" : MUTED, press: pressOf(t, B(15.1)) });
+  h += btn(n ? `Plan my week · ${n} picked` : "Pick a few to plan", { x: 18, y: 730, w: 357, h: 58, bg: n ? BRICK : SUNK, color: n ? "#fff" : MUTED, press: pressOf(t, B(18.1)) });
   return h;
 }
 /* ---------- screen: shopping list */
-const SHOP = [["PRODUCE"], ["1 bunch", "parsley", "3d"], ["12 oz", "green beans"], ["5 oz", "baby spinach"], ["2", "lemons"],
-  ["PROTEIN"], ["1½ lb", "chicken thighs", "2d"], ["DAIRY"], ["1 stick", "butter"], ["1 wedge", "parmesan"]];
-const TICK_AT = [B(17.4), B(18)];
+const SHOP = [["PRODUCE"], ["1 lb", "Brussels sprouts", "3d"], ["1 bunch", "parsley", "3d"], ["1", "lemon"],
+  ["SPICES & PANTRY"], ["1 jar", "berbere"], ["1 lb", "red lentils"], ["DAIRY & EGGS"], ["1 stick", "butter"], ["6", "eggs"]];
+const TICK_AT = [B(20.4), B(21)];
 function scrShop(t) {
   const ticked = TICK_AT.map((a) => t >= a + .05);
-  const left = 8 - ticked.filter(Boolean).length;
+  const left = 7 - ticked.filter(Boolean).length;
   let h = `${appBar()}${bigTitle("Shopping", 100, 32)}
-    <div class="a" style="left:22px;top:146px;font:800 16px Nunito;color:${MUTED}">${left} of 8 to buy · everything gets used</div>
-    <div class="a" style="left:22px;top:178px;width:349px;height:6px;border-radius:3px;background:${SUNK}"><div style="height:100%;width:${(8 - left) / 8 * 100}%;background:${BRICK};border-radius:3px"></div></div>
+    <div class="a" style="left:22px;top:146px;font:800 16px Nunito;color:${MUTED}">${left} of 7 to buy · everything gets used</div>
+    <div class="a" style="left:22px;top:178px;width:349px;height:6px;border-radius:3px;background:${SUNK}"><div style="height:100%;width:${(7 - left) / 7 * 100}%;background:${BRICK};border-radius:3px"></div></div>
     ${card(`<div class="a" style="left:16px;top:14px;font:900 11px Nunito;letter-spacing:.09em;color:${BRICK}">USE FIRST</div>
-      <div class="a" style="left:16px;top:34px;font:800 16px/1.3 Nunito">Parsley by Friday · chicken by Thursday</div>`, { x: 18, y: 200, w: 357, h: 70, bg: WARNBG })}`;
+      <div class="a" style="left:16px;top:34px;font:800 16px/1.3 Nunito">Sprouts by Thursday · parsley by Friday</div>`, { x: 18, y: 200, w: 357, h: 70, bg: WARNBG })}`;
   let y = 290, ti = 0;
   for (const row of SHOP) {
     if (row.length === 1) { h += `<div class="a" style="left:24px;top:${y + 8}px;font:900 12px Nunito;letter-spacing:.1em;color:${MUTED}">${row[0]}</div>`; y += 34; continue; }
-    const idx = row[1] === "parsley" ? 0 : row[1] === "green beans" ? 1 : -1;
+    const idx = row[1] === "Brussels sprouts" ? 0 : row[1] === "parsley" ? 1 : -1;
     const done = idx >= 0 && ticked[idx], pk = idx >= 0 ? step(t, TICK_AT[idx], 5, .55) : 0;
     h += `<div class="a" style="left:22px;top:${y}px;width:349px;height:44px;display:flex;align-items:center;gap:14px;border-bottom:1px solid ${RULE};color:${done ? MUTED : INK}">
       <div style="width:26px;height:26px;border-radius:9px;border:2px solid ${done ? BRICK : "#CDBFB8"};background:${done ? BRICK : "transparent"};display:grid;place-items:center;color:#fff;font:900 16px Nunito;transform:scale(${done ? .9 + .1 * pk : 1})">${done ? "✓" : ""}</div>
-      <div style="flex:1;font:700 17px Nunito;position:relative"><b style="font-weight:900">${row[0]}</b> ${row[1]}
-        ${done ? `<div class="a" style="left:0;top:50%;height:1.5px;width:${pk * 100}%;max-width:100%;background:${MUTED}"></div>` : ""}</div>
+      <div style="flex:1;font:700 17px Nunito"><span style="position:relative;display:inline-block"><b style="font-weight:900">${row[0]}</b> ${row[1]}
+        ${done ? `<span class="a" style="left:0;top:52%;height:1.5px;width:${pk * 100}%;background:${MUTED}"></span>` : ""}</span></div>
       ${row[2] && !done ? `<span style="font:900 13px Nunito;color:${BRICK}">${row[2]}</span>` : ""}</div>`;
     y += 44;
   }
-  h += btn("Tonight: Steak bites  →", { x: 18, y: 760, w: 357, h: 56, press: pressOf(t, B(23.2)) });
+  h += btn("Tonight: Berbere steak bites  →", { x: 18, y: 760, w: 357, h: 56, press: pressOf(t, B(26.2)) });
   return h;
 }
 /* ---------- screen: recipe, and the change sheet */
-const ING = ["1 lb sirloin, cubed", "3 tbsp butter", "4 cloves garlic, minced", "Handful of parsley", "½ lemon", "Salt and pepper"];
+const ING = ["1 lb sirloin, cubed", "3 tbsp butter", "2 tsp berbere", "½ lb Brussels sprouts, halved", "4 cloves garlic, minced", "½ lemon"];
 const ASK = "Make it dairy-free";
 const OPTS = [["Olive oil + a splash of soy", "Soy brings back the depth butter gave", "Nothing new to buy", true], ["Vegan butter", "Same method, plant-based butter", "One new item"], ["Chimichurri finish", "Skip the baste, spoon herb sauce over", "+5 minutes"]];
-const PICK_AT = B(33.4), APPLY_AT = B(34);
+const PICK_AT = B(36.4), APPLY_AT = B(37);
 function scrRecipe(t) {
   const ap = t >= APPLY_AT;
   const sw = step(t, APPLY_AT, 3.2, .75);           // the ingredient swap
   let h = `${appBar()}<div class="a" style="left:22px;top:98px;font:900 12px Nunito;letter-spacing:.09em;color:${BRICK}">TUESDAY</div>
-    ${bigTitle("Garlic Butter<br>Steak Bites", 118, 32)}
-    <div class="a" style="left:22px;top:196px;font:800 16px Nunito;color:${MUTED}">2 servings · 20 min${ap ? ` · <span style="color:${BRICK}">dairy-free</span>` : ""}</div>
+    ${bigTitle("Berbere<br>Steak Bites", 118, 32)}
+    <div class="a" style="left:22px;top:196px;font:800 16px Nunito;color:${MUTED}">2 servings · 20 min · seared${ap ? ` · <span style="color:${BRICK}">dairy-free</span>` : ""}</div>
     <div class="a" style="left:22px;top:240px;font:900 12px Nunito;letter-spacing:.1em;color:${MUTED}">WHAT YOU NEED</div>`;
   const rows = ap ? ["1 lb sirloin, cubed", "3 tbsp olive oil", "1 tsp soy sauce", ...ING.slice(2)] : ING;
   rows.forEach((r, i) => {
@@ -595,28 +615,28 @@ function scrRecipe(t) {
     if (ap && i === 1) { hi = 1; inner = rise("3 tbsp olive oil", { x: 0, y: 0, w: 300, h: 44, k: sw, style: "font:700 17px/44px Nunito" }) + rise("3 tbsp butter", { x: 0, y: 0, w: 300, h: 44, k: 1, ko: clamp(sw * 1.4), style: `font:700 17px/44px Nunito;text-decoration:line-through;color:${MUTED}` }); }
     if (ap && i === 2) { hi = 1; inner = `<span style="display:inline-block;transform:translateX(${(1 - sw) * 30}px);opacity:${clamp(sw * 2)}">${r}</span>`; }
     if (ap && i > 2) y = 266 + (i - 1 + sw) * 44;
-    const glow = hi ? clamp(step(t, APPLY_AT + .1, 2, .9)) * (1 - seg(t, B(35.4), B(36))) : 0;
+    const glow = hi ? clamp(step(t, APPLY_AT + .1, 2, .9)) * (1 - seg(t, B(38.4), B(39))) : 0;
     h += `<div class="a" style="left:14px;top:${y}px;width:365px;height:44px;border-radius:12px;background:rgba(180,71,34,${.1 * glow});display:flex;align-items:center;gap:12px;padding:0 10px;box-sizing:border-box;font:700 17px Nunito">
       <span style="width:6px;height:6px;border-radius:50%;background:${hi && glow > .05 ? BRICK : "#CDBFB8"};flex:0 0 auto"></span><div style="position:relative;flex:1;height:44px;line-height:44px">${inner}</div></div>`;
   });
   h += btn("Start cooking", { x: 18, y: 600 + (ap ? 44 * sw : 0), w: 170, h: 52, fs: 17 }) + btn("Ask Mise", { x: 198, y: 600 + (ap ? 44 * sw : 0), w: 177, h: 52, bg: "#fff", color: INK, fs: 17 });
   // ask bar
-  const typing = t >= B(25.6);
-  const q = typed(ASK, t, B(25.9), B(27.6));
-  h += `<div class="a" style="left:14px;top:752px;width:365px;height:56px;border-radius:28px;background:#fff;box-shadow:0 0 0 ${typing && t < B(28) ? 2 : 1}px ${typing && t < B(28) ? BRICK : RULE},0 10px 30px -12px rgba(34,26,21,.3);display:flex;align-items:center;gap:10px;padding:0 8px;box-sizing:border-box">
-    ${plate(40)}<span style="flex:1;font:700 16px Nunito;color:${q && t < B(28) ? INK : "#B3A69E"}">${q && t < B(28) ? q : "Ask Mise to change anything…"}${caret(typing && t < B(28))}</span>
-    <div style="width:38px;height:38px;border-radius:50%;background:${q && t < B(28) ? BRICK : SUNK};display:grid;place-items:center;transform:scale(${1 - pressOf(t, B(27.9)) * .12})"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>`;
+  const typing = t >= B(28.6);
+  const q = typed(ASK, t, B(28.9), B(30.6));
+  h += `<div class="a" style="left:14px;top:752px;width:365px;height:56px;border-radius:28px;background:#fff;box-shadow:0 0 0 ${typing && t < B(31) ? 2 : 1}px ${typing && t < B(31) ? BRICK : RULE},0 10px 30px -12px rgba(34,26,21,.3);display:flex;align-items:center;gap:10px;padding:0 8px;box-sizing:border-box">
+    ${plate(40)}<span style="flex:1;font:700 16px Nunito;color:${q && t < B(31) ? INK : "#B3A69E"}">${q && t < B(31) ? q : "Ask Mise to change anything…"}${caret(typing && t < B(31))}</span>
+    <div style="width:38px;height:38px;border-radius:50%;background:${q && t < B(31) ? BRICK : SUNK};display:grid;place-items:center;transform:scale(${1 - pressOf(t, B(30.9)) * .12})"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>`;
   // the sheet: your ask, Mise thinking, her three routes; picking one rewrites the recipe
-  const up = step(t, B(28), 2.6, .8) * (1 - io(seg(t, APPLY_AT - .05, APPLY_AT + .3)));
+  const up = step(t, B(31), 2.6, .8) * (1 - io(seg(t, APPLY_AT - .05, APPLY_AT + .3)));
   if (up > .002) {
     const top = lerp(SH, 250, up);
-    const ans = t >= B(29.4), ak = step(t, B(29.4), 3, .8);
+    const ans = t >= B(32.4), ak = step(t, B(32.4), 3, .8);
     let s = `<div class="a" style="left:${SW / 2 - 20}px;top:8px;width:40px;height:5px;border-radius:3px;background:#D9CDC7"></div>
       <div class="a" style="right:18px;top:26px;max-width:260px;padding:11px 16px;border-radius:20px 20px 6px 20px;background:${INK};color:#fff;font:800 16px Nunito">${ASK}</div>
       <div class="a" style="left:18px;top:80px;display:flex;gap:10px;align-items:flex-start;width:357px">${plate(38, ans ? "idle" : "thinking")}
         <div style="flex:1;position:relative;height:92px;font:700 16px/1.35 Nunito;padding-top:2px">${ans ? rise("The butter does two jobs here: browning and that glossy finish. Three ways to cover both:", { x: 0, y: 0, w: 300, h: 90, k: ak, style: "font:700 16px/1.38 Nunito" }) : `<span style="color:${MUTED}">Working it out…</span>`}</div></div>`;
     if (ans) OPTS.forEach(([l, w, c, best], i) => {
-      const k = step(t, B(29.7) + i * .1, 3.2, .8), pr = best ? pressOf(t, PICK_AT) : 0;
+      const k = step(t, B(32.7) + i * .1, 3.2, .8), pr = best ? pressOf(t, PICK_AT) : 0;
       s += `<div class="a" style="left:18px;top:${190 + i * 96 + (1 - k) * 40}px;width:357px;height:84px;border-radius:18px;background:#fff;box-sizing:border-box;padding:12px 14px;border:${best ? `2px solid ${BRICK}` : `1px solid ${RULE}`};opacity:${clamp(k * 3)};transform:scale(${1 - pr * .04})">
         <div style="font:900 16px Nunito">${l}</div><div style="font:700 13.5px/1.3 Nunito;color:${MUTED};margin-top:3px">${w}</div>
         <div style="font:800 12px Nunito;color:${best ? BRICK : MUTED};margin-top:4px">${c}</div>
@@ -626,7 +646,7 @@ function scrRecipe(t) {
       <div class="a" style="left:0;top:${top}px;width:${SW}px;height:${SH}px;border-radius:30px 30px 0 0;background:${PAPER};box-shadow:0 -10px 40px rgba(34,26,21,.18)">${s}</div>`;
   }
   // Mise's confirmation toast
-  const tk = step(t, APPLY_AT + .25, 3, .75) * (1 - io(seg(t, B(35.6), B(35.95))));
+  const tk = step(t, APPLY_AT + .25, 3, .75) * (1 - io(seg(t, B(38.6), B(38.95))));
   if (tk > .002) h += `<div class="a" style="left:14px;top:${lerp(-90, 56, tk)}px;width:365px;padding:12px 14px;box-sizing:border-box;border-radius:22px;background:${NIGHT};color:#fff;display:flex;gap:12px;align-items:center;box-shadow:0 14px 30px -10px rgba(34,26,21,.4)">
     ${plate(40, "happy")}<div style="font:700 15px/1.3 Nunito">Done. Butter's out, and I took it off your shopping list.</div></div>`;
   return h;
@@ -634,41 +654,43 @@ function scrRecipe(t) {
 /* ---------- screen: cook mode, and asking Mise at the stove */
 const COOK_Q = "How do I know they're done?";
 function scrCook(t) {
-  const run = Math.max(0, t - B(37.2)), left = Math.max(0, 120 - Math.floor(run));
+  const run = Math.max(0, t - B(40.2)), left = Math.max(0, 120 - Math.floor(run));
   const ring = run > 0 ? Math.min(1, run / 120) : 0;
   let h = `<div class="a" style="left:18px;top:60px;padding:8px 14px;border-radius:999px;background:${SUNK};font:800 14px Nunito">Leave</div>
-    <div class="a" style="left:0;top:66px;width:${SW}px;text-align:center;font:900 15px Nunito">Steak Bites</div>
+    <div class="a" style="left:0;top:66px;width:${SW}px;text-align:center;font:900 15px Nunito">Berbere Steak Bites</div>
     <div class="a" style="left:22px;top:118px;font:900 13px Nunito;letter-spacing:.1em;color:${BRICK}">STEP 3 OF 5</div>
     <div class="a" style="left:22px;top:142px;width:349px;height:6px;border-radius:3px;background:${SUNK}"><div style="width:60%;height:100%;border-radius:3px;background:${BRICK}"></div></div>
     <div class="a" style="left:22px;top:172px;width:349px;font:900 31px/1.15 Nunito;letter-spacing:-.015em">Sear in one layer, 2 minutes a side.</div>
-    <div class="a" style="left:22px;top:300px;font:italic 700 17px Nunito;color:${MUTED}">Crowding drops the heat.</div>
-    <svg class="a" style="left:${SW / 2 - 95}px;top:350px" width="190" height="190" viewBox="0 0 190 190">
+    <div class="a" style="left:18px;top:282px;width:357px;padding:11px 14px;box-sizing:border-box;border-radius:16px;background:${WARNBG};border-left:4px solid ${BRICK}">
+      <div style="font:900 11px Nunito;letter-spacing:.09em;color:${BRICK}">WORTH LEARNING</div>
+      <div style="font:700 14.5px/1.3 Nunito;margin-top:3px">Leave the brown bits. In step 4 they become your pan sauce.</div></div>
+    <svg class="a" style="left:${SW / 2 - 95}px;top:372px" width="190" height="190" viewBox="0 0 190 190">
       <circle cx="95" cy="95" r="82" fill="#fff" stroke="${SUNK}" stroke-width="12"/>
       <circle cx="95" cy="95" r="82" fill="none" stroke="${BRICK}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${2 * Math.PI * 82}" stroke-dashoffset="${2 * Math.PI * 82 * (1 - Math.max(.001, ring))}" transform="rotate(-90 95 95)" opacity="${run > 0 ? 1 : 0}"/>
       <text x="95" y="108" text-anchor="middle" font-family="Geist" font-weight="700" font-size="40" fill="${INK}">${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}</text></svg>
-    ${btn(run > 0 ? "Pause timer" : "Start 2 min timer", { x: 96, y: 560, w: 200, h: 48, fs: 16, bg: run > 0 ? SUNK : BRICK, color: run > 0 ? INK : "#fff", press: pressOf(t, B(37.2)) })}
+    ${btn(run > 0 ? "Pause timer" : "Start 2 min timer", { x: 96, y: 580, w: 200, h: 48, fs: 16, bg: run > 0 ? SUNK : BRICK, color: run > 0 ? INK : "#fff", press: pressOf(t, B(40.2)) })}
     ${btn("Back", { x: 18, y: 760, w: 120, h: 54, bg: "#fff", color: INK, fs: 17 })}${btn("Next step", { x: 148, y: 760, w: 227, h: 54, fs: 17 })}
-    <div class="a" style="right:18px;top:680px;display:flex;align-items:center;gap:8px;padding:6px 16px 6px 6px;border-radius:999px;background:${BRICK};color:#fff;font:800 15px Nunito;box-shadow:0 10px 24px -8px rgba(180,71,34,.5);transform:scale(${1 - pressOf(t, B(39)) * .06})">${plate(38)}Stuck? Ask me</div>`;
+    <div class="a" style="right:18px;top:680px;display:flex;align-items:center;gap:8px;padding:6px 16px 6px 6px;border-radius:999px;background:${BRICK};color:#fff;font:800 15px Nunito;box-shadow:0 10px 24px -8px rgba(180,71,34,.5);transform:scale(${1 - pressOf(t, B(42)) * .06})">${plate(38)}Stuck? Ask me</div>`;
   // the stove sheet (the app's dark "at the stove" panel)
-  const up = step(t, B(39.1), 2.6, .8);
+  const up = step(t, B(42.1), 2.6, .8);
   if (up > .002) {
-    const q = typed(COOK_Q, t, B(39.7), B(41.3)), sent = t >= B(41.6), ans = t >= B(42.7), ak = step(t, B(42.7), 3, .8);
+    const q = typed(COOK_Q, t, B(42.7), B(44.3)), sent = t >= B(44.6), ans = t >= B(45.7), ak = step(t, B(45.7), 3, .8);
     let s = `<div class="a" style="left:18px;top:20px;display:flex;align-items:center;gap:12px">${plate(46, ans ? "happy" : sent ? "thinking" : "idle")}
-        <div><div style="font:900 18px Nunito">Mise</div><div style="font:700 13px Nunito;opacity:.7">At the stove · Steak Bites</div></div></div>
+        <div><div style="font:900 18px Nunito">Mise</div><div style="font:700 13px Nunito;opacity:.7">At the stove · Berbere Steak Bites</div></div></div>
       ${sent ? `<div class="a" style="right:18px;top:90px;padding:11px 16px;border-radius:20px 20px 6px 20px;background:rgba(255,255,255,.14);font:800 16px Nunito">${COOK_Q}</div>` : ""}
       ${sent ? `<div class="a" style="left:18px;top:150px;width:357px;padding:16px 18px;box-sizing:border-box;border-radius:6px 22px 22px 22px;background:#fff;color:${INK}">
         ${ans ? `<div style="position:relative;height:108px">${rise("Press one. It should feel like the base of your thumb, or 130°F inside. Pull them now: they keep cooking off the heat.", { x: 0, y: 0, w: 321, h: 108, k: ak, style: "font:800 19px/1.4 Nunito" })}</div>` : `<span style="font:700 16px Nunito;color:${MUTED}">Thinking…</span>`}</div>` : ""}
       <div class="a" style="left:14px;bottom:30px;width:365px;height:54px;border-radius:27px;background:rgba(255,255,255,.12);display:flex;align-items:center;padding:0 18px;box-sizing:border-box;font:700 16px Nunito;color:${q && !sent ? "#fff" : "rgba(255,255,255,.5)"}">
-        <span style="flex:1">${q && !sent ? q : "What's happening in the pan?"}${caret(t >= B(39.6) && !sent)}</span>
-        <div style="width:38px;height:38px;border-radius:50%;background:${q && !sent ? BRICK : "rgba(255,255,255,.15)"};margin-right:-10px;transform:scale(${1 - pressOf(t, B(41.5)) * .12})"></div></div>`;
+        <span style="flex:1">${q && !sent ? q : "What's happening in the pan?"}${caret(t >= B(42.6) && !sent)}</span>
+        <div style="width:38px;height:38px;border-radius:50%;background:${q && !sent ? BRICK : "rgba(255,255,255,.15)"};margin-right:-10px;transform:scale(${1 - pressOf(t, B(44.5)) * .12})"></div></div>`;
     h += `<div class="a" style="left:0;top:0;width:${SW}px;height:${SH}px;background:rgba(34,26,21,${.25 * up})"></div>
       <div class="a" style="left:0;top:${lerp(SH, 300, up)}px;width:${SW}px;height:${SH - 300}px;border-radius:30px 30px 0 0;background:${NIGHT};color:#fff">${s}</div>`;
   }
   return h;
 }
 /* where each tap lands, in screen points: [beat, x, y] */
-const TAPS = [[8.2, 196, 262], [11.6, 196, 758], [14, 316, 340], [14.5, 316, 444], [15.1, 196, 758], [17.4, 35, 324 + 0], [18, 35, 368], [23.2, 196, 788],
-  [25.6, 200, 780], [27.9, 355, 780], [33.4, 196, 280 + 40], [37.2, 196, 584], [39, 300, 700], [41.5, 355, 795]];
+const TAPS = [[8.2, 196, 262], [11.6, 196, 758], [14, 330, 120], [17, 315, 397], [17.5, 315, 497], [18.1, 196, 758], [20.4, 35, 346], [21, 35, 390], [26.2, 196, 788],
+  [28.6, 200, 780], [30.9, 355, 780], [36.4, 196, 280 + 40], [40.2, 196, 604], [42, 300, 700], [44.5, 355, 795]];
 /* the screen at time t, with transitions between screens */
 function screenAt(t) {
   const b = t / BEAT;
@@ -682,15 +704,15 @@ function screenAt(t) {
     const k = io(seg(t, B(11.9), B(12.3))), ok = io(seg(t, B(12.85), B(13.2)));
     h += lay(scrThinking(t), 0, (1 - k) * 60 - ok * 60, `opacity:${k * (1 - ok)};background:transparent`);
   }
-  if (b >= 12.85 && b < 16.4) h += lay(scrIdeas(t), -io(seg(t, B(16), B(16.4))) * SW * .3, 0, `background:${b < 13 ? "transparent" : PAPER}`);
-  if (b >= 16 && b < 24.4) {
-    const inK = io(seg(t, B(16), B(16.4))), ok = io(seg(t, B(24), B(24.4)));
+  if (b >= 12.85 && b < 22.4) h += lay(scrIdeas(t), -io(seg(t, B(19), B(19.4))) * SW * .3, 0, `background:${b < 13 ? "transparent" : PAPER}`);
+  if (b >= 19 && b < 30.4) {
+    const inK = io(seg(t, B(19), B(19.4))), ok = io(seg(t, B(27), B(27.4)));
     h += lay(scrShop(t), (1 - inK) * SW - ok * SW * .3, 0, "box-shadow:-20px 0 40px rgba(34,26,21,.12)");
   }
-  if (b >= 24 && b < 36.6) h += lay(scrRecipe(t), (1 - io(seg(t, B(24), B(24.4)))) * SW, 0, "box-shadow:-20px 0 40px rgba(34,26,21,.12)");
-  if (b >= 36) h += lay(scrCook(t), 0, (1 - step(t, B(36), 2.6, .85)) * SH, "box-shadow:0 -20px 40px rgba(34,26,21,.15)");
+  if (b >= 27 && b < 42.6) h += lay(scrRecipe(t), (1 - io(seg(t, B(27), B(27.4)))) * SW, 0, "box-shadow:-20px 0 40px rgba(34,26,21,.12)");
+  if (b >= 36) h += lay(scrCook(t), 0, (1 - step(t, B(39), 2.6, .85)) * SH, "box-shadow:0 -20px 40px rgba(34,26,21,.15)");
   for (const [tb, x, y] of TAPS) h += touch(t, B(tb), x, y);
-  const dark = b >= 39.3 && b < 48;
+  const dark = b >= 42.3 && b < 51;
   h += `<div class="a" style="left:0;top:0;width:${SW}px;height:54px">${iosStatus(false)}</div>`;
   return h + `<div class="a" style="left:${SW / 2 - 67}px;top:${SH - 13}px;width:134px;height:5px;border-radius:3px;background:${dark ? "rgba(255,255,255,.7)" : INK}"></div>`;
 }
@@ -706,10 +728,10 @@ function iphone(screenHtml, rise = 0) {
 }
 /* the caption on the left */
 const CAPS = [
-  { b0: 7.6, b1: 16, k: "PLAN", h: "Plan the week.", s: "Around what's already in your fridge." },
-  { b0: 16, b1: 24, k: "SHOP", h: "Shop once.", s: "One list. Nothing goes to waste." },
-  { b0: 24, b1: 36, k: "ADAPT", h: "Change anything.", s: "Just ask. Mise rewrites the recipe." },
-  { b0: 36, b1: 47.6, k: "COOK", h: "A chef beside you.", s: "Every step, right at the stove." },
+  { b0: 7.6, b1: 19, k: "PLAN", h: "Never boring.", s: "A new flavor every week, around your fridge." },
+  { b0: 19, b1: 27, k: "SHOP", h: "Shop once.", s: "One list. Nothing goes to waste." },
+  { b0: 27, b1: 39, k: "ADAPT", h: "Change anything.", s: "Just ask. Mise rewrites the recipe." },
+  { b0: 39, b1: 50.6, k: "COOK", h: "A chef beside you.", s: "She teaches you as you cook." },
 ];
 function caption(t, cut = false) {
   let h = "";
@@ -725,9 +747,9 @@ function caption(t, cut = false) {
   return h;
 }
 /* camera: [beat, scale, focus x, focus y in screen points]; focus lands on the phone's centre line */
-const SHOTS = [[7, 1, SW / 2, SH / 2], [8.4, 1.55, 196, 262], [11.3, 1, SW / 2, SH / 2], [13.1, 1.45, 196, 250], [14.2, 1.15, 196, 420], [15.6, 1, SW / 2, SH / 2],
-  [16.6, 1.45, 196, 300], [18.8, 1, SW / 2, SH / 2], [25.3, 1.6, 196, 760], [27.95, 1, SW / 2, SH / 2], [29.5, 1.5, 196, 470], [33, 1.3, 196, 480], [34, 1.55, 196, 360], [35.6, 1, SW / 2, SH / 2],
-  [39.3, 1.5, 196, 560], [44.2, 1.12, SW / 2, SH / 2], [45.6, 1, SW / 2, SH / 2]];
+const SHOTS = [[7, 1, SW / 2, SH / 2], [8.4, 1.55, 196, 262], [11.3, 1, SW / 2, SH / 2], [12.95, 1.45, 196, 175], [14.75, 1.45, 196, 300], [16.3, 1.2, 196, 470], [18.6, 1, SW / 2, SH / 2],
+  [19.6, 1.45, 196, 300], [21.8, 1, SW / 2, SH / 2], [28.3, 1.6, 196, 760], [30.95, 1, SW / 2, SH / 2], [32.5, 1.5, 196, 470], [36, 1.3, 196, 480], [37, 1.55, 196, 360], [38.6, 1, SW / 2, SH / 2],
+  [42.3, 1.5, 196, 560], [47.2, 1.12, SW / 2, SH / 2], [48.6, 1, SW / 2, SH / 2]];
 function demoCam(t) {
   const sp = (j) => springs(t, SHOTS[0][j], SHOTS.slice(1).map((r) => [B(r[0]), r[j], 1.1, .9]));
   const s = sp(1), fx = SX + sp(2) * S, fy = SY + sp(3) * S;
@@ -745,21 +767,21 @@ function demo(t, cut = false) {
 /* The demo was laid out on a 40-beat clock (7 → 48). The film gives it more
    room: it plays slower, and two full-frame cooking shots cut in between
    sections. warp() maps film time → demo time, piecewise. */
-const WARP = [[20, 7], [32, 16], [36, 16], [46, 24], [60, 36], [64, 36], [78, 47.55], [79, 48], [80, 49]];
+const WARP = [[20, 7], [36, 19], [40, 19], [50, 27], [64, 39], [68, 39], [82, 50.55], [83, 51], [84, 52]];
 function warp(t) {
   const b = t / BEAT;
   for (let i = 0; i < WARP.length - 1; i++) {
     const [f0, d0] = WARP[i], [f1, d1] = WARP[i + 1];
     if (b < f1) return B(d0 + (d1 - d0) * clamp((b - f0) / (f1 - f0)));
   }
-  return B(49);
+  return B(52);
 }
 /* cooking, full frame, between demo sections — with a caption */
 const footCap = (t, t0, h1, h2) => rise(h1, { x: 150, y: 700, w: 1600, h: 120, k: out(seg(t, t0 + .1, t0 + .5)), style: "font:800 100px/120px Geist;letter-spacing:-.04em;color:#fff;text-shadow:0 2px 30px rgba(0,0,0,.35)" })
   + rise(h2, { x: 150, y: 826, w: 1600, h: 64, k: out(seg(t, t0 + .3, t0 + .75)), style: "font:500 44px/64px Geist;letter-spacing:-.015em;color:rgba(255,255,255,.88);text-shadow:0 2px 20px rgba(0,0,0,.35)" });
 const shade = `<div class="a" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.5))"></div>`;
-scene(32, 36, (t) => `<canvas class="a" data-vid="v3" data-t="${.2 + (t - B(32)) * .9}" style="left:0;top:0;width:${W}px;height:${H}px;transform:scale(${1.04 - .04 * seg(t, B(32), B(36))});transform-origin:60% 50%"></canvas>${shade}${footCap(t, B(32), "Real food.", "Not another recipe app.")}`);
-scene(60, 64, (t) => `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">${svgCover(SEQ("v4", .3 + (t - B(60)) * .9), 0, 0, W, H)}</svg>${shade}${footCap(t, B(60), "Restaurant-good.", "On a Tuesday.")}`);
+scene(36, 40, (t) => `<canvas class="a" data-vid="v3" data-t="${.2 + (t - B(36)) * .9}" style="left:0;top:0;width:${W}px;height:${H}px;transform:scale(${1.04 - .04 * seg(t, B(36), B(40))});transform-origin:60% 50%"></canvas>${shade}${footCap(t, B(36), "Food you wouldn't", "have thought of. Every single week.")}`);
+scene(64, 68, (t) => `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">${svgCover(SEQ("v4", .3 + (t - B(64)) * .9), 0, 0, W, H)}</svg>${shade}${footCap(t, B(64), "Restaurant-good.", "On a Tuesday.")}`);
 /* meet Mise (16–19): on the drop, Tuesday's steak bites full frame, and her card */
 scene(16, 20.5, (t) => {
   const b = t / BEAT, ok = io(seg(t, B(20), B(20.5)));
@@ -772,19 +794,19 @@ scene(16, 20.5, (t) => {
     ${rise("Your sous chef, right in your pocket.", { x: 150, y: 660, w: 1400, h: 66, k: sk, style: "font:500 46px/66px Geist;letter-spacing:-.015em;color:rgba(255,255,255,.9)" })}</div>`;
   return h;
 });
-scene(20, 80, (t) => {
+scene(20, 84, (t) => {
   const td = warp(t), b = td / BEAT;
-  const fb = t / BEAT, cut = (fb >= 36 && fb < 37) || (fb >= 64 && fb < 65);   // just after a cooking cut
+  const fb = t / BEAT, cut = (fb >= 40 && fb < 41) || (fb >= 68 && fb < 69);   // just after a cooking cut
   let html = `<div class="a" style="inset:0;background:${PAPER}"></div>` + demo(td, cut);
   // flood: a black circle from the phone grows past the corners
-  if (b >= 47.55) {
-    const k = io(seg(td, B(47.55), B(48))), R = lerp(40, Math.hypot(W, H), k);
+  if (b >= 50.55) {
+    const k = io(seg(td, B(50.55), B(51))), R = lerp(40, Math.hypot(W, H), k);
     html += `<div class="a" style="left:${PCX - R}px;top:${PCY - R}px;width:${2 * R}px;height:${2 * R}px;border-radius:50%;background:${INK}"></div>`;
   }
   return html;
 });
 
-/* ---- KITCHEN (beats 80–92): black → the phone on the real counter; the iris
+/* ---- KITCHEN (beats 84–96): black → the phone on the real counter; the iris
    opens onto real cooking; then Mise, right there with you. */
 const PH = { x: 820, y: 280, w: 320, h: 660, rot: -9 };
 const V2_IN = 0.15;
@@ -795,28 +817,28 @@ function v2Track(tc) {
   return [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
 }
 function kitchenPhone(t) {
-  const x = Math.max(0, t - B(80)), slow = B(83.6) - B(80);
+  const x = Math.max(0, t - B(84)), slow = B(87.6) - B(84);
   const tc = V2_IN + Math.min(x, slow) + Math.max(0, x - slow) * .35;
   const [dx, dy] = v2Track(tc);
   return { x: PH.x + dx, y: PH.y + dy, w: PH.w, h: PH.h, rot: PH.rot, tc };
 }
-scene(80, 92, (t) => {
+scene(84, 96, (t) => {
   const b = t / BEAT;
   const P = kitchenPhone(t);
   let html = `<canvas class="a" data-vid="v2" data-t="${P.tc}" style="left:0;top:0;width:${W}px;height:${H}px"></canvas>`;
-  const shrink = io(seg(t, B(80), B(80.8)));
+  const shrink = io(seg(t, B(84), B(84.8)));
   const cx = P.x + P.w / 2, cy = P.y + P.h / 2;
   if (shrink < 1) {
     const w = lerp(W * 1.3, P.w + 28, shrink), h = lerp(H * 1.6, P.h + 28, shrink);
     html += `<div class="a" style="left:${lerp(W / 2, cx, shrink) - w / 2}px;top:${lerp(H / 2, cy, shrink) - h / 2}px;width:${w}px;height:${h}px;border-radius:${lerp(0, 60, shrink)}px;background:${INK};transform:rotate(${P.rot * shrink}deg)"></div>`;
     return html;
   }
-  const open = io(seg(t, B(81), B(81.7))) * (1 - io(seg(t, B(83), B(83.6))));
+  const open = io(seg(t, B(85), B(85.7))) * (1 - io(seg(t, B(87), B(87.6))));
   const R = P.w * .44;
-  const clip = b < 82 ? ["v3", .3 + (t - B(81))] : ["v1", .6 + (t - B(82))];
+  const clip = b < 86 ? ["v3", .3 + (t - B(85))] : ["v1", .6 + (t - B(86))];
   // when the iris has closed: Mise, right there at the counter with you
-  const mk = step(t, B(83.65), 3, .62), bk = step(t, B(84.05), 3, .72);
-  const mise = b < 83.6 ? "" : `<div class="a" style="inset:0;background:${PAPER}"></div>
+  const mk = step(t, B(87.65), 3, .62), bk = step(t, B(88.05), 3, .72);
+  const mise = b < 87.6 ? "" : `<div class="a" style="inset:0;background:${PAPER}"></div>
     <div class="a" style="left:20px;top:64px">${logo(20)}</div>
     <div class="a" style="left:${P.w / 2 - 70}px;top:${P.h * .2}px;transform-origin:50% 100%;transform:scale(${mk})">${plate(140, "happy")}</div>
     <div class="a" style="left:22px;right:22px;top:${P.h * .2 + 162}px;padding:18px 18px;border-radius:22px 22px 22px 22px;background:#fff;box-shadow:0 12px 30px -10px rgba(34,26,21,.28),0 0 0 1px ${RULE};transform-origin:50% 0;transform:scale(${bk})">
@@ -824,7 +846,7 @@ scene(80, 92, (t) => {
       <div style="font:700 19px/1.32 Nunito">Nice knife work. Go a little finer for the garnish — about 3&nbsp;mm.</div></div>
     <div class="a" style="left:22px;right:22px;bottom:30px;height:54px;border-radius:27px;background:#fff;box-shadow:0 0 0 1px ${RULE};display:flex;align-items:center;padding:0 20px;font:600 16px Nunito;color:${MUTED};transform:scale(${bk})">Ask me anything…</div>`;
   const scr = `<div class="a" style="inset:0;background:${INK}"></div>
-    ${b < 83.6 ? `<canvas class="a" data-vid="${clip[0]}" data-t="${clip[1]}" style="left:${P.w / 2 - R}px;top:${P.h / 2 - R}px;width:${2 * R}px;height:${2 * R}px;clip-path:circle(50%)"></canvas>
+    ${b < 87.6 ? `<canvas class="a" data-vid="${clip[0]}" data-t="${clip[1]}" style="left:${P.w / 2 - R}px;top:${P.h / 2 - R}px;width:${2 * R}px;height:${2 * R}px;clip-path:circle(50%)"></canvas>
     <svg class="a" style="left:0;top:0" width="${P.w}" height="${P.h}">
       <defs><clipPath id="kc"><circle cx="${P.w / 2}" cy="${P.h / 2}" r="${R}"/></clipPath></defs>
       <g clip-path="url(#kc)">${iris(P.w / 2, P.h / 2, R, open)}</g></svg>` : mise}`;
@@ -836,32 +858,32 @@ scene(80, 92, (t) => {
 
 const CTA = "Coming soon to iPhone";
 function cta(t) {
-  const k = out(seg(t, B(96.4), B(97))), k2 = out(seg(t, B(96.7), B(97.3)));
+  const k = out(seg(t, B(100.4), B(101))), k2 = out(seg(t, B(100.7), B(101.3)));
   return rise(CTA, { x: 0, y: 760, w: W, h: 60, k, style: `text-align:center;font:600 40px/60px Geist;letter-spacing:-.015em;color:${MUTED}` })
     + `<div class="a" style="left:${W / 2 - 60 * k2}px;top:740px;width:${120 * k2}px;height:3px;border-radius:2px;background:${BRICK}"></div>`;
 }
-/* ---- RETURN (92–104): the phone contracts into the pill; pill → dot; the
+/* ---- RETURN (96–108): the phone contracts into the pill; pill → dot; the
    letters spring back out, and the call to action rises beneath. */
-scene(92, 104, (t) => {
+scene(96, 108, (t) => {
   const b = t / BEAT;
-  if (b >= 97) return wordmark(0, true) + hat(1) + cta(t);
+  if (b >= 101) return wordmark(0, true) + hat(1) + cta(t);
   let html = "";
-  if (b < 94.8) {
+  if (b < 98.8) {
     // phone (as the camera left it: centred, rotated, ×s) → brick pill
-    const ck = step(t, B(92), 2.6, .72), P = kitchenPhone(B(91.99)), s = camera(B(91.99)).s;
+    const ck = step(t, B(96), 2.6, .72), P = kitchenPhone(B(95.99)), s = camera(B(95.99)).s;
     const w0 = (P.w + 28) * s, h0 = (P.h + 28) * s;
-    const back = b >= 94 ? step(t, B(94), 2.8, .8) : 0;      // pill → period
+    const back = b >= 98 ? step(t, B(98), 2.8, .8) : 0;      // pill → period
     const D = wordLayout().dot;
     const pw = lerp(lerp(w0, 760, ck), D.w, back), ph = lerp(lerp(h0, 150, ck), D.h, back);
     const pcx = lerp(W / 2, D.x + D.w / 2, back), pcy = lerp(H / 2, D.y + D.h / 2, back);
     const rr = lerp(lerp(60 * s, 75, ck), D.h * .18, back);
-    const lk = out(seg(t, B(92.3), B(92.8))), ko = io(seg(t, B(93), B(93.5)));
-    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(92), B(92.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
+    const lk = out(seg(t, B(96.3), B(96.8))), ko = io(seg(t, B(97), B(97.5)));
+    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${Math.max(1, pw)}px;height:${Math.max(1, ph)}px;border-radius:${Math.min(rr, ph / 2)}px;background:${mixHex(INK, BRICK, seg(t, B(96), B(96.3)))};transform:rotate(${PH.rot * (1 - ck)}deg);overflow:hidden">
       ${back < .01 ? pillLabel(lk, ko, 1)(pw, ph) : ""}</div>`;
     return html;
   }
-  const k = 1 - step(t, B(94.8), 2.1, .6);
-  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(95.8), 3, .55)) + cta(t);
+  const k = 1 - step(t, B(98.8), 2.1, .6);
+  return wordmark(Math.max(-.08, k), true) + hat(step(t, B(99.8), 3, .55)) + cta(t);
 });
 
 /* ------------------------------------------------------------- camera
@@ -875,9 +897,9 @@ function camera(t) {
     const fx = r[0] + r[2] / 2, fy = r[1] + r[3] / 2;
     return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
   }
-  if (b >= 83.6 && b < 92) {
+  if (b >= 87.6 && b < 96) {
     // a long, decelerating push-in on Mise: fast at first, still drifting at the cut
-    const k = Math.sin(Math.PI / 2 * seg(t, B(83.6), B(92))) ** 1.6, P = kitchenPhone(t);
+    const k = Math.sin(Math.PI / 2 * seg(t, B(87.6), B(96))) ** 1.6, P = kitchenPhone(t);
     const s = lerp(1, H / (P.h + 40) * 1.06, k), fx = P.x + P.w / 2, fy = P.y + P.h / 2;
     return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
   }
