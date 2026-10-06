@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { overLimit } from "@/lib/limits";
 import { requireEntitledUser } from "@/lib/auth";
 import { buildDoctrine } from "@/lib/doctrine";
 import * as anthropic from "@/lib/providers/anthropic";
@@ -75,6 +76,13 @@ export async function POST(req) {
   }
 
   const { messages, tier, maxTokens, sessionContext, userProvider, userKey, docSlices } = body || {};
+  // Calls on the person's own key cost us nothing, so they aren't counted.
+  const limited = userKey ? null : await overLimit(auth.userId, "chat");
+  if (limited) {
+    console.error(`chat reject: rate limited (429)`);
+    return NextResponse.json({ error: "rate_limited", detail: limited.message },
+      { status: 429, headers: { "Retry-After": String(limited.retryAfter) } });
+  }
   if (!Array.isArray(messages) || !messages.length) {
     console.error("chat reject: no messages (400)");
     return NextResponse.json({ error: "messages required" }, { status: 400 });
