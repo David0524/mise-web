@@ -113,6 +113,14 @@ is somewhere else — auth, storage, a specific prompt.
    paste the same env vars into Vercel's project settings, deploy.
    `npm run build` is what Vercel runs.
 
+## Usage limits
+
+Each account can make up to 120 AI calls per 10 minutes and 600 per day, and
+200 voice clips per 10 minutes and 1,500 per day. A heavy planning session is a
+few dozen calls, so these only stop runaway or scripted use. Calls made on a
+person's own API key aren't counted. Change them with `CHAT_LIMIT_10MIN`,
+`CHAT_LIMIT_DAY`, `TTS_LIMIT_10MIN`, `TTS_LIMIT_DAY` (`lib/limits.js`).
+
 ## Checking a deployment
 
 Open `/api/health` on any deployment. It says whether the database answers,

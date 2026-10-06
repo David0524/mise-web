@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireEntitledUser } from "@/lib/auth";
 import { synthesize, ttsProvider } from "@/lib/tts";
+import { overLimit } from "@/lib/limits";
 
 /* Mise reads cook-mode steps aloud. GET says whether a neural voice is
    configured (the client falls back to the phone's own voice if not); POST
@@ -17,6 +18,8 @@ export async function GET() {
 export async function POST(req) {
   const auth = await requireEntitledUser();
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const limited = await overLimit(auth.userId, "tts");
+  if (limited) return NextResponse.json({ error: "rate_limited", detail: limited.message }, { status: 429 });
   let text = "";
   try { text = String((await req.json())?.text || "").trim(); } catch (_) {}
   if (!text) return NextResponse.json({ error: "text required" }, { status: 400 });

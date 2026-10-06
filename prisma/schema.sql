@@ -115,3 +115,12 @@ create table if not exists password_resets (
   used_at    timestamptz
 );
 create index if not exists idx_password_resets_user on password_resets(user_id);
+
+-- Per-user call counts for the AI and voice limits (lib/limits.js).
+create table if not exists api_usage (
+  user_id      uuid not null references users(id) on delete cascade,
+  bucket       text not null,
+  window_start timestamptz not null,
+  count        integer not null default 0,
+  primary key (user_id, bucket, window_start)
+);
