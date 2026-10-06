@@ -133,7 +133,7 @@ let delay = 0;
   await snap('ideas');
   await scrollTo(await yOf(p.locator('.says, .bub--mise').first(), 120), 'ideasScroll');
   await snap('ideasMise');
-  const adds = p.getByRole('button', { name: 'Add it', exact: true });
+  const adds = p.locator('.dish__add:not(.dish__add--on)');
   await tap(adds.first(), 'add1');
   await tap(adds.first(), 'add2');
   await tap(adds.first(), 'add3');
@@ -160,26 +160,20 @@ let delay = 0;
   await snap('recipe');
   await scrollTo(await yOf(p.locator('.comp, .comp__l2').first(), 160), 'recipeScroll');
   await snap('recipeIngredients');
-  const fold = p.getByRole('button', { name: /Want to change something/ });
-  await scrollTo(await yOf(fold, 120), 'toFold');
-  await tap(fold, 'fold'); await snap('foldOpen');
-  await scrollTo(await yOf(p.locator('#ra'), 260), 'toAsk');
+  // the pinned "Ask Mise to change anything…" bar → the change sheet
   await type(p.locator('#ra'), 'Make it dairy-free', 'askType');
   delay = 2200;
-  await tap(p.getByRole('button', { name: 'Ask', exact: true }).last(), 'askSend');
+  await snap('askSend:before');
+  await p.locator('#ra').press('Enter');
   await settle(400); await snap('askThinking');
-  await p.waitForSelector('.opts .opt', { timeout: 20000 }); delay = 0; await settle(800);
+  await p.waitForSelector('.opts .opt', { timeout: 20000 }); delay = 0; await settle(900);
   await snap('options');
-  await scrollTo(await yOf(p.locator('.rchat .bub--mise').last(), 150), 'toOptions');
-  await snap('optionsShown');
   delay = 2200;
   await tap(p.locator('.opts .opt--best').first(), 'pickBest');
   await settle(400); await snap('applyThinking');
-  await p.waitForFunction(() => /Butter's out/.test(document.body.innerText), null, { timeout: 20000 }); delay = 0; await settle(800);
+  await p.waitForSelector('.rtoast', { timeout: 20000 }); delay = 0; await settle(800);
   await snap('applied');
-  await scrollTo(await yOf(p.locator('.rchat .bub--mise').last(), 150), 'toApplied');
-  await snap('appliedSay');
-  await scrollTo(await yOf(p.locator('.comp, .comp__l2').first(), 160), 'toNewIngredients', 60);
+  await p.evaluate(() => window.scrollTo(0, 0)); await settle(300);
   await snap('newIngredients');
   // COOK: cook mode, step 3, ask Mise at the stove
   await p.evaluate(() => window.scrollTo(0, 0)); await settle(300);
@@ -191,7 +185,14 @@ let delay = 0;
   await tap(p.getByRole('button', { name: 'Next step' }), 'next1');
   await tap(p.getByRole('button', { name: 'Next step' }), 'next2');
   await snap('step3');
-  await tap(p.locator('.cbubble'), 'askBubble'); await snap('caskOpen');
+  // the step's own timer is the big ring; moving on docks it at the top
+  const startT = p.locator('.bigtimer__acts .cbtn--hot');
+  if (await startT.count()) {
+    await tap(startT, 'startTimer'); await settle(2200); await snap('timerRunning');
+    await tap(p.getByRole('button', { name: 'Next step' }), 'next3'); await settle(500); await snap('timerDocked');
+    await tap(p.getByRole('button', { name: 'Back', exact: true }), 'back3'); await settle(400);
+  }
+  await tap(p.locator('.cooknav__mise'), 'askBubble'); await snap('caskOpen');
   await type(p.locator('#cq'), 'How do I know they\'re done?', 'cookType');
   delay = 2000;
   await tap(p.locator('.cask__foot .cbtn--hot').first(), 'cookSend');

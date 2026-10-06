@@ -835,13 +835,17 @@ function normalizeRecipe(r) {
 
 /* A dish card. Null entries and title-less dishes are dropped rather than
    rendered as blank cards; a numeric title becomes text. */
+const cap = (t) => { const v = str(t); return v ? v[0].toUpperCase() + v.slice(1) : v; };
+
 function normalizeDish(d) {
   if (!d || typeof d !== "object") return null;
   const title = str(d.title).trim();
   if (!title) return null;
   const spice = Math.max(0, Math.min(4, Math.round(Number(d.spice) || 0)));
   const minutes = Number(d.minutes) > 0 ? Math.round(Number(d.minutes)) : null;
-  return cleanDish({ ...d, title, blurb: str(d.blurb), why: str(d.why), spice, minutes });
+  // "format": one or two words on how it's cooked, shown on the card. Old weeks lack it.
+  const format = str(d.format).trim().toLowerCase().slice(0, 24);
+  return cleanDish({ ...d, title, blurb: str(d.blurb), why: str(d.why), format, spice, minutes });
 }
 
 function normalizeItem(i) {
@@ -3295,7 +3299,7 @@ for every dish — a dish that can't be done in that time doesn't belong on the 
 Respond with ONLY this JSON, no backticks:
 {"check":"the constraint card","say":"",
 "ecosystem":{"aromatics":"the herb-and-aromatic anchor, whatever actually fits — not always cilantro and green onion","protein":"","vegetable":"","flavorSystem":"","wildcard":"","logic":""},
-"dishes":[{"title":"","blurb":"what it is","why":"the specific idea that makes this worth thinking of — not \u0027healthy\u0027 or \u0027quick\u0027","fits":"private check, never displayed","spice":0,"minutes":30}]}`;
+"dishes":[{"title":"","blurb":"what it is","why":"the specific idea that makes this worth thinking of — not \u0027healthy\u0027 or \u0027quick\u0027","format":"how it\u0027s cooked, one or two words: seared, braised, roasted, tossed…","fits":"private check, never displayed","spice":0,"minutes":30}]}`;
 
     try {
       /* 1200, down from 1800.
@@ -3392,7 +3396,7 @@ dishes marked YES untouched.
 ${CHAT_VOICE} That applies to "say". Each "blurb" and "why" 14 words or fewer.
 
 Respond with ONLY this JSON:
-{"say":"","dishes":[{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30,"keep":true}]}
+{"say":"","dishes":[{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","format":"how it\u0027s cooked, one or two words","spice":0,"minutes":30,"keep":true}]}
 
 Return the FULL revised list.`;
 
@@ -3452,7 +3456,7 @@ don't reach for a dish already listed above as recently suggested.
 ${CHAT_VOICE} "why" and "blurb" 14 words or fewer, "say" is truly one short sentence.
 
 Respond with ONLY this JSON:
-{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30,"say":"one short sentence on why this instead"}`;
+{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","format":"how it\u0027s cooked, one or two words","spice":0,"minutes":30,"say":"one short sentence on why this instead"}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
@@ -4289,7 +4293,7 @@ ${CHAT_VOICE} That applies to "say" — just name the through-line, one short se
 and "why" 14 words or fewer.
 
 Respond with ONLY this JSON:
-{"say":"the through-line, one short sentence","dishes":[{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","spice":0,"minutes":30}]}`;
+{"say":"the through-line, one short sentence","dishes":[{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","format":"how it\u0027s cooked, one or two words","spice":0,"minutes":30}]}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
@@ -4895,7 +4899,7 @@ Respond with ONLY this JSON:
       {/* The bubble sat on top of the loading bar. Hidden while the global
           indicator is up — you can't ask her anything mid-request anyway, since
           every control is disabled until it returns. */}
-      {view !== "start" && !(busy && busy !== "mise" && !hasLocalIndicator) && (
+      {view !== "start" && !(busy && busy !== "mise" && !hasLocalIndicator) && !(view === "cook" && cookingId && recipes[cookingId]) && (
         <button
           className={`fab no-print${hasCta ? " fab--overcta" : ""}${fabPhase === "dance" ? " fab--dance" : ""}${fabPhase === "small" ? " fab--small" : ""}`}
           onClick={() => setMiseOpen(true)}
@@ -5509,20 +5513,18 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
               reroll gives a rejection signal the weighting can learn from. */}
           {seed && (
             <div className="seed">
-              <div className="seed__art" aria-hidden="true" />
               <div className="seed__row">
                 <span className="seed__k">This week&apos;s draw</span>
-                <button className="seed__re" onClick={onReroll} disabled={busy}>Draw again</button>
+                <button className="seed__re" onClick={onReroll} disabled={busy}><span aria-hidden="true">↻ </span>Draw again</button>
               </div>
-              <p className="seed__v">
-                {/* Ingredient-led. This used to read "<tradition> · built
-                    around <vegetable>", which announced a cuisine before there
-                    was any food attached to it and made the week feel assigned.
-                    The tradition is still drawn — it quietly widens the model's
-                    range — but it isn't a label the person has to accept. */}
-                <strong>{seed.pantry}</strong> · with <strong>{seed.vegetable}</strong>
-              </p>
-              <p className="seed__t">Something to pick up along the way: {seed.technique}.</p>
+              {/* Ingredient-led. This used to read "<tradition> · built around
+                  <vegetable>", which announced a cuisine before there was any
+                  food attached to it and made the week feel assigned. The
+                  tradition is still drawn — it quietly widens the model's range
+                  — but it isn't a label the person has to accept. */}
+              <p className="seed__v">{cap(seed.pantry)}</p>
+              <p className="seed__veg">with {seed.vegetable}</p>
+              <p className="seed__t">Learn: {seed.technique}</p>
             </div>
           )}
 
@@ -5572,34 +5574,40 @@ function Ideas({ thread, candidates, ecosystem, busy, seed, onReroll, setCandida
       <h2 className="sec-h">Pick the ones you want</h2>
       <div className="cards">
         {candidates.map((c) => (
-          <article key={c.id} className={`dish dish--${c.reaction || "none"}`}>
-            <h3>{c.title}</h3>
-            <p className="dish__b">{c.blurb}</p>
-            <p className="dish__why">{c.why}</p>
-            <p className="dish__meta">
-              {c.minutes ? `About ${c.minutes} minutes` : ""}
-              {c.minutes && c.spice > 0 ? " · " : ""}
-              {c.spice > 0 ? `Heat: ${SPICE[Math.min(4, c.spice)].label.toLowerCase()}` : ""}
-            </p>
-            <div className="dish__acts">
-              <Btn small variant={c.reaction === "yes" ? "good" : "solid"} onClick={() => react(c.id, "yes")}>
-                {c.reaction === "yes" ? "Added" : "Add it"}
-              </Btn>
-              <Btn small variant="ghost" onClick={() => onSwap(c.id)} disabled={!!busy}>
-                Something else
-              </Btn>
-            </div>
-            <div className="dish__more">
-              <button className="linkish" onClick={() => setOpenNote(openNote === c.id ? null : c.id)}>
-                {openNote === c.id ? "Hide" : "Say why"}
-              </button>
-              <button className="linkish" onClick={() => onAskMise(`Tell me more about ${c.title}. Is it right for me this week?`)}>
-                Ask about this
+          <article key={c.id} data-why={c.why} className={`dish dish--${c.reaction || "none"}${openNote === c.id ? " dish--open" : ""}`}>
+            {/* Clean by default: what it is, how it's cooked, how long, and one
+                button. The why, "something else" and "ask about this" are one
+                tap away under More, so nothing was lost — it just isn't shouting. */}
+            <div className="dish__top">
+              <div className="dish__main">
+                <h3>{c.title}</h3>
+                <p className="dish__b">{c.blurb}</p>
+                <p className="dish__meta">
+                  {c.format && <span className="dish__fmt">{c.format}</span>}
+                  {c.format && (c.minutes || c.spice > 0) ? <span aria-hidden="true"> · </span> : null}
+                  {c.minutes ? `${c.minutes} min` : ""}
+                  {c.minutes && c.spice > 0 ? " · " : ""}
+                  {c.spice > 0 ? `${SPICE[Math.min(4, c.spice)].label.toLowerCase()} heat` : ""}
+                </p>
+              </div>
+              <button className={`dish__add${c.reaction === "yes" ? " dish__add--on" : ""}`} onClick={() => react(c.id, "yes")}
+                aria-pressed={c.reaction === "yes"} aria-label={`${c.reaction === "yes" ? "Added" : "Add"} ${c.title}`}>
+                {c.reaction === "yes" ? "Added ✓" : "Add"}
               </button>
             </div>
+            <button className="dish__toggle" onClick={() => setOpenNote(openNote === c.id ? null : c.id)} aria-expanded={openNote === c.id}>
+              {openNote === c.id ? "Less" : "More"}
+            </button>
             {openNote === c.id && (
-              <input className="dish__note" value={c.note} onChange={(e) => note(c.id, e.target.value)}
-                placeholder="Too heavy for a Tuesday" aria-label={`Why, for ${c.title}`} />
+              <div className="dish__x">
+                {c.why && <p className="dish__why">{c.why}</p>}
+                <div className="dish__acts">
+                  <Btn small variant="ghost" onClick={() => onSwap(c.id)} disabled={!!busy}>Something else</Btn>
+                  <Btn small variant="ghost" onClick={() => onAskMise(`Tell me more about ${c.title}. Is it right for me this week?`)}>Ask about this</Btn>
+                </div>
+                <input className="dish__note" value={c.note} onChange={(e) => note(c.id, e.target.value)}
+                  placeholder="Anything to tell Mise? Too heavy for a Tuesday…" aria-label={`A note on ${c.title}`} />
+              </div>
             )}
           </article>
         ))}
@@ -5947,11 +5955,37 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
      much further down — so tapping one looked like it did nothing at all. Ask,
      then take the person to where the reply will appear. */
   const askAndShow = (text) => {
+    if (!text?.trim()) return;
     onAsk(text);
-    setTimeout(() => {
-      negotiateRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
+    setSheetOpen(true);
   };
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [askFocus, setAskFocus] = useState(false);
+  const [toast, setToast] = useState("");
+  const pickedRef = useRef(false);
+  /* Where the current exchange starts: the last thing they asked (not the
+     "Let's do: …" line a pick adds). */
+  const lastAsk = (() => {
+    for (let i = (recipeChat?.length || 0) - 1; i >= 0; i--) {
+      const m = recipeChat[i];
+      if (m.who === "me" && !/^Let's do:/.test(m.text)) return i;
+    }
+    return -1;
+  })();
+  // Any route into a change (the bar, a quick ask, "swap" on an ingredient) opens the sheet.
+  useEffect(() => { if (negotiating) setSheetOpen(true); }, [negotiating]);
+  /* A pick finished: close the sheet over the rewritten recipe and say what
+     changed in a toast — her reply plus any list changes. */
+  useEffect(() => {
+    if (negotiating || !pickedRef.current) return;
+    pickedRef.current = false;
+    const after = [];
+    for (let i = (recipeChat?.length || 0) - 1; i >= 0 && recipeChat[i].who === "mise"; i--) after.unshift(recipeChat[i].text);
+    setSheetOpen(false);
+    if (after.length) setToast(after.join(" "));
+  }, [negotiating, recipeChat]);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 6500); return () => clearTimeout(t); }, [toast]);
+  useEffect(() => { setSheetOpen(false); setToast(""); }, [cookingId]);
   const rec = recipes[cookingId];
 
   /* Coming out of cook mode, land on the rating section rather than the top of a
@@ -6005,11 +6039,38 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
 
       {rec && (
         <>
-          <section className="card">
-            <h2>{rec.title}</h2>
-            <p className="lead">{rec.servings}{rec.servings && rec.time ? " · " : ""}{rec.time}</p>
+          <section className="card rec">
+            {/* Clean header: the night, the dish, the facts. Ingredients come
+                straight after, then the two things you do next. */}
+            {list.find((l) => l.id === cookingId)?.day && (
+              <p className="rec__k">{DAY_FULL[list.find((l) => l.id === cookingId).day]}</p>
+            )}
+            <h2 className="rec__t">{rec.title}</h2>
+            <p className="rec__meta">{[rec.servings, rec.time].filter(Boolean).join(" · ")}</p>
 
-            <div className="row">
+            {!editing && (
+              <>
+                <h3 className="rec__h">What you need</h3>
+                {(rec.components || []).map((c, ci) => (
+                  <div key={ci} className="comp">
+                    {c.name && (rec.components || []).length > 1 && <h4>{c.name}</h4>}
+                    <ul className="comp__l2 rec__ing">
+                      {(c.items || []).map((it, ii) => (
+                        <li key={ii}>
+                          <span>{it}</span>
+                          <button className="swap" onClick={() => onSwap(it)}
+                            aria-label={`Swap ${it}`}>
+                            swap
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </>
+            )}
+
+            <div className="rec__go">
               <Btn variant="hot" onClick={onStartCooking}>Start cooking</Btn>
               <Btn variant="ghost" onClick={onMise}>Ask Mise</Btn>
             </div>
@@ -6067,24 +6128,6 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
 
             {!editing ? (
               <>
-                <h3 className="sec-h">What you need</h3>
-                {(rec.components || []).map((c, ci) => (
-                  <div key={ci} className="comp">
-                    {c.name && <h4>{c.name}</h4>}
-                    <ul className="comp__l2">
-                      {(c.items || []).map((it, ii) => (
-                        <li key={ii}>
-                          <span>{it}</span>
-                          <button className="swap" onClick={() => onSwap(it)}
-                            aria-label={`Swap ${it}`}>
-                            swap
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-
                 <div className="sec-head">
                   <h3 className="sec-h">Steps</h3>
                   <span className="hint">{(rec.steps || []).length} steps · swipe →</span>
@@ -6151,71 +6194,81 @@ function Cook({ candidates, scheduled, chosen, cookingId, setCookingId, recipes,
           </section>
 
           <div ref={negotiateRef} />
-          <Fold
-            title="Want to change something?"
-            note="Swaps, milder, faster — nothing changes until you pick"
-            open={openFold === "change" || !!recipeChat?.length || !!recipeOptions?.length || !!negotiating}
-            onToggle={() => setOpenFold(openFold === "change" ? null : "change")}
-          >
 
-            <div className="grid-2">
-              {["Make it milder", "Make it faster", "Fewer pans to wash", "I don't want to buy something"].map((q) => (
-                <Chip key={q} onClick={() => askAndShow(q === "I don't want to buy something"
-                  ? "There's an ingredient here I don't want to buy just for this. What are my options?"
-                  : q)}>{q}</Chip>
-              ))}
-            </div>
-
-            <div className="field">
-              <label htmlFor="ra">Or say it in your own words</label>
-              <div className="field__row">
-                <input id="ra" name="miseRecipeAsk" type="text" inputMode="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
-                  placeholder="I don't want to buy a pack of buns for one burger"
-                  onKeyDown={(e) => { if (e.key === "Enter" && ask.trim()) { onAsk(ask); setAsk(""); } }} />
-                <Btn small onClick={() => { onAsk(ask); setAsk(""); }} disabled={!ask.trim() || !!busy}>Ask</Btn>
-              </div>
-            </div>
-
-            {negotiating && (
-              <div className="rchat">
-                <div className="says">
-                  <MiseAvatar mood="thinking" size={36} />
-                  <div className="bub bub--mise bub--wait"><Working label="Working it out" /></div>
-                </div>
-              </div>
-            )}
-
-            {recipeChat?.length > 0 && (
-              <div className="rchat">
-                {recipeChat.map((m, i) =>
-                  m.who === "mise" ? (
-                    <div key={i} className="says">
-                      <MiseAvatar mood="idle" size={36} />
-                      <div className="bub bub--mise"><span className="bub__who">Mise</span><p>{m.text}</p></div>
+          {/* Changing the recipe: you ask in the bar pinned at the bottom (or tap
+              a quick ask, or "swap" on an ingredient), and the exchange opens as a
+              sheet over the recipe — your ask, her read on it, and the routes as
+              cards with her pick marked. Picking one closes the sheet; the recipe
+              underneath has already changed, and a toast says what she did. */}
+          {sheetOpen && (lastAsk >= 0 || negotiating) && (
+            <div className="rsheet__wrap" onClick={(e) => { if (e.target === e.currentTarget && !negotiating) setSheetOpen(false); }}>
+              <div className="rsheet" role="dialog" aria-modal="true" aria-label="Change this recipe">
+                <div className="rsheet__grab" aria-hidden="true" />
+                <button className="rsheet__x" onClick={() => setSheetOpen(false)} aria-label="Close">Close</button>
+                <div className="rchat">
+                  {recipeChat.slice(Math.max(0, lastAsk)).map((m, i) =>
+                    m.who === "mise" ? (
+                      <div key={i} className="says">
+                        <MiseAvatar mood="idle" size={40} />
+                        <p className="rsheet__say">{m.text}</p>
+                      </div>
+                    ) : (
+                      <div key={i} className="bub bub--me"><p>{m.text}</p></div>
+                    )
+                  )}
+                  {negotiating && (
+                    <div className="says">
+                      <MiseAvatar mood="thinking" size={40} />
+                      <div className="bub bub--mise bub--wait"><Working label="Working it out" /></div>
                     </div>
-                  ) : (
-                    <div key={i} className="bub bub--me"><span className="bub__who">You</span><p>{m.text}</p></div>
-                  )
+                  )}
+                </div>
+                {recipeOptions?.length > 0 && (
+                  <div className="opts">
+                    {recipeOptions.map((o) => (
+                      <button key={o.id} className={`opt${o.best ? " opt--best" : ""}`}
+                        onClick={() => { pickedRef.current = true; onPickOption(o); }} disabled={!!busy}>
+                        {o.best && <span className="opt__pick">Mise&apos;s pick</span>}
+                        <span className="opt__lab">{o.label}</span>
+                        <span className="opt__what">{o.what}</span>
+                        {o.cost && <span className="opt__cost">{o.cost}</span>}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {recipeOptions?.length > 0 && (
-              <div className="opts">
-                <h3>Pick a route</h3>
-                {recipeOptions.map((o) => (
-                  <button key={o.id} className={`opt${o.best ? " opt--best" : ""}`}
-                    onClick={() => onPickOption(o)} disabled={!!busy}>
-                    <span className="opt__lab">
-                      {o.label}{o.best && <em> · what I'd do</em>}
-                    </span>
-                    <span className="opt__what">{o.what}</span>
-                    {o.cost && <span className="opt__cost">Trade-off: {o.cost}</span>}
-                  </button>
+          {toast && (
+            <div className="rtoast" role="status" onClick={() => setToast("")}>
+              <MiseAvatar mood="happy" size={36} />
+              <p>{toast}</p>
+            </div>
+          )}
+
+          <div className="askbar no-print">
+            {askFocus && !ask && (
+              <div className="askbar__quick">
+                {["Make it milder", "Make it faster", "Fewer pans to wash", "I don't want to buy something"].map((q) => (
+                  <button key={q} className="quick" onMouseDown={(e) => e.preventDefault()} onClick={() => askAndShow(q === "I don't want to buy something"
+                    ? "There's an ingredient here I don't want to buy just for this. What are my options?"
+                    : q)}>{q}</button>
                 ))}
               </div>
             )}
-          </Fold>
+            <div className="askbar__in">
+              <span className="askbar__av"><MiseAvatar mood={negotiating ? "thinking" : "idle"} size={38} /></span>
+              <label htmlFor="ra" className="sr">Ask Mise to change this recipe</label>
+              <input id="ra" name="miseRecipeAsk" type="text" inputMode="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore autoCapitalize="sentences" autoCorrect="on" spellCheck="true" value={ask} onChange={(e) => setAsk(e.target.value)}
+                placeholder="Ask Mise to change anything…" enterKeyHint="send"
+                onFocus={() => setAskFocus(true)} onBlur={() => setAskFocus(false)}
+                onKeyDown={(e) => { if (e.key === "Enter" && ask.trim() && !busy) { askAndShow(ask); setAsk(""); } }} />
+              <button className="askbar__go" onClick={() => { askAndShow(ask); setAsk(""); }} disabled={!ask.trim() || !!busy} aria-label="Ask">
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
 
           <div className="later" ref={ratingRef}>
             <span className="later__tab">After you've eaten</span>
@@ -6304,7 +6357,6 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
   const [phase, setPhase] = useState("prep");     // prep -> steps -> done
   const [idx, setIdx] = useState(0);
   const [prepDone, setPrepDone] = useState({});
-  const [autoAdvance, setAutoAdvance] = useState(false);   // deliberately off: see the note by the checkbox
   const [showAll, setShowAll] = useState(false);
   const [alert, setAlert] = useState(null);
   const [miseOpen, setMiseOpen] = useState(false);
@@ -6330,11 +6382,8 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
     (t) => {
       setAlert({ id: t.id, label: t.label });
       voice.speak(`${t.label} timer is done.`, true);
-      if (autoAdvance && t.stepIndex === idx && idx < steps.length - 1) {
-        setIdx((i) => Math.min(steps.length - 1, i + 1));
-      }
     },
-    [voice, autoAdvance, idx, steps.length]
+    [voice]
   );
 
   const { timers, add, adjust, togglePause, restart, remove, clearDone } = useTimers(onTimerDone);
@@ -6352,7 +6401,10 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
   // Read each step as you arrive on it, and tell the app where we are so Mise
   // can answer about the step in front of you rather than the recipe in general.
   useEffect(() => {
-    if (phase === "steps") sayStep(idx);
+    if (phase !== "steps") return;
+    sayStep(idx);
+    const nx = steps[idx + 1];
+    if (nx) voice.prefetch(`Step ${idx + 2}. ${nx.do}${nx.why ? ` ${nx.why}` : ""}`);
   }, [idx, phase, sayStep]);
 
   useEffect(() => {
@@ -6371,6 +6423,12 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
   };
 
   const durations = step ? parseDurations(`${step.do} ${step.why || ""}`) : [];
+  /* One timer is the step's own: the big ring in the middle. Anything started on
+     another step (or still running when you move on) docks small at the top, so
+     it follows you without taking the room the current step needs. */
+  const mine = phase === "steps" ? timers.find((t) => t.stepIndex === idx) : null;
+  const docked = timers.filter((t) => t !== mine);
+  const suggest = durations[0];
   const lastMise = [...(miseThread || [])].reverse().find((m) => m.who === "mise");
 
   return (
@@ -6395,9 +6453,9 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
       </div>
 
       {/* -------- running timers, pinned so they survive navigation -------- */}
-      {timers.length > 0 && (
-        <div className={`ctimers${openTimer ? " ctimers--open" : ""}`} aria-label="Timers">
-          {timers.map((t) => {
+      {docked.length > 0 && (
+        <div className={`ctimers${openTimer ? " ctimers--open" : ""}`} aria-label="Timers still running">
+          {docked.map((t) => {
             const open = openTimer === t.id;
             return (
               <div key={t.id} className={`ctimer${t.done ? " ctimer--done" : ""}${t.paused ? " ctimer--paused" : ""}${open ? " ctimer--open" : ""}`}>
@@ -6490,48 +6548,56 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
         </div>
       )}
 
-      {/* -------- steps -------- */}
+      {/* -------- steps --------
+          Condensed: where you are, the step, why it matters, and — when the step
+          has a time in it — one big timer. Back and Next live at the bottom. */}
       {phase === "steps" && step && (
-        <div className="cook__body">
+        <div className="cook__body cook__body--step">
           <div className="cook__prog">
             <p className="cook__kicker">Step {idx + 1} of {steps.length}</p>
             <div className="cook__bar"><span style={{ width: `${((idx + 1) / steps.length) * 100}%` }} /></div>
           </div>
 
           <p className="cook__step">{step.do}</p>
-          {step.why && <p className="cook__why">{step.why}</p>}
+          {step.why && (
+            <div className="cook__learn">
+              <span>Worth learning</span>
+              <p>{step.why}</p>
+            </div>
+          )}
 
-          <div className="cook__acts">
-            {voice.supported && (
-              <button className="cbtn" onClick={() => sayStep(idx, true)}>Read it again</button>
-            )}
-            {durations.map((d) => (
-              <button key={d.seconds} className="cbtn cbtn--hot" onClick={() => add(d.label, d.seconds, idx)}>
-                Start {d.label} timer
-              </button>
-            ))}
-            <button className="cbtn" onClick={() => add("5 min", 300, idx)}>+5 min timer</button>
-          </div>
+          {(mine || suggest) && (
+            <div className={`bigtimer${mine?.done ? " bigtimer--done" : ""}${mine?.paused ? " bigtimer--paused" : ""}`}>
+              {(() => {
+                const total = mine ? mine.seconds : suggest.seconds;
+                const left = mine ? mine.remaining : suggest.seconds;
+                const frac = mine ? Math.max(0, Math.min(1, 1 - left / Math.max(1, total))) : 0;
+                const C = 2 * Math.PI * 82;
+                return (
+                  <button className="bigtimer__ring" onClick={() => (mine ? togglePause(mine.id) : add(suggest.label, suggest.seconds, idx))}
+                    aria-label={mine ? `${mine.label} timer, ${mine.done ? "finished" : mine.paused ? "paused" : clockFmt(left) + " left"}. Tap to ${mine.paused ? "resume" : "pause"}.` : `Start a ${suggest.label} timer`}>
+                    <svg viewBox="0 0 190 190" aria-hidden="true">
+                      <circle cx="95" cy="95" r="82" className="bigtimer__track" />
+                      {mine && <circle cx="95" cy="95" r="82" className="bigtimer__arc" strokeDasharray={C} strokeDashoffset={C * (1 - frac)} transform="rotate(-90 95 95)" />}
+                    </svg>
+                    <span className="bigtimer__clock" aria-live={mine?.done ? "polite" : "off"}>{mine?.done ? "Done" : clockFmt(left)}</span>
+                    {mine?.paused && !mine.done && <span className="bigtimer__sub">paused</span>}
+                  </button>
+                );
+              })()}
+              <div className="bigtimer__acts">
+                {!mine && <button className="cbtn cbtn--hot" onClick={() => add(suggest.label, suggest.seconds, idx)}>Start {suggest.label} timer</button>}
+                {mine && !mine.done && <button className="cbtn" onClick={() => togglePause(mine.id)}>{mine.paused ? "Resume" : "Pause"}</button>}
+                {mine && <button className="cbtn" onClick={() => adjust(mine.id, 60)}>+1 min</button>}
+                {mine && <button className="cbtn" onClick={() => remove(mine.id)}>{mine.done ? "Clear" : "Cancel"}</button>}
+              </div>
+            </div>
+          )}
 
-          <div className="cook__nav">
-            <Btn variant="ghost" onClick={() => go(-1)} disabled={idx === 0}>Back</Btn>
-            <Btn onClick={() => go(1)}>{idx === steps.length - 1 ? "Finish" : "Next step"}</Btn>
-          </div>
-
-          <div className="cook__opts">
-            {/* Off by default on purpose. A timer tells you when to go and look,
-                not that the food is ready — advancing automatically teaches cooking
-                by clock, which is exactly the habit the recipes try to break. */}
-            <label className="cook__check">
-              <input type="checkbox" checked={autoAdvance} onChange={() => setAutoAdvance((a) => !a)} />
-              <span>
-                Move on automatically when a timer ends
-                <span className="cook__checknote">Off by default — check the food before you move on.</span>
-              </span>
-            </label>
-            <button className="linkish linkish--light" onClick={() => setShowAll((v) => !v)}>
-              {showAll ? "Hide all steps" : "See all steps"}
-            </button>
+          <div className="cook__minor">
+            {voice.supported && <button className="linkish" onClick={() => sayStep(idx, true)}>Read it again</button>}
+            {!mine && !suggest && <button className="linkish" onClick={() => add("5 min", 300, idx)}>Start a 5 min timer</button>}
+            <button className="linkish" onClick={() => setShowAll((v) => !v)}>{showAll ? "Hide all steps" : "All steps"}</button>
           </div>
 
           {showAll && (
@@ -6546,17 +6612,21 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
             </ol>
           )}
 
+          <div className="cooknav">
+            <div className="cooknav__in">
+              <Btn variant="ghost" onClick={() => go(-1)} disabled={idx === 0}>Back</Btn>
+              {/* Mise lives in the bar rather than floating over the step, so she
+                  never covers the timer or the step on a short screen. */}
+              <button className="cooknav__mise" onClick={() => setMiseOpen(true)} aria-label="Stuck? Ask Mise">
+                <MiseAvatar mood={miseBusy ? "thinking" : "idle"} size={38} />
+                <span>Ask</span>
+              </button>
+              <Btn onClick={() => go(1)}>{idx === steps.length - 1 ? "Finish" : "Next step"}</Btn>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Mise stays a hovering bubble rather than a card buried at the bottom of the
-          step — visible from anywhere, and open it for quick asks or a typed question. */}
-      {phase === "steps" && !miseOpen && (
-        <button className="cbubble" onClick={() => setMiseOpen(true)}>
-          <span className="cbubble__av"><MiseAvatar mood={miseBusy ? "thinking" : "idle"} size={40} /></span>
-          <span className="cbubble__t">Stuck? Ask me</span>
-        </button>
-      )}
 
       {phase === "steps" && miseOpen && (
         <div className="cask" role="dialog" aria-label="Ask Mise">
@@ -7401,6 +7471,7 @@ function clockFmt(sec) {
 /* A chime rather than a sample — no asset to load, works offline. */
 function chime() {
   try {
+    setPlaybackSession();   // so the timer chime isn't silenced by the ringer switch either
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
     const ctx = new Ctx();
@@ -7424,44 +7495,132 @@ function chime() {
   }
 }
 
-/* Speech synthesis, feature-detected. `force` speaks even when voice is off, so
-   "Read it again" always works. */
+/* Mise's voice at the stove.
+
+   Preferred: a neural voice from /api/tts (see lib/tts.js), played through one
+   reused <audio> element. Fallback: the phone's built-in speechSynthesis, when no
+   neural voice is configured or a request fails.
+
+   Why an <audio> element and not speechSynthesis or Web Audio: on iPhone those
+   two follow the ring/silent switch, so with the ringer off Mise went mute. A
+   media element in a "playback" audio session plays regardless — that's what
+   navigator.audioSession (iOS 17+ WebKit) is set to here, and what the native
+   app's AVAudioSession is set to in ios/App/App/AppDelegate.swift.
+
+   iOS also only lets an element play after a user gesture. The first tap in cook
+   mode "primes" the element with a silent clip; after that, swapping its src and
+   playing works from anywhere (a timer firing, arriving on a step).
+
+   `force` speaks even when voice is off, so "Read it again" always works. */
+const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+let ttsAvailable = null;   // null = not asked yet; shared across mounts
+const ttsCache = new Map(); // text -> object URL (a recipe's steps, so small)
+function setPlaybackSession() {
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}
+}
+async function ttsUrl(text, signal) {
+  if (ttsCache.has(text)) return ttsCache.get(text);
+  const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }), signal });
+  if (!r.ok) throw new Error(`tts ${r.status}`);
+  const url = URL.createObjectURL(await r.blob());
+  if (ttsCache.size > 40) { const [k, v] = ttsCache.entries().next().value; URL.revokeObjectURL(v); ttsCache.delete(k); }
+  ttsCache.set(text, url);
+  return url;
+}
 function useSpeech() {
-  const supported = typeof window !== "undefined" && "speechSynthesis" in window;
-  const [on, setOn] = useState(false);
+  const synth = typeof window !== "undefined" && "speechSynthesis" in window;
+  const [neural, setNeural] = useState(ttsAvailable === true);
+  const supported = neural || synth;
+  const [on, setOnState] = useState(false);
+  const audioRef = useRef(null);
+  const primedRef = useRef(false);
+  const abortRef = useRef(null);
+
+  useEffect(() => {
+    if (ttsAvailable !== null) { setNeural(ttsAvailable); return; }
+    fetch("/api/tts").then((r) => r.json()).then((j) => { ttsAvailable = !!j.available; setNeural(ttsAvailable); })
+      .catch(() => { ttsAvailable = false; });
+  }, []);
+
+  const audio = () => {
+    if (!audioRef.current && typeof Audio !== "undefined") {
+      const a = new Audio();
+      a.setAttribute("playsinline", "");
+      a.preload = "auto";
+      audioRef.current = a;
+    }
+    return audioRef.current;
+  };
+  /* Call from inside a tap. Unlocks the element for later, gesture-less plays. */
+  const prime = useCallback(() => {
+    setPlaybackSession();
+    if (primedRef.current) return;
+    const a = audio();
+    if (!a) return;
+    primedRef.current = true;
+    try { a.src = SILENT_WAV; const p = a.play(); p?.catch?.(() => { primedRef.current = false; }); } catch (_) { primedRef.current = false; }
+  }, []);
+  useEffect(() => {
+    const once = () => prime();
+    window.addEventListener("pointerdown", once, { once: true, capture: true });
+    return () => window.removeEventListener("pointerdown", once, { capture: true });
+  }, [prime]);
+
+  const synthSay = (text) => {
+    if (!synth) return;
+    try {
+      /* cancel() is asynchronous — the engine keeps tearing down after the call
+         returns, and speaking straight after clips the first word or two. */
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(String(text));
+      u.rate = 0.92;
+      u.pitch = 1.02;
+      setTimeout(() => {
+        try {
+          if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+          window.speechSynthesis.speak(u);
+        } catch (_) {}
+      }, 120);
+    } catch (_) {}
+  };
+
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+    try { audioRef.current?.pause(); } catch (_) {}
+    if (synth) { try { window.speechSynthesis.cancel(); } catch (_) {} }
+  }, [synth]);
 
   const speak = useCallback(
     (text, force = false) => {
       if (!supported || (!on && !force) || !text) return;
-      try {
-        /* cancel() is asynchronous — the engine keeps tearing down after the
-           call returns. Calling speak() immediately after starts the new
-           utterance mid-teardown, which clips the first word or two. A short
-           gap lets the queue actually drain first. */
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(String(text));
-        u.rate = 0.92;
-        u.pitch = 1.02;
-        setTimeout(() => {
-          try {
-            // Some engines suspend themselves between utterances and need a
-            // nudge, or the first speak() after idle produces nothing.
-            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-            window.speechSynthesis.speak(u);
-          } catch (_) {}
-        }, 120);
-      } catch (_) {}
+      if (force) prime();
+      stop();
+      if (!neural) { synthSay(text); return; }
+      const ctl = new AbortController();
+      abortRef.current = ctl;
+      setPlaybackSession();
+      ttsUrl(String(text), ctl.signal)
+        .then((url) => {
+          if (ctl.signal.aborted) return;
+          const a = audio();
+          a.src = url;
+          return a.play();
+        })
+        .catch((e) => { if (e?.name !== "AbortError" && !ctl.signal.aborted) synthSay(text); });
     },
-    [supported, on]
+    [supported, on, neural, prime, stop]
   );
 
-  const stop = useCallback(() => {
-    if (supported) { try { window.speechSynthesis.cancel(); } catch (_) {} }
-  }, [supported]);
+  /* Fetch a passage ahead of time (the next step) so it starts instantly. */
+  const prefetch = useCallback((text) => {
+    if (neural && on && text) ttsUrl(String(text)).catch(() => {});
+  }, [neural, on]);
 
-  useEffect(() => () => { if (supported) { try { window.speechSynthesis.cancel(); } catch (_) {} } }, [supported]);
+  const setOn = useCallback((v) => { if (v) prime(); setOnState(v); }, [prime]);
 
-  return { supported, on, setOn, speak, stop };
+  useEffect(() => () => stop(), [stop]);
+
+  return { supported, neural, on, setOn, speak, stop, prefetch };
 }
 
 /* Timers live above the step list so they survive navigation — rice keeps going
@@ -8472,31 +8631,93 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   transition:transform .16s cubic-bezier(.3,.8,.4,1), box-shadow .16s ease, border-color .16s ease}
 .dish:hover{border-color:rgba(238,146,101,.7);box-shadow:var(--spec), var(--lift-2);
   transform:translateY(-2px)}
-.dish h3{font-size:1.14em}
+.dish h3{font-size:1.14em;margin:0}
+.dish__top{display:flex;align-items:center;gap:.9rem}
+.dish__main{flex:1;min-width:0}
+.dish__main .dish__b{margin:.2rem 0 0;color:var(--muted);font-weight:700;font-size:.95em}
+.dish__main .dish__meta{margin:.35rem 0 0}
+.dish__fmt{color:var(--brick);font-weight:900;text-transform:uppercase;letter-spacing:.07em;font-size:.92em}
+.dish__add{flex:0 0 auto;min-width:5.4rem;padding:.7rem 1.1rem;border:none;border-radius:999px;background:var(--brick);color:#fff;
+  font-family:'Nunito',sans-serif;font-weight:900;font-size:1em;cursor:pointer;transition:transform .12s}
+.dish__add:active{transform:scale(.94)}
+.dish__add--on{background:var(--ink)}
+.dish__toggle{background:none;border:none;padding:.45rem 0 0;font-family:'Nunito',sans-serif;font-weight:800;font-size:.82em;color:var(--muted);cursor:pointer}
+.dish__x{margin-top:.4rem;animation:bodyIn .16s ease-out}
 .dish--yes{border-color:rgba(47,107,84,.65);background:rgba(214,240,227,.55);
   box-shadow:var(--spec), 0 2px 8px rgba(47,107,84,.14), 0 16px 40px -18px rgba(47,107,84,.5)}
 .dish--no{opacity:.5}
 .dish__b{font-size:1em}
 .dish__why{color:var(--ink-2);font-style:italic}
 .dish__meta{font-family:'Nunito',sans-serif;font-size:.86em;color:var(--blade)}
-.dish__acts{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.7rem}
+.dish__acts{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.5rem}
 .dish__note{margin-top:.5rem}
-.dish__more{display:flex;gap:1rem;flex-wrap:wrap;align-items:center}
 .askmise{display:flex;gap:.85rem;align-items:center}
 .askmise h2{font-size:1.1em}
 .askmise p{margin:.15rem 0 0}
 .rchat{display:flex;flex-direction:column;gap:.6rem;margin-top:1.2rem}
+/* Recipe page */
+.rec__k{margin:0;font-family:'Nunito',sans-serif;font-weight:900;font-size:.74em;letter-spacing:.1em;text-transform:uppercase;color:var(--brick)}
+.rec__t{margin:.15rem 0 0;font-size:1.75em;line-height:1.12}
+.rec__meta{margin:.35rem 0 0;font-family:'Nunito',sans-serif;font-weight:800;color:var(--muted)}
+.rec .rec__h{margin:1.4rem 0 .3rem;font-family:'Nunito',sans-serif;font-size:.74em;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.rec__ing li{border-bottom:none;min-height:40px}
+.rec__ing li > span{position:relative;padding-left:1.1rem;font-weight:700}
+.rec__ing li > span::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:#CDBFB8}
+.rec__ing .swap{opacity:.7}
+.rec__go{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1.2rem}
+.rec__go > *{width:100%}
+/* the pinned ask bar, just above the tab bar */
+.askbar{position:fixed;left:0;right:0;z-index:21;padding:0 .8rem;
+  bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + .55rem)}
+@media(min-width:640px){.askbar{left:50%;right:auto;transform:translateX(-50%);width:min(560px,96vw)}}
+.askbar__in{display:flex;align-items:center;gap:.55rem;padding:.35rem .4rem;border-radius:999px;background:var(--surface);
+  box-shadow:0 0 0 1px var(--rule),0 12px 30px -12px rgba(34,26,21,.35)}
+.askbar__in:focus-within{box-shadow:0 0 0 2px var(--brick),0 12px 30px -12px rgba(34,26,21,.35)}
+.askbar__av{flex:0 0 auto;width:42px;height:42px;border-radius:50%;background:#fff;display:grid;place-items:end center;overflow:hidden;box-shadow:0 0 0 1px var(--rule)}
+.askbar .askbar__in input{flex:1;min-width:0;width:auto;min-height:0;border:none;background:none;outline:none;font-family:'Nunito',sans-serif;font-weight:700;font-size:16px;padding:.5rem 0;margin:0;box-shadow:none;border-radius:0}
+.askbar .askbar__in input::placeholder{color:#A99B93}
+.askbar__go{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:none;background:var(--brick);color:#fff;display:grid;place-items:center;cursor:pointer}
+.askbar__go:disabled{background:var(--sunk);color:#fff;cursor:default}
+.askbar__quick{display:flex;gap:.4rem;overflow-x:auto;padding:0 .1rem .5rem;scrollbar-width:none}
+.askbar__quick::-webkit-scrollbar{display:none}
+.askbar__quick .quick{flex:0 0 auto;white-space:nowrap}
+/* the change sheet */
+.rsheet__wrap{position:fixed;inset:0;z-index:45;background:rgba(34,26,21,.28);display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s ease-out}
+.rsheet{position:relative;width:100%;max-width:560px;max-height:82vh;overflow-y:auto;background:var(--paper);border-radius:28px 28px 0 0;
+  padding:.7rem 1.1rem calc(1.3rem + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(34,26,21,.2);animation:sheetUp .28s cubic-bezier(.2,.9,.25,1.08)}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.rsheet__grab{width:40px;height:5px;border-radius:3px;background:#D9CDC7;margin:0 auto .4rem}
+.rsheet__x{position:absolute;right:.9rem;top:.7rem;background:var(--sunk);border:none;border-radius:999px;padding:.35rem .8rem;font-family:'Nunito',sans-serif;font-weight:800;font-size:.8em;cursor:pointer}
+.rsheet .rchat{margin-top:2.2rem}
+.rsheet .bub--me{align-self:flex-end;background:var(--ink);color:#fff;border-radius:20px 20px 6px 20px;padding:.65rem 1rem;max-width:80%}
+.rsheet .bub--me p{margin:0;font-weight:800}
+.rsheet .says{align-items:flex-start}
+.rsheet__say{margin:.25rem 0 0;font-family:'Nunito',sans-serif;font-weight:700;font-size:1.05em;line-height:1.4}
+.rsheet .opts{margin-top:1.1rem}
+.rsheet .opt{padding:.95rem 1rem;border-radius:18px}
+.rsheet .opt__lab{font-weight:900;font-size:1.12em}
+.rsheet .opt__what{font-size:1em;color:var(--muted);font-weight:600}
+.opt__pick{align-self:flex-end;margin-bottom:-1.4rem;padding:.18rem .6rem;border-radius:999px;background:var(--brick);color:#fff;
+  font-family:'Nunito',sans-serif;font-weight:900;font-size:.68em;letter-spacing:.07em;text-transform:uppercase}
+/* the toast after a change */
+.rtoast{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + .7rem);z-index:46;width:min(520px,calc(100vw - 1.6rem));
+  display:flex;gap:.7rem;align-items:center;padding:.7rem .9rem;border-radius:22px;background:var(--night);color:#fff;
+  box-shadow:0 14px 30px -10px rgba(34,26,21,.45);animation:toastIn .3s cubic-bezier(.2,.9,.25,1.1);cursor:pointer}
+.rtoast p{margin:0;font-family:'Nunito',sans-serif;font-weight:700;font-size:.95em;line-height:1.3}
+@keyframes toastIn{from{transform:translate(-50%,-140%)}to{transform:translate(-50%,0)}}
 .opts{margin-top:1.3rem}
 .opt{display:flex;flex-direction:column;gap:.25rem;width:100%;text-align:left;margin-top:.65rem;
   background:var(--surface);border:1px solid var(--rule-2);border-radius:18px;padding:.8rem 1rem;
   cursor:pointer;color:var(--ink);min-height:52px;transition:border-color .12s ease, transform .12s ease}
 .opt:hover{border-color:var(--brick);transform:translateY(-1px)}
 .opt:active{transform:scale(.98)}
-.opt--best{border-color:rgba(47,107,84,.5);background:linear-gradient(180deg,#F3FAF6,#fff 60%)}
+.opt--best{border:2px solid var(--brick);background:#fff}
 .opt__lab{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.02em}
 .opt__lab em{color:var(--good);font-style:normal;font-weight:600;font-size:.86em}
 .opt__what{font-size:.97em}
-.opt__cost{font-size:.9em;color:var(--blade)}
+.opt__cost{font-size:.86em;font-weight:800;color:var(--muted);font-family:'Nunito',sans-serif}
+.opt--best .opt__cost{color:var(--brick)}
 .comp__l2{list-style:none;padding:0}
 .comp__l2 li{display:flex;justify-content:space-between;align-items:center;gap:.6rem;
   padding:.15rem 0;min-height:44px;border-bottom:1px solid var(--rule)}
@@ -8845,8 +9066,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    strokes, used on recessed wells and the seed card. Inline data URI so it
    costs no request and scales freely. */
 .app[data-style="canvas"] .sec,
-.app[data-style="canvas"] .row2--open,
-.app[data-style="canvas"] .seed{
+.app[data-style="canvas"] .row2--open{
   background-color:var(--sunk);
   background-image:url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' width='14' height='14'>\
@@ -8972,26 +9192,20 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   font-family:'Nunito',sans-serif;font-weight:700;font-size:.86em;color:var(--muted);
   cursor:pointer;text-align:center;border-radius:14px}
 .advlink:hover{color:var(--plum);background:rgba(34,26,21,.04)}
-/* The spice photo sits behind the seed card at low opacity and is masked to
-   fade out toward the text, so the tradition and vegetable stay readable. It's
-   atmosphere, not an illustration of the specific cuisine drawn — 53 traditions
-   can't each have their own photo, and one generic image is honest about that. */
-.seed{position:relative;overflow:hidden;background:var(--glass-strong);border:1px solid var(--rule-2);border-radius:18px;
-  padding:.9rem 1rem;margin-bottom:1rem;box-shadow:var(--spec)}
-.seed__art{position:absolute;inset:0;background-image:url('/img/spices.webp');
-  background-size:cover;background-position:center;opacity:.16;
-  mask-image:linear-gradient(to right,rgba(0,0,0,.9),transparent 78%);
-  -webkit-mask-image:linear-gradient(to right,rgba(0,0,0,.9),transparent 78%);
-  pointer-events:none}
-.seed__row{position:relative;display:flex;justify-content:space-between;align-items:center;gap:.6rem}
-.seed__k{font-family:'Nunito',sans-serif;font-weight:800;font-size:.72em;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--brick)}
-.seed__re{background:none;border:1px solid var(--rule-2);border-radius:999px;
-  padding:.25rem .7rem;font-family:'Nunito',sans-serif;font-weight:700;font-size:.8em;
-  color:var(--plum);cursor:pointer}
+/* The draw is the dark card itself: the flavour base big, the vegetable and the
+   technique under it. No photo behind it — one generic spice shot said less
+   than the words do, and it muddied them. */
+.seed{margin-bottom:1rem}
+.seed__row{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+.seed__k{font-family:'Nunito',sans-serif;font-weight:900;font-size:.72em;letter-spacing:.1em;
+  text-transform:uppercase;color:#F0B49A}
+.seed__re{background:rgba(255,255,255,.14);border:none;border-radius:999px;
+  padding:.38rem .8rem;font-family:'Nunito',sans-serif;font-weight:800;font-size:.8em;
+  color:#fff;cursor:pointer}
 .seed__re:disabled{opacity:.45;cursor:not-allowed}
-.seed__v{position:relative;margin:.45rem 0 0;font-size:1.05em}
-.seed__t{position:relative;margin:.3rem 0 0;font-size:.9em;color:var(--muted);font-style:italic}
+.seed__v{margin:.5rem 0 0;font-family:'Nunito',sans-serif;font-weight:900;font-size:1.75em;line-height:1.1;letter-spacing:-.01em;color:#fff}
+.seed__veg{margin:.25rem 0 0;font-family:'Nunito',sans-serif;font-weight:800;font-size:1em;color:rgba(255,255,255,.86)}
+.seed__t{margin:.35rem 0 0;font-size:.9em;color:rgba(255,255,255,.72);font-style:italic}
 .setg{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:1.1rem}
 .setg__t{background:var(--glass-strong);border:1px solid var(--rule-2);border-radius:16px;
   padding:.75rem .9rem;display:flex;flex-direction:column;gap:.15rem;min-width:0;
@@ -9098,12 +9312,37 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 
 /* The bubble is fixed to the viewport and this row scrolls under it, so the row
    needs its own right-hand gutter rather than relying on the body's padding. */
+/* condensed step screen */
+.cook__body--step{padding:1.1rem 1.15rem 11rem}
+.cook__body--step .cook__prog{margin-bottom:1rem}
+.cook__body--step .cook__step{font-size:1.5em;line-height:1.22;font-weight:800}
+.cook__body--step .cook__step{background:none;border:none;box-shadow:none;padding:0;border-radius:0}
+.cook__learn{margin-top:1rem;padding:.75rem .95rem;border-radius:16px;background:var(--warn-bg);border-left:4px solid var(--brick)}
+.cook__learn span{display:block;font-family:'Nunito',sans-serif;font-weight:900;font-size:.68em;letter-spacing:.1em;text-transform:uppercase;color:var(--brick)}
+.cook__learn p{margin:.2rem 0 0;font-family:'Nunito',sans-serif;font-weight:700;font-size:.98em;color:var(--ink)}
+.bigtimer{display:flex;flex-direction:column;align-items:center;margin-top:1rem}
+.bigtimer__ring{position:relative;width:min(44vw,172px);aspect-ratio:1;border:none;background:none;padding:0;cursor:pointer;display:grid;place-items:center}
+.bigtimer__ring svg{position:absolute;inset:0;width:100%;height:100%}
+.bigtimer__track{fill:#fff;stroke:#EADDD8;stroke-width:12}
+.bigtimer__arc{fill:none;stroke:var(--brick);stroke-width:12;stroke-linecap:round;transition:stroke-dashoffset .5s linear}
+.bigtimer__clock{position:relative;font-family:'Nunito',sans-serif;font-weight:900;font-size:2.3em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.bigtimer__sub{position:absolute;bottom:26%;font-family:'Nunito',sans-serif;font-weight:800;font-size:.8em;color:var(--muted)}
+.bigtimer--done .bigtimer__clock{color:var(--brick)}
+.bigtimer--done .bigtimer__track{fill:#FBEAE8;animation:live 1s infinite}
+.bigtimer--paused .bigtimer__arc{stroke:var(--muted)}
+.bigtimer__acts{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-top:.9rem}
+.bigtimer__acts .cbtn{min-height:46px}
+.cook__minor{display:flex;gap:1.1rem;flex-wrap:wrap;justify-content:center;margin-top:1.1rem}
+.cooknav{position:fixed;left:0;right:0;bottom:0;z-index:26;padding:.6rem .9rem calc(.8rem + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(rgba(250,245,244,0),var(--paper) 35%)}
+.cooknav__in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:1fr auto 1.6fr;gap:.6rem;align-items:center}
+.cooknav__mise{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:64px;height:58px;border:none;border-radius:18px;
+  background:var(--surface);box-shadow:0 0 0 1px var(--rule);cursor:pointer;font-family:'Nunito',sans-serif;font-weight:900;font-size:.72em;color:var(--brick)}
+.cooknav__mise .mise-av{color:var(--ink)}
+.cooknav .btn{min-height:58px;font-size:1.05em;width:100%}
 .cook__opts{margin-top:1.8rem;display:flex;flex-direction:column;gap:.5rem;
   align-items:flex-start;padding-right:11rem}
 @media(max-width:560px){.cook__opts{padding-right:0;padding-bottom:4.5rem}}
-.cook__check{display:flex;gap:.6rem;align-items:center;min-height:48px;cursor:pointer;color:var(--ink-2)}
-.cook__check input{width:26px;height:26px;accent-color:var(--brick)}
-.cook__checknote{display:block;font-size:.86em;color:var(--muted);font-style:italic}
 .linkish--light{color:var(--plum)}
 
 .cook__all{margin:1rem 0 0;padding:0;list-style:none;border-top:1px solid var(--rule)}
@@ -9180,15 +9419,6 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   font-weight:650;cursor:pointer;border-radius:999px}
 
 /* Mise, hovering */
-.cbubble{position:fixed;right:1rem;bottom:1.1rem;z-index:28;display:flex;align-items:center;
-  gap:.6rem;padding:.45rem 1.25rem .45rem .5rem;border:none;border-radius:999px;cursor:pointer;
-  background:linear-gradient(140deg,var(--brick),#8E3417);color:#fff;min-height:62px;
-  font-family:'Nunito',sans-serif;font-weight:700;font-size:1em;
-  box-shadow:0 14px 34px -10px rgba(180,71,34,.75);transition:transform .12s ease}
-.cbubble:hover{transform:translateY(-2px)}
-.cbubble:active{transform:scale(.95)}
-.cbubble__av{display:flex;background:#fff;border-radius:50%;padding:3px}
-.cbubble__av .mise-av{color:var(--ink)}
 
 .cask{position:fixed;left:.6rem;right:.6rem;bottom:.6rem;z-index:28;background:var(--surface);
   border:1px solid var(--rule);border-radius:26px;padding:1.1rem;
