@@ -6799,13 +6799,23 @@ function CookMode({ rec, dish, onExit, onFinish, onAskMise, miseThread, miseBusy
     [steps, voice]
   );
 
+  // While the ingredients are being gathered, get the first two steps ready,
+  // so the voice starts the moment you press start.
+  useEffect(() => {
+    if (phase !== "prep") return;
+    steps.slice(0, 2).forEach((st, i) => voice.prefetch(`Step ${i + 1}. ${st.do}${st.why ? ` ${st.why}` : ""}`));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, steps, voice.prefetch]);
+
   // Read each step as you arrive on it, and tell the app where we are so Mise
   // can answer about the step in front of you rather than the recipe in general.
   useEffect(() => {
     if (phase !== "steps") return;
     sayStep(idx);
-    const nx = steps[idx + 1];
-    if (nx) voice.prefetch(`Step ${idx + 2}. ${nx.do}${nx.why ? ` ${nx.why}` : ""}`);
+    [1, 2].forEach((k) => {
+      const nx = steps[idx + k];
+      if (nx) voice.prefetch(`Step ${idx + k + 1}. ${nx.do}${nx.why ? ` ${nx.why}` : ""}`);
+    });
   }, [idx, phase, sayStep]);
 
   useEffect(() => {
@@ -7973,18 +7983,29 @@ function chime() {
    `force` speaks even when voice is off, so "Read it again" always works. */
 const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
 let ttsAvailable = null;   // null = not asked yet; shared across mounts
-const ttsCache = new Map(); // text -> object URL (a recipe's steps, so small)
+/* text -> Promise<object URL>. Holding the promise, not just the finished URL,
+   means a step that's still being prefetched when you arrive on it is waited
+   for rather than requested a second time. Not tied to any one caller's abort,
+   so moving on doesn't throw away a clip that's nearly ready. */
+const ttsCache = new Map();
 function setPlaybackSession() {
   try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}
 }
-async function ttsUrl(text, signal) {
+function ttsUrl(text) {
   if (ttsCache.has(text)) return ttsCache.get(text);
-  const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }), signal });
-  if (!r.ok) throw new Error(`tts ${r.status}`);
-  const url = URL.createObjectURL(await r.blob());
-  if (ttsCache.size > 40) { const [k, v] = ttsCache.entries().next().value; URL.revokeObjectURL(v); ttsCache.delete(k); }
-  ttsCache.set(text, url);
-  return url;
+  const p = fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
+    .then(async (r) => {
+      if (!r.ok) throw new Error(`tts ${r.status}`);
+      return URL.createObjectURL(await r.blob());
+    });
+  p.catch(() => ttsCache.delete(text));
+  if (ttsCache.size > 40) {
+    const [k, v] = ttsCache.entries().next().value;
+    v.then((u) => URL.revokeObjectURL(u)).catch(() => {});
+    ttsCache.delete(k);
+  }
+  ttsCache.set(text, p);
+  return p;
 }
 function useSpeech() {
   const synth = typeof window !== "undefined" && "speechSynthesis" in window;
@@ -8058,7 +8079,7 @@ function useSpeech() {
       const ctl = new AbortController();
       abortRef.current = ctl;
       setPlaybackSession();
-      ttsUrl(String(text), ctl.signal)
+      ttsUrl(String(text))
         .then((url) => {
           if (ctl.signal.aborted) return;
           const a = audio();
