@@ -1,0 +1,9 @@
+# Large/unlicensed working media: kept local, not committed
+assets/raw/
+assets/music/*
+!assets/music/190.mp3
+assets/video/*.mp4
+assets/video/*.webm
+dbg.js
+vdbg.js
+gtest.js

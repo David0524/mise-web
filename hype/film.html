@@ -1,0 +1,554 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mise — launch film</title>
+<style>
+  @font-face { font-family: "Archivo"; src: url(assets/fonts/archivo.woff2) format("woff2");
+    font-weight: 100 900; font-stretch: 62% 125%; }
+  @font-face { font-family: "Geist"; src: url(assets/fonts/geist.woff2) format("woff2"); font-weight: 100 900; }
+  :root { --paper: #F3EFE7; --ink: #0B0B0C; --muted: #6E6A63; --brick: #B44722; }
+  html, body { margin: 0; background: #000; }
+  #stage { width: 1920px; height: 1080px; position: relative; overflow: hidden; background: var(--paper);
+    font-family: "Geist", system-ui, sans-serif; color: var(--ink); }
+  #world { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+  .a { position: absolute; }
+  .mask { position: absolute; overflow: hidden; }
+  .glassrim { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    box-shadow: inset 1.5px 1.5px 0 rgba(255,255,255,.75), inset -1px -1px 0 rgba(255,255,255,.28),
+                inset 0 0 0 1px rgba(255,255,255,.22); }
+  .glasshi { position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(170deg, rgba(255,255,255,.30) 0%, rgba(255,255,255,.06) 38%, rgba(255,255,255,0) 60%, rgba(255,255,255,.10) 100%); }
+</style>
+</head>
+<body>
+<div id="stage"><div id="world"></div></div>
+<script>
+/* =========================================================================
+   Everything on screen is a pure function of t (seconds). seek(t) rebuilds the
+   frame from nothing — no CSS transitions, no timers, no state carried between
+   frames — so any frame can be rendered in any order.
+   ========================================================================= */
+const W = 1920, H = 1080, BEAT = 0.5;
+const IMG = (n) => `assets/img/${n}.jpg`;
+
+/* ---------------------------------------------------------------- math */
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const io = (k) => (k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);   // cubic in-out
+const out = (k) => 1 - Math.pow(1 - k, 3);
+const B = (b) => b * BEAT;                                                       // beat → seconds
+
+/* Closed-form damped-spring step response: 0 before t0, settles to 1.
+   f = natural frequency (Hz), z = damping ratio (<1 overshoots). */
+function step(t, t0, f = 3.2, z = 0.55) {
+  const x = t - t0;
+  if (x <= 0) return 0;
+  const w = 2 * Math.PI * f;
+  if (z >= 1) return 1 - Math.exp(-w * x) * (1 + w * x);
+  const wd = w * Math.sqrt(1 - z * z);
+  return 1 - Math.exp(-z * w * x) * (Math.cos(wd * x) + (z * w / wd) * Math.sin(wd * x));
+}
+/* A value with several targets over time: one spring per change, summed, so it
+   stays a pure function of t. changes = [[t0, newValue, f?, z?], ...] */
+function springs(t, v0, changes) {
+  let v = v0, prev = v0;
+  for (const [t0, to, f, z] of changes) { v += (to - prev) * step(t, t0, f, z); prev = to; }
+  return v;
+}
+
+/* ------------------------------------------------------------- liquid glass
+   Each glass element carries its own clone of whatever is behind it (Chromium
+   misreads displacement maps through backdrop-filter: url()). The clone is
+   displaced by a rounded-rect distance field — strongest at the bezel, flat in
+   the middle — three times at slightly different scales, one per colour
+   channel, for chromatic edges; then a rim light on top. */
+const mapCache = new Map();
+function glassMap(w, h, r, bezel) {
+  const key = `${w}x${h}r${r}b${bezel}`;
+  if (mapCache.has(key)) return mapCache.get(key);
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h));
+  const ctx = c.getContext("2d"), img = ctx.createImageData(c.width, c.height), d = img.data;
+  const hw = w / 2, hh = h / 2, rr = Math.min(r, hw, hh);
+  const sdf = (px, py) => {           // signed distance to the rounded rect (negative inside)
+    const qx = Math.abs(px - hw) - (hw - rr), qy = Math.abs(py - hh) - (hh - rr);
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rr;
+  };
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+    const s = sdf(x + .5, y + .5), i = (y * c.width + x) * 4;
+    const gx = sdf(x + 1.5, y + .5) - sdf(x - .5, y + .5), gy = sdf(x + .5, y + 1.5) - sdf(x + .5, y - .5);
+    const gl = Math.hypot(gx, gy) || 1;
+    const k = s > 0 ? 0 : Math.pow(clamp(1 + s / bezel), 2.2);   // 0 in the middle → 1 at the edge
+    d[i] = 128 + (gx / gl) * k * 127;
+    d[i + 1] = 128 + (gy / gl) * k * 127;
+    d[i + 2] = 128; d[i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const url = c.toDataURL();
+  mapCache.set(key, url);
+  return url;
+}
+let gid = 0;
+/* bg: function(ox, oy) → SVG markup of the scene behind, drawn in this element's
+   own coordinate space (offset by -x,-y). */
+function glass({ x, y, w, h, r, bg, scale = 46, bezel = null, tint = .10, inner = "", opacity = 1, z = "" }) {
+  if (w < 2 || h < 2) return "";
+  // Thin shapes refract proportionally less, or a slim pill scrambles the photo behind it.
+  scale = Math.min(scale, Math.min(w, h) * .3);
+  const id = `g${gid++}`, bz = bezel ?? Math.min(w, h) * .32;
+  const map = glassMap(Math.round(w), Math.round(h), Math.round(r), Math.round(bz));
+  return `<div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;overflow:hidden;opacity:${opacity};${z}">
+    <svg width="${w}" height="${h}" style="position:absolute;inset:0;display:block">
+      <defs><filter id="${id}" x="0" y="0" width="${w}" height="${h}" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+        <feImage href="${map}" x="0" y="0" width="${w}" height="${h}" result="m" preserveAspectRatio="none"/>
+        <feDisplacementMap in="SourceGraphic" in2="m" scale="${-scale}" xChannelSelector="R" yChannelSelector="G" result="dr"/>
+        <feDisplacementMap in="SourceGraphic" in2="m" scale="${-scale * 1.03}" xChannelSelector="R" yChannelSelector="G" result="dg"/>
+        <feDisplacementMap in="SourceGraphic" in2="m" scale="${-scale * 1.06}" xChannelSelector="R" yChannelSelector="G" result="db"/>
+        <feColorMatrix in="dr" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r"/>
+        <feColorMatrix in="dg" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g"/>
+        <feColorMatrix in="db" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b"/>
+        <feComposite in="r" in2="g" operator="arithmetic" k2="1" k3="1" result="rg"/>
+        <feComposite in="rg" in2="b" operator="arithmetic" k2="1" k3="1"/>
+      </filter></defs>
+      <g filter="url(#${id})"><rect width="${w}" height="${h}" fill="#f3efe7"/>${bg(-x, -y)}</g>
+      <rect width="${w}" height="${h}" fill="rgba(255,255,255,${tint})"/>
+    </svg>
+    <div class="glasshi"></div><div class="glassrim"></div>
+    ${inner}
+  </div>`;
+}
+/* An image drawn to cover a box, as SVG — the same markup paints the scene and
+   every glass clone of it, so they line up exactly. */
+const svgCover = (src, bx, by, bw, bh, ox = 0, oy = 0, extra = "") =>
+  `<image href="${src}" x="${bx + ox}" y="${by + oy}" width="${bw}" height="${bh}" preserveAspectRatio="xMidYMid slice" ${extra}/>`;
+
+/* ------------------------------------------------------------------ iris
+   Six blades around a hexagonal aperture. Blade i: vertex V_i → V_{i+1} →
+   that edge extended out to the rim → the SHORT arc back to where the
+   previous edge's extension meets the rim → V_i. Closing shrinks and turns
+   the hexagon; at 0 the blades meet in the middle. */
+function iris(cx, cy, R, open, color = "#0b0b0c", seam = "rgba(255,255,255,.14)") {
+  const a = Math.max(0.001, open) * R * 1.02, rot = (1 - open) * Math.PI / 6;
+  const V = [...Array(6)].map((_, i) => {
+    const th = rot + i * Math.PI / 3 - Math.PI / 2;
+    return [cx + a * Math.cos(th), cy + a * Math.sin(th)];
+  });
+  const rim = (P, Q) => {                  // ray from P through Q, beyond Q, to the circle
+    const dx = Q[0] - P[0], dy = Q[1] - P[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+    const fx = Q[0] - cx, fy = Q[1] - cy, bb = fx * ux + fy * uy, cc = fx * fx + fy * fy - R * R * 1.0;
+    const s = -bb + Math.sqrt(Math.max(0, bb * bb - cc));
+    return [Q[0] + ux * s, Q[1] + uy * s];
+  };
+  let paths = "";
+  for (let i = 0; i < 6; i++) {
+    const Vi = V[i], Vn = V[(i + 1) % 6], Vp = V[(i + 5) % 6];
+    const E = rim(Vi, Vn), F = rim(Vp, Vi);
+    const d = `M${Vi} L${Vn} L${E} A${R} ${R} 0 0 0 ${F} Z`;
+    paths += `<path d="${d}" fill="${color}" stroke="${seam}" stroke-width="2"/>`;
+  }
+  return paths;
+}
+
+/* ---------------------------------------------------------------- cursor */
+function cursor(x, y, s = 1, press = 0) {
+  const k = s * (1 - press * .14);
+  return `<svg class="a" style="left:${x}px;top:${y}px;overflow:visible;z-index:50" width="1" height="1">
+    <g transform="scale(${k})"><path d="M0 0 L0 29 L7.5 22 L12.5 33.5 L17 31.5 L12 20.5 L22 20.5 Z"
+      fill="#0b0b0c" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></g></svg>`;
+}
+
+/* --------------------------------------------------------- mise app UI */
+const ui = {
+  dish: (title, blurb, picked, img) => `
+    <div style="background:#fff;border-radius:22px;padding:14px;display:flex;gap:14px;align-items:center;margin-bottom:12px;box-shadow:0 1px 0 rgba(0,0,0,.06)">
+      <div style="width:84px;height:84px;border-radius:16px;background:url(${img}) center/cover"></div>
+      <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:21px;letter-spacing:-.01em">${title}</div>
+        <div style="color:#6e6a63;font-size:15px;margin-top:3px">${blurb}</div></div>
+      <div style="padding:9px 14px;border-radius:999px;font-weight:700;font-size:15px;${picked ? "background:#0b0b0c;color:#fff" : "background:#efebe3"}">${picked ? "Added" : "Add it"}</div>
+    </div>`,
+  item: (qty, name, done, soon) => `
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 4px;border-bottom:1px solid #e7e2d8;${done ? "color:#a29d94" : ""}">
+      <div style="width:26px;height:26px;border-radius:8px;border:2px solid ${done ? "#0b0b0c" : "#c9c3b8"};background:${done ? "#0b0b0c" : "transparent"};display:grid;place-items:center;color:#fff;font-size:16px;font-weight:800">${done ? "✓" : ""}</div>
+      <div style="font-size:19px;flex:1;${done ? "text-decoration:line-through" : ""}"><b style="font-weight:700">${qty}</b> ${name}</div>
+      ${soon ? `<div style="font-size:13px;font-weight:700;color:#B44722">${soon}</div>` : ""}
+    </div>`,
+};
+
+/* phone: x,y,w is the SCREEN; the bezel grows outward from its edge by `bz`. */
+function phone({ x, y, w, h, bz = 16, screen = "", island = true, islandW = 124, r = 58 }) {
+  return `<div class="a" style="left:${x - bz}px;top:${y - bz}px;width:${w + 2 * bz}px;height:${h + 2 * bz}px;border-radius:${r + bz}px;background:#0b0b0c"></div>
+    <div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;overflow:hidden;background:#F3EFE7">
+      ${screen}
+      ${island ? `<div class="a" style="left:${(w - islandW) / 2}px;top:14px;width:${islandW}px;height:36px;border-radius:20px;background:#000"></div>` : ""}
+    </div>`;
+}
+function statusBar(dark = false) {
+  const c = dark ? "#fff" : "#0b0b0c";
+  return `<div class="a" style="left:34px;top:18px;font-weight:700;font-size:19px;color:${c}">6:42</div>
+    <div class="a" style="right:30px;top:20px;display:flex;gap:6px;align-items:center">
+      <div style="width:24px;height:12px;border:2px solid ${c};border-radius:4px;opacity:.9"><div style="width:70%;height:100%;background:${c}"></div></div></div>`;
+}
+
+/* ===================================================================== SCENES
+   Each takes the time t and returns markup for #world, plus the camera. */
+const SCENES = [];
+const scene = (b0, b1, fn) => SCENES.push({ t0: B(b0), t1: B(b1), fn });
+
+/* ---- OPEN: wordmark → pill → iris → map grid → bento → zoom (beats 0–16) */
+const WORD = "MISE", DOT = ".", WM_SIZE = 300;
+/* Glyph advances measured in the browser, per wdth value (cached). */
+const advCache = new Map();
+let meter;
+function adv(ch, wdth) {
+  const key = ch + Math.round(wdth);
+  if (advCache.has(key)) return advCache.get(key);
+  if (!meter) { meter = document.createElement("span"); meter.style.cssText = `position:absolute;left:-9999px;top:0;white-space:pre;font:800 ${WM_SIZE}px/1 Archivo`; document.body.appendChild(meter); }
+  meter.style.fontStretch = Math.round(wdth) + "%"; meter.textContent = ch;
+  const w = meter.getBoundingClientRect().width;
+  advCache.set(key, w); return w;
+}
+/* Ink box of the period at wdth 125, relative to the glyph's left edge and the
+   top of a 1.0 line box — the dot morphs from exactly here. */
+let dotInk;
+function dotBox() {
+  if (dotInk) return dotInk;
+  const c = document.createElement("canvas").getContext("2d");
+  c.font = `800 ${WM_SIZE}px Archivo`; c.fontStretch = "expanded"; c.textBaseline = "alphabetic";
+  const m = c.measureText(".");
+  const fm = c.measureText("M");   // ascent/descent of the line box
+  const asc = fm.fontBoundingBoxAscent, desc = fm.fontBoundingBoxDescent, half = (WM_SIZE - (asc + desc)) / 2;
+  dotInk = { x0: m.actualBoundingBoxLeft * -1, x1: m.actualBoundingBoxRight, y0: half + asc - m.actualBoundingBoxAscent, y1: half + asc + m.actualBoundingBoxDescent };
+  return dotInk;
+}
+function wordLayout(cx = W / 2, cy = H / 2) {
+  const track = -0.02 * WM_SIZE;
+  const ws = [...WORD].map((ch) => adv(ch, 125)), dw = adv(DOT, 125);
+  const total = ws.reduce((a, b) => a + b, 0) + dw + track * WORD.length;
+  const left = cx - total / 2, top = cy - WM_SIZE / 2;
+  const dotLeft = left + total - dw;
+  const db = dotBox();
+  return { ws, dw, track, left, top, dotLeft, dot: { x: dotLeft + db.x0, y: top + db.y0, w: db.x1 - db.x0, h: db.y1 - db.y0 } };
+}
+/* k = 0 the full word … 1 squeezed into the dot. Each letter's distance to
+   the dot shrinks by the same factor f, and its drawn width shrinks by f too —
+   narrowing the wdth axis first, then scaling the rest — so neighbours stay in
+   contact the whole way down, like an accordion closing. */
+function wordmark(k, withDot = true) {
+  const L = wordLayout(), f = 1 - k;
+  let html = "", right = L.dotLeft;
+  for (let i = WORD.length - 1; i >= 0; i--) {
+    const target = (L.ws[i] + L.track) * f;              // the slot this letter must fill
+    const wdth = clamp(62 + 63 * f, 62, 125);
+    const natural = adv(WORD[i], wdth) + L.track * f;
+    const sx = natural > 0 ? clamp(target / natural, 0, 1) : 0;
+    right -= target;
+    if (target > .5) html += `<div class="a" style="left:${right}px;top:${L.top}px;font:800 ${WM_SIZE}px/1 Archivo;font-stretch:${wdth}%;letter-spacing:${L.track * f}px;transform-origin:0 50%;transform:scaleX(${sx})">${WORD[i]}</div>`;
+  }
+  if (withDot) html += `<div class="a" style="left:${L.dotLeft}px;top:${L.top}px;font:800 ${WM_SIZE}px/1 Archivo;font-stretch:125%">${DOT}</div>`;
+  return html;
+}
+scene(0, 16, (t) => {
+  const b = t / BEAT;
+  let html = "";
+  // squeeze 1→3, spring back is mirrored at the end of the film
+  const sq = io(seg(t, B(1), B(2.9)));
+  if (b < 3) html += wordmark(sq, true);
+  // dot → pill: the period's own ink box springs into the pill
+  const pillK = step(t, B(3), 2.4, .62);
+  const D = wordLayout().dot;
+  const pw = lerp(D.w, 760, pillK), ph = lerp(D.h, 150, pillK);
+  const pcx = lerp(D.x + D.w / 2, W / 2, pillK), pcy = lerp(D.y + D.h / 2, H / 2, pillK);
+  if (b >= 3 && b < 7.2) {
+    html += `<div class="a" style="left:${pcx - pw / 2}px;top:${pcy - ph / 2}px;width:${pw}px;height:${ph}px;border-radius:${lerp(D.h * .18, ph / 2, clamp(pillK * 1.5))}px;background:#0b0b0c;overflow:hidden">
+      <div class="mask" style="left:0;right:0;top:0;bottom:0"><div class="a" style="left:0;right:0;top:${lerp(ph, ph / 2 - 30, out(seg(t, B(4), B(4.8))))}px;text-align:center;font:600 50px/60px Geist;color:#fff;letter-spacing:-.02em">Dinner, figured out.</div></div></div>`;
+  }
+  // iris close over the label (6→6.5), snap open onto the table photo (7→7.4)
+  if (b >= 6 && b < 9) {
+    const R = 420, closeK = io(seg(t, B(6), B(6.5))), openK = step(t, B(7), 3.4, .7);
+    const open = b < 7 ? 1 - closeK : openK;
+    const sq2 = io(seg(t, B(8), B(9)));                       // circle → shrinking square
+    const side = lerp(2 * R, 300, sq2), rad = lerp(R, 34, sq2);
+    if (b >= 7) html += `<div class="a" style="left:${W / 2 - side / 2}px;top:${H / 2 - side / 2}px;width:${side}px;height:${side}px;border-radius:${rad}px;background:url(${IMG("p08-table")}) center/cover"></div>`;
+    if (b < 8) html += `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">
+      <defs><clipPath id="ic"><circle cx="${W / 2}" cy="${H / 2}" r="${R}"/></clipPath></defs>
+      <g clip-path="url(#ic)">${b < 6.6 ? `<circle cx="${W / 2}" cy="${H / 2}" r="${R}" fill="transparent"/>` : ""}${iris(W / 2, H / 2, R, open)}</g></svg>`;
+  }
+  // map-fold grid (9→10.5) → bento (11) → zoom into Tue (14→16)
+  if (b >= 9) html += bento(t);
+  return html;
+});
+
+const DISHES = [
+  ["p13-cabbage", "Tue", "Charred cabbage"], ["p02-noodles", "Thu", "Ginger noodles"], ["p03-castiron", "Sat", "Skillet chicken"],
+  ["p04-roastveg", "Mon", "Roast veg"], ["p12-soup", "Wed", "Noodle soup"], ["p05-sheetpan", "Fri", "Sheet pan"],
+  ["p01-grainbowl", "Sun", "Grain bowl"], ["p09-pasta", "", "Pasta"], ["p06-steak-cooked", "", "Steak bites"],
+];
+function bentoRects(k) {
+  // 3x3 grid → bento; index 0 is the centre tile (Tue)
+  const g = 300, gap = 18, x0 = W / 2 - (3 * g + 2 * gap) / 2, y0 = H / 2 - (3 * g + 2 * gap) / 2;
+  const cell = (c, r) => [x0 + c * (g + gap), y0 + r * (g + gap), g, g];
+  const grid = [cell(1, 1), cell(1, 0), cell(2, 1), cell(1, 2), cell(0, 1), cell(0, 0), cell(2, 0), cell(2, 2), cell(0, 2)];
+  // bento: a wide hero for Tue + a week strip around it
+  const L = 210, T = 150, Wd = 1500, Hd = 780, gp = 18;
+  const bento = [
+    [L + 470 + gp, T, 560, Hd],                     // Tue hero
+    [L + 470 + gp + 560 + gp, T, 470 - gp, (Hd - gp) / 2],
+    [L + 470 + gp + 560 + gp, T + (Hd + gp) / 2, 470 - gp, (Hd - gp) / 2],
+    [L, T + (Hd + gp) / 2, 470, (Hd - gp) / 2],
+    [L, T, 230, (Hd - gp) / 2],
+    [L + 240, T, 230, (Hd - gp) / 2],
+    [L + 470 + gp + 560 + gp, T + Hd + 40, 0, 0],
+    [L, T + Hd + 40, 0, 0], [L, T + Hd + 40, 0, 0],
+  ];
+  return grid.map((a, i) => a.map((v, j) => lerp(v, bento[i][j], k)));
+}
+function bento(t) {
+  const b = t / BEAT;
+  const unfold = (i) => i === 0 ? 1 : i <= 4 ? step(t, B(9) + (i - 1) * .06, 2.6, .7) : step(t, B(10) + (i - 5) * .06, 2.6, .7);
+  const bk = io(seg(t, B(11), B(11.8)));
+  const rects = bentoRects(bk);
+  // camera zoom into Tue handled by the camera; tile lift on hover
+  let html = "";
+  rects.forEach((r, i) => {
+    const u = unfold(i); if (u <= .001 || r[2] < 2) return;
+    const [x, y, w, h] = r;
+    // paper-map unfold: grows from the edge it shares with the centre tile
+    const sx = i === 2 ? "0% 50%" : i === 4 ? "100% 50%" : i === 1 ? "50% 100%" : i === 3 ? "50% 0%" : "50% 50%";
+    const lift = i === 0 ? step(t, B(12), 3, .6) - step(t, B(13), 4, .7) : 0;
+    const press = i === 0 ? step(t, B(13), 6, .8) - step(t, B(13.25), 5, .8) : 0;
+    const s = 1 + lift * .02 - press * .03;
+    html += `<div class="a" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${lerp(26, 30, bk)}px;overflow:hidden;
+      transform-origin:${sx};transform:scale(${i === 0 ? s : 1},${i === 0 ? s : 1}) ${i ? (i <= 4 ? (i % 2 ? `scaleY(${u})` : `scaleX(${u})`) : `scale(${u})`) : ""};
+      background:url(${IMG(DISHES[i][0])}) center/cover"></div>`;
+    // glass day chip springs up from zero
+    const chipK = step(t, B(11.4) + i * .05, 3.4, .55);
+    if (DISHES[i][1] && chipK > .01 && w > 50) {
+      const cw = 92, ch = 46, cx = x + 18, cy = y + 18;
+      html += `<div class="a" style="left:${cx}px;top:${cy}px;transform-origin:0 0;transform:scale(${chipK})">${glass({
+        x: 0, y: 0, w: cw, h: ch, r: 23, scale: 18, tint: .18,
+        bg: (ox, oy) => svgCover(IMG(DISHES[i][0]), x - cx, y - cy, w, h, ox, oy),
+        inner: `<div class="a" style="inset:0;display:grid;place-items:center;font:700 19px Geist;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.35)">${DISHES[i][1]}</div>`,
+      })}</div>`;
+    }
+  });
+  return html;
+}
+
+/* ---- GLASS (beats 16–28) */
+scene(16, 28, (t) => {
+  const b = t / BEAT;
+  let html = "";
+  // 21+: photo is the raw/ready pair, wiped by the slider knob
+  const knob = springs(t, 0, [[B(22), .18, 2.2, .8], [B(22.6), .62, 1.6, .85], [B(23.3), .5, 3, .7]]);
+  const wipeX = lerp(330, W - 330, knob);
+  const raw = IMG("p07-steak-raw"), ready = IMG("p06-steak-cooked"), cab = IMG("p13-cabbage");
+  const scene = (ox, oy) => b < 21
+    ? svgCover(cab, 0, 0, W, H, ox, oy)
+    : svgCover(ready, 0, 0, W, H, ox, oy) +
+      `<clipPath id="wp${ox}_${oy}"><rect x="${ox}" y="${oy}" width="${wipeX}" height="${H}"/></clipPath>` +
+      svgCover(raw, 0, 0, W, H, ox, oy, `clip-path="url(#wp${ox}_${oy})"`);
+  html += `<svg class="a" style="left:0;top:0" width="${W}" height="${H}">${scene(0, 0)}</svg>`;
+  // the wipe seam: a thin paper-white line that the knob rides
+  if (b >= 21) html += `<div class="a" style="left:${wipeX - 1.5}px;top:0;width:3px;height:${H}px;background:rgba(255,255,255,.85)"></div>`;
+  // toolbar → slider (glass), bottom centre
+  if (b >= 20 && b < 24.2) {
+    const tk = step(t, B(20), 2.6, .62), sk = io(seg(t, B(21.1), B(21.6)));
+    const w = lerp(120, lerp(520, 1260, sk), tk), h = lerp(120, 104, tk);
+    const x = W / 2 - w / 2, y = H - 150 - h / 2;
+    const icons = ["◐", "◷", "☰", "↗"];
+    const inner = sk < .5
+      ? `<div class="a" style="inset:0;display:flex;justify-content:space-around;align-items:center;font:600 36px Geist;color:#fff;opacity:${1 - sk * 2}">${icons.map((c) => `<span>${c}</span>`).join("")}</div>`
+      : `<div class="a" style="left:40px;right:40px;top:${h / 2 - 3}px;height:6px;border-radius:3px;background:rgba(255,255,255,.55)"></div>`;
+    html += glass({ x, y, w, h, r: h / 2, scale: 52, tint: .16, bg: scene, inner });
+    if (sk > .5) {
+      // the knob: its own glass bead riding the track
+      const kd = 88 + step(t, B(24), 3, .6) * 40;
+      const kx = x + 40 + (w - 80) * knob - kd / 2, ky = y + h / 2 - kd / 2;
+      html += glass({ x: kx, y: ky, w: kd, h: kd, r: kd / 2, scale: 40, tint: .26, bg: scene });
+      // glass label chip above the track
+      html += glass({ x: W / 2 - 150, y: y - 88, w: 300, h: 60, r: 30, scale: 18, tint: .2, bg: scene,
+        inner: `<div class="a" style="inset:0;display:grid;place-items:center;font:700 26px Geist;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)">Raw &nbsp;→&nbsp; Ready</div>` });
+      html += cursor(kx + kd * .55, ky + kd * .55, 1.7, b >= 22 && b < 23.4 ? 1 : 0);
+    }
+  }
+  return html;
+});
+
+/* ---- STAGE (beats 28–36): phone + Dynamic Island → Mac window, drag & drop */
+scene(28, 36, (t) => {
+  const b = t / BEAT;
+  let html = "";
+  const px = 300, py = 140, pw = 400, ph = 860;
+  const screen = `${statusBar()}
+    <div class="a" style="left:26px;right:26px;top:74px">
+      <div style="font:800 34px Geist;letter-spacing:-.02em;margin-bottom:4px">Shopping</div>
+      <div style="color:#6e6a63;font-size:16px;margin-bottom:14px">2 of 12 in the basket</div>
+      <div style="height:6px;border-radius:3px;background:#e2ddd3;margin-bottom:12px"><div style="height:100%;width:${lerp(0, 17, io(seg(t, B(30), B(30.6))))}%;background:#0b0b0c;border-radius:3px"></div></div>
+      ${ui.item("1 head", "green cabbage", true)}${ui.item("1 bunch", "dill", true, "2d")}
+      ${ui.item("1 lb", "chicken thighs", false)}${ui.item("2 cans", "chickpeas", false)}
+      ${ui.item("1", "lemon", false)}${ui.item("1 bulb", "garlic", false)}${ui.item("1 bag", "jasmine rice", false)}
+    </div>
+    <div class="a" style="left:0;right:0;bottom:0;height:90px;background:rgba(243,239,231,.9);border-top:1px solid #e2ddd3;display:flex;justify-content:space-around;align-items:center;font:600 13px Geist;color:#6e6a63">
+      <span>Brainstorm</span><span>My Week</span><span style="color:#0b0b0c">Shopping</span><span>Cooking</span><span>Leftovers</span></div>`;
+  // the island has flown off to the Mac by beat 32; the phone keeps a fresh one
+  html += phone({ x: px, y: py, w: pw, h: ph, screen });
+  // Mac window, unrolled like a blind from its title bar
+  const mk = io(seg(t, B(32.2), B(32.9)));
+  const mx = 860, my = 120, mw = 920, mh = 860 * mk + 52;
+  const drop = step(t, B(34), 3, .7);
+  html += `<div class="a" style="left:${mx}px;top:${my}px;width:${mw}px;height:${mh}px;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 30px 60px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.08)">
+    <div style="height:52px;background:#ebe7df;display:flex;align-items:center;gap:9px;padding:0 18px;border-bottom:1px solid #ddd7cc">
+      <i style="width:13px;height:13px;border-radius:50%;background:#ff5f57"></i><i style="width:13px;height:13px;border-radius:50%;background:#febc2e"></i><i style="width:13px;height:13px;border-radius:50%;background:#28c840"></i>
+      <div style="margin-left:24px;background:#fff;border-radius:8px;padding:6px 16px;font:500 15px Geist;color:#6e6a63;flex:0 0 360px">mise.app/cook/charred-cabbage</div></div>
+    <div style="padding:34px 44px;font-family:Geist">
+      <div style="height:300px;border-radius:20px;background:#efebe3 url(${drop > .5 ? IMG("p13-cabbage") : ""}) center/cover;outline:${drop > .5 ? "none" : "3px dashed #c9c3b8"};outline-offset:-10px;display:grid;place-items:center;color:#a29d94;font-weight:600">${drop > .5 ? "" : "Drop a photo"}</div>
+      <div style="font:800 48px Geist;letter-spacing:-.03em;margin:26px 0 6px">Charred Cabbage Wedges</div>
+      <div style="color:#6e6a63;font-size:20px;margin-bottom:22px">2 servings · 30 min · Tuesday</div>
+      ${["Heat the oven to 450°F with a sheet pan inside.", "Cut the cabbage into 4 wedges through the core.", "Oil, salt, and roast cut-side down, 12 minutes."]
+        .map((s, i) => `<div style="display:flex;gap:16px;padding:14px 0;border-top:1px solid #eee"><b style="font-size:20px;width:26px">${i + 1}</b><span style="font-size:20px">${s}</span></div>`).join("")}
+    </div></div>`;
+  // the dragged photo (long-press 33 → carried to the window 33.2–33.9)
+  if (b >= 33 && b < 34.1) {
+    const k = io(seg(t, B(33.15), B(33.95)));
+    const sx = px + 26, sy = py + 260, ex = mx + 44, ey = my + 52 + 34;
+    const dx = lerp(sx, ex + 240, k), dy = lerp(sy, ey + 60, k) - Math.sin(k * Math.PI) * 60;
+    const dw = lerp(150, 360, k), dh = dw * .66;
+    html += `<div class="a" style="left:${dx}px;top:${dy}px;width:${dw}px;height:${dh}px;border-radius:16px;background:url(${IMG("p13-cabbage")}) center/cover;box-shadow:0 18px 40px rgba(0,0,0,.25);transform:rotate(${lerp(0, -3, k)}deg)"></div>`;
+    html += cursor(dx + dw * .5, dy + dh * .55, 1.6, 1);
+  }
+  return html;
+});
+
+/* ---- KITCHEN (beats 40–48): black → the phone lying on the real counter; the
+   same iris opens on its screen onto real cooking, and closes again. The
+   phone is pinned to the marble with the clip's measured camera track. */
+const PH = { x: 820, y: 280, w: 320, h: 660, rot: -9 };      // phone screen, in clip frame-0 coordinates
+const V2_IN = 0.15;
+function v2Track(tc) {                                        // content offset at clip time tc
+  const tr = window.V2TRACK; if (!tr) return [0, 0];
+  const f = tc * tr.fps, i = Math.floor(f), k = f - i, p = tr.pos;
+  const a = p[clamp(i, 0, p.length - 1)], b = p[clamp(i + 1, 0, p.length - 1)];
+  return [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
+}
+function kitchenPhone(t) {
+  const tc = V2_IN + Math.max(0, t - B(42));
+  const [dx, dy] = v2Track(tc);
+  return { x: PH.x + dx, y: PH.y + dy, w: PH.w, h: PH.h, rot: PH.rot, tc };
+}
+scene(42, 48, (t) => {
+  const b = t / BEAT;
+  const P = kitchenPhone(t);
+  let html = `<canvas class="a" data-vid="v2" data-t="${P.tc}" style="left:0;top:0;width:${W}px;height:${H}px"></canvas>`;
+  const shrink = io(seg(t, B(42), B(42.8)));
+  const cx = P.x + P.w / 2, cy = P.y + P.h / 2;
+  // the black that filled the frame shrinks into the phone (rotating into place)
+  if (shrink < 1) {
+    const w = lerp(W * 1.3, P.w + 28, shrink), h = lerp(H * 1.6, P.h + 28, shrink);
+    html += `<div class="a" style="left:${lerp(W / 2, cx, shrink) - w / 2}px;top:${lerp(H / 2, cy, shrink) - h / 2}px;width:${w}px;height:${h}px;border-radius:${lerp(0, 56, shrink)}px;background:#0b0b0c;transform:rotate(${P.rot * shrink}deg)"></div>`;
+    return html;
+  }
+  const open = io(seg(t, B(43), B(43.7))) * (1 - io(seg(t, B(45), B(45.6))));
+  const R = P.w * .44;
+  const scr = `<div class="a" style="inset:0;background:#0b0b0c"></div>
+    <canvas class="a" data-vid="v3" data-t="${0.3 + (t - B(43))}" style="left:${P.w / 2 - R}px;top:${P.h / 2 - R}px;width:${2 * R}px;height:${2 * R}px;clip-path:circle(50%)"></canvas>
+    <svg class="a" style="left:0;top:0" width="${P.w}" height="${P.h}">
+      <defs><clipPath id="kc"><circle cx="${P.w / 2}" cy="${P.h / 2}" r="${R}"/></clipPath></defs>
+      <g clip-path="url(#kc)">${iris(P.w / 2, P.h / 2, R, open)}</g></svg>`;
+  // contact shadow under the phone (it lies on the marble), then the phone
+  html += `<div class="a" style="left:${P.x - 14}px;top:${P.y - 14}px;width:${P.w + 28}px;height:${P.h + 28}px;transform:rotate(${P.rot}deg)">
+    <div class="a" style="inset:0;border-radius:58px;box-shadow:0 24px 40px rgba(40,30,20,.32),0 4px 8px rgba(40,30,20,.25)"></div>
+    ${phone({ x: 14, y: 14, w: P.w, h: P.h, bz: 14, r: 46, islandW: 96, screen: scr })}</div>`;
+  return html;
+});
+/* Black flood (40) and its one-beat hold (41): the Dinner ✓ circle expands
+   past the corners in 0.3 s. */
+scene(40, 42, (t) => {
+  const k = io(seg(t, B(40), B(40) + .3)), R = lerp(70, Math.hypot(W, H) * .6, k);
+  return `<div class="a" style="inset:0;background:var(--paper)"></div>
+    <div class="a" style="left:${W / 2 - R}px;top:${H / 2 - R}px;width:${2 * R}px;height:${2 * R}px;border-radius:50%;background:#0b0b0c"></div>`;
+});
+
+/* ------------------------------------------------------------- camera
+   Screen-studio zoom: scale about a focus point; the cursor lives in the world
+   so it scales with it. */
+function camera(t) {
+  const b = t / BEAT;
+  if (b >= 13.6 && b < 16) {
+    const k = io(seg(t, B(13.6), B(16)));
+    const r = bentoRects(1)[0];
+    const s = lerp(1, Math.max(W / r[2], H / r[3]), k);
+    const fx = r[0] + r[2] / 2, fy = r[1] + r[3] / 2;
+    return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
+  }
+  if (b >= 45.6 && b < 48) {
+    const k = io(seg(t, B(45.6), B(47.6))), P = kitchenPhone(t);
+    const s = lerp(1, H / (P.h + 40), k), fx = P.x + P.w / 2, fy = P.y + P.h / 2;
+    return { s, x: W / 2 - lerp(W / 2, fx, k) * s, y: H / 2 - lerp(H / 2, fy, k) * s };
+  }
+  return { s: 1, x: 0, y: 0 };
+}
+
+/* --------------------------------------------------------------- seek */
+async function renderFrame(t) {
+  gid = 0;
+  const sc = SCENES.find((s) => t >= s.t0 && t < s.t1);
+  let html = sc ? sc.fn(t) : `<div class="a" style="inset:0;display:grid;place-items:center;font:600 28px Geist;color:#a29d94">beat ${(t / BEAT).toFixed(1)} — not built yet</div>`;
+  // cursor for the open: travels in at 5, clicks the pill at 6; then to Tue
+  const b = t / BEAT;
+  if (b >= 5 && b < 6.6) {
+    const k = io(seg(t, B(5), B(5.9)));
+    html += cursor(lerp(W + 40, W / 2 + 120, k), lerp(H - 60, H / 2 + 20, k), 1.6, b >= 6 && b < 6.3 ? 1 : 0);
+  }
+  if (b >= 11.8 && b < 14.6) {
+    const r = bentoRects(1)[0], k = io(seg(t, B(11.8), B(12.6)));
+    html += cursor(lerp(W / 2 + 300, r[0] + r[2] * .58, k), lerp(H - 120, r[1] + r[3] * .55, k), 1.6, b >= 13 && b < 13.3 ? 1 : 0);
+  }
+  const cam = camera(t);
+  const world = document.getElementById("world");
+  world.style.transform = `translate(${cam.x}px,${cam.y}px) scale(${cam.s})`;
+  world.innerHTML = html;
+  await drawVideos(world);
+  // wait for every image used in this frame to be decoded
+  await Promise.all([...world.querySelectorAll("img")].map((i) => i.decode().catch(() => {})));
+  await document.fonts.ready;
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+/* Footage: each clip is fetched once into a blob URL (seeking a range-less
+   stream is unreliable), and every frame awaits "seeked" before drawing. */
+const VIDS = { v1: "v1-plate", v2: "v2-marble", v3: "v3-chop", v4: "v4-baste" };
+const vidEl = {};
+async function loadVideos() {
+  window.V2TRACK = await (await fetch("assets/video/v2track.json")).json();
+  await Promise.all(Object.entries(VIDS).map(async ([k, n]) => {
+    const blob = await (await fetch(`assets/video/${n}.webm`)).blob();
+    const v = document.createElement("video");
+    v.muted = true; v.preload = "auto"; v.src = URL.createObjectURL(blob);
+    await new Promise((r) => { v.onloadeddata = r; v.onerror = r; });
+    vidEl[k] = v;
+  }));
+}
+async function drawVideos(root) {
+  for (const c of root.querySelectorAll("canvas[data-vid]")) {
+    const v = vidEl[c.dataset.vid]; if (!v) continue;
+    const want = clamp(parseFloat(c.dataset.t), 0, v.duration - 0.05);
+    if (Math.abs(v.currentTime - want) > 1e-3) {
+      await new Promise((r) => { v.onseeked = r; v.currentTime = want; });
+    }
+    const w = parseFloat(c.style.width), h = parseFloat(c.style.height);
+    c.width = Math.round(w); c.height = Math.round(h);
+    const s = Math.max(w / v.videoWidth, h / v.videoHeight);
+    c.getContext("2d").drawImage(v, (w - v.videoWidth * s) / 2, (h - v.videoHeight * s) / 2, v.videoWidth * s, v.videoHeight * s);
+  }
+}
+/* Every photo decoded once up front, so SVG <image> clones paint on the first frame. */
+const ALL_IMG = ["p01-grainbowl","p02-noodles","p03-castiron","p04-roastveg","p05-sheetpan","p06-steak-cooked","p07-steak-raw","p08-table","p09-pasta","p10-kitchen","p11-herbs","p12-soup","p13-cabbage"];
+window.ready = Promise.all(ALL_IMG.map((n) => new Promise((res) => { const i = new Image(); i.onload = i.onerror = res; i.src = IMG(n); })))
+  .then(() => document.fonts.load('800 100px Archivo')).then(() => document.fonts.load('600 20px Geist')).then(loadVideos);
+window.seek = async (t) => { await window.ready; await renderFrame(t); await new Promise((r) => setTimeout(r, 120)); };
+const q = new URLSearchParams(location.search);
+if (q.has("t")) window.seek(parseFloat(q.get("t")));
+</script>
+</body>
+</html>
