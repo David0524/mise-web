@@ -162,10 +162,13 @@ async function askMise(p, question) {
   }
   let reply = "";
   for (let attempt = 0; attempt < 3; attempt++) {
+    // In cook mode the previous answer stays on screen until the new one
+    // lands, so wait for it to change rather than reading it straight away.
+    const before = await lastReply(p, inCook);
     await p.locator(input).fill(question); await p.locator(input).press("Enter");
     await idle(p);
     await p.waitForFunction(() => !document.querySelector(".bub--wait"), null, { timeout: 90000 }).catch(() => {});
-    reply = await lastReply(p, inCook);
+    for (let i = 0; i < 60 && (reply = await lastReply(p, inCook)) === before; i++) await p.waitForTimeout(500);
     // Her stock line when the call itself failed — ask again, as a person would.
     if (!/^Lost you for a second/.test(reply)) return reply;
     p.retries = (p.retries || 0) + 1;
