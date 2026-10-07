@@ -974,7 +974,7 @@ async function callClaude(messages, opts = {}) {
   const res = await fetch("/api/chat", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages: withRecap(messages), tier: opts.tier || "main",
-      json: opts.json !== false,
+      json: opts.json !== false, kind: opts.kind,
       maxTokens: opts.maxTokens || 1000, sessionContext: SESSION_CONTEXT,
       // Which doctrine this call actually needs — see the comment on
       // buildDoctrine in lib/doctrine.js. Unset means "everything", so a
@@ -3061,7 +3061,7 @@ not the names:
 "order":[{"night":1,"dish":2}]}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { kind: "order", docSlices: ["core", "groceries"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
 
@@ -3968,7 +3968,7 @@ Respond with ONLY this JSON, no backticks:
       /* One quiet second try when the answer has no usable dish list: about one
          week in thirty came back that way, and asking again almost always works. */
       const ask = async () => {
-        const r = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1200, docSlices: ["core", "flavor"] });
+        const r = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1200, kind: "ideas", docSlices: ["core", "flavor"] });
         const o = parseJSON(r);
         return { raw: r, out: o, ok: !!o && Array.isArray(o.dishes) && o.dishes.some((d) => str(d?.title).trim()) };
       };
@@ -4025,7 +4025,7 @@ Change only the titles that cause a problem, and only the words that need to cha
 must still describe the same dish truthfully: same ingredients, same cooking. Keep a dish's real
 name (shakshuka, chakhokhbili) and any plain-English gloss after a dash. A title is a dish
 name a good menu would print, under 8 words, never a description of the format.
-Respond with ONLY this JSON: {"titles":["one per dish, same order"]}` }], { tier: "fast", maxTokens: 300, docSlices: ["core"] });
+Respond with ONLY this JSON: {"titles":["one per dish, same order"]}` }], { tier: "fast", maxTokens: 300, kind: "titles", docSlices: ["core"] });
       const out = parseJSON(raw);
       const next = Array.isArray(out?.titles) ? out.titles.map((t) => str(t).trim()) : [];
       if (next.length !== dishes.length || next.some((t) => !t || t.length > 90)) return;
@@ -4091,7 +4091,7 @@ Return the FULL revised list.`;
          information twice — and growing every round. */
       const recent = convo.slice(-2);
       const msgs = [...recent, { role: "user", content: prompt }];
-      const raw = await callClaude(msgs, { docSlices: ["core", "flavor"] });
+      const raw = await callClaude(msgs, { kind: "feedback", docSlices: ["core", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
       if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
@@ -4144,7 +4144,7 @@ ${CHAT_VOICE} "why" and "blurb" 14 words or fewer, "say" is truly one short sent
 Respond with ONLY this JSON:
 {"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","format":"how it\u0027s cooked, one or two words","spice":0,"minutes":30,"say":"one short sentence on why this instead"}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { kind: "swap", docSlices: ["core", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
       const swapped = normalizeDish(out);
@@ -4213,7 +4213,7 @@ Respond with ONLY this JSON:
 "flags":["specific package-size or waste risks"],
 "items":[{"item":"","qty":"amount to buy in the units the store sells","section":"Produce|Protein|Dairy & eggs|Bakery|Pantry|Frozen|Other","jobs":"which dishes use it","days":7}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { kind: "shopping", docSlices: ["core", "groceries"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       let repaired = false;
       const out = parseJSON(raw, () => { repaired = true; });
@@ -4318,7 +4318,7 @@ BE BRIEF. "say" is 2 sentences.
 Respond with ONLY this JSON:
 {"say":"","items":[{"item":"","qty":"","section":"","jobs":"","days":7}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { kind: "revise", docSlices: ["core", "groceries"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       if (seq !== reviseSeqRef.current) return; // a newer revision was asked for
       const out = parseJSON(raw);
@@ -4448,7 +4448,7 @@ Respond with ONLY this JSON:
       for (let attempt = 0; attempt < 2; attempt++) {
         const ask = attempt === 0 ? prompt
           : `${prompt}\n\nYOUR LAST VERSION USED ${describeHits(hits)}. That breaks their constraints. Rewrite it without those, keeping the dish.`;
-        const raw = await callClaude([{ role: "user", content: ask }], { maxTokens: 1900, docSlices: ["core", "flavor"] });
+        const raw = await callClaude([{ role: "user", content: ask }], { maxTokens: 1900, kind: "recipe", docSlices: ["core", "flavor"] });
         if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
         parsedRecipe = normalizeRecipe(parseJSON(raw));
         if (!parsedRecipe || !parsedRecipe.steps.length) {
@@ -4539,7 +4539,7 @@ Respond with ONLY this JSON:
 "options":[{"label":"short name for this route","what":"what changes","cost":"what it costs or gives up","best":false}]}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { kind: "propose", docSlices: ["core", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
       if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
@@ -4608,7 +4608,7 @@ Respond with ONLY this JSON:
 "recipe":{"title":"","servings":"","time":"","technique":"","seasoning":"","assembly":"","missing":[],"components":[{"name":"","items":[""]}],"steps":[{"do":"","why":""}]}}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900, docSlices: ["core", "groceries", "flavor"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1900, kind: "apply", docSlices: ["core", "groceries", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
       if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
@@ -4716,7 +4716,7 @@ Respond with ONLY this JSON:
 "ideas":[{"title":"","blurb":"what it is and why it works","usesItems":["exact text from the list"],"need":"anything to buy, or empty","minutes":15}]}`;
 
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "groceries", "flavor"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { kind: "leftovers", docSlices: ["core", "groceries", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
       if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
@@ -4775,7 +4775,7 @@ them how to judge by eye. 8 steps maximum, each 30 words or fewer.
 Respond with ONLY this JSON:
 {"title":"","servings":"","time":"","seasoning":"","components":[{"name":"","items":[""]}],"steps":[{"do":"","why":""}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1500, docSlices: ["core", "flavor"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1500, kind: "expand", docSlices: ["core", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const rec = normalizeRecipe(parseJSON(raw));
       if (!rec || !rec.steps.length) throw new Error("That recipe came back incomplete. Give it another go.");
@@ -4854,7 +4854,7 @@ Respond with ONLY this JSON:
         // recipeInstruction, but that's a short instruction handed to
         // applyRecipeChange (which carries its own full doctrine), not a
         // rewrite done here.
-        docSlices: atStove ? ["core", "flavor"] : ["core", "groceries"],
+        kind: atStove ? "ask-stove" : "ask", docSlices: atStove ? ["core", "flavor"] : ["core", "groceries"],
       });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       /* If she replies with prose instead of JSON that's still a fine answer —
@@ -4997,7 +4997,7 @@ which — and say the one thing to change next time. Skip the recap of what they
 text, no JSON.`;
     try {
       // Short, low-stakes, summarising a verdict they already formed.
-      const raw = await callClaude([{ role: "user", content: prompt }], { tier: "fast", json: false, docSlices: ["core", "flavor"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { tier: "fast", json: false, kind: "rating", docSlices: ["core", "flavor"] });
       setThread((t) => [...t, { who: "me", text: `${dish.title} — ${rating}/5. ${missing || ""}` }, { who: "mise", text: raw }]);
     } catch (_) {
       /* the rating is saved regardless */
@@ -5020,7 +5020,7 @@ and "why" 14 words or fewer.
 Respond with ONLY this JSON:
 {"say":"the through-line, one short sentence","dishes":[{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","format":"how it\u0027s cooked, one or two words","spice":0,"minutes":30}]}`;
     try {
-      const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
+      const raw = await callClaude([{ role: "user", content: prompt }], { kind: "like", docSlices: ["core", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
       const out = parseJSON(raw);
       setCandidates((cs) => [...cs, ...(out.dishes || []).map((d) => ({ ...cleanDish(d), id: uid(), reaction: null, note: "" }))]);

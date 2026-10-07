@@ -72,7 +72,13 @@ export async function POST(req) {
   const label = `${process.env.AI_PROVIDER || "anthropic"}`;
   console.log(`chat in (provider=${label})`);
 
-  const auth = await requireEntitledUser();
+  // Body parsing doesn't depend on who's asking, so it runs alongside the
+  // session/entitlement check rather than after it.
+  const BAD_BODY = {};
+  const [auth, parsed] = await Promise.all([
+    requireEntitledUser(),
+    req.json().catch(() => BAD_BODY),
+  ]);
   if (auth.error) {
     // Previously silent: this returned without logging, so an auth or paywall
     // rejection looked identical to the route never being called.
@@ -80,13 +86,11 @@ export async function POST(req) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  let body;
-  try {
-    body = await req.json();
-  } catch (_) {
+  if (parsed === BAD_BODY) {
     console.error("chat reject: unparseable body (400)");
     return NextResponse.json({ error: "bad_request" }, { status: 400 });
   }
+  const body = parsed;
 
   const { messages, tier, maxTokens, sessionContext, userProvider, userKey, docSlices, json } = body || {};
   const usage = {};
@@ -96,6 +100,8 @@ export async function POST(req) {
     model: usage.model || null, ok, status, latencyMs: Date.now() - startedAt,
     inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
   });
+  // Which call this is (ideas, recipe, ask…), for the log line only.
+  const kind = typeof body?.kind === "string" && /^[a-z-]{1,24}$/.test(body.kind) ? body.kind : "other";
   // Calls on the person's own key cost us nothing, so they aren't counted.
   const limited = userKey ? null : await overLimit(auth.userId, "chat");
   if (limited) {
@@ -147,7 +153,19 @@ export async function POST(req) {
      list falls back to everything, so an older client or a typo degrades to
      the previous (correct, just wasteful) behavior rather than running with no
      doctrine at all. */
-  const systemBlocks = [buildDoctrine(docSlices)];
+  /* ...except that the full doctrine is now sent on every call anyway, in one
+     fixed order, and docSlices is only logged. Measured on Gemini (2026-10-07,
+     see "chat ok" lines): implicit prefix caching only counts whole ~4k-token
+     blocks of a prefix it has seen before. `core` alone is ~7k tokens, so with
+     per-call slices the shared prefix stopped inside the second block and
+     every call re-read ~5k doctrine+context tokens at full price. With the
+     whole doctrine (~10k) identical on every call, every user and every call
+     type, the first two blocks are a cache hit every time: about 1.4k more
+     tokens sent on a two-slice call, roughly 4k fewer of them uncached, and
+     cached tokens are both cheaper and faster. One shared prefix is also one
+     cache entry on Anthropic instead of four slice combinations.
+     DOCTRINE_SLICED=1 restores per-call slices. */
+  const systemBlocks = [buildDoctrine(process.env.DOCTRINE_SLICED === "1" ? docSlices : null)];
   if (sessionContext) systemBlocks.push(sessionContext);
 
   // Recipe-writing calls need real headroom — a full recipe with 12 steps, prep
@@ -181,8 +199,19 @@ export async function POST(req) {
      its own budget, so it can only ever be more conservative. */
   const deadlineAt = startedAt + 52000;
 
+  /* Filled in by the provider (Gemini does; others may leave it empty) with
+     token usage and model time, for the one log line below. */
+  const meta = {};
+  // Gemini reports usage through meta (for the log line); the ai_calls record
+  // reads usage. Other providers fill usage directly via onUsage.
+  const fillUsage = () => {
+    if (!usage.model && meta.model) Object.assign(usage, { model: meta.model, inputTokens: meta.inTok ?? null,
+      outputTokens: (meta.outTok || 0) + (meta.thinkTok || 0) || null });
+  };
+  const preMs = Date.now() - startedAt;
   try {
     const text = await active.callModel(messages, systemBlocks, {
+      meta,
       tier,
       maxTokens: tokenCap,
       deadlineAt,
@@ -194,10 +223,18 @@ export async function POST(req) {
        the provider's own time budget, so "how long did the one that worked
        take" is the number that says whether the budget is right — guessing at
        it is what caused a working-but-slow call to be cut off before. */
+    /* One line per call, greppable: kind, total and model time, the route's
+       own overhead before the model (auth, rate limit, parsing), tokens in
+       (and how many of them were an implicit-cache hit), thinking + answer
+       tokens against the budget, and why generation stopped. */
+    const totalMs = Date.now() - startedAt;
     console.log(
-      `chat ok in ${Date.now() - startedAt}ms ` +
-      `(tier=${tier || "main"}, slices=${Array.isArray(docSlices) && docSlices.length ? docSlices.join("+") : "all"}, cap=${tokenCap})`
+      `chat ok kind=${kind} ms=${totalMs} model_ms=${meta.modelMs ?? "?"} pre_ms=${preMs} ` +
+      `in=${meta.inTok ?? "?"} cached=${meta.cachedTok ?? "?"} out=${meta.outTok ?? "?"} think=${meta.thinkTok ?? "?"} ` +
+      `finish=${meta.finish || "?"} cap=${tokenCap} tier=${tier || "main"} ` +
+      `slices=${Array.isArray(docSlices) && docSlices.length ? docSlices.join("+") : "all"}`
     );
+    fillUsage();
     await record(true, 200);
     return NextResponse.json({ text });
   } catch (e) {
@@ -205,9 +242,10 @@ export async function POST(req) {
     // a thrown request object could carry the key into the log.
     console.error(
       `chat fail after ${Date.now() - startedAt}ms ` +
-      `(tier=${tier || "main"}, slices=${Array.isArray(docSlices) && docSlices.length ? docSlices.join("+") : "all"}):`,
+      `(kind=${kind}, tier=${tier || "main"}, slices=${Array.isArray(docSlices) && docSlices.length ? docSlices.join("+") : "all"}):`,
       byok ? `(byok:${userProvider}) ${e.message}` : e
     );
+    fillUsage();
     await record(false, 502);
     return NextResponse.json(
       { error: "network", detail: e.userFacing || null },
