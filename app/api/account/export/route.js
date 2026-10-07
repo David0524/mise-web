@@ -34,6 +34,8 @@ export async function GET() {
       current_week: await data("current_weeks"),
       recipes_written: (await query(`select kind, recipe, created_at from recipe_log where user_id = $1 order by created_at`, [userId])
         .catch(() => ({ rows: [] }))).rows,
+      feedback: (await query(`select message, context, created_at from feedback where user_id = $1 order by created_at`, [userId])
+        .catch(() => ({ rows: [] }))).rows,
       usage_events: (await query(`select name, props, created_at from events where user_id = $1 order by created_at`, [userId])
         .catch(() => ({ rows: [] }))).rows,
       note: "Payment details are held by Stripe, not Mise. Your own AI key, if you added one, is stored only in your browser.",

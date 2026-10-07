@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { getSessionUserId } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { ensureSchema } from "@/lib/schema";
+import { isAdmin, Recipe, fmtDay, fmtWhen, ago, ctxLine, lastDays, DailyBars, CSS } from "./shared";
 
 /* Private stats page: how testers use Mise. Only accounts whose email is in
    ADMIN_EMAILS (comma-separated; defaults to the owner) can open it; everyone
@@ -10,16 +10,6 @@ import { ensureSchema } from "@/lib/schema";
    events table (lib/events.js). */
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Stats — Mise", robots: { index: false, follow: false } };
-
-const admins = () =>
-  (process.env.ADMIN_EMAILS || "drudd524@gmail.com").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
-
-async function isAdmin() {
-  const userId = await getSessionUserId();
-  if (!userId) return false;
-  const { rows } = await query(`select email from users where id = $1`, [userId]);
-  return !!rows[0]?.email && admins().includes(rows[0].email.toLowerCase());
-}
 
 const rows = async (sql, params = []) => (await query(sql, params)).rows;
 
@@ -30,7 +20,7 @@ const FEATURES = [
   ["recipe_opened", "Opened a new recipe"], ["recipe_change_asked", "Asked to change a recipe"], ["recipe_changed", "Applied a recipe change"],
   ["ask_mise", "Asked Mise a question"], ["timer_started", "Started a timer"], ["voice_used", "Used voice"],
   ["printed", "Printed"], ["leftovers", "Leftover ideas"], ["dish_rated", "Rated a dish"],
-  ["cook_again", "Cooked something again"], ["new_week", "Started a new week"],
+  ["cook_again", "Cooked something again"], ["new_week", "Started a new week"], ["feedback_note", "Sent feedback"],
 ];
 
 async function load() {
@@ -113,34 +103,34 @@ async function load() {
     recipes.set(r.who, list);
   }
 
-  return { totals, onboard, conv, features, screens, people, rated, recipes: [...recipes.entries()] };
-}
+  // Beta observability (lib/telemetry.js). Each read is on its own so a
+  // problem with one never blanks the page.
+  const dau = await rows(`
+    select to_char(date_trunc('day', created_at at time zone 'UTC'), 'YYYY-MM-DD') as day, count(distinct user_id)::int as n
+      from events where user_id is not null and created_at > now() - interval '30 days'
+     group by 1`).catch(() => []);
+  const feedback = await rows(`
+    select f.id, f.user_id, coalesce(u.email, u.phone, '(no email)') as who, f.message, f.context, f.created_at
+      from feedback f left join users u on u.id = f.user_id
+     order by f.created_at desc limit 100`).catch(() => []);
+  const errors = await rows(`
+    select message, count(*)::int as n, count(distinct user_id)::int as people,
+           count(*) filter (where user_id is null)::int as guests, max(created_at) as last_seen,
+           (array_agg(stack order by created_at desc))[1] as stack,
+           (array_agg(context order by created_at desc))[1] as context
+      from client_errors where created_at > now() - interval '30 days'
+     group by message order by max(created_at) desc limit 60`).catch(() => []);
+  const ai = await rows(`
+    select to_char(date_trunc('day', created_at at time zone 'UTC'), 'YYYY-MM-DD') as day, coalesce(tier, 'main') as tier,
+           count(*)::int as calls, count(*) filter (where not ok)::int as failures,
+           percentile_cont(0.5) within group (order by latency_ms)::int as p50,
+           percentile_cont(0.95) within group (order by latency_ms)::int as p95,
+           sum(input_tokens)::int as tin, sum(output_tokens)::int as tout
+      from ai_calls where created_at > now() - interval '14 days'
+     group by 1, 2 order by 1 desc, 2`).catch(() => []);
 
-const str = (v) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
-function Recipe({ r }) {
-  const rec = r.recipe || {};
-  const comps = Array.isArray(rec.components) ? rec.components : [];
-  const steps = Array.isArray(rec.steps) ? rec.steps : [];
-  return (
-    <details className="ad__rec">
-      <summary>{str(rec.title) || "(untitled)"} <span className="ad__tag">{r.kind}</span> <span className="ad__when">{fmtDay(r.at)}</span></summary>
-      <p className="ad__meta">{[str(rec.servings) && `Serves ${str(rec.servings)}`, str(rec.time)].filter(Boolean).join(" · ")}</p>
-      {comps.map((c, i) => (
-        <div key={i}><strong>{str(c?.name)}</strong>
-          <ul>{(Array.isArray(c?.items) ? c.items : []).map((it, j) => <li key={j}>{str(it)}</li>)}</ul></div>
-      ))}
-      {steps.length > 0 && <ol>{steps.map((st, i) => <li key={i}>{str(st?.do || st)}{str(st?.why) && <em> — {str(st.why)}</em>}</li>)}</ol>}
-      {str(rec.assembly) && <p><strong>To serve:</strong> {str(rec.assembly)}</p>}
-    </details>
-  );
+  return { totals, onboard, conv, features, screens, people, rated, recipes: [...recipes.entries()], dau, feedback, errors, ai };
 }
-
-const fmtDay = (d) => (d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—");
-const ago = (d) => {
-  if (!d) return "never";
-  const h = (Date.now() - new Date(d).getTime()) / 3.6e6;
-  return h < 1 ? "just now" : h < 24 ? `${Math.floor(h)}h ago` : `${Math.floor(h / 24)}d ago`;
-};
 
 export default async function AdminPage() {
   if (!(await isAdmin().catch(() => false))) notFound();
@@ -167,6 +157,12 @@ export default async function AdminPage() {
     <main className="ad">
       <h1>Mise stats</h1>
       <p className="ad__sub">Private. Last 30 days unless noted. Onboarding counts screens shown, so one person going back and forth counts more than once.</p>
+
+      <DailyBars
+        data={(() => { const m = Object.fromEntries(d.dau.map((x) => [x.day, x.n])); return lastDays(30).map((day) => ({ day, n: m[day] || 0 })); })()}
+        title="People active each day, last 30 days"
+        desc="Bars count distinct signed-in people with any recorded activity per day (UTC)." />
+      <p className="ad__sub">People active each day, last 30 days.</p>
 
       <section className="ad__tiles">
         {[
@@ -215,7 +211,7 @@ export default async function AdminPage() {
           <tbody>
             {d.people.map((p) => (
               <tr key={p.id}>
-                <td>{p.who}</td><td>{fmtDay(p.created_at)}</td><td>{ago(p.last_seen)}</td>
+                <td><a href={`/admin/u/${p.id}`}>{p.who}</a></td><td>{fmtDay(p.created_at)}</td><td>{ago(p.last_seen)}</td>
                 <td className="ad__num">{p.days_active}</td><td className="ad__num">{p.weeks}</td><td className="ad__num">{p.recipes}</td>
                 <td className="ad__num">{p.asks}</td><td className="ad__num">{p.ai7}</td>
                 <td>{p.has_code ? "code" : p.status === "active" || p.status === "trialing" ? "paid" : "none"}</td>
@@ -224,6 +220,69 @@ export default async function AdminPage() {
           </tbody>
         </table>
       </div>
+
+      <h2>Feedback</h2>
+      {d.feedback.length ? (
+        <div className="ad__scroll">
+          <table className="ad__t">
+            <thead><tr><th>Message</th><th>Who</th><th>Screen</th><th>When</th></tr></thead>
+            <tbody>
+              {d.feedback.map((f) => (
+                <tr key={f.id}>
+                  <td className="ad__msg">{f.message}<div className="ad__ctx">{[f.context?.agent, f.context?.viewport, f.context?.build].filter(Boolean).join(" · ")}</div></td>
+                  <td>{f.user_id ? <a href={`/admin/u/${f.user_id}`}>{f.who}</a> : f.who}</td>
+                  <td>{f.context?.view || "—"}{f.context?.from && <div className="ad__ctx">from {f.context.from}</div>}</td>
+                  <td className="ad__d">{fmtWhen(f.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p className="ad__sub">No feedback yet.</p>}
+
+      <h2>Errors</h2>
+      <p className="ad__sub">What broke in people&apos;s browsers in the last 30 days, grouped by message. Newest first.</p>
+      {d.errors.length ? (
+        <div className="ad__scroll">
+          <table className="ad__t">
+            <thead><tr><th>Error</th><th className="ad__num">Times</th><th className="ad__num">People</th><th>Last seen</th></tr></thead>
+            <tbody>
+              {d.errors.map((e) => (
+                <tr key={e.message}>
+                  <td className="ad__err">{e.message}
+                    <div className="ad__ctx">{ctxLine(e.context)}</div>
+                    {e.stack && <details><summary className="ad__ctx">Latest stack</summary><pre className="ad__stack">{e.stack}</pre></details>}
+                  </td>
+                  <td className="ad__num">{e.n}</td>
+                  <td className="ad__num">{e.people}{e.guests ? ` + guests` : ""}</td>
+                  <td>{ago(e.last_seen)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p className="ad__sub">No errors reported.</p>}
+
+      <h2>AI calls</h2>
+      <p className="ad__sub">Last 14 days, by day (UTC) and tier. Latency in seconds; a failure is anything that didn&apos;t return an answer, rate limits included.</p>
+      {d.ai.length ? (
+        <div className="ad__scroll">
+          <table className="ad__t">
+            <thead><tr><th>Day</th><th>Tier</th><th className="ad__num">Calls</th><th className="ad__num">Failed</th><th className="ad__num">p50</th><th className="ad__num">p95</th><th className="ad__num">Tokens in / out</th></tr></thead>
+            <tbody>
+              {d.ai.map((a) => (
+                <tr key={a.day + a.tier}>
+                  <td className="ad__d">{fmtDay(a.day + "T12:00:00Z")}</td><td>{a.tier}</td><td className="ad__num">{a.calls}</td>
+                  <td className={`ad__num ${a.failures ? "ad__bad" : "ad__ok"}`}>{a.failures}</td>
+                  <td className="ad__num">{a.p50 != null ? (a.p50 / 1000).toFixed(1) : "—"}</td>
+                  <td className="ad__num">{a.p95 != null ? (a.p95 / 1000).toFixed(1) : "—"}</td>
+                  <td className="ad__num">{a.tin != null || a.tout != null ? `${(a.tin || 0).toLocaleString()} / ${(a.tout || 0).toLocaleString()}` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p className="ad__sub">No AI calls recorded yet.</p>}
 
       <h2>Ratings</h2>
       {d.rated.length ? (
@@ -253,32 +312,3 @@ export default async function AdminPage() {
   );
 }
 
-const CSS = `
-:root{--ad-bg:#FBF7F2;--ad-ink:#2A211C;--ad-mute:#72645C;--ad-line:#E6DCD2;--ad-card:#fff;--ad-acc:#C2492A}
-@media (prefers-color-scheme: dark){:root{--ad-bg:#1C1714;--ad-ink:#F3ECE6;--ad-mute:#B3A69D;--ad-line:#3A302A;--ad-card:#26201C;--ad-acc:#E7764F}}
-body{background:var(--ad-bg)}
-.ad{max-width:980px;margin:0 auto;padding:24px 16px 64px;color:var(--ad-ink);font:500 15px/1.45 'Nunito',system-ui,sans-serif}
-.ad h1{font-size:1.8rem;margin:0 0 .2rem}
-.ad h2{font-size:1.15rem;margin:2rem 0 .6rem}
-.ad__sub{color:var(--ad-mute);margin:0 0 1rem}
-.ad__tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
-.ad__tile{background:var(--ad-card);border:1px solid var(--ad-line);border-radius:14px;padding:14px 16px}
-.ad__n{font-size:1.9rem;font-weight:800;font-variant-numeric:tabular-nums}
-.ad__l{font-weight:800}
-.ad__s{color:var(--ad-mute);font-size:.85rem}
-.ad__scroll{overflow-x:auto}
-.ad__t{width:100%;border-collapse:collapse;background:var(--ad-card);border:1px solid var(--ad-line);border-radius:12px;overflow:hidden}
-.ad__t th,.ad__t td{padding:8px 10px;border-bottom:1px solid var(--ad-line);text-align:left;vertical-align:top}
-.ad__t th{font-size:.8rem;color:var(--ad-mute);font-weight:800;white-space:nowrap}
-.ad__num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-.ad__barcell{width:40%}
-.ad__who{background:var(--ad-card);border:1px solid var(--ad-line);border-radius:12px;padding:10px 14px;margin:0 0 8px}
-.ad__who>summary{cursor:pointer}
-.ad__rec{border-top:1px solid var(--ad-line);padding:8px 0 4px;margin-top:8px}
-.ad__rec>summary{cursor:pointer;font-weight:700}
-.ad__tag{font-size:.75rem;font-weight:800;color:var(--ad-acc);text-transform:uppercase;margin-left:.4rem}
-.ad__when{color:var(--ad-mute);font-size:.85rem;margin-left:.3rem}
-.ad__meta{color:var(--ad-mute);margin:.3rem 0}
-.ad__rec ul,.ad__rec ol{margin:.3rem 0 .6rem 1.2rem;padding:0}
-.ad__bar{display:block;height:10px;border-radius:5px;background:var(--ad-acc);min-width:2px}
-`;

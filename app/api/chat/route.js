@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { overLimit } from "@/lib/limits";
 import { requireEntitledUser } from "@/lib/auth";
 import { buildDoctrine } from "@/lib/doctrine";
+import { saveAiCall } from "@/lib/telemetry";
 import * as anthropic from "@/lib/providers/anthropic";
 import * as gemini from "@/lib/providers/gemini";
 import * as openai from "@/lib/providers/openai";
@@ -44,6 +45,17 @@ export const maxDuration = 60;
    body could name any module in PROVIDERS and route around the server config. */
 const BYOK_PROVIDERS = { openai, anthropic };
 
+/* One ai_calls row per call that got past sign-in (see lib/telemetry.js), for
+   the stats page: failures, latency, tokens by tier. Awaited, but never for
+   more than a moment: a slow database must not hold up a reply, and on
+   serverless an un-awaited insert can be frozen with the function. */
+function recordCall(row) {
+  return Promise.race([
+    saveAiCall(row).catch(() => {}),
+    new Promise((r) => setTimeout(r, 250)),
+  ]);
+}
+
 export async function POST(req) {
   /* Entry log. This exists because a failure mode showed up that produced NO
      server log at all: the app loaded, a call failed, and Vercel showed only
@@ -77,15 +89,24 @@ export async function POST(req) {
   }
 
   const { messages, tier, maxTokens, sessionContext, userProvider, userKey, docSlices, json } = body || {};
+  const usage = {};
+  const record = (ok, status) => recordCall({
+    userId: auth.userId, tier: typeof tier === "string" ? tier : "main",
+    slices: Array.isArray(docSlices) && docSlices.length ? docSlices.filter((x) => typeof x === "string").join("+") : "all",
+    model: usage.model || null, ok, status, latencyMs: Date.now() - startedAt,
+    inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
+  });
   // Calls on the person's own key cost us nothing, so they aren't counted.
   const limited = userKey ? null : await overLimit(auth.userId, "chat");
   if (limited) {
     console.error(`chat reject: rate limited (429)`);
+    await record(false, 429);
     return NextResponse.json({ error: "rate_limited", detail: limited.message },
       { status: 429, headers: { "Retry-After": String(limited.retryAfter) } });
   }
   if (!Array.isArray(messages) || !messages.length) {
     console.error("chat reject: no messages (400)");
+    await record(false, 400);
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
   /* Shape-check before anything is forwarded. Malformed messages used to go
@@ -98,10 +119,12 @@ export async function POST(req) {
   const total = shapeOk ? messages.reduce((n, m) => n + m.content.length, 0) : Infinity;
   if (!shapeOk || total > MAX_TOTAL_CHARS) {
     console.error(`chat reject: malformed or oversized messages (400)`);
+    await record(false, 400);
     return NextResponse.json({ error: "bad_messages" }, { status: 400 });
   }
   if (sessionContext != null && (typeof sessionContext !== "string" || sessionContext.length > MAX_CONTEXT_CHARS)) {
     console.error("chat reject: oversized sessionContext (400)");
+    await record(false, 400);
     return NextResponse.json({ error: "bad_context" }, { status: 400 });
   }
 
@@ -164,6 +187,7 @@ export async function POST(req) {
       maxTokens: tokenCap,
       deadlineAt,
       json: json !== false,
+      onUsage: (u) => Object.assign(usage, u),
       ...(byok ? { userKey } : {}),
     });
     /* Timing is here on purpose. The heaviest call in the app sits close to
@@ -174,6 +198,7 @@ export async function POST(req) {
       `chat ok in ${Date.now() - startedAt}ms ` +
       `(tier=${tier || "main"}, slices=${Array.isArray(docSlices) && docSlices.length ? docSlices.join("+") : "all"}, cap=${tokenCap})`
     );
+    await record(true, 200);
     return NextResponse.json({ text });
   } catch (e) {
     // Deliberately not logging the error object wholesale on the BYOK path —
@@ -183,6 +208,7 @@ export async function POST(req) {
       `(tier=${tier || "main"}, slices=${Array.isArray(docSlices) && docSlices.length ? docSlices.join("+") : "all"}):`,
       byok ? `(byok:${userProvider}) ${e.message}` : e
     );
+    await record(false, 502);
     return NextResponse.json(
       { error: "network", detail: e.userFacing || null },
       { status: 502 }
