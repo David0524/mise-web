@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Paper Pixel Composer</title>
+<style>
+  @font-face { font-family: Outfit; font-weight: 500; src: url(../engine/fonts/Outfit-500.woff2); }
+  @font-face { font-family: Outfit; font-weight: 600; src: url(../engine/fonts/Outfit-600.woff2); }
+  @font-face { font-family: Outfit; font-weight: 700; src: url(../engine/fonts/Outfit-700.woff2); }
+  @font-face { font-family: Geist; font-weight: 500; src: url(../engine/fonts/Geist-500.woff2); }
+  @font-face { font-family: Geist; font-weight: 600; src: url(../engine/fonts/Geist-600.woff2); }
+  @font-face { font-family: Geist; font-weight: 700; src: url(../engine/fonts/Geist-700.woff2); }
+  html, body { margin: 0; background: #0b0b0b; color: #ddd; font: 13px system-ui; }
+  canvas { display: block; max-width: 100vw; max-height: 92vh; margin: auto; }
+  #warn { padding: 6px 12px; white-space: pre-wrap; }
+</style></head>
+<body><canvas></canvas><div id="warn"></div>
+<script src="../engine/ppm.js"></script>
+<script src="../engine/sprites.js"></script>
+<script src="../engine/flow.js"></script>
+<script src="../engine/grid-sprites.js"></script>
+<script src="../engine/plan.js"></script>
+<script src="../engine/compose.js"></script>
+<!-- the film is data: swap this file (or ?spec=other.film.js) -->
+<script>document.write(`<script src="${new URLSearchParams(location.search).get('spec') || 'sauce.film.js'}"><\/script>`); document.write(`<script src="${new URLSearchParams(location.search).get('words') || 'data:text/javascript,'}"><\/script>`);</script>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search);
+  if (q.get('mode')) SPEC.mode = q.get('mode');
+  await Promise.all(['500 40px Outfit', '600 40px Outfit', '700 40px Outfit', '500 40px Geist', '600 40px Geist'].map(f => document.fonts.load(f)));
+  const film = await PPMCompose.build(document.querySelector('canvas'), SPEC, window.WORDS);
+  document.getElementById('warn').textContent = film.plan.warnings.length ? '⚠ ' + film.plan.warnings.join('\n⚠ ') : '';
+  window.film = film; window.ready = true;
+  if (!q.has('render')) film.play();
+})().catch(e => { document.getElementById('warn').textContent = e.message; console.error(e.message); });
+</script>
+</body></html>

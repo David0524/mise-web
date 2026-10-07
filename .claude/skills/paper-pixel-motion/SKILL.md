@@ -17,6 +17,12 @@ pixel objects, light, transitions, motion, beat structure, don'ts). Every decisi
 | Path | What |
 |---|---|
 | `references/style-bible.md` | The style, measured frame by frame. **Read it every time.** |
+| `references/writing.md` | **Writing engine**: thesis → shape → word budget → voice rules → objects → beats → lint |
+| `references/spec.md` | Film spec format: beat types, fields, timing rules |
+| `engine/plan.js` | Planner: aligns beats to word timings or estimates them, assigns worlds, accelerates section ends, picks transitions, lints |
+| `engine/compose.js` | Composer: one builder per beat type (cut and flow), so a film renders straight from its spec |
+| `tools/plan.mjs` | `node plan.mjs film.film.js [words.json] [--md out.md]`: beat sheet, warnings and errors without rendering |
+| `examples/sauce.film.js` + `examples/compose.html` | A complete spec-driven film (original, shape "steps") |
 | `references/recipes.md` | Copy-paste shot recipes for every beat archetype, with timings |
 | `references/image-prompts.md` | When and how to ask the user for ChatGPT images, the prompt templates, and how to import them |
 | `references/review-rubric.md` | The reviewer checklist used in the build loop |
@@ -45,38 +51,34 @@ for a polished, continuous one. Elements can be mixed.
 
 ## Workflow
 
+The film is **data**: write a spec, let the planner time and lint it, and let the composer render it. Hand-written
+shots are only for moments the beat types don't cover.
+
 1. **Intake. Ask for everything in one message:**
    - the voice-over or song with a spoken line (audio file) plus its transcript, or just a topic and you write the script;
    - **10–12 small objects** that sum up the subject (their life, product or brand world);
    - the silhouettes to light like a heat camera (e.g. a head in profile, a raised hand), as photos or PNGs with the body in alpha.
-    Real masks beat the built-in `PPM.SHAPES` every time; treat those as preview stand-ins and offer the image prompts;
+     Real masks beat the built-in `PPM.SHAPES` every time; treat those as preview stand-ins and offer the image prompts;
    - the **3 words** that should land hardest;
    - the mode (cut / flow), the aspect ratio (default 4:3 at 1440×1080) and the length (default 20 s).
-   If they skip something, derive it from **their topic** (objects from their world, words from their script) and
-   say what you chose. The built-in sets (`PPM.KITCHEN_SET`, `PPM.SPRITE_SET`) are demo placeholders, not defaults
-   to ship. Silhouettes: use `PPM.SHAPES`, the user's own photos, CC0 images (Openverse, with the licence checked) or
-   generated images (see `references/image-prompts.md`).
-   The native script shape is one question → one answer → three values → one agency line → one final word, but
-   follow the user's message; this is a shape, not a script to reuse. Lower-case, short, one tiny line at a time.
-2. **Beat sheet.** Map the script onto the beat structure in style-bible §11. Write a table:
-   `t_start | dur | world | archetype | words + reveal times | objects | transition out`. Rules: average shot about 1 s,
-   alternate worlds on every idea, accelerate cuts before each section ends, the end is messier than the start.
-   If there is audio, measure word timings with
-   `python3 tools/word-timings.py voice.mp3 words.json --transcript "…"` (faster-whisper, 8 s chunks, snapped to
-   the transcript) and hang every reveal and cut on those times. Without speech, use RMS onsets
-   (`ffmpeg … astats`).
-3. **Assets decision.** Go through the objects and silhouettes against the table in `references/image-prompts.md`.
-   If any would be clearly better as a generated image, **ask the user once** with ready-to-paste prompts and file
-   names, and offer to skip. Keep building with procedural stand-ins meanwhile, and swap them when the files arrive.
-4. **Build.** Copy `examples/test-segments.html` into the user's project (keep the relative `engine/` path, or copy
-   `engine/` alongside it). Replace the shots using `references/recipes.md`. One `film.shot(dur, world, fn)` per cut.
-   Keep each shot's code small; the kit does the heavy lifting.
-5. **Show 8 stills before the full render.** Render one key frame per section
-   (`render.mjs film.html stills/ --times 0.4,2.1,…`), send them to the user and adjust before spending a full render.
-6. **Render and review loop** (below) until every shot passes.
-7. **Deliver.** Render the full MP4 (flow mode: `?fps=60` with `--subframes 8`), lay the original audio back on
-   (`--audio`), and produce a contact sheet. Report the file paths, the
-   beat sheet and anything still procedural that would improve with generated images.
+   If they skip something, derive it from **their topic** and say what you chose. The built-in sets
+   (`PPM.KITCHEN_SET`, `PPM.SPRITE_SET`) are demo placeholders.
+2. **Write.** Follow `references/writing.md`: thesis → shape → word budget → lines → objects → beats. Output a
+   spec file `<name>.film.js` (`references/spec.md`) in the user's project.
+3. **Time it.** With audio: `python3 tools/word-timings.py voice.mp3 words.json --transcript "…"`, then wrap it as
+   `window.WORDS = …` in `words.js`. Without audio, the planner estimates timing.
+4. **Plan and lint.** Run `node tools/plan.mjs <name>.film.js [words.json]` and fix every error and warning that applies.
+   Show the user the **thesis, the script and the beat sheet** and get a yes before rendering.
+5. **Assets.** Check the objects and silhouettes against `references/image-prompts.md`. Ask once for any
+   generated images (with ready-to-paste prompts), and keep going with stand-ins meanwhile. Unusual objects get new
+   `PPM.defGrid` sprites.
+6. **Compose.** Copy `examples/compose.html` next to the spec (fix the relative `engine/` paths) and open it with
+   `?spec=<name>.film.js&words=words.js`. Adjust through the spec (beat fields) first; only add hand-written
+   `film.shot()`s for one-offs.
+7. **Show 8 stills before the full render** (`render.mjs compose.html stills/ --times …`, one per section).
+8. **Render and review loop** (below) until every shot passes.
+9. **Deliver.** Render the full MP4 (flow mode: `--query fps=60 --subframes 8`), lay the original audio back on
+   (`--audio`), and produce a contact sheet plus the final beat sheet (`plan.mjs --md`).
 
 ## Render and review loop (orchestrator + reviewer)
 
