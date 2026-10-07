@@ -129,7 +129,8 @@
     const out = [];
     beats.forEach(b => {
       if (b.type === 'spell') {
-        const letters = [...String(b.text).replace(/\s/g, '')], per = b.dur / letters.length, cyc = b.worlds || TYPES.spell.world;
+        const afterInk = mode === 'flow' && out.length && out[out.length - 1].type === 'scatter'; // flow scatter ends on black: spell from void
+        const letters = [...String(b.text).replace(/\s/g, '')], per = b.dur / letters.length, cyc = b.worlds || (afterInk ? ['void', 'red', 'void', 'paper'] : TYPES.spell.world);
         letters.forEach((ch, j) => out.push({ ...b, letterIndex: j, letters, dur: b.timing === 'voice' ? per : TYPES.spell.base, world: cyc[j % cyc.length], text: b.text }));
       } else out.push(b);
     });
@@ -155,7 +156,7 @@
     out.forEach((b, k) => {
       const n = out[k + 1];
       if (!n) { b.transition = 'end'; return; }
-      if (mode === 'flow') b.transition = b.type === 'spell' && n.type === 'spell' ? 'cut' : 'handoff';
+      if (mode === 'flow') b.transition = (b.type === 'spell' && n.type === 'spell') || b.type === 'flash' || n.type === 'flash' ? 'cut' : 'handoff'; // flashes always cut, in and out
       else b.transition = n.section !== b.section ? 'cut-on-beat' : 'cut';
     });
     // ── start times ──
@@ -179,6 +180,8 @@
     if (spoken < lo || spoken > hi) warnings.push(`${spoken} spoken words for ${L}s; the budget is about ${lo}–${hi} (writing.md §2)`);
     // one world held too long across different beat types
     for (let k = 0; k < out.length; k++) { let j = k, t = 0; while (j < out.length && out[j].world === out[k].world) { t += out[j].dur; j++; } if (j - k > 1 && t > 3) { warnings.push(`beats ${out[k].i}–${out[j - 1].i}: ${out[k].world} for ${t.toFixed(1)}s straight; insert a contrasting beat (conveyor, flash)`); k = j - 1; } }
+    out.forEach(b => { if (b.dur > 2.5 && b.type !== 'resolve') warnings.push(`beat ${b.i} (${b.type}): ${b.dur.toFixed(1)}s in one shot; holds cap around 2–2.5s, so split it into two beats`); });
+    out.filter(b => b.type === 'silhouette' && /hand/i.test(b.shape || '')).forEach(b => { const w = tokens(b.text), h = Math.ceil(w.length / 2), L = w.slice(0, h).join(' '), R = w.slice(h).join(' '); if (Math.max(L.length, R.length) > 16) warnings.push(`beat ${b.i}: "${L.length > R.length ? L : R}" is ${Math.max(L.length, R.length)} chars beside the hand (max ~16); shorten the line or it will be shrunk`); });
     const accents = out.filter(b => b.type === 'flare').length; if (accents > 1) warnings.push('more than one flare: the cyan moment should happen once');
     return { beats: out, duration, errors, warnings, mode, fps: spec.fps || (mode === 'flow' ? 60 : 24) };
   }

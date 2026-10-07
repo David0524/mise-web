@@ -48,7 +48,7 @@
     hero(g, s, b, ctx) {
       const word = tokens(b.text)[0];
       if (ctx.flow) { // shot world is paper; the yellow card wipes off to the left
-        const wipe = E.inOut((s.t - s.d * .55) / (s.d * .45));
+        const wipe = E.inOut((s.t - s.d * .2) / (s.d * .8));
         g.layer({ x: -wipe * 1500 }, () => { g.ctx.fillStyle = C.yellowFlash; g.ctx.fillRect(0, 0, 1440, 1080); g.text(word, 720, 600, { size: 350, weight: 700, align: 'center', track: -.04, baseline: 'alphabetic', color: C.ink }); g.guides([110, 1000]); });
         return;
       }
@@ -91,10 +91,12 @@
       g.layer({ blur: (1 - heat) * 24 }, () => g.heat(shp.src, { key: b.shape, t: s.T, heat, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: hot, hotspotStrength: isHand ? .3 : .65 }));
       if (ring > 0 && ring < 1) g.orbit(ox, oy, 340, 110, -.5, ring, 'front');
       const words = tokens(b.text);
-      if (isHand) { // split the line either side of the hand
+      if (isHand) { // split the line either side of the hand; shrink to fit (40 px floor) so neither half leaves the frame
         const half = Math.ceil(words.length / 2), L = { ...b, text: words.slice(0, half).join(' '), reveal: b.reveal.slice(0, half) }, R = { ...b, text: words.slice(half).join(' '), reveal: b.reveal.slice(half) };
-        if (ctx.flow) { const onR = R.reveal.length && s.t >= R.reveal[0].t; g.caption(typedAt(L, s.t), 440 - g.measure(L.text, 52), 520, { size: 52, color: C.white, cursorColor: C.white, align: 'left', cursor: !onR, t: s.t }); g.caption(typedAt(R, s.t), 1010, 520, { size: 52, color: C.white, cursorColor: C.white, align: 'left', cursor: onR, t: s.t }); }
-        else { g.words(tokens(L.text), revealTimes(L), s.t, 440 - g.measure(L.text, 52), 520, { size: 52, color: C.white }); g.words(tokens(R.text), revealTimes(R), s.t, 1010, 520, { size: 52, color: C.white }); }
+        const fs = Math.max(40, Math.min(52, 52 * (440 - 58) / Math.max(1, g.measure(L.text, 52)), 52 * (1382 - 1010) / Math.max(1, g.measure(R.text, 52) + 40)));
+        const lx = Math.max(58, 440 - g.measure(L.text, fs));
+        if (ctx.flow) { const onR = R.reveal.length && s.t >= R.reveal[0].t; g.caption(typedAt(L, s.t), lx, 520, { size: fs, color: C.white, cursorColor: C.white, align: 'left', cursor: !onR, t: s.t }); g.caption(typedAt(R, s.t), 1010, 520, { size: fs, color: C.white, cursorColor: C.white, align: 'left', cursor: onR, t: s.t }); }
+        else { g.words(tokens(L.text), revealTimes(L), s.t, lx, 520, { size: fs, color: C.white }); g.words(tokens(R.text), revealTimes(R), s.t, 1010, 520, { size: fs, color: C.white }); }
       } else line(g, ctx, b, s.t, { x: ctx.flow ? 110 : 130, align: 'left', color: C.white, cursorColor: C.white });
       const wash = !ctx.flow && b.wash !== false ? g.clamp((s.t - (s.d - .35)) / .3) : 0;
       if (wash > 0) { g.ctx.fillStyle = `rgba(110,92,92,${wash * .75})`; g.ctx.fillRect(0, 0, 1440, 1080); if (wash > .6 && !isHand) g.cutout(shp.src); }
@@ -145,7 +147,7 @@
         else { g.sprite(n, x, y, g.lerp(150, 130, k), { rot: g.lerp(0, r.range(-.6, .6), k), silhouette: ink }); if (ink > 0 && ink < 1) g.sprayBlot(x, y, 60, ink * 1.2, i); }
       });
       if (s.t > .25 && s.t < .85) { const p = (s.t - .25) / .6; g.brushSmear([[200, 300], [380, 200], [300, 420], [520, 520], [700, 380]], p * 1.4, { p0: Math.max(0, p - .3), width: 30, core: 5 }); }
-      if (ctx.flow) { const sw = E.inOut((s.t - (s.d - .8)) / .7); [[260, 220, 1], [1150, 300, 2], [700, 820, 3], [300, 820, 4], [1180, 860, 5], [720, 480, 6]].forEach(([x, y, q], j) => g.sprayBlot(x, y, 420, g.clamp(sw * 1.3 - j * .06), q)); const full = g.clamp((s.t - (s.d - .22)) / .2); if (full > 0) { g.ctx.fillStyle = `rgba(20,20,20,${full})`; g.ctx.fillRect(0, 0, 1440, 1080); } }
+      if (ctx.flow) { const sw = E.inOut((s.t - (s.d - .8)) / .7); [[260, 220, 1], [1150, 300, 2], [700, 820, 3], [300, 820, 4], [1180, 860, 5], [720, 480, 6]].forEach(([x, y, q], j) => g.sprayBlot(x, y, 420, g.clamp(sw * 1.3 - j * .06), q, { hard: true })); const full = g.clamp((s.t - (s.d - .22)) / .2); if (full > 0) { g.ctx.fillStyle = `rgba(20,20,20,${full})`; g.ctx.fillRect(0, 0, 1440, 1080); } }
       g.flecks(8, 51 + b.i, s.f);
     },
     spell(g, s, b, ctx) {
@@ -161,13 +163,14 @@
       const word = String(b.text).replace(/\s/g, '').toUpperCase(), r = PPM.rng(44 + b.i);
       const Ls = [...word].map((ch, i) => ({ ch, x: r.range(250, 1200), y: r.range(200, 900), a: r.range(-2.4, 2.4) }));
       if (s.t < .4) [[[60, 200], [250, 120], [200, 380], [420, 440]], [[700, 200], [950, 250], [1100, 420], [980, 520]], [[600, 900], [800, 720], [1100, 820], [1300, 700]]].forEach(pts => g.brushSmear(pts, s.t / .25 * 1.3, { p0: Math.max(0, s.t / .25 - .4), width: ctx.flow ? 14 : 60, core: ctx.flow ? 2.5 : 5 }));
-      const end = b.end || (b.object ? 'word' : 'knot'), conv = E.inOut(g.clamp((s.t - (s.d - 1.0)) / .6));
+      const end = b.end || (b.object ? 'word' : 'knot'), c0 = end === 'word' ? s.d * .3 : s.d - 1.0, c1 = end === 'word' ? s.d * .65 : s.d - .4;
+      const conv = E.inOut(g.clamp((s.t - c0) / (c1 - c0))), loopFade = end === 'word' ? 1 - g.clamp((s.t - c1) / .3) : 1; // word: settle by 65 %, then hold clean
       Ls.forEach((l, i) => {
         const drift = Math.sin(s.t * .9 + i) * 20, settle = E.out(g.clamp((s.t - .3) / 1.2));
         const tx = end === 'word' ? 720 + (i - (Ls.length - 1) / 2) * 90 : 720 + (i - (Ls.length - 1) / 2) * 18;
         const x = g.lerp(l.x + drift, tx, conv), y = g.lerp(l.y, 540, conv), a = g.lerp(l.a * (1 - settle * .8), 0, conv);
         g.layer({ x, y, rot: a, alpha: end === 'knot' ? 1 - g.clamp((conv - .6) / .4) : 1 }, () => g.text(l.ch, 0, 0, { size: 56, weight: 600, align: 'center' }));
-        if (s.t > .9) g.redLoops(x, y, (40 + conv * 60) * (end === 'word' ? 1 - conv * .7 : 1), s.f, i + 1, { loops: s.t > 1.5 ? 2 : 1 });
+        if (s.t > .9 && loopFade > 0) g.layer({ alpha: loopFade }, () => g.redLoops(x, y, end === 'word' ? 40 + (1 - conv) * 30 : 40 + conv * 60, s.f, i + 1, { loops: s.t > 1.5 ? 2 : 1 }));
       });
       if (end === 'knot' && conv > .4) { const kr = PPM.rng(90 + g.stepped(s.f, 2)), grow = g.clamp((conv - .4) / .45); for (let j = 0; j < 4; j++) { const pts = []; for (let q = 0; q < 6; q++) pts.push([720 + kr.range(-80, 80), 540 + kr.range(-70, 70)]); g.stroke(pts, grow, { width: g.lerp(10, 22, grow), taper: false }); } }
       if (end === 'word' && b.object) obj(g, ctx, b.object, 720, 330 - (1 - conv) * 60, 200, {});
@@ -203,7 +206,6 @@
       const fn = B[b.type], orig = spec.beats[b.i] || {};
       if (flow && b.type === 'card' && !orig.world) b.world = 'paper'; // flow cards flood void out of the object over the page
       if (flow && b.type === 'hero' && !orig.world) b.world = 'paper'; // the yellow card is drawn in-shot and wipes off to reveal paper
-      if (flow && b.type === 'spell' && !orig.worlds && plan.beats.find(x => x.type === 'scatter' && x.i === b.i - 1)) b.world = ['void', 'red', 'void', 'paper'][b.letterIndex % 4]; // the ink took the page: spelling starts on black
       film.shot(b.dur, b.world, (g, s) => {
         const HO = Math.min(.18, b.dur * .25);
         if (flow && k > 0 && plan.beats[k - 1].transition === 'handoff' && s.t < HO) { // continuous handoff: start on the outgoing shot's last frame, then cross to this one

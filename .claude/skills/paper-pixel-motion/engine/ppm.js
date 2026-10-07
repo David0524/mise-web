@@ -277,11 +277,11 @@
         const sx = o.sx ?? rr.range(.8, 1.5), rot = o.rot ?? rr.range(0, Math.PI);
         ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(sx, 1);
         const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
-        gr.addColorStop(0, 'rgba(10,9,9,.98)'); gr.addColorStop(.55, 'rgba(10,9,9,.92)'); gr.addColorStop(.8, 'rgba(10,9,9,.35)'); gr.addColorStop(1, 'rgba(10,9,9,0)');
+        (o.hard ? [[0, .99], [.7, .99], [.76, .7], [.82, .12], [.84, 0]] : [[0, .98], [.55, .92], [.8, .35], [1, 0]]).forEach(([k, al]) => gr.addColorStop(k, `rgba(10,9,9,${al})`)); // hard: solid core to 70 %, short falloff
         ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#0c0b0b';
-        const n = Math.floor(260 * grow), sr = rng(seed * 7);
-        for (let i = 0; i < n; i++) { const a = sr() * Math.PI * 2, d = R * (.7 + Math.pow(sr(), 2) * .7), s = sr.range(.6, 2.2) * U; ctx.globalAlpha = sr.range(.3, .9); ctx.fillRect(Math.cos(a) * d, Math.sin(a) * d, s, s); }
+        const n = Math.floor((o.hard ? 900 : 260) * grow), sr = rng(seed * 7);
+        for (let i = 0; i < n; i++) { const a = sr() * Math.PI * 2, d = R * (o.hard ? .74 + sr() * .2 : .7 + Math.pow(sr(), 2) * .7), s = sr.range(.6, 2.2) * U; ctx.globalAlpha = sr.range(.3, .9); ctx.fillRect(Math.cos(a) * d, Math.sin(a) * d, s, s); }
         ctx.restore();
       },
       /** Ink droplets/flecks scattered around (life on twos). */
