@@ -9,7 +9,7 @@ export default function LegalPage({ title, intro, children }) {
     <main style={{ ...S.wrap, flexDirection: "column", alignItems: "center", justifyContent: "flex-start" }} id="main">
       <FilterDefs />
       <article className="legal" style={{ ...S.card, maxWidth: 760, width: "100%", textAlign: "left" }}>
-        <p style={{ margin: "0 0 .3rem" }}><a href="/" style={S.link}>← Mise</a></p>
+        <p style={{ margin: "-.6rem 0 -.3rem" }}><a href="/" style={{ ...S.link, display: "inline-flex", alignItems: "center", minHeight: 44 }}>← Mise</a></p>
         <h1 style={{ ...S.h1, marginBottom: ".2rem" }}>{title}</h1>
         <p style={{ ...S.sub, marginBottom: "1rem" }}>Last updated {POLICY_DATE}</p>
         {intro && <p className="legal__intro">{intro}</p>}

@@ -9151,6 +9151,17 @@ const CSS = `
 }}
 
 .app *{box-sizing:border-box;min-width:0}
+/* Form controls don't inherit the page font: without this, any button or input
+   whose own rule doesn't name a font (shopping rows, the change options, dish
+   notes) rendered in the browser's 13px Arial. Zero specificity, so every
+   class rule that does set a font still wins. */
+:where(.app) :where(button,input,select,textarea){font:inherit}
+/* Small pill and text buttons keep their look but get a 44px tap area: an
+   invisible ::after grows the hit box to at least 44x44 around the label. */
+.swap,.hstep__tick,.dish__toggle,.seed__re,.newwk,.tour__skip{position:relative}
+.swap::after,.hstep__tick::after,.dish__toggle::after,.seed__re::after,.newwk::after,.tour__skip::after,.rsheet__x::after{
+  content:"";position:absolute;top:min(0px,calc((100% - 44px) / 2));bottom:min(0px,calc((100% - 44px) / 2));
+  left:min(0px,calc((100% - 44px) / 2));right:min(0px,calc((100% - 44px) / 2))}
 /* NOT overflow-x:hidden. Any overflow value other than visible on an ancestor
    silently makes position:sticky inert in every descendant — which is why the
    nav never actually pinned despite having correct sticky CSS. clip does the
@@ -9438,7 +9449,7 @@ a.btn{display:inline-flex;align-items:center;justify-content:center;text-decorat
 /* active is a warm tint with a brick edge, not a slab of black */
 /* Selected state tints the glass rather than replacing it with a flat fill —
    the material stays visible, it just takes on the accent colour. */
-.chip--on{background:rgba(238,146,101,.20);color:var(--brick);border-color:var(--brick);
+.chip--on{background:rgba(238,146,101,.16);color:var(--brick);border-color:var(--brick);
   font-weight:800;box-shadow:0 2px 0 var(--rose), var(--spec), var(--lift-1)}
 .chip--on:active{box-shadow:0 0 0 var(--rose), var(--spec)}
 .chip__main{font-weight:800}
@@ -9620,8 +9631,10 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 
 /* Pinned so the tap target is in the same place on every step, regardless of
    how tall that step's content happens to be. */
-.wizbar{position:fixed;left:0;right:0;bottom:0;z-index:26;padding:.7rem .9rem .85rem;
-  height:104px;display:flex;flex-direction:column;justify-content:flex-start;
+/* The home-indicator inset is added on top, so the caption under the button
+   doesn't sit under the indicator on a notched iPhone. */
+.wizbar{position:fixed;left:0;right:0;bottom:0;z-index:26;padding:.7rem .9rem calc(.85rem + env(safe-area-inset-bottom,0px));
+  height:calc(104px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;justify-content:flex-start;
   background:linear-gradient(180deg,rgba(255,249,247,0),rgba(255,249,247,.97) 34%);
   backdrop-filter:blur(6px);box-sizing:border-box}
 .wizbar__in{width:100%;max-width:720px;margin:0 auto;display:flex;gap:.65rem;align-items:center;
@@ -9734,7 +9747,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .askbar__av{flex:0 0 auto;width:42px;height:42px;border-radius:50%;background:#fff;display:grid;place-items:end center;overflow:hidden;box-shadow:0 0 0 1px var(--rule)}
 .askbar .askbar__in input{flex:1;min-width:0;width:auto;min-height:0;border:none;background:none;outline:none;font-family:'Nunito',sans-serif;font-weight:700;font-size:16px;padding:.5rem 0;margin:0;box-shadow:none;border-radius:0}
 .askbar .askbar__in input::placeholder{color:#72645C}
-.askbar__go{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:none;background:var(--brick);color:#fff;display:grid;place-items:center;cursor:pointer}
+.askbar__go{flex:0 0 auto;width:44px;height:44px;border-radius:50%;border:none;background:var(--brick);color:#fff;display:grid;place-items:center;cursor:pointer}
 .askbar__go:disabled{background:var(--sunk);color:#fff;cursor:default}
 .askbar__quick{display:flex;gap:.4rem;overflow-x:auto;padding:0 .1rem .5rem;scrollbar-width:none}
 .askbar__quick::-webkit-scrollbar{display:none}
@@ -9780,7 +9793,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .comp__l2 li{display:flex;justify-content:space-between;align-items:center;gap:.6rem;
   padding:.15rem 0;min-height:44px;border-bottom:1px solid var(--rule)}
 .swapwrap{position:fixed;inset:0;z-index:40;background:rgba(34,26,21,.42);
-  display:flex;align-items:flex-end;justify-content:center;padding:.6rem}
+  display:flex;align-items:flex-end;justify-content:center;padding:.6rem .6rem calc(.6rem + env(safe-area-inset-bottom,0px))}
 @media(min-width:640px){.swapwrap{align-items:center}}
 .swapbox{background:var(--surface);border-radius:26px;padding:1.4rem 1.25rem;width:100%;
   max-width:460px;box-shadow:0 20px 60px rgba(34,26,21,.4);max-height:88vh;overflow-y:auto}
@@ -9907,7 +9920,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   display:flex;flex-direction:column;gap:.5rem;box-shadow:var(--shadow)}
 .hstep--done{background:linear-gradient(180deg,#F3FAF6,#fff 50%);border-color:rgba(47,107,84,.4)}
 .hstep__top{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
-.hstep__n{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.5em;color:var(--rose)}
+.hstep__n{font-family:'Nunito',sans-serif;font-weight:700;font-size:1.5em;color:var(--rose-strong)}
 .hstep--done .hstep__n{color:var(--good)}
 .hstep__tick{min-height:38px;padding:0 .8rem;background:none;border:1px solid var(--rule-2);
   border-radius:999px;font-family:'Nunito',sans-serif;font-size:.82em;color:var(--plum);cursor:pointer}
@@ -10321,7 +10334,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
     radial-gradient(80% 40% at 50% 104%, rgba(216,126,121,.18), transparent 65%);
   background-attachment:fixed}
 
-.cook__top{flex:0 0 auto;display:flex;align-items:center;gap:.8rem;padding:.85rem 1rem;
+.cook__top{flex:0 0 auto;display:flex;align-items:center;gap:.8rem;padding:calc(.85rem + env(safe-area-inset-top,0px)) 1rem .85rem;
   position:sticky;top:0;z-index:3;background:rgba(255,249,247,.86);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--rule)}
 .cook__title{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
@@ -10412,7 +10425,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .cook__all button span{font-family:'Nunito',sans-serif;font-weight:700;color:var(--brick);flex:0 0 1.6rem}
 
 /* prep checklist */
-.prepbar{position:fixed;left:0;right:0;bottom:0;z-index:26;padding:.7rem .9rem 1rem;
+.prepbar{position:fixed;left:0;right:0;bottom:0;z-index:26;padding:.7rem .9rem calc(1rem + env(safe-area-inset-bottom,0px));
   background:linear-gradient(180deg,rgba(255,249,247,0),rgba(255,249,247,.96) 38%);
   backdrop-filter:blur(6px)}
 .prepbar__in{max-width:720px;margin:0 auto;display:flex;align-items:center;gap:.9rem;
@@ -10478,7 +10491,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 
 /* Mise, hovering */
 
-.cask{position:fixed;left:.6rem;right:.6rem;bottom:.6rem;z-index:28;background:var(--surface);
+.cask{position:fixed;left:.6rem;right:.6rem;bottom:calc(.6rem + env(safe-area-inset-bottom,0px));z-index:28;background:var(--surface);
   border:1px solid var(--rule);border-radius:26px;padding:1.1rem;
   box-shadow:0 -8px 50px rgba(34,26,21,.23)}
 @media(min-width:720px){.cask{left:auto;width:450px}}
@@ -10565,6 +10578,9 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    Width and padding are transitioned, so the collapse is one continuous
    movement into the round button rather than a swap between two elements. */
 .fab--overcta{bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cta-clear))}
+/* Editing the setup from My Kitchen pins the wizard bar where the tab bar was;
+   the bubble sat over the top of its Next button. Lift it clear. */
+.app:has(.wizbar) .fab{bottom:calc(104px + env(safe-area-inset-bottom,0px) + .6rem)}
 /* bottom is transitioned so the bubble slides between the two heights when a
    CTA appears or disappears, rather than teleporting mid-scroll. */
 /* STAGED, and that's what makes it feel unforced.
@@ -10688,7 +10704,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   border:1px solid transparent;font-family:'Nunito',sans-serif;font-size:.92em;
   cursor:pointer;color:var(--plum);border-radius:999px}
 .quick:hover{border-color:var(--rule-2)}
-.sheet__foot{display:flex;gap:.5rem;padding:.8rem 1rem 1.1rem;border-top:1px solid var(--rule);align-items:center}
+.sheet__foot{display:flex;gap:.5rem;padding:.8rem 1rem calc(1.1rem + env(safe-area-inset-bottom,0px));border-top:1px solid var(--rule);align-items:center}
 .sheet__foot input[type=text]{border-radius:999px;padding:.7rem 1.05rem}
 .sheet__foot .btn{border-radius:999px}
 .sheet__body{border-radius:0}
@@ -10701,7 +10717,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* Floats above the page instead of pushing content down when it appears or
    is dismissed — top-anchored so it doesn't collide with the bottom-docked
    sous-chef bubble, prep bar and busy indicator. */
-.alert{position:fixed;top:.6rem;left:.6rem;right:.6rem;z-index:21;max-width:920px;margin:0 auto;
+.alert{position:fixed;top:calc(.6rem + env(safe-area-inset-top,0px));left:.6rem;right:.6rem;z-index:21;max-width:920px;margin:0 auto;
   padding:1rem 1.25rem;background:var(--brick);color:#fff;
   display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;
   border-radius:16px;box-shadow:var(--shadow-lift);animation:surfaceDown .22s ease-out}
