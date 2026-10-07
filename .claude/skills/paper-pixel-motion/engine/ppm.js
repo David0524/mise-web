@@ -542,7 +542,7 @@
         out.setTransform(1, 0, 0, 1, 0, 0); out.filter = 'none'; out.globalAlpha = 1; out.globalCompositeOperation = 'source-over';
         out.fillStyle = '#000'; out.fillRect(0, 0, w, h);
         const wx = T.weave ? noise1(fr * .15, 1) * 1.2 * h / 1080 : 0, wy = T.weave ? noise1(fr * .15, 2) * 1.2 * h / 1080 : 0;
-        const fl = T.flicker ? 1 + noise1(fr * .9, 3) * .025 + (hash(fr * 31) - .5) * .02 : 1;
+        const fl = T.flicker ? 1 + clamp(noise1(fr * .9, 3) * .02 + (hash(fr * 31) - .5) * .02, -.028, .028) : 1; // ±3 % max per the bible
         out.filter = `brightness(${fl})` + (s.o.blur ? ` blur(${s.o.blur(st) * h / 1080}px)` : '');
         out.drawImage(scene, -4 + wx, -3 + wy, w + 8, h + 6); // oversize so weave never shows edges
         out.filter = 'none';
