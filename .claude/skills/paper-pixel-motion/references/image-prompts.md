@@ -8,7 +8,7 @@ generate images in ChatGPT when one of these is true:
 | Pixel object, simple (heart, coin, note, star, mug) | ✅ `defSprite` | — |
 | Pixel object with detail or character (a specific dog, a car model, a dish, a building, a person's favourite thing) | ❌ looks generic | ✅ pixel-art sprite prompt |
 | A **set** of 8–16 personal objects with consistent style | Only if all are simple | ✅ one sprite-sheet prompt (consistency matters) |
-| Thermal glow silhouette of a body part (profile, hand, full figure in a pose) | ✅ the generic profile and hand in `PPM.SHAPES` | ✅ when the pose is specific, or for a more realistic edge (hair, fingers) |
+| Thermal glow silhouette of a body part (profile, hand, full figure in a pose) | ⚠️ `PPM.SHAPES` is a stand-in for previews | ✅ **preferred for any hero silhouette.** A real mask (the user's photo, a CC0 cut-out, or a generated image) reads far more human: knuckles, nails, hair strands |
 | The user's own likeness | ❌ | ✅ only from the user's own photo, which they supply |
 | Paper or film textures | ✅ procedural | Rarely. Only for a specific scanned-paper look |
 

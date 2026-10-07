@@ -48,7 +48,8 @@ for a polished, continuous one. Elements can be mixed.
 1. **Intake. Ask for everything in one message:**
    - the voice-over or song with a spoken line (audio file) plus its transcript, or just a topic and you write the script;
    - **10–12 small objects** that sum up the subject (their life, product or brand world);
-   - the silhouettes to light like a heat camera (e.g. a head in profile, a raised hand), as photos or PNGs with the body in alpha;
+   - the silhouettes to light like a heat camera (e.g. a head in profile, a raised hand), as photos or PNGs with the body in alpha.
+    Real masks beat the built-in `PPM.SHAPES` every time; treat those as preview stand-ins and offer the image prompts;
    - the **3 words** that should land hardest;
    - the mode (cut / flow), the aspect ratio (default 4:3 at 1440×1080) and the length (default 20 s).
    If they skip something, derive it from **their topic** (objects from their world, words from their script) and

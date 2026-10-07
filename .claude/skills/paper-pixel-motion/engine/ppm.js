@@ -573,6 +573,14 @@
     return F;
   }
 
+  function smoothClosed(c, pts, tension = .5) { // closed Catmull-Rom → cubic Béziers
+    const n = pts.length; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n], t = tension / 3;
+      c.bezierCurveTo(p1[0] + (p2[0] - p0[0]) * t, p1[1] + (p2[1] - p0[1]) * t, p2[0] - (p3[0] - p1[0]) * t, p2[1] - (p3[1] - p1[1]) * t, p2[0], p2[1]);
+    }
+    c.closePath();
+  }
   // ───────────────────────────── silhouettes (generic, original) ─────────────────────────────
   // Shapes live in a 1440×1080 space. Fill with ctx.fill() inside.
   const SHAPES = {
@@ -603,32 +611,25 @@
       };
     },
     /** Generic open hand reaching up from the bottom edge, fingers splayed. */
+    /** Open right hand, palm to camera, rising from the bottom edge. A hand-traced outline smoothed with a closed
+     *  Catmull-Rom spline (tapered fingers, curved webbing, thenar/hypothenar pads). `spread` fans the fingers. */
     hand(cx = 760, wristY = 1080, s = 1, spread = 1) {
+      // [x, y] around the outline, clockwise from the forearm's left edge. Fingers: base → side → tip arc → side → web.
+      const widen = (pts, f = 1.16) => { const mx = pts.reduce((a, p) => a + p[0], 0) / pts.length; return pts.map(([x, y]) => [mx + (x - mx) * f, y]); };
+      const fan = (pts0, pivot, ang) => widen(pts0).map(([x, y]) => { const dx = x - pivot[0], dy = y - pivot[1], c = Math.cos(ang), n = Math.sin(ang); return [pivot[0] + dx * c - dy * n, pivot[1] + dx * n + dy * c]; });
+      const k = (spread - 1) * .5;
+      const thumb = fan([[-150, -300], [-196, -352], [-232, -408], [-254, -458], [-262, -492], [-252, -514], [-230, -512], [-214, -488], [-196, -446], [-168, -404], [-134, -384]], [-140, -320], -k * .6);
+      const index = fan([[-108, -440], [-120, -520], [-130, -600], [-136, -660], [-132, -690], [-116, -702], [-100, -692], [-96, -664], [-88, -594], [-76, -520], [-64, -462]], [-86, -450], -k * .35);
+      const middle = fan([[-52, -468], [-54, -560], [-52, -652], [-50, -716], [-40, -744], [-20, -750], [-4, -734], [-2, -706], [2, -640], [6, -556], [12, -472]], [-20, -470], -k * .1);
+      const ring = fan([[24, -470], [34, -548], [46, -618], [54, -670], [64, -692], [82, -694], [94, -678], [92, -650], [84, -594], [76, -526], [72, -458]], [50, -462], k * .2);
+      const little = fan([[84, -446], [102, -496], [122, -548], [136, -586], [148, -604], [164, -604], [172, -588], [166, -560], [152, -514], [138, -466], [128, -420]], [108, -432], k * .45);
+      const outline = [
+        [-112, 140], [-104, 20], [-98, -90], [-102, -180], [-118, -240],   // forearm → wrist → thenar pad
+        ...thumb, ...index, ...middle, ...ring, ...little,
+        [132, -360], [126, -290], [108, -220], [100, -170], [104, -60], [114, 140],  // hypothenar → wrist → forearm
+      ];
       return (c) => {
-        c.save(); c.translate(cx, wristY); c.scale(s, s);
-        // finger: tapered capsule from base (bx,by) along angle, with a slight knuckle bend
-        const finger = (bx, by, ang, len, w0, w1, bend = .12) => {
-          const segs = 3, pts = []; let x = bx, y = by, a = ang;
-          for (let i = 0; i <= segs; i++) { pts.push([x, y, lerp(w0, w1, i / segs)]); if (i < segs) { x += Math.cos(a) * len / segs; y += Math.sin(a) * len / segs; a += bend * (i === 0 ? .4 : 1); } }
-          for (let i = 0; i < segs; i++) {
-            const [x0, y0, r0] = pts[i], [x1, y1, r1] = pts[i + 1], an = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(an), ny = Math.cos(an);
-            c.beginPath(); c.moveTo(x0 + nx * r0 / 2, y0 + ny * r0 / 2); c.lineTo(x1 + nx * r1 / 2, y1 + ny * r1 / 2); c.lineTo(x1 - nx * r1 / 2, y1 - ny * r1 / 2); c.lineTo(x0 - nx * r0 / 2, y0 - ny * r0 / 2); c.closePath(); c.fill();
-            c.beginPath(); c.arc(x1, y1, r1 / 2 * 1.04, 0, 7); c.fill();          // knuckle joint
-          }
-          c.beginPath(); c.arc(bx, by, w0 / 2, 0, 7); c.fill();
-        };
-        // forearm → wrist → palm
-        c.beginPath(); c.moveTo(-105, 80); c.bezierCurveTo(-100, -80, -92, -170, -88, -240);
-        c.bezierCurveTo(-120, -300, -112, -380, -70, -430); c.lineTo(110, -440); c.bezierCurveTo(140, -380, 128, -300, 98, -240);
-        c.bezierCurveTo(100, -170, 104, -80, 112, 80); c.closePath(); c.fill();
-        finger(-56, -428, -1.86, 262, 56, 36, .1);         // index (bent at the middle joint)
-        finger(4, -446, -1.64, 300, 58, 38, .02);          // middle
-        finger(60, -436, -1.43, 280, 54, 36, -.03);        // ring
-        finger(104, -404, -1.2 - .1 * (spread - 1), 210, 46, 30, -.12); // little (bent)
-        // thumb with a web: wide base off the palm side, out and up
-        c.beginPath(); c.moveTo(-96, -250); c.quadraticCurveTo(-170, -290, -205, -360); c.lineTo(-160, -390); c.quadraticCurveTo(-120, -340, -70, -330); c.closePath(); c.fill();
-        finger(-180, -372, -2.3 * spread, 168, 54, 36, .18);
-        c.restore();
+        c.save(); c.translate(cx, wristY); c.scale(s, s); smoothClosed(c, outline); c.fill(); c.restore();
       };
     },
   };
