@@ -385,6 +385,45 @@ const TRADITIONS = [
   "Lowcountry", "Appalachian", "Pacific Northwest", "New Mexican",
 ];
 
+/* Broad flavour worlds. A week draws at most one cuisine from each, because
+   Shanghainese, Cantonese and Thai in one week read as one "East Asian" week. */
+const REGION = {
+  "East Asia": ["Sichuan", "Hunan", "Cantonese", "Shanghainese", "Japanese", "Korean"],
+  "Southeast Asia": ["Vietnamese", "Thai", "Malaysian", "Filipino"],
+  "South Asia": ["Bengali", "Gujarati", "South Indian", "Punjabi", "Sri Lankan"],
+  "Middle East": ["Persian", "Lebanese", "Turkish", "Levantine", "Armenian", "Egyptian"],
+  "Caucasus & Eastern Europe": ["Georgian", "Georgian Black Sea", "Polish", "Hungarian"],
+  "Africa": ["Moroccan", "Tunisian", "Senegalese", "Nigerian", "Ethiopian", "South African"],
+  "Mexico": ["Oaxacan", "Yucatecan", "Northern Mexican", "New Mexican"],
+  "South America & Caribbean": ["Peruvian", "Brazilian", "Argentine", "Cuban", "Puerto Rican", "Jamaican"],
+  "Italy": ["Southern Italian", "Northern Italian"],
+  "Iberia": ["Basque", "Catalan", "Portuguese"],
+  "France & Greece": ["Provençal", "Lyonnaise", "Greek"],
+  "American South": ["Cajun", "Lowcountry", "Appalachian"],
+  "Pacific Northwest": ["Pacific Northwest"],
+};
+const regionOf = (t) => Object.keys(REGION).find((r) => REGION[r].includes(t)) || t;
+
+/* For cooks who asked for familiar food: the cuisines most people already
+   know, so a cautious week is still five different places rather than one. */
+const FAMILIAR_TRADITIONS = [
+  "Southern Italian", "Northern Italian", "Greek", "Provençal", "Cantonese",
+  "Japanese", "Korean", "Thai", "Vietnamese", "Punjabi", "Northern Mexican",
+  "Cajun", "Lowcountry", "Portuguese", "Levantine", "Cuban", "Turkish",
+  "Pacific Northwest", "Lyonnaise", "Catalan",
+];
+
+/* The week's main protein, drawn like everything else. Left to the model it
+   was chicken or white fish nearly every week. Filtered against restrictions
+   and dislikes with the same guard that checks model output. */
+const PROTEINS = [
+  "chicken thighs", "whole chicken legs", "ground pork", "pork shoulder", "pork chops",
+  "ground beef", "flank steak", "ground lamb", "salmon", "cod or another white fish",
+  "shrimp", "mussels", "canned sardines or mackerel", "firm tofu", "tempeh", "eggs",
+  "chickpeas", "lentils", "white beans", "black beans", "halloumi", "paneer",
+  "Italian sausage", "ground turkey",
+];
+
 /* Each format carries what it actually requires, so the list can be filtered
    against the person's kitchen IN CODE rather than asking the model to remember
    to adapt. A format that needs a tool they don't own is never put in front of
@@ -419,13 +458,13 @@ const PANTRY = [
 const FORMATS = [
   { name: "a braise or stew", needs: ["Stovetop", "Big pot", "Slow cooker"] },
   { name: "a sheet-pan roast", needs: ["Oven", "Sheet pans"] },
-  { name: "a grain or legume bowl", needs: [] },
+  { name: "a rice, grain or legume dish with its own sauce (a pilaf, a congee, a dal, a risotto), not a salad bowl", needs: [] },
   { name: "a noodle or pasta dish", needs: ["Stovetop", "Big pot"] },
   { name: "a soup", needs: ["Stovetop", "Big pot", "Microwave", "Slow cooker"] },
   { name: "a handheld — wrap, taco, sandwich", needs: [] },
   { name: "a plate a vegetable genuinely leads", needs: [] },
   { name: "a hard sear in a hot pan", needs: ["Cast iron pan", "Nonstick pan", "Stovetop"] },
-  { name: "something raw or barely cooked", needs: [] },
+  { name: "a raw or barely-cooked plate a vegetable or seafood leads (never raw meat, poultry or pork)", needs: [], raw: true },
   { name: "a steamed dish", needs: ["Microwave", "Big pot", "Stovetop"] },
   { name: "eggs as dinner", needs: ["Stovetop", "Nonstick pan", "Microwave"] },
   { name: "a bake or gratin", needs: ["Oven"] },
@@ -509,11 +548,42 @@ function availableFormats(equipment) {
   return FORMATS.filter((f) => f.needs.length === 0 || f.needs.some((n) => owned.has(n)));
 }
 
+/* How many dishes to suggest: one more than the nights they cook, 4 to 6. */
+function candidateCount(profile) {
+  const n = orderDays(profile.nights).length;
+  return Math.max(4, Math.min(n + 1, Math.max(6, n)));
+}
+
+/* What makes a week's titles read as one dish five times: the drawn jar or
+   vegetable in every title, two titles opening on the same word, or a format
+   label standing in for a name ("Steamed Parcels"). Flash-Lite ignores these
+   rules inside the long ideas prompt, so they're checked here and, when broken,
+   fixed with one short rename call. */
+/* Meat, poultry or pork served raw. Raw fish (crudo, ceviche) is a real dish
+   and stays; tartare/carpaccio of anything that walks does not. */
+const RAW_MEAT = /\b(?:(?:beef|steak|lamb|pork|chicken|turkey|veal|venison|sausage|duck)(?:\s+[\w-]+){0,2}\s+(?:tartare|carpaccio|crudo)|(?:tartare|carpaccio|raw)(?:\s+of)?(?:\s+[\w-]+){0,1}\s+(?:beef|steak|lamb|pork|chicken|turkey|veal|venison|sausage|duck))\b|\b(?:kibbeh nayyeh|steak tartare|yukhoe|kitfo|mett)\b/i;
+
+const TITLE_FILLER = /\b(sheet-pan roast|handheld|skillet plate|grain bowl|legume bowl|parcels?|packets?|steam-cooked)\b/i;
+function titleProblems(titles, seed) {
+  const key = (term) => String(term || "").toLowerCase().split(/\s+(?:and|in|or)\s+/)[0].replace(/s$/, "").split(" ").slice(-1)[0];
+  const count = (term) => { const k = key(term); return k ? titles.filter((t) => t.toLowerCase().includes(k)).length : 0; };
+  const out = [];
+  if (count(seed?.pantry) > 1) out.push(`"${seed.pantry}" is in ${count(seed.pantry)} titles; keep it in at most one`);
+  if (count(seed?.vegetable) > 2) out.push(`"${seed.vegetable}" is in ${count(seed.vegetable)} titles; keep it in at most two`);
+  const leads = titles.map((t) => t.toLowerCase().split(/[\s-]+/)[0]);
+  const dupLeads = [...new Set(leads.filter((l, i) => leads.indexOf(l) !== i))];
+  if (dupLeads.length) out.push(`more than one title starts with ${dupLeads.map((l) => `"${l}"`).join(", ")}`);
+  const filler = titles.filter((t) => TITLE_FILLER.test(t));
+  if (filler.length) out.push(`these titles describe the cooking format instead of naming a dish: ${filler.join("; ")}`);
+  return out;
+}
+
 function drawWeekSeed(profile, history, month = new Date().getMonth()) {
-  const recentTraditions = (history || []).flatMap((w) => w.seed?.tradition || []);
+  const recentTraditions = (history || []).flatMap((w) => w.seed?.traditions || w.seed?.tradition || []);
   const recentVegetables = (history || []).flatMap((w) => w.seed?.vegetable || []);
   const recentTechniques = (history || []).flatMap((w) => w.seed?.technique || []);
   const recentPantry = (history || []).flatMap((w) => w.seed?.pantry || []);
+  const recentProteins = (history || []).flatMap((w) => w.seed?.protein || []);
 
   /* The pantry ingredient is now the spine of the week; tradition is still
      drawn, but only as a quiet accent the model may lean on and is never asked
@@ -525,7 +595,6 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
   const pantryPool = PANTRY.filter(ok);
   const pantry = drawWeighted(pantryPool.length ? pantryPool : ["roasted garlic"], recentPantry, 10);
 
-  const tradition = drawWeighted(TRADITIONS, recentTraditions, 12);
 
   // Seasonal produce first, falling back to the full list so the draw never fails.
   const inSeason = (SEASON[month] || []).filter(ok);
@@ -539,17 +608,56 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
 
   const technique = drawWeighted(TECHNIQUES, recentTechniques, 10);
 
-  // One format per cooking night, capped — drawn without replacement so no two
-  // nights share a shape.
+  // One format per candidate dish — drawn without replacement so no two dishes
+  // share a shape. Fewer formats than dishes used to force a repeat.
   const pool = availableFormats(profile.equipment);
-  const want = Math.min(Math.max(3, orderDays(profile.nights).length), pool.length);
+  const want = Math.min(candidateCount(profile), pool.length);
   const formats = [];
   const left = [...pool];
   while (formats.length < want && left.length) {
     formats.push(left.splice(Math.floor(Math.random() * left.length), 1)[0].name);
   }
 
-  return { pantry, tradition, vegetable, technique, formats, month };
+  /* A cuisine per dish, all different, each weighted against past weeks. Left
+     to the model a week drifted to one flavour world ("Kale and Fish" five
+     ways); assigned in code, five dishes are five places. */
+  const tradPool = Number(profile.adventure) <= 2 ? FAMILIAR_TRADITIONS : TRADITIONS;
+  const traditions = [];
+  while (traditions.length < formats.length) {
+    const usedRegions = new Set(traditions.map(regionOf));
+    let avail = tradPool.filter((x) => !traditions.includes(x) && !usedRegions.has(regionOf(x)));
+    if (!avail.length) avail = tradPool.filter((x) => !traditions.includes(x));
+    if (!avail.length) break;
+    traditions.push(drawWeighted(avail, recentTraditions, 16));
+  }
+
+  const guard = restrictionGuard(profile);
+  const proteinPool = PROTEINS.filter((x) => ok(x) && !(guard.active && guard.hits(x).length));
+  const protein = drawWeighted(proteinPool.length ? proteinPool : ["eggs"], recentProteins, 4);
+
+  /* Which dishes carry the shared ingredients, decided here rather than left
+     to the model: asked to "use it in two or three dishes" it either put the
+     jar in every title or forgot it entirely. Spread so no dish is just the
+     protein and the vegetable again. */
+  const n = formats.length;
+  const pick = (k, skip = -1) => [...Array(n).keys()].filter((i) => i !== skip).sort(() => Math.random() - 0.5).slice(0, k);
+  // A raw slot never gets meat: "citrus pork tartare" came out of exactly that pairing.
+  const rawSlot = formats.findIndex((f) => FORMATS.find((x) => x.name === f)?.raw);
+  const rawSafe = /fish|salmon|shrimp|tofu|bean|chickpea|lentil|halloumi|paneer|egg|sardine|mackerel/.test(protein);
+  const withProtein = new Set(pick(Math.ceil(n / 2), rawSafe ? -1 : rawSlot));
+  const withPantry = new Set(pick(Math.min(n, n >= 6 ? 3 : 2)));
+  const withVeg = new Set(pick(Math.min(n, n >= 6 ? 3 : 2)));
+  /* A dish that carries none of the shared ingredients still needs something
+     to be about, or it falls back to "spiced chickpea stew". It gets a second
+     vegetable of its own. */
+  const accentPool = VEGETABLES.filter((v) => v !== vegetable && ok(v));
+  const accent = accentPool.length ? accentPool[Math.floor(Math.random() * accentPool.length)] : "";
+  const slots = formats.map((format, i) => {
+    const uses = [withProtein.has(i) && protein, withPantry.has(i) && pantry, withVeg.has(i) && vegetable].filter(Boolean);
+    if (!uses.length && accent) uses.push(accent);
+    return { format, tradition: traditions[i] || tradPool[i], uses };
+  });
+  return { pantry, tradition: traditions[0], traditions, vegetable, technique, protein, formats, slots, month };
 }
 
 const SECTIONS = ["Produce", "Protein", "Dairy & eggs", "Bakery", "Pantry", "Frozen", "Other"];
@@ -3250,15 +3358,21 @@ ${palate.map((x) => `- ${x}`).join("\n")}`
      that clash are dropped and she says so, rather than quietly showing a
      peanut dish to someone with a nut allergy. */
   function screenDishes(list) {
+    /* Raw meat is never suggested, whatever the profile: a "beef tartare" and a
+       "citrus pork tartare" both got through a prompt rule against it. */
+    const before = list.length;
+    list = list.filter((d) => !RAW_MEAT.test(`${d.title} ${d.blurb}`));
+    const rawNote = list.length < before ? `I dropped ${before - list.length === 1 ? "an idea" : "some ideas"} that served meat raw.` : "";
     const guard = restrictionGuard(profile);
-    if (!guard.active) return { kept: list, note: "" };
+    if (!guard.active) return { kept: list, note: rawNote };
     const dropped = [];
     const kept = list.filter((d) => {
       const h = guard.hits(`${d.title} ${d.blurb} ${d.why}`);
       if (h.length) dropped.push(...h);
       return !h.length;
     });
-    return { kept, note: dropped.length ? `I left out ${list.length - kept.length === 1 ? "an idea" : `${list.length - kept.length} ideas`} that used ${describeHits(dropped)}.` : "" };
+    const note = dropped.length ? `I left out ${list.length - kept.length === 1 ? "an idea" : `${list.length - kept.length} ideas`} that used ${describeHits(dropped)}.` : "";
+    return { kept, note: [rawNote, note].filter(Boolean).join(" ") };
   }
   function screenItems(list) {
     const guard = restrictionGuard(profile);
@@ -3310,7 +3424,7 @@ ${palate.map((x) => `- ${x}`).join("\n")}`
     const currentWeek = new Set(candidates.map((c) => (c.title || "").toLowerCase()));
     return [...new Set(history.flatMap((w) => (w.dishes || []).map((d) => d.title)))]
       .filter((t) => t && !currentWeek.has(t.toLowerCase()))
-      .slice(-24);
+      .slice(0, 24); // history is newest first; keep the most recent weeks
   }, [history, candidates]);
 
   const shoppingSignature = useMemo(
@@ -3486,6 +3600,9 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
     const usable = existingSeed && Array.isArray(existingSeed.formats) ? existingSeed : null;
     const seed = usable || drawWeekSeed(profile, history);
     setWeekSeed(seed);
+    // Seeds saved before dish slots existed: pair their formats with the one tradition.
+    const slots = Array.isArray(seed.slots) && seed.slots.length
+      ? seed.slots : seed.formats.map((format) => ({ format, tradition: seed.tradition || "any" }));
 
     /* The umami list is filtered against their restrictions BEFORE it reaches the
        prompt. Previously the doctrine named miso and soy as the standard fix for a
@@ -3505,23 +3622,47 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
 
     const prompt = `Here is the person you're cooking with:
 THIS WEEK'S DRAW — decided already, not up for negotiation:
-- THE WEEK'S FLAVOUR BASE, and the spine of this plan: ${seed.pantry}. Build the
-  week around this ingredient. At least three dishes should use it, in genuinely
-  different ways — not the same sauce three times. Say plainly what it is and
-  what it does, in case they've never bought it.
-- Vegetable that must appear across the week: ${seed.vegetable}
+- Flavour base: ${seed.pantry}. Say plainly what it is, in case they've never bought it,
+  and use it in a different role each time (a marinade, a dressing, a braising base, a finish).
+- Main protein: ${seed.protein || "your choice, one for the week"}
+- Vegetable: ${seed.vegetable}
 - Technique to teach in passing: ${seed.technique}
-- Optional accent, only if it helps: ${seed.tradition}. Do NOT announce this or
-  organise the week around it, and do not name it in your opening remark — it's
-  a direction to lean, not a theme. The week is about the ingredient.
-- Cooking formats available to you, one per dish, no repeats:
-${seed.formats.map((f) => `    · ${f}`).join("\n")}
+- DISH SLOTS, one dish per slot. Each slot fixes how the dish is cooked and which
+  shared ingredients it MUST use:
+${slots.map((sl, i) => {
+    const uses = sl.uses || [];
+    const not = [seed.protein, seed.pantry, seed.vegetable].filter((x) => x && !uses.includes(x));
+    return `    ${i + 1}. ${sl.format} · uses ${uses.join(" and ") || "one hero ingredient of its own"}${not.length ? ` · NOT ${not.join(", not ")}` : ""}`;
+  }).join("\n")}
+  Respect the NOT lists exactly: that is what stops five dishes turning into the
+  same protein and vegetable in five sauces.
+- CUISINES for this week: ${slots.map((sl) => sl.tradition).join(", ")}. Every dish takes
+  exactly one of these, each used once, and NONE other: not "fusion", not "Mediterranean",
+  not "Asian", not "-inspired". Pair each with the slot it suits best (steamed suits
+  Cantonese, a handheld suits a Japanese sando or a Mexican torta, a braise suits Georgian).
+- Each dish starts from a REAL dish its cuisine actually cooks (Georgian chakhokhbili,
+  Persian kuku, Sri Lankan devilled prawns, Catalan escalivada), adapted to the slot's
+  ingredients, and close enough that someone from there would recognise it. Write that
+  dish in "basedOn" first, then the title. A generic dish with a cuisine's seasoning
+  sprinkled on (a "Thai" stir-fry, a "Mexican" rice bowl, a "Cajun" sheet-pan hash)
+  is not this.
 
-These were drawn for this week specifically so the weeks don't blur together. Don't ask for a
-different tradition and don't quietly drift to a more familiar one — the whole point is that
-you wouldn't have picked ${seed.pantry} yourself. Make THIS week good rather than proposing
-the week you'd have proposed anyway. If the tradition and their restrictions genuinely can't
-meet, say so plainly rather than silently substituting.
+These were drawn so the weeks don't blur together. Don't drift back to a more familiar week.
+
+TITLES AND VARIETY — check before answering:
+- A title is a dish name a good restaurant menu would print ("Chicken with green
+  olives and preserved lemon", "Cauliflower shawarma with tahini"). Never a
+  description of the format: no "Sheet-Pan Roast", "Handheld Wrap", "Skillet
+  Plate", "Grain Bowl" or "Steamed Parcels" as filler words. Never put the
+  cuisine's name in the title unless it's part of the dish's real name.
+- ${seed.pantry} appears in at most ONE title, ${seed.vegetable} in at most TWO, and no two titles
+  start with the same word or share their main noun.
+- Each dish has one hook that makes it worth cooking: an unexpected pairing, a
+  texture contrast, a technique, a sauce that cuisine is known for. Put it in "why".
+  For this cook (${ADVENTURE[profile.adventure - 1].label.toLowerCase()}) ${
+    profile.adventure <= 2 ? "that means familiar dishes with one fresh twist, never anything that needs explaining."
+    : profile.adventure >= 4 ? "aim for dishes they won't have cooked before; skip the obvious version of every cuisine." : "something they'd recognise but haven't made."}
+- Avoid the default dish of each cuisine (no plain stir-fry, tacos with salsa, chicken curry, pesto pasta, Caesar, fried rice) unless the hook makes it new.
 
 If a dish tastes flat, these are the fixes available given their restrictions:
 ${umami.join(", ")}.
@@ -3537,21 +3678,14 @@ Writing the check before the output is the point — a dish that can't be tagged
 "fits" is a private check, never shown to anyone: it MUST NOT appear inside "title", "blurb",
 "why" or "say". Do not repeat it in the visible copy in any form.
 
-1. Propose this week's grocery spine: one fresh herb, green onions, one primary protein,
+1. Propose this week's grocery spine: one fresh herb, green onions, ${seed.protein || "one primary protein"} as the protein,
 ${seed.vegetable} as the vegetable, ${seed.pantry} as the flavor system, one optional wildcard. One sentence on
 how the pieces cross over.
 
-2. Propose ${Math.max(4, Math.min(orderDays(profile.nights).length + 1, Math.max(6, orderDays(profile.nights).length)))} CANDIDATE dishes —
+2. Propose ${slots.length} CANDIDATE dishes, one per slot —
 options to react to, not a locked plan. Have a favorite and say which in your opening remark.
 They cook ${orderDays(profile.nights).length} night(s) a week, and there must never be fewer
 candidates than nights.
-
-No two candidates may share a cuisine, and no two may share a COOKING FORMAT. "Same cuisine"
-means the same FLAVOUR WORLD, not the same dish name — a tahini-lemon bowl and a dill-cucumber
-salad are two dishes and one cuisine. Check the list against itself before answering: if two
-draw on the same tradition, or two are both stir-fries, replace one. Pick formats from across
-the range (pasta, braise, sheet-pan, pan-sear, grain bowl, soup, eggs or beans, a handheld, a
-vegetable-led plate). An ordinary format done well is not a lesser suggestion.
 
 AMBITION AND TIME ARE INDEPENDENT. Adventurousness is about the IDEA — an unfamiliar technique,
 an unguessable pairing, a familiar dish from a new angle — not about how long it takes.
@@ -3562,15 +3696,12 @@ cannot be rushed (a proper braise, laminated dough) — don't propose those in a
 Low adventurousness means familiar dishes well executed, NOT one cuisine: roast chicken,
 carbonara, black bean soup and schnitzel are all familiar and all different.
 
-THE SPINE IS A CONSTRAINT, NOT A HEADING. Every dish is built from the spine you just named plus
-genuine pantry staples (oil, vinegar, salt, pepper, dried spices, flour, rice, pasta, canned
-tomatoes, onions, garlic). A new fresh ingredient or a second protein means buying something
-that appears once and rots — the single problem this app exists to solve. If the protein is
-canned chickpeas, don't also introduce white beans, black beans and potatoes elsewhere: that's
-three legumes and a starch for one person. At most ONE dish may reach outside the spine, and its
-"why" must say what earns it. Use the spine harder rather than shopping wider. Don't repeat a
-distinctive ingredient across dishes unless it's the shared protein or vegetable; mushrooms
-appear in at most one dish.
+KEEP THE SHOPPING TIGHT. Beyond the protein, vegetable, herb and ${seed.pantry}, lean on genuine
+pantry staples (oil, vinegar, salt, pepper, dried spices, flour, rice, pasta, canned tomatoes,
+canned beans, onions, garlic, eggs). Each dish may add ONE fresh item its cuisine needs (a lime,
+a bunch of dill, a tub of yogurt); name it in "why" only if it's unusual. Something bought for one
+dish and left to rot is the problem this app exists to solve, so prefer fresh items two dishes
+can share. Mushrooms appear in at most one dish.
 
 Never let a dish assume a tool they don't have. If a step needs equipment they lack, say where
 the ingredient comes from instead — with only a microwave, write "pre-toasted seeds", not
@@ -3585,7 +3716,7 @@ for every dish — a dish that can't be done in that time doesn't belong on the 
 Respond with ONLY this JSON, no backticks:
 {"check":"the constraint card","say":"",
 "ecosystem":{"aromatics":"the herb-and-aromatic anchor, whatever actually fits — not always cilantro and green onion","protein":"","vegetable":"","flavorSystem":"","wildcard":"","logic":""},
-"dishes":[{"title":"","blurb":"what it is","why":"the specific idea that makes this worth thinking of — not \u0027healthy\u0027 or \u0027quick\u0027","format":"how it\u0027s cooked, one or two words: seared, braised, roasted, tossed…","fits":"private check, never displayed","spice":0,"minutes":30}]}`;
+"dishes":[{"slot":1,"cuisine":"exactly one name from this week's CUISINES list, each used once","basedOn":"the real dish from that cuisine this starts from","title":"","blurb":"what it is","why":"the specific idea that makes this worth thinking of — not \u0027healthy\u0027 or \u0027quick\u0027","format":"the slot\u0027s format in one or two words (braise, soup, sheet-pan roast, hard sear, bake…); every dish\u0027s is different","fits":"private check, never displayed","spice":0,"minutes":30}]}`;
 
     try {
       /* 1200, down from 1800.
@@ -3606,14 +3737,24 @@ Respond with ONLY this JSON, no backticks:
          If this ever truncates, gemini.js logs finishReason MAX_TOKENS and the
          thinking/answer token split — that's the number to look at before
          raising this back up, rather than guessing. */
-      const raw = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1200, docSlices: ["core", "flavor"] });
+      /* One quiet second try when the answer has no usable dish list: about one
+         week in thirty came back that way, and asking again almost always works. */
+      const ask = async () => {
+        const r = await callClaude([{ role: "user", content: prompt }], { maxTokens: 1200, docSlices: ["core", "flavor"] });
+        const o = parseJSON(r);
+        return { raw: r, out: o, ok: !!o && Array.isArray(o.dishes) && o.dishes.some((d) => str(d?.title).trim()) };
+      };
+      let { raw, out, ok: answered } = await ask();
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
-      const out = parseJSON(raw);
+      if (!answered) ({ raw, out } = await ask());
+      if (gen !== weekGenRef.current) return;
       if (!out || typeof out !== "object") throw new Error("That answer came back in a shape I couldn't use. Give it another go.");
       const { kept: dishes, note: guardNote } = screenDishes(
         dedupeDishes((Array.isArray(out.dishes) ? out.dishes : []).map(normalizeDish).filter(Boolean)));
       // An empty list used to land as a silent "No ideas yet" with no error.
       if (!dishes.length) throw new Error(guardNote || "I didn't get any dishes back that time. Give it another go.");
+      await polishTitles(dishes, seed);
+      if (gen !== weekGenRef.current) return;
       setEcosystem(out.ecosystem && typeof out.ecosystem === "object" ? out.ecosystem : null);
       setCandidates(dishes.map((d) => ({ ...d, id: uid(), reaction: null, note: "" })));
       setConvo([{ role: "user", content: prompt }, { role: "assistant", content: raw }]);
@@ -3637,6 +3778,33 @@ Respond with ONLY this JSON, no backticks:
 
      Catching at the call site turns that whole class of failure into a visible
      error with a cleared spinner. Call this, not startIdeas directly. */
+  /* One short rename call when the titles repeat themselves (see
+     titleProblems). Only titles change; anything off — wrong count, a title
+     that trips the restriction guard — keeps the originals. Never fails the week. */
+  async function polishTitles(dishes, seed) {
+    const titles = dishes.map((d) => d.title);
+    const problems = titleProblems(titles, seed);
+    if (!problems.length) return;
+    try {
+      const raw = await callClaude([{ role: "user", content: `Rename these dinner ideas so the week's titles don't repeat themselves. Problems:
+${problems.map((p) => `- ${p}`).join("\n")}
+
+The dishes, in order:
+${dishes.map((d, i) => `${i + 1}. ${d.title} (${[d.cuisine, d.basedOn, d.blurb].filter(Boolean).join("; ")})`).join("\n")}
+
+Change only the titles that cause a problem, and only the words that need to change. Each title
+must still describe the same dish truthfully: same ingredients, same cooking. A title is a dish
+name a good menu would print, under 8 words, never a description of the format.
+Respond with ONLY this JSON: {"titles":["one per dish, same order"]}` }], { tier: "fast", maxTokens: 300, docSlices: ["core"] });
+      const out = parseJSON(raw);
+      const next = Array.isArray(out?.titles) ? out.titles.map((t) => str(t).trim()) : [];
+      if (next.length !== dishes.length || next.some((t) => !t || t.length > 90)) return;
+      const guard = restrictionGuard(profile);
+      if (guard.active && next.some((t, i) => guard.hits(t).length && !guard.hits(titles[i]).length)) return;
+      next.forEach((t, i) => { dishes[i].title = t; });
+    } catch (_) { /* the original titles are fine to show */ }
+  }
+
   function runIdeas(seed) {
     return startIdeas(seed).catch((e) => {
       console.error("startIdeas failed before the request was sent:", e);
