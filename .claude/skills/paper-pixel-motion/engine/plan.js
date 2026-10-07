@@ -122,6 +122,12 @@
         delete b._voice;
       });
     }
+    // flow cards need typing + hold + a visible flood-out: extend voice-timed cards by borrowing from the next text-less beats
+    if (mode === 'flow') beats.forEach((b, k) => {
+      if (b.type !== 'card' || b.timing !== 'voice' || b.dur >= FLOW_CARD_MIN) return;
+      let need = FLOW_CARD_MIN - b.dur;
+      for (const x of beats.slice(k + 1)) { if (TYPES[x.type].text === true || need <= 0) break; const d = Math.min(need, Math.max(0, x.dur - TYPES[x.type].min)); x.dur -= d; b.dur += d; need -= d; }
+    });
     // section-end acceleration for estimated beats (not voice-timed: the voice owns those)
     const sections = [...new Set(beats.map(b => b.section))];
     sections.forEach(sec => {
@@ -186,6 +192,7 @@
     for (let k = 0; k < out.length; k++) { let j = k, t = 0; while (j < out.length && out[j].world === out[k].world) { t += out[j].dur; j++; } if (j - k > 1 && t > 3) { warnings.push(`beats ${out[k].i}–${out[j - 1].i}: ${out[k].world} for ${t.toFixed(1)}s straight; insert a contrasting beat (conveyor, flash)`); k = j - 1; } }
     out.forEach(b => { if (b.dur > 2.5 && b.type !== 'resolve') warnings.push(`beat ${b.i} (${b.type}): ${b.dur.toFixed(1)}s in one shot; holds cap around 2–2.5s, so split it into two beats`); });
     out.filter(b => b.type === 'silhouette' && /hand/i.test(b.shape || '')).forEach(b => { const w = tokens(b.text), h = Math.ceil(w.length / 2), L = w.slice(0, h).join(' '), R = w.slice(h).join(' '); if (Math.max(L.length, R.length) > 16) warnings.push(`beat ${b.i}: "${L.length > R.length ? L : R}" is ${Math.max(L.length, R.length)} chars beside the hand (max ~16); shorten the line or it will be shrunk`); });
+    if (mode === 'flow') out.filter(b => b.type === 'card').forEach(b => { const full = (b.reveal?.at(-1)?.t ?? 0) + .22, flood = b.dur - Math.max(b.dur * .72, full + HOLD), nx = out[out.indexOf(b) + 1]; if (flood < .25 && nx && nx.world !== 'void') b.carryFlood = true; }); // composer drains the flood at the start of the next shot
     const accents = out.filter(b => b.type === 'flare').length; if (accents > 1) warnings.push('more than one flare: the cyan moment should happen once');
     return { beats: out, duration, errors, warnings, mode, fps: spec.fps || (mode === 'flow' ? 60 : 24) };
   }

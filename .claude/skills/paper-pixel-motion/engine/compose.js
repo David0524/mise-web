@@ -117,7 +117,7 @@
     card(g, s, b, ctx) {
       const word = b.text, accent = b.accent || 'sparkle';
       if (ctx.flow) { // the page floods from the object; the word types inside the flood
-        const nextW = ctx.plan.beats[ctx.plan.beats.indexOf(b) + 1]?.world, full = (b.reveal?.at(-1)?.t ?? 0) + .22, d0 = Math.max(s.d * .72, full + .35), drain = nextW === 'void' ? 0 : g.clamp((s.t - d0) / Math.max(.12, s.d - d0)); // flood out only after the word has held .35s
+        const nextW = ctx.plan.beats[ctx.plan.beats.indexOf(b) + 1]?.world, full = (b.reveal?.at(-1)?.t ?? 0) + .22, d0 = Math.max(s.d * .72, full + .35), carry = shortFlood(b), drain = nextW === 'void' || carry ? 0 : g.clamp((s.t - d0) / Math.max(.12, s.d - d0)); // flood out after a .35s hold; if there's no room, the next shot drains it
         const fl = g.clamp((s.t - s.d * .05) / (s.d * .3)) * (1 - drain); // proportional; stays flooded when the next beat is on void
         g.flood(400, 520, fl, C.void);
         g.inFlood(400, 520, fl, () => { accentFx(g, s, accent, 400, 520, 380); g.caption(typedAt(b, s.t), 820, 520, { size: 80, weight: 600, color: C.white, cursorColor: C.white, t: s.t, soft: false }); });
@@ -177,6 +177,8 @@
     },
     flash(g, s, b) { if (b.text) g.text(tokens(b.text)[0], 720, 540, { size: 120, weight: 700, align: 'center', color: C.ink }); },
   };
+  /** A flow card whose flood-out would be under .25s: it stays flooded and the next shot drains it back into the object. */
+  function shortFlood(b) { const full = (b.reveal?.at(-1)?.t ?? 0) + .22; return b.dur - Math.max(b.dur * .72, full + .35) < .25; }
   function accentFx(g, s, accent, x, y, size) {
     if (accent === 'beam') { g.beam(x - 100, y + 80, -0.62, 1400, 160, 300, (s.t - .1) / .15, '#E2261A'); g.beam(x - 80, y + 120, 2.45, 900, 50, 160, (s.t - .1) / .15, '#E2261A'); }
     if (accent === 'notes') [['notes2', x + 230, y - 230, .2], ['note', x + 400, y + 260, .35], ['note', x + 120, y + 330, .5]].forEach(([n, nx, ny, t0], i) => { if (s.t > t0) g.sprite(n, nx, ny + Math.sin(s.t * 3 + i) * 8, i ? 120 : 150, { rot: Math.sin(s.t * 2 + i) * .15 }); });
@@ -213,6 +215,11 @@
           g.ctx.globalAlpha = E.inOut(s.t / HO);
         }
         fn(g, s, b, ctx);
+        const pv = plan.beats[k - 1], DR = .28;
+        if (flow && pv && pv.type === 'card' && pv.transition === 'handoff' && shortFlood(pv) && plan.beats[k].world !== 'void' && s.t < DR) { // drain the card's flood back into its object over this shot's opening
+          const R = Math.hypot(1040, 560) * 1.05 * (1 - E.inOut(s.t / DR));
+          g.ctx.save(); g.ctx.globalAlpha = 1; g.ctx.beginPath(); g.ctx.arc(400 * g.U, 520 * g.U, R * g.U, 0, 7); g.ctx.clip(); g.under(k - 1, pv.dur - 1e-3); g.ctx.restore();
+        }
       }, { push: b.push, vignette: b.type === 'hero' || b.type === 'flash' ? .25 : undefined });
     });
     film.plan = plan;
