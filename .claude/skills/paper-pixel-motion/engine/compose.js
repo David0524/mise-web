@@ -120,12 +120,14 @@
         const nextW = ctx.plan.beats[ctx.plan.beats.indexOf(b) + 1]?.world, full = (b.reveal?.at(-1)?.t ?? 0) + .22, d0 = Math.max(s.d * .72, full + .35), carry = shortFlood(b), drain = nextW === 'void' || carry ? 0 : g.clamp((s.t - d0) / Math.max(.12, s.d - d0)); // flood out after a .35s hold; if there's no room, the next shot drains it
         const fl = g.clamp((s.t - s.d * .05) / (s.d * .3)) * (1 - drain); // proportional; stays flooded when the next beat is on void
         g.flood(400, 520, fl, C.void);
-        g.inFlood(400, 520, fl, () => { accentFx(g, s, accent, 400, 520, 380); g.caption(typedAt(b, s.t), 820, 520, { size: 80, weight: 600, color: C.white, cursorColor: C.white, t: s.t, soft: false }); });
+        g.inFlood(400, 520, fl, () => { if (b.glow) g.glow(400, 520, 330, '#C41E14', .65); accentFx(g, s, accent, 400, 520, 380, true); g.caption(typedAt(b, s.t), 820, 520, { size: 80, weight: 600, color: C.white, cursorColor: C.white, t: s.t, soft: false }); });
         g.block(b.object, 400, 520, 380, { shadowAlpha: .28 * (1 - fl) });
+        if (accent === 'sparkle') g.layer({ alpha: fl }, () => g.sparkle(400 + 160, 520 - 160, 110 * E.back(g.clamp((s.t - .15) / .2)), { rot: .3 + s.t * .3, ax: 1.2, ay: .8, k: 1.9, glow: 22 }));
         return;
       }
       const inK = E.out(s.t / .2);
       g.ditherStar(1020, 520, 380, 520, 0, s.F, { colors: ['#2a0c0e', '#8a1a1a'], density: .3, base: .5, alpha: 1 - inK * .8 });
+      if (b.glow) g.glow(400, 520, 330, '#C41E14', .65);
       accentFx(g, s, accent, 400, 520, 380);
       g.layer({ blur: (1 - inK) * 10 }, () => g.sprite(b.object, 400, 520, 380, { rot: -.12 }));
       if (accent === 'sparkle') g.sparkle(400 + 160, 520 - 160, 110 * E.back(s.t / .2), { rot: .3 + s.t * .3, ax: 1.2, ay: .8, k: 1.9, glow: 22 });
@@ -141,10 +143,11 @@
     scatter(g, s, b, ctx) {
       const names = b.objects || ctx.objects, k = E.inOut((s.t - .2) / .6), r = PPM.rng(5 + b.i);
       names.forEach((n, i) => {
-        const a = .4 + (i / names.length) * Math.PI * 2, x0 = 720 + Math.cos(a) * 400, y0 = 540 + Math.sin(a) * 260, x1 = r.range(120, 1320), y1 = r.range(120, 960);
-        const x = g.lerp(x0, x1, k), y = g.lerp(y0, y1, k), ink = i % 3 === 0 ? g.clamp((s.t - .9 - i * .02) / .15) : 0;
-        if (ctx.flow) g.block(n, x, y, g.lerp(120, 130, k), { rot: g.lerp(0, r.range(-.6, .6), k), ink });
-        else { g.sprite(n, x, y, g.lerp(150, 130, k), { rot: g.lerp(0, r.range(-.6, .6), k), silhouette: ink }); if (ink > 0 && ink < 1) g.sprayBlot(x, y, 60, ink * 1.2, i); }
+        const a = .4 + (i / names.length) * Math.PI * 2, pile = b.from === 'pile', pr = PPM.rng(900 + i * 7 + b.i);
+        const x0 = pile ? 720 + pr.range(-230, 230) : 720 + Math.cos(a) * 400, y0 = pile ? 600 + pr.range(-150, 130) : 540 + Math.sin(a) * 260, r0 = pile ? pr.range(-1.2, 1.2) : 0, x1 = r.range(120, 1320), y1 = r.range(120, 960);
+        const x = g.lerp(x0, x1, k), y = g.lerp(y0, y1, k), rot = g.lerp(r0, r.range(-.6, .6), k), ink = i % 3 === 0 ? g.clamp((s.t - .9 - i * .02) / .15) : 0;
+        if (ctx.flow) g.block(n, x, y, g.lerp(pile ? 150 : 120, 130, k), { rot, ink });
+        else { g.sprite(n, x, y, g.lerp(150, 130, k), { rot, silhouette: ink }); if (ink > 0 && ink < 1) g.sprayBlot(x, y, 60, ink * 1.2, i); }
       });
       if (s.t > .25 && s.t < .85) { const p = (s.t - .25) / .6; g.brushSmear([[200, 300], [380, 200], [300, 420], [520, 520], [700, 380]], p * 1.4, { p0: Math.max(0, p - .3), width: 30, core: 5 }); }
       if (ctx.flow) { const sw = E.inOut((s.t - (s.d - .8)) / .7); [[260, 220, 1], [1150, 300, 2], [700, 820, 3], [300, 820, 4], [1180, 860, 5], [720, 480, 6]].forEach(([x, y, q], j) => g.sprayBlot(x, y, 420, g.clamp(sw * 1.3 - j * .06), q, { hard: true })); const full = g.clamp((s.t - (s.d - .22)) / .2); if (full > 0) { g.ctx.fillStyle = `rgba(20,20,20,${full})`; g.ctx.fillRect(0, 0, 1440, 1080); } }
@@ -160,30 +163,40 @@
       else obj(g, ctx, slots[k % slots.length], sx, 540, 220, { shadow: b.world === 'paper' });
     },
     resolve(g, s, b, ctx) {
-      const word = String(b.text).replace(/\s/g, '').toUpperCase(), r = PPM.rng(44 + b.i);
+      const brand = b.end === 'brand', word = brand ? String(b.text).replace(/\s/g, '').toLowerCase() : String(b.text).replace(/\s/g, '').toUpperCase(), r = PPM.rng(44 + b.i);
       const Ls = [...word].map((ch, i) => ({ ch, x: r.range(250, 1200), y: r.range(200, 900), a: r.range(-2.4, 2.4) }));
       if (s.t < .4) [[[60, 200], [250, 120], [200, 380], [420, 440]], [[700, 200], [950, 250], [1100, 420], [980, 520]], [[600, 900], [800, 720], [1100, 820], [1300, 700]]].forEach(pts => g.brushSmear(pts, s.t / .25 * 1.3, { p0: Math.max(0, s.t / .25 - .4), width: ctx.flow ? 14 : 60, core: ctx.flow ? 2.5 : 5 }));
-      const end = b.end || (b.object ? 'word' : 'knot'), c0 = end === 'word' ? s.d * .3 : s.d - 1.0, c1 = end === 'word' ? s.d * .65 : s.d - .4;
-      const conv = E.inOut(g.clamp((s.t - c0) / (c1 - c0))), loopFade = end === 'word' ? 1 - g.clamp((s.t - c1) / .3) : 1; // word: settle by 65 %, then hold clean
+      const end = b.end || (b.object ? 'word' : 'knot'), settleEnd = end === 'brand' ? .45 : .65, c0 = end !== 'knot' ? s.d * (settleEnd - .35) : s.d - 1.0, c1 = end !== 'knot' ? s.d * settleEnd : s.d - .4;
+      const conv = E.inOut(g.clamp((s.t - c0) / (c1 - c0))), loopFade = end !== 'knot' ? 1 - g.clamp((s.t - c1) / .3) : 1; // word/brand: settle, then hold clean
+      // brand: letters land as the hero-scale lower-case word (bookends the opening hero card)
+      const BS = b.size || 300, widths = brand ? [...word].map(ch => g.measure(ch, BS, 700, -.04)) : [], totalW = widths.reduce((a, w) => a + w, 0);
+      const brandX = (i) => 720 - totalW / 2 + widths.slice(0, i).reduce((a, w) => a + w, 0) + widths[i] / 2, BY = 650;
       Ls.forEach((l, i) => {
         const drift = Math.sin(s.t * .9 + i) * 20, settle = E.out(g.clamp((s.t - .3) / 1.2));
-        const tx = end === 'word' ? 720 + (i - (Ls.length - 1) / 2) * 90 : 720 + (i - (Ls.length - 1) / 2) * 18;
-        const x = g.lerp(l.x + drift, tx, conv), y = g.lerp(l.y, 540, conv), a = g.lerp(l.a * (1 - settle * .8), 0, conv);
-        g.layer({ x, y, rot: a, alpha: end === 'knot' ? 1 - g.clamp((conv - .6) / .4) : 1 }, () => g.text(l.ch, 0, 0, { size: 56, weight: 600, align: 'center' }));
+        const tx = end === 'brand' ? brandX(i) : end === 'word' ? 720 + (i - (Ls.length - 1) / 2) * 90 : 720 + (i - (Ls.length - 1) / 2) * 18;
+        const x = g.lerp(l.x + drift, tx, conv), y = g.lerp(l.y, end === 'brand' ? BY : 540, conv), a = g.lerp(l.a * (1 - settle * .8), 0, conv);
+        const sz = end === 'brand' ? g.lerp(56, BS, conv) : 56, wt = end === 'brand' && conv > .5 ? 700 : 600;
+        if (!(end === 'brand' && conv >= 1)) g.layer({ x, y, rot: a, alpha: end === 'knot' ? 1 - g.clamp((conv - .6) / .4) : 1 }, () => g.text(l.ch, 0, 0, { size: sz, weight: wt, align: 'center' }));
         if (s.t > .9 && loopFade > 0) g.layer({ alpha: loopFade }, () => g.redLoops(x, y, end === 'word' ? 40 + (1 - conv) * 30 : 40 + conv * 60, s.f, i + 1, { loops: s.t > 1.5 ? 2 : 1 }));
       });
       if (end === 'knot' && conv > .4) { const kr = PPM.rng(90 + g.stepped(s.f, 2)), grow = g.clamp((conv - .4) / .45); for (let j = 0; j < 4; j++) { const pts = []; for (let q = 0; q < 6; q++) pts.push([720 + kr.range(-80, 80), 540 + kr.range(-70, 70)]); g.stroke(pts, grow, { width: g.lerp(10, 22, grow), taper: false }); } }
       if (end === 'word' && b.object) obj(g, ctx, b.object, 720, 330 - (1 - conv) * 60, 200, {});
+      if (end === 'brand') {
+        if (conv >= 1) { g.text(word, 720, BY, { size: BS, weight: 700, align: 'center', track: -.04, color: C.ink }); }
+        const gl = g.clamp((s.t - c1) / .35); if (gl > 0) g.guides([BY + BS * .36], { alpha: .8 * gl, x1: 1440 * E.inOut(gl) });
+        if (b.object) obj(g, ctx, b.object, 720, 270 - (1 - conv) * 60, 200, {});
+      }
     },
     flash(g, s, b) { if (b.text) g.text(tokens(b.text)[0], 720, 540, { size: 120, weight: 700, align: 'center', color: C.ink }); },
   };
   /** A flow card whose flood-out would be under .25s: it stays flooded and the next shot drains it back into the object. */
   function shortFlood(b) { const full = (b.reveal?.at(-1)?.t ?? 0) + .22; return b.dur - Math.max(b.dur * .72, full + .35) < .25; }
-  function accentFx(g, s, accent, x, y, size) {
+  function accentFx(g, s, accent, x, y, size, flowCtx) {
     if (accent === 'beam') { g.beam(x - 100, y + 80, -0.62, 1400, 160, 300, (s.t - .1) / .15, '#E2261A'); g.beam(x - 80, y + 120, 2.45, 900, 50, 160, (s.t - .1) / .15, '#E2261A'); }
     if (accent === 'notes') [['notes2', x + 230, y - 230, .2], ['note', x + 400, y + 260, .35], ['note', x + 120, y + 330, .5]].forEach(([n, nx, ny, t0], i) => { if (s.t > t0) g.sprite(n, nx, ny + Math.sin(s.t * 3 + i) * 8, i ? 120 : 150, { rot: Math.sin(s.t * 2 + i) * .15 }); });
     if (accent === 'scribble' && s.t < .25) g.stroke(g.scribblePath('zigzag', x + 130, y - 140, 260, 380, 3), s.t / .12, { color: C.white, width: 3 });
-    if (accent === 'orbits') { g.orbit(x, y, 230, 80, -.3, g.clamp((s.t - .2) / .8), 'front', { len: 2.4 }); g.orbit(x, y, 260, 90, .5, g.clamp((s.t - .35) / .8), 'front', { len: 2.4 }); }
+    if (accent === 'orbits') { g.layer({ alpha: .9 }, () => { g.orbit(x, y, 230, 80, -.3, g.clamp((s.t - .2) / .8), 'front', { len: 2.4, width: 3.2 }); g.orbit(x, y, 260, 90, .5, g.clamp((s.t - .35) / .8), 'front', { len: 2.4, width: 3.2 }); }); }
+    if (accent === 'sparkle' && flowCtx) g.sparkle(x + size * .42, y - size * .42, 110 * E.back(g.clamp((s.t - .15) / .2)), { rot: .3 + s.t * .3, ax: 1.2, ay: .8, k: 1.9, glow: 22 });
   }
 
   /** Resolve spec.silhouettes → { key: { src: shapeFn|maskCanvas, kind } }. "shape:profile", "shape:hand", "mask:<url>". */

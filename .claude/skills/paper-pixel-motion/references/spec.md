@@ -31,11 +31,11 @@ Every beat has `type` and (usually) `text`. Optional on all beats: `section` (ar
 | `flare` | optional line | `objects`, `key` | The cyan four-point flare, floating objects, and a light pool closing in. The key word turns white |
 | `silhouette` | 1–7 words | `shape`, `orbit`, `hotspot`, `wash` | Heat-lit body. A hand splits the line either side of it; a head puts the line on the left |
 | `ring` | — | `objects`, `hits:[[t, index]]` | Inventory carousel (cut) or tilted 3D ring (flow). `hits` are ink-blot strikes |
-| `card` | 1 word + period | `object` (req), `accent`: `sparkle` \| `beam` \| `notes` \| `scribble` \| `orbits` | Hero object on the left, the word on the right with a cursor. In flow mode the page floods from the object |
+| `card` | 1 word + period | `object` (req), `accent`: `sparkle` \| `beam` \| `notes` \| `scribble` \| `orbits`, `glow` (red glow behind a dark object) | Hero object on the left, the word on the right with a cursor. In flow mode the page floods from the object |
 | `conveyor` | — | `objects` | Fast row of objects with speed streaks |
-| `scatter` | — | `objects` | The ring breaks apart; objects turn to ink. In flow mode blots swallow the page |
+| `scatter` | — | `objects`, `from`: `ring` (default) \| `pile` | The ring breaks apart; objects turn to ink. In flow mode blots swallow the page |
 | `spell` | 1 word (caps) | `objects`, `worlds` | One shot per letter, with the background cycling through `worlds` and an object in the next slot. In flow mode the objects morph cell by cell |
-| `resolve` | the final word | `object`, `end`: `knot` \| `word` | Brush strokes, then floating letters with red loops, converging into an ink knot or settling into the word with the object above it. Default `end`: `word` if `object` is set, otherwise `knot` (same in both modes) |
+| `resolve` | the final word | `object`, `end`: `knot` \| `word` | Brush strokes, then floating letters with red loops, converging into an ink knot or settling into the word with the object above it. Default `end`: `word` if `object` is set, otherwise `knot` (same in both modes). `end: 'brand'` lands the letters as the lower-case word at hero scale (`size`, default 300) with dashed guides, which bookends a `hero` opening. Give it `dur` ≥ 3 so the name holds ≥ 1.5 s |
 | `flash` | optional 1 word | — | Flat colour frame, 2–4 frames. Subliminal: exempt from the readability and hold rules |
 
 ## Timing

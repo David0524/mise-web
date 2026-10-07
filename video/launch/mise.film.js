@@ -15,7 +15,7 @@ window.SPEC = {
     { section: 0, type: 'hero', text: 'mess' },
     { section: 0, type: 'sentence', text: 'every good recipe starts the same way', key: 'recipe' },
     { section: 0, type: 'flash', text: 'then' },
-    { section: 0, type: 'scatter' },
+    { section: 0, type: 'scatter', from: 'pile' },
     { section: 0, type: 'silhouette', shape: 'hand', text: 'a counter full of maybe' },
     { section: 1, type: 'flash', text: 'so' },
     // the method
@@ -23,12 +23,12 @@ window.SPEC = {
     { section: 1, type: 'conveyor', objects: ['garlic', 'lemon', 'tomato', 'egg', 'salt', 'board'] },
     { section: 1, type: 'card', text: 'place.', object: 'bowl', accent: 'orbits' },
     { section: 1, type: 'conveyor', objects: ['recipe', 'timer', 'spoon', 'pan', 'bowl', 'knife'] },
-    { section: 1, type: 'card', text: 'play.', object: 'pan', accent: 'sparkle' },
+    { section: 1, type: 'card', text: 'play.', object: 'pan', accent: 'sparkle', glow: true },
     // the calm
     { section: 2, type: 'sentence', text: 'everything right where your hands expect it', key: 'hands' },
     { section: 2, type: 'flash', text: 'now' },
     { section: 2, type: 'ring' },
     { section: 3, type: 'spell', text: 'MISE', objects: ['knife', 'bowl', 'pan', 'tomato'] },
-    { section: 3, type: 'resolve', text: 'mise', object: 'bowl' },
+    { section: 3, type: 'resolve', text: 'mise', object: 'bowl', end: 'brand', dur: 3.2 },
   ],
 };

@@ -2,23 +2,23 @@
 (function () {
   const G = PPM.defGrid, K = '#1c1717';
 
-  G('board', [
+  G('board', [  // paddle cutting board, handle on the right with a hanging hole, grain streaks
     '................',
     '................',
-    '..kkkkkkkkkkkk..',
-    '.kwwwwwwwwwwwwk.',
-    'kwWWwwwwwwwwwwwk',
-    'kwwwwwwwwwwwwwwk',
-    'kwwwwwwwwwwwwwwk',
-    'kwwwwwwwwwwwwwdk',
-    'kwwwwwwwwwwwwwdk',
-    'kwwwwwwwwwwwwddk',
-    'kdwwwwwwwwwwwddk',
-    '.kddddddddddddk.',
-    '..kkkkkkkkkkkk..',
-    '......kook......',
-    '.......kk.......',
-    '................'], { k: K, w: '#D9A066', W: '#F0C48E', d: '#A8723E', o: '#5A3A22' });
+    '................',
+    'kkkkkkkkkkk.....',
+    'kwWWwwwwwwkkkkk.',
+    'kwwwwdddwwwwwwwk',
+    'kwwwwwwwwwwwkwwk',
+    'kwdddwwwwwwwwwwk',
+    'kwwwwwwwwddwkkkk',
+    'kwwwwwwwwwwk....',
+    'kwwwddddwwwk....',
+    'kkkkkkkkkkkk....',
+    '................',
+    '................',
+    '................',
+    '................'], { k: K, w: '#E2B57A', W: '#F4D3A0', d: '#B98549' });
 
   G('bowl', [
     '................',
@@ -57,9 +57,9 @@
     '................'], { k: K, r: '#D9261C', R: '#FF8A73', d: '#9C130E', w: '#F4F0E6' });
 
   G('salt', [
-    '......kkkk......',
-    '.....kmmmmk.....',
-    '.....kmkmmk.....',
+    '.....kkkkkk.....',
+    '....kmmmmmmk....',
+    '....kmhmhmmk....',
     '....kkkkkkkk....',
     '....kwwwwwwk....',
     '...kwWwwwwwsk...',
@@ -72,7 +72,7 @@
     '...kkkkkkkkkk...',
     '................',
     '................',
-    '................'], { k: K, m: '#9EA3AD', w: '#F2EEE6', W: '#FFFFFF', s: '#C9C1AE' });
+    '................'], { k: K, m: '#9EA3AD', h: '#5E636B', w: '#F2EEE6', W: '#FFFFFF', s: '#C9C1AE' });
 
   G('recipe', [
     '................',

@@ -1,6 +1,6 @@
 # mise: launch
 
-**17.31s · 19 shots · flow @ 60fps · avg 0.91s**
+**17.91s · 19 shots · flow @ 60fps · avg 0.94s**
 
 | t | dur | world | beat | words | objects | timing | out |
 |---|---|---|---|---|---|---|---|
@@ -22,6 +22,6 @@
 | 13.96 | 0.25 | void | spell[I] | M I | — | estimate | cut |
 | 14.21 | 0.25 | red | spell[S] | M I S | — | estimate | cut |
 | 14.46 | 0.25 | void | spell[E] | M I S E | — | estimate | handoff |
-| 14.71 | 2.60 | paper | resolve | mise | bowl | estimate | end |
+| 14.71 | 3.20 | paper | resolve | mise | bowl | fixed | end |
 
 No warnings.
