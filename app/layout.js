@@ -1,10 +1,35 @@
 import CookieBanner from "@/components/CookieBanner";
 
+/* Absolute URLs for og:image and friends. Link unfurlers (iMessage, WhatsApp,
+   Slack) ignore relative image paths, so this has to be the real public origin.
+   Same fallback as lib/business.js. */
+const SITE_URL = (process.env.APP_URL || "https://misekitchen.app").replace(/\/$/, "");
+const TITLE = "Mise — a weekly cooking collaborator";
+const DESCRIPTION = "Plan the week with a chef who talks it through with you, not a recipe database.";
+/* The line a friend reads under the preview card — the landing page's own pitch. */
+const SHARE_DESCRIPTION =
+  "Work out what to cook this week, shop for what actually gets used up, and get talked through it at the stove.";
+
 export const metadata = {
-  title: "Mise — a weekly cooking collaborator",
-  description: "Plan the week with a chef who talks it through with you, not a recipe database.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Mise" },
+  // The image itself comes from app/opengraph-image.js, which Next adds here.
+  openGraph: {
+    type: "website",
+    siteName: "Mise",
+    url: "/",
+    title: "Mise — what to cook this week, sorted",
+    description: SHARE_DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mise — what to cook this week, sorted",
+    description: SHARE_DESCRIPTION,
+  },
 };
 
 export const viewport = {

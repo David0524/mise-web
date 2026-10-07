@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { guestGet, guestSet } from "@/lib/guest";
 import AuthOptions from "@/components/AuthOptions";
 import ConsentChecks from "@/components/ConsentChecks";
+import HomeScreenTip from "@/components/HomeScreenTip";
 import { EmailField, NewPasswordFields, credentialsReady } from "@/components/CredentialFields";
 import { track, trackRecipe } from "@/lib/track";
 
@@ -5497,6 +5498,10 @@ Respond with ONLY this JSON:
             positioned one screen-width either side, so the whole strip moves
             as one under your finger. Mounting them on demand rather than
             always keeps five heavy trees from being live at once. */}
+        {/* iPhone Safari (and installable Android) only; renders nothing
+            elsewhere. On the home and week screens, above the swipe deck, so it
+            pushes content down rather than covering it; never during onboarding. */}
+        {!ONBOARD && (view === "start" || view === "thisweek" || view === "week") && <HomeScreenTip />}
         <div className={`pages${dragSide ? " pages--dragging" : ""}`} ref={pagesRef}>
           {dragSide === "prev" && prevId && (
             <div className="pages__side pages__side--prev" aria-hidden="true">{screen(prevId)}</div>
