@@ -38,3 +38,16 @@ MOCK=1 node qa/real-model.js
 Swaps `/api/chat` for `fake-model.js` in the browser. Content checks fail by
 design (the fake answers are canned); any "harness error" means a selector or
 flow broke.
+
+## Recipe quality
+
+```
+GEMINI_API_KEY=... BASE_URL=http://localhost:3000 node qa/recipes.js
+REUSE=qa/out/recipes.json node qa/recipes.js   # same weeks, rewrite recipes only (3 calls a cook)
+```
+
+Five cooks (small stovetop+microwave kitchen, dairy-free family, adventurous
+vegetarian, headcount 1/8/3 by night, no heat) plan and shop through the app;
+the recipes it writes are checked mechanically (unlisted/unbought ingredients,
+time, servings, °F, doneness, equipment, restrictions, quantities, step count)
+and judged by Gemma for clarity, correctness and flavor. Output: recipes.md/json.
