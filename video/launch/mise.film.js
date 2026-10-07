@@ -9,14 +9,14 @@ window.SPEC = {
   length: 18,
   shape: 'contrast',
   objects: window.MISE_SET,
-  silhouettes: { hand: 'shape:hand' },          // swap for 'mask:assets/hand.png' when a real hand image is supplied
+  silhouettes: { hand: 'heat:assets/hand.png' },  // the user's heat render (ChatGPT), drawn as-is
   beats: [
     // the mess
     { section: 0, type: 'hero', text: 'mess' },
     { section: 0, type: 'sentence', text: 'every good recipe starts the same way', key: 'recipe' },
     { section: 0, type: 'flash', text: 'then' },
     { section: 0, type: 'scatter', from: 'pile' },
-    { section: 0, type: 'silhouette', shape: 'hand', text: 'a counter full of maybe' },
+    { section: 0, type: 'silhouette', shape: 'hand', text: 'a counter full of maybe', leftEnd: 400 },
     { section: 1, type: 'flash', text: 'so' },
     // the method
     { section: 1, type: 'card', text: 'prep.', object: 'knife', accent: 'scribble' },
@@ -28,7 +28,7 @@ window.SPEC = {
     { section: 2, type: 'sentence', text: 'everything right where your hands expect it', key: 'hands' },
     { section: 2, type: 'flash', text: 'now' },
     { section: 2, type: 'ring' },
-    { section: 3, type: 'spell', text: 'MISE', objects: ['knife', 'bowl', 'pan', 'tomato'] },
-    { section: 3, type: 'resolve', text: 'mise', object: 'bowl', end: 'brand', dur: 3.2 },
+    { section: 3, type: 'spell', text: 'MISE', objects: ['knife', 'bowl', 'pan', 'toque'] },
+    { section: 3, type: 'resolve', text: 'mise', object: 'mise', objectSize: 330, objectY: 250, end: 'brand', dur: 3.2 },
   ],
 };

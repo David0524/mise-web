@@ -88,15 +88,17 @@
       const hot = b.hotspot || (isHand ? [760, 980, 150] : [1090, 940, 115, 170]);
       const ring = b.orbit ? g.clamp((s.t - .5) / .7) : 0, [ox, oy] = isHand ? [760, 560] : [1010, 430];
       if (ring > 0 && ring < 1) g.orbit(ox, oy, 340, 110, -.5, ring, 'back');
-      g.layer({ blur: (1 - heat) * 24 }, () => g.heat(shp.src, { key: b.shape, t: s.T, heat, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: hot, hotspotStrength: isHand ? .3 : .65 }));
+      if (shp.img) g.layer({ blur: (1 - heat) * 24, alpha: heat, y: (1 - rise) * 300 }, () => { const sc = Math.max(1440 / shp.img.width, 1080 / shp.img.height); g.ctx.drawImage(shp.img, 720 - shp.img.width * sc / 2, 540 - shp.img.height * sc / 2, shp.img.width * sc, shp.img.height * sc); });
+      else g.layer({ blur: (1 - heat) * 24 }, () => g.heat(shp.src, { key: b.shape, t: s.T, heat, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: hot, hotspotStrength: isHand ? .3 : .65 }));
       if (ring > 0 && ring < 1) g.orbit(ox, oy, 340, 110, -.5, ring, 'front');
       const words = tokens(b.text);
       if (isHand) { // split the line either side of the hand; shrink to fit (40 px floor) so neither half leaves the frame
         const half = Math.ceil(words.length / 2), L = { ...b, text: words.slice(0, half).join(' '), reveal: b.reveal.slice(0, half) }, R = { ...b, text: words.slice(half).join(' '), reveal: b.reveal.slice(half) };
-        const fs = Math.max(40, Math.min(52, 52 * (440 - 58) / Math.max(1, g.measure(L.text, 52)), 52 * (1382 - 1010) / Math.max(1, g.measure(R.text, 52) + 40)));
-        const lx = Math.max(58, 440 - g.measure(L.text, fs));
-        if (ctx.flow) { const onR = R.reveal.length && s.t >= R.reveal[0].t; g.caption(typedAt(L, s.t), lx, 520, { size: fs, color: C.white, cursorColor: C.white, align: 'left', cursor: !onR, t: s.t }); g.caption(typedAt(R, s.t), 1010, 520, { size: fs, color: C.white, cursorColor: C.white, align: 'left', cursor: onR, t: s.t }); }
-        else { g.words(tokens(L.text), revealTimes(L), s.t, lx, 520, { size: fs, color: C.white }); g.words(tokens(R.text), revealTimes(R), s.t, 1010, 520, { size: fs, color: C.white }); }
+        const LE = b.leftEnd ?? 440, RS = b.rightStart ?? 1010, TY = b.textY ?? 520;
+        const fs = Math.max(40, Math.min(52, 52 * (LE - 58) / Math.max(1, g.measure(L.text, 52)), 52 * (1382 - RS) / Math.max(1, g.measure(R.text, 52) + 40)));
+        const lx = Math.max(58, LE - g.measure(L.text, fs));
+        if (ctx.flow) { const onR = R.reveal.length && s.t >= R.reveal[0].t; g.caption(typedAt(L, s.t), lx, TY, { size: fs, color: C.white, cursorColor: C.white, align: 'left', cursor: !onR, t: s.t }); g.caption(typedAt(R, s.t), RS, TY, { size: fs, color: C.white, cursorColor: C.white, align: 'left', cursor: onR, t: s.t }); }
+        else { g.words(tokens(L.text), revealTimes(L), s.t, lx, TY, { size: fs, color: C.white }); g.words(tokens(R.text), revealTimes(R), s.t, RS, TY, { size: fs, color: C.white }); }
       } else line(g, ctx, b, s.t, { x: ctx.flow ? 110 : 130, align: 'left', color: C.white, cursorColor: C.white });
       const wash = !ctx.flow && b.wash !== false ? g.clamp((s.t - (s.d - .35)) / .3) : 0;
       if (wash > 0) { g.ctx.fillStyle = `rgba(110,92,92,${wash * .75})`; g.ctx.fillRect(0, 0, 1440, 1080); if (wash > .6 && !isHand) g.cutout(shp.src); }
@@ -184,7 +186,7 @@
       if (end === 'brand') {
         if (conv >= 1) { g.text(word, 720, BY, { size: BS, weight: 700, align: 'center', track: -.04, color: C.ink }); }
         const gl = g.clamp((s.t - c1) / .35); if (gl > 0) g.guides([BY + BS * .36], { alpha: .8 * gl, x1: 1440 * E.inOut(gl) });
-        if (b.object) obj(g, ctx, b.object, 720, 270 - (1 - conv) * 60, 200, {});
+        if (b.object) obj(g, ctx, b.object, 720, (b.objectY ?? 270) - (1 - conv) * 60, b.objectSize ?? 200, {});
       }
     },
     flash(g, s, b) { if (b.text) g.text(tokens(b.text)[0], 720, 540, { size: 120, weight: 700, align: 'center', color: C.ink }); },
@@ -205,6 +207,11 @@
     for (const [k, v] of Object.entries(spec.silhouettes || {})) {
       const [kind, arg] = String(v).split(':');
       if (kind === 'shape') out[k] = { src: arg === 'hand' ? PPM.SHAPES.hand(760, 1130, 1.05, .95) : PPM.SHAPES.profile(980, 190, 1.05), kind: arg };
+      else if (kind === 'heat') { // a ready-made heat render on black: draw it as-is, derive the mask from its luminance
+        const url = v.slice(5), img = await new Promise((ok, err) => { const im = new Image(); im.onload = () => ok(im); im.onerror = err; im.src = url; });
+        const m = await PPM.loadMask(url, { luma: true, invert: true, threshold: 40 });
+        out[k] = { img, src: PPM.placeMask(m, { x: 720, y: 540, h: 1080 }), kind: /hand/i.test(k) ? 'hand' : 'head' };
+      }
       else if (kind === 'mask') { const m = await PPM.loadMask(v.slice(5)); const isHand = /hand/i.test(k); out[k] = { src: PPM.placeMask(m, isHand ? { x: 760, y: 760, h: 900 } : { x: 1000, y: 640, h: 980 }), kind: isHand ? 'hand' : 'head' }; }
     }
     return out;

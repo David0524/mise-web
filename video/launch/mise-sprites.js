@@ -92,5 +92,69 @@
     '................',
     '................'], { k: K, w: '#F6F1E4', r: '#D9261C', l: '#9C9488', s: '#D8CFBC' });
 
+  // Brand sprites converted from the user's ChatGPT pixel art (assets/*-pixel.png) with tools/image-to-grid.py
+  /* toque: 20x17 cells from toque-pixel.png (cell 41px) */
+  PPM.defGrid('toque', [
+    '......kkkkkkkk......',
+    '.....kbbbbbbbbk.....',
+    '....kbbbbbbbbbbk....',
+    '..kkkbbbbbbbbbbkkk..',
+    '.kbbabbbbbbbbbbkbbk.',
+    'kbbbbbbbbbbbbbbabbbk',
+    'kbbbbabbbbbbbbabbbbk',
+    'kbbbbaabbbbbbaabbbbk',
+    'kbbbbaabbbbbbaabbbbk',
+    '.kbbbaaabbbbaaabbbk.',
+    '..kbbaaabbbbaaabbk..',
+    '...kbaaaaaaaaaabk...',
+    '....bkkkkkkkkkkb....',
+    '....abbbbbbbbbba....',
+    '....abbaaaaaabba....',
+    '....aaaaaaaaaaaa....',
+    '....kkkkkkkkkkkk....',
+  ], { k: '#241414', a: '#D4C4C4', b: '#F4ECE4' });
+
+  /* mise: 22x38 cells from mise-pixel.png (cell 28px) */
+  PPM.defGrid('mise', [
+    '.......kkkkkkkk.......',
+    '......kffffffffk......',
+    '.....kffffffffffk.....',
+    '..kkkkffffffffffkkkk..',
+    '.kfffcffffffffffkfffk.',
+    'kfffffffffffffffdffffk',
+    'kfffffdffffffffdfffffk',
+    'kfffffddffffffddfffffk',
+    'kfffffbdffffffddfffffk',
+    'kdffffbddffffdddfffffk',
+    '.kdfffbddffffddcfffdk.',
+    '..kkdfbddddddddcfdkk..',
+    '...kdfkkkkkkkkkkfdk...',
+    '...kkdffffffffffdkk...',
+    '...kdffffffffffffdk...',
+    '...kdfffddddddfffdk...',
+    '...kdfkkkkkkkkkkfdk...',
+    '...kdkffffffffffkdk...',
+    '....kffffffffffffk....',
+    '...kfffkffffffkfffk...',
+    '...kfffkffffffkfffk...',
+    '...kffffffffffffffk...',
+    '....kffffkffkffffk....',
+    '....kffffffkffffkk....',
+    '.....kkffffffffkk.....',
+    '......kkffffffkk......',
+    '.....kaakkkkkkak......',
+    '....kkaaakkkaaaak.....',
+    '....ffkaaakkaaakfk....',
+    '..kkfffkakkkkakffffk..',
+    '.kfffffdkakkakdfffffk.',
+    'kfffffffkaakakffffdffk',
+    'kffffffffakkaffkekfffk',
+    'kffffffffkffkffkkkdffk',
+    'kffdffffffffffffffdffk',
+    '.kfdfffkfffffkffffdfk.',
+    '..kkdffffffffffffdkk..',
+    '....kkkkkkkkkkkkkk....',
+  ], { k: '#24140C', a: '#B4441C', b: '#948474', c: '#AC9C8C', d: '#D4C4BC', e: '#F4BCB4', f: '#F4ECE4' });
+
   window.MISE_SET = ['knife', 'board', 'bowl', 'garlic', 'lemon', 'tomato', 'egg', 'pan', 'spoon', 'salt', 'recipe', 'timer'];
 })();
