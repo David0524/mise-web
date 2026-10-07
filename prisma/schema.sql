@@ -124,3 +124,15 @@ create table if not exists api_usage (
   count        integer not null default 0,
   primary key (user_id, bucket, window_start)
 );
+
+-- Usage events for the private stats page (lib/events.js). user_id is null for
+-- onboarding steps taken before an account exists.
+create table if not exists events (
+  id         bigserial primary key,
+  user_id    uuid references users(id) on delete cascade,
+  name       text not null,
+  props      jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_events_created on events(created_at);
+create index if not exists idx_events_user on events(user_id, created_at);

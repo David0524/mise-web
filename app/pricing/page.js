@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
+import { track } from "@/lib/track";
 import { useSearchParams } from "next/navigation";
 import { FilterDefs, DAYLIGHT } from "@/lib/authStyles";
 import MiseHello from "@/components/MiseHello";
@@ -77,6 +78,7 @@ function Backdrop({ k }) {
 }
 
 function Paywall() {
+  useEffect(() => { track("paywall_view"); }, []);
   const params = useSearchParams();
   const kitchen = useKitchen();
   const [plan, setPlan] = useState("yearly");

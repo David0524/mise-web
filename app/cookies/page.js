@@ -8,7 +8,7 @@ export default function Cookies() {
   return (
     <LegalPage
       title="Cookie Policy"
-      intro={`${B.product} uses one cookie, to keep you signed in, plus a little storage in your browser to remember your choices. Your plans and settings are kept on our servers with your account, not in cookies. No analytics, no advertising, no tracking.`}
+      intro={`${B.product} uses one cookie, to keep you signed in, plus a little storage in your browser to remember your choices. Your plans and settings are kept on our servers with your account, not in cookies. No third-party analytics, no advertising, no tracking cookies.`}
     >
       <h2>What we store</h2>
       <table>

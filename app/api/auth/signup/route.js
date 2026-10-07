@@ -6,6 +6,7 @@ import { checkEmail, passwordError } from "@/lib/credentials";
 import {
   hashPassword, createSession, readCredentials,
 } from "@/lib/auth";
+import { logEvent } from "@/lib/events";
 
 export async function POST(req) {
   try {
@@ -48,6 +49,7 @@ export async function POST(req) {
   );
 
   await createSession(userId);
+  await logEvent(userId, "signup", { method: "email" });
   return NextResponse.json({ ok: true });
 } catch (e) {
     /* Any throw here used to escape the route, so Next returned a 500 with an

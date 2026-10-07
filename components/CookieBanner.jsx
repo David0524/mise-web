@@ -65,8 +65,8 @@ export default function CookieBanner() {
       }}>
       <p style={{ margin: "0 0 .2rem", fontWeight: 900, fontSize: "1rem" }}>Cookies</p>
       <p style={{ margin: "0 0 .8rem", fontWeight: 600, color: "#3B302A" }}>
-        Mise uses one cookie to keep you signed in and remembers this choice on your device. No ads, no analytics,
-        no tracking. We don&apos;t use any optional cookies right now; if that ever changes, only your choice here
+        Mise uses one cookie to keep you signed in and remembers this choice on your device. No ads, no third-party analytics,
+        no tracking cookies. We don&apos;t use any optional cookies right now; if that ever changes, only your choice here
         will allow them. <a href="/cookies" style={{ color: "#9A3B1B", fontWeight: 800 }}>Cookie Policy</a>
       </p>
       <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
