@@ -28,6 +28,7 @@
     flash:      { base: .12, perWord: 0,   min: .08, max: .16, world: ['yellow', 'red'],  words: [0, 1],   text: 'optional' },
   };
   const WPS_LIMIT = 4.2;
+  const FLOW_CARD_MIN = .95;     // flow cards type, hold the word >= HOLD, then flood out
   const FLASH_MAX = 4 / 24;      // flashes never exceed 4 frames, even when voice-timed
   const HOLD = .35;              // seconds a beat's last word stays on screen after it is spoken          // readable kinetic-type speed (words per second on screen)
   const SECTION_ACCEL = [1, .8, .6, .45]; // multiplier on the last beats of a section (last beat first)
@@ -36,8 +37,9 @@
   const tokens = (s) => String(s || '').split(/\s+/).filter(Boolean);
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-  function estimate(beat) {
+  function estimate(beat, mode) {
     const T = TYPES[beat.type], n = tokens(beat.text).length;
+    if (mode === 'flow' && beat.type === 'card') return clamp(T.base + T.perWord * n, FLOW_CARD_MIN, Math.max(T.max, FLOW_CARD_MIN)); // flow: typing (~.22s) + hold + flood-out
     if (T.perLetter) return T.base * Math.max(1, norm(beat.text).length);
     return clamp(T.base + T.perWord * n, T.min, T.max);
   }
@@ -92,7 +94,7 @@
       const a = al && al[k];
       if (b.dur != null) { b.timing = 'fixed'; }
       else if (a) { b.timing = 'voice'; b._voice = a; }
-      else { b.dur = estimate(b); b.timing = 'estimate'; }
+      else { b.dur = estimate(b, mode); b.timing = 'estimate'; }
     });
     // voice-timed beats: start a little before the first word, run to the next voiced beat
     if (al) {
@@ -125,7 +127,7 @@
     sections.forEach(sec => {
       const sb = beats.filter(b => b.section === sec && b.timing === 'estimate');
       // the beats leading into a section's last beat get progressively shorter (the cut rhythm accelerates)
-      sb.slice(-4, -1).reverse().forEach((b, j) => { const T = TYPES[b.type], readable = b.type === 'flash' ? 0 : tokens(b.text).length / WPS_LIMIT + HOLD; b.dur = Math.max(readable, clamp(b.dur * SECTION_ACCEL[j + 1], T.min, T.max)); });
+      sb.slice(-4, -1).reverse().forEach((b, j) => { const T = TYPES[b.type], readable = b.type === 'flash' ? 0 : mode === 'flow' && b.type === 'card' ? FLOW_CARD_MIN : tokens(b.text).length / WPS_LIMIT + HOLD; b.dur = Math.max(readable, clamp(b.dur * SECTION_ACCEL[j + 1], T.min, T.max)); });
     });
     // spell beats split into one shot per letter
     const out = [];

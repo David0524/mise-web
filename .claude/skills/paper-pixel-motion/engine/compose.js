@@ -117,7 +117,7 @@
     card(g, s, b, ctx) {
       const word = b.text, accent = b.accent || 'sparkle';
       if (ctx.flow) { // the page floods from the object; the word types inside the flood
-        const nextW = ctx.plan.beats[ctx.plan.beats.indexOf(b) + 1]?.world, drain = nextW === 'void' ? 0 : g.clamp((s.t - s.d * .72) / (s.d * .26));
+        const nextW = ctx.plan.beats[ctx.plan.beats.indexOf(b) + 1]?.world, full = (b.reveal?.at(-1)?.t ?? 0) + .22, d0 = Math.max(s.d * .72, full + .35), drain = nextW === 'void' ? 0 : g.clamp((s.t - d0) / Math.max(.12, s.d - d0)); // flood out only after the word has held .35s
         const fl = g.clamp((s.t - s.d * .05) / (s.d * .3)) * (1 - drain); // proportional; stays flooded when the next beat is on void
         g.flood(400, 520, fl, C.void);
         g.inFlood(400, 520, fl, () => { accentFx(g, s, accent, 400, 520, 380); g.caption(typedAt(b, s.t), 820, 520, { size: 80, weight: 600, color: C.white, cursorColor: C.white, t: s.t, soft: false }); });
