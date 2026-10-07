@@ -35,8 +35,8 @@ Every beat has `type` and (usually) `text`. Optional on all beats: `section` (ar
 | `conveyor` | — | `objects` | Fast row of objects with speed streaks |
 | `scatter` | — | `objects` | The ring breaks apart; objects turn to ink. In flow mode blots swallow the page |
 | `spell` | 1 word (caps) | `objects`, `worlds` | One shot per letter, with the background cycling through `worlds` and an object in the next slot. In flow mode the objects morph cell by cell |
-| `resolve` | the final word | `object`, `end`: `knot` \| `word` | Brush strokes, then floating letters with red loops, converging into an ink knot or settling into the word (with the object above it) |
-| `flash` | optional 1 word | — | Flat colour frame, 2–4 frames |
+| `resolve` | the final word | `object`, `end`: `knot` \| `word` | Brush strokes, then floating letters with red loops, converging into an ink knot or settling into the word with the object above it. Default `end`: `word` if `object` is set, otherwise `knot` (same in both modes) |
+| `flash` | optional 1 word | — | Flat colour frame, 2–4 frames. Subliminal: exempt from the readability and hold rules |
 
 ## Timing
 

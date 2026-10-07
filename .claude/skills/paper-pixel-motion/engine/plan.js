@@ -27,7 +27,8 @@
     resolve:    { base: 2.4, perWord: .2,  min: 2.0, max: 3.4, world: ['paper'],          words: [1, 2],   text: true },
     flash:      { base: .12, perWord: 0,   min: .08, max: .16, world: ['yellow', 'red'],  words: [0, 1],   text: 'optional' },
   };
-  const WPS_LIMIT = 4.2;          // readable kinetic-type speed (words per second on screen)
+  const WPS_LIMIT = 4.2;
+  const HOLD = .35;              // seconds a beat's last word stays on screen after it is spoken          // readable kinetic-type speed (words per second on screen)
   const SECTION_ACCEL = [1, .8, .6, .45]; // multiplier on the last beats of a section (last beat first)
 
   const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9']/g, '');
@@ -102,7 +103,15 @@
           const gapFill = beats.slice(k + 1, nextV ? beats.indexOf(nextV) : beats.length).reduce((s, x) => s + (x.dur ?? estimate(x)), 0);
           const end = nextV ? nextV._voice.start - LEAD - gapFill : Math.max(b._voice.end + .5, st + estimate(b));
           const T = TYPES[b.type], floor = T.perLetter ? T.min * Math.max(1, norm(b.text).length) : T.min;
-          b.dur = Math.max(floor, end - st);
+          // readability: the last word must stay on screen >= HOLD after it is spoken; borrow from the following text-less beats
+          const need = b.type === 'flash' ? 0 : b._voice.end + HOLD; let e2 = end; // flashes are subliminal: no hold
+          if (e2 < need && nextV) {
+            let short = need - e2;
+            for (const x of beats.slice(k + 1, beats.indexOf(nextV))) { const give = Math.max(0, x.dur - TYPES[x.type].min); const d = Math.min(give, short); x.dur -= d; short -= d; if (short <= 0) break; }
+            e2 = need - Math.max(0, short);
+            if (short > .05) errors.push(`beat ${b.i}: last word "${b._voice.reveal.at(-1).word}" gets ${(HOLD - short).toFixed(2)}s on screen (needs ${HOLD}s); move the next line later in the voice, or shorten this beat's text`);
+          }
+          b.dur = Math.max(floor, Math.max(e2, end) - st);
           b.reveal = b._voice.reveal.map(r => ({ word: r.word, t: Math.max(0, r.t - st) }));
           cursor = st + b.dur;
         } else cursor += b.dur;
@@ -114,7 +123,7 @@
     sections.forEach(sec => {
       const sb = beats.filter(b => b.section === sec && b.timing === 'estimate');
       // the beats leading into a section's last beat get progressively shorter (the cut rhythm accelerates)
-      sb.slice(-4, -1).reverse().forEach((b, j) => { const T = TYPES[b.type]; b.dur = clamp(b.dur * SECTION_ACCEL[j + 1], T.min, T.max); });
+      sb.slice(-4, -1).reverse().forEach((b, j) => { const T = TYPES[b.type], readable = b.type === 'flash' ? 0 : tokens(b.text).length / WPS_LIMIT + HOLD; b.dur = Math.max(readable, clamp(b.dur * SECTION_ACCEL[j + 1], T.min, T.max)); });
     });
     // spell beats split into one shot per letter
     const out = [];
@@ -139,7 +148,8 @@
     out.forEach(b => {
       if (b.reveal || !b.text || b.type === 'spell') return;
       const t = tokens(b.text), span = Math.min(b.dur * .6, t.length / WPS_LIMIT * 1.4), lead = b.type === 'card' ? .12 : .08;
-      b.reveal = t.map((w, j) => ({ word: w, t: lead + (t.length > 1 ? span * j / (t.length - 1) : 0) }));
+      const sp = Math.min(span, Math.max(0, b.dur - HOLD - lead));
+      b.reveal = t.map((w, j) => ({ word: w, t: lead + (t.length > 1 ? sp * j / (t.length - 1) : 0) }));
     });
     // ── transitions ──
     out.forEach((b, k) => {
@@ -159,16 +169,22 @@
     out.forEach((b, k) => {
       const n = out[k + 1]; if (!n) return;
       if (n.world === b.world && n.type === b.type && b.type !== 'spell') warnings.push(`beats ${b.i}→${n.i}: same type and world back to back; change scale or world`);
-      const wps = tokens(b.text).length / b.dur; if (b.text && b.type !== 'spell' && wps > WPS_LIMIT) warnings.push(`beat ${b.i}: ${wps.toFixed(1)} words/s is too fast to read (max ${WPS_LIMIT})`);
+      const wps = tokens(b.text).length / b.dur; if (b.text && !['spell', 'flash'].includes(b.type) && wps > WPS_LIMIT) warnings.push(`beat ${b.i}: ${wps.toFixed(1)} words/s is too fast to read (max ${WPS_LIMIT})`);
     });
     for (let k = 0; k + 2 < out.length; k++) { const run = out.slice(k, k + 3); if (run.every(b => b.world === run[0].world) && run.reduce((s, b) => s + b.dur, 0) > 2.2) warnings.push(`beats ${run[0].i}–${run[2].i}: one world for ${run.reduce((s, b) => s + b.dur, 0).toFixed(1)}s; alternate worlds on each idea`); }
     if (!out.some(b => b.type === 'resolve' || b.type === 'spell')) warnings.push('no ending beat (resolve or spell): the style ends messier, on a mark or a word');
+    // word budget (writing.md §2)
+    const spoken = spec.beats.reduce((n, b) => n + (TYPES[b.type]?.text && b.type !== 'spell' ? tokens(b.text).length : 0), 0);
+    const L = spec.length || duration, lo = Math.round(L * 1.45), hi = Math.round(L * 2.3);
+    if (spoken < lo || spoken > hi) warnings.push(`${spoken} spoken words for ${L}s; the budget is about ${lo}–${hi} (writing.md §2)`);
+    // one world held too long across different beat types
+    for (let k = 0; k < out.length; k++) { let j = k, t = 0; while (j < out.length && out[j].world === out[k].world) { t += out[j].dur; j++; } if (j - k > 1 && t > 3) { warnings.push(`beats ${out[k].i}–${out[j - 1].i}: ${out[k].world} for ${t.toFixed(1)}s straight; insert a contrasting beat (conveyor, flash)`); k = j - 1; } }
     const accents = out.filter(b => b.type === 'flare').length; if (accents > 1) warnings.push('more than one flare: the cyan moment should happen once');
     return { beats: out, duration, errors, warnings, mode, fps: spec.fps || (mode === 'flow' ? 60 : 24) };
   }
 
   function table(p) {
-    const rows = p.beats.map(b => `| ${b.start.toFixed(2)} | ${b.dur.toFixed(2)} | ${b.world} | ${b.type}${b.letterIndex != null ? `[${b.letters[b.letterIndex]}]` : ''} | ${b.text ? (b.type === 'spell' ? b.letters.slice(0, b.letterIndex + 1).join(' ') : b.text) : '—'} | ${[b.object, b.shape, b.accent].filter(Boolean).join(', ') || '—'} | ${b.timing} | ${b.transition} |`);
+    const rows = p.beats.map(b => `| ${b.start.toFixed(2)} | ${b.dur.toFixed(2)} | ${b.world} | ${b.type}${b.letterIndex != null ? `[${b.letters[b.letterIndex]}]` : ''} | ${b.text ? (b.type === 'spell' ? b.letters.slice(0, b.letterIndex + 1).join(' ') : b.text) : '—'} | ${[b.type === 'resolve' && !b.object ? null : b.object, b.shape, b.accent].filter(Boolean).join(', ') || '—'} | ${b.timing} | ${b.transition} |`);
     return [`**${p.duration}s · ${p.beats.length} shots · ${p.mode} @ ${p.fps}fps · avg ${(p.duration / p.beats.length).toFixed(2)}s**`, '',
       '| t | dur | world | beat | words | objects | timing | out |', '|---|---|---|---|---|---|---|---|', ...rows, '',
       ...(p.errors.length ? ['**Errors**', ...p.errors.map(e => '- ' + e), ''] : []),
