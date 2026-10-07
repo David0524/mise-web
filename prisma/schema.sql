@@ -147,3 +147,41 @@ create table if not exists recipe_log (
   created_at timestamptz not null default now()
 );
 create index if not exists idx_recipe_log_user on recipe_log(user_id, created_at);
+
+-- Notes testers send from the app (app/api/feedback).
+create table if not exists feedback (
+  id         bigserial primary key,
+  user_id    uuid references users(id) on delete cascade,
+  message    text not null,
+  context    jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_feedback_created on feedback(created_at);
+
+-- Errors the app reports from the browser (app/api/errors). Never user input.
+create table if not exists client_errors (
+  id         bigserial primary key,
+  user_id    uuid references users(id) on delete cascade,
+  message    text not null,
+  stack      text,
+  context    jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_client_errors_created on client_errors(created_at);
+
+-- One row per /api/chat call (app/api/chat/route.js).
+create table if not exists ai_calls (
+  id            bigserial primary key,
+  user_id       uuid references users(id) on delete cascade,
+  tier          text,
+  slices        text,
+  model         text,
+  ok            boolean not null,
+  status        int,
+  latency_ms    int,
+  input_tokens  int,
+  output_tokens int,
+  created_at    timestamptz not null default now()
+);
+create index if not exists idx_ai_calls_created on ai_calls(created_at);
+create index if not exists idx_ai_calls_user on ai_calls(user_id, created_at);

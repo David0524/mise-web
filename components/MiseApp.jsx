@@ -968,6 +968,8 @@ function withRecap(messages) {
 
 async function callClaude(messages, opts = {}) {
   const byok = readByok();
+  // Which call failed, for the error report: never the prompt or the answer.
+  const aiCtx = { tier: opts.tier || "main", slices: (opts.docSlices || []).join("+") || "all" };
   const res = await fetch("/api/chat", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages: withRecap(messages), tier: opts.tier || "main",
@@ -979,6 +981,9 @@ async function callClaude(messages, opts = {}) {
       // than running with no doctrine.
       ...(opts.docSlices ? { docSlices: opts.docSlices } : {}),
       ...(byok ? { userProvider: byok.provider, userKey: byok.key } : {}) }),
+  }).catch((e) => {
+    reportError("AI call failed: no response", null, aiCtx);
+    throw e;
   });
   if (res.status === 402) { window.location.href = "/pricing?reason=expired"; throw new Error("Redirecting to plans…"); }
   if (res.status === 401) { window.location.href = "/login?reason=expired"; throw new Error("Redirecting to sign in…"); }
@@ -994,6 +999,7 @@ async function callClaude(messages, opts = {}) {
        "couldn't reach the kitchen". This goes to the console, not the screen,
        so the copy stays clean. */
     console.error(`callClaude failed: HTTP ${res.status}`, detail || "(no detail)");
+    reportError(`AI call failed: HTTP ${res.status}`, null, { ...aiCtx, status: res.status });
     throw new Error(detail || "Couldn't reach the kitchen just now. Give it another go in a moment.");
   }
   const data = await res.json();
@@ -2296,6 +2302,111 @@ async function apiStorageSet(key, value) {
 /* The week in progress — picks, days, shopping list and ticks, recipes. */
 const WEEK_KEY = "mise:week-v1";
 
+/* ------------------------------------------------- beta feedback and errors
+
+   While friends test Mise, the app reports what breaks on its own, so nobody
+   has to describe a stack trace. Each report carries the screen, the device
+   and the build, and never anything typed into the app or written by the AI.
+   Stored in our own database (app/api/errors), read on /admin. */
+let CURRENT_VIEW = "start";
+let PREV_VIEW = "";
+const BUILD = process.env.NEXT_PUBLIC_BUILD || "";
+
+/* "iPhone Safari 17" rather than the whole user-agent string: enough to
+   reproduce a layout bug, not enough to fingerprint anyone. */
+function shortAgent() {
+  try {
+    const ua = navigator.userAgent || "";
+    const os = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android"
+      : /Mac OS X/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : /CrOS/.test(ua) ? "ChromeOS" : /Linux/.test(ua) ? "Linux" : "Other";
+    const m = ua.match(/(Edg|EdgiOS|CriOS|FxiOS|Firefox|SamsungBrowser|Chrome)\/(\d+)/) || ua.match(/Version\/(\d+).*Safari/);
+    const name = !m ? "" : m.length === 2 ? "Safari" : { Edg: "Edge", EdgiOS: "Edge", CriOS: "Chrome", FxiOS: "Firefox", SamsungBrowser: "Samsung" }[m[1]] || m[1];
+    const ver = !m ? "" : m.length === 2 ? m[1] : m[2];
+    return [os, name, ver].filter(Boolean).join(" ");
+  } catch (_) { return ""; }
+}
+
+function appContext() {
+  const c = { view: CURRENT_VIEW, agent: shortAgent() };
+  try { c.viewport = `${window.innerWidth}x${window.innerHeight}`; } catch (_) {}
+  if (BUILD) c.build = BUILD;
+  if (GUEST) c.guest = true;
+  return c;
+}
+
+/* The same error once a minute per message is plenty: a broken screen can
+   throw on every render. */
+const lastReported = new Map();
+function reportError(message, stack, extra) {
+  try {
+    const msg = String(message || "").slice(0, 300);
+    if (!msg) return;
+    const now = Date.now();
+    if (now - (lastReported.get(msg) || 0) < 60000) return;
+    lastReported.set(msg, now);
+    fetch("/api/errors", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg, stack: stack ? String(stack).slice(0, 2000) : null, context: { ...appContext(), ...(extra || {}) } }),
+    }).catch(() => {});
+  } catch (_) { /* never matters */ }
+}
+
+/* "Send feedback": a note and Send. The screen, device and build go with it,
+   so the note can just say what happened. */
+function FeedbackSheet({ onClose }) {
+  const [text, setText] = useState("");
+  const [state, setState] = useState("");
+  const [err, setErr] = useState("");
+  const send = async () => {
+    const message = text.trim();
+    if (!message || state === "sending") return;
+    setState("sending");
+    setErr("");
+    try {
+      const ctx = appContext();
+      if (ctx.view === "me" && PREV_VIEW) ctx.from = PREV_VIEW;
+      const res = await fetch("/api/feedback", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, context: ctx }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn't send that just now. Try again in a moment.");
+      setState("sent");
+    } catch (e) {
+      setErr(e.message || "Couldn't send that just now. Try again in a moment.");
+      setState("");
+    }
+  };
+  return (
+    <div className="rsheet__wrap no-print" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="rsheet nwsheet fbsheet" role="dialog" aria-modal="true" aria-labelledby="fb-h">
+        <DialogKeys onClose={onClose} />
+        <div className="rsheet__grab" aria-hidden="true" />
+        <button className="rsheet__x" onClick={onClose}>Close</button>
+        <h2 id="fb-h">Send feedback</h2>
+        {state === "sent" ? (
+          <>
+            <p className="lead" role="status">Sent — thank you.</p>
+            <div className="nwsheet__btns"><Btn wide onClick={onClose}>Done</Btn></div>
+          </>
+        ) : (
+          <>
+            <label className="sr" htmlFor="fbnote">Your feedback</label>
+            <textarea id="fbnote" rows="5" maxLength={2000} autoCapitalize="sentences" autoCorrect="on" spellCheck="true"
+              value={text} onChange={(e) => setText(e.target.value)}
+              placeholder="What's working, what isn't, what you wish it did…" />
+            {err && <p className="hint" role="alert">{err}</p>}
+            <div className="nwsheet__btns">
+              <Btn wide onClick={send} disabled={!text.trim() || state === "sending"}>{state === "sending" ? "Sending…" : "Send"}</Btn>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* A render error anywhere used to unmount the whole tree and leave Next's bare
    "Application error: a client-side exception has occurred". The data that
    caused it was usually already saved, so a reload hit the same wall. This
@@ -2304,13 +2415,14 @@ const WEEK_KEY = "mise:week-v1";
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { failed: false };
+    this.state = { failed: false, feedback: false };
   }
   static getDerivedStateFromError() {
     return { failed: true };
   }
   componentDidCatch(error, info) {
     console.error("Mise render failure:", error, info?.componentStack);
+    reportError(`Render: ${error?.message || error}`, `${error?.stack || ""}\n--- component stack ---${info?.componentStack || ""}`, { kind: "render" });
   }
   render() {
     if (!this.state.failed) return this.props.children;
@@ -2325,8 +2437,10 @@ class ErrorBoundary extends React.Component {
               <Btn onClick={() => { this.setState({ failed: false }); this.props.onReset?.(); }}>Back to the start</Btn>
               <Btn variant="ghost" onClick={() => window.location.reload()}>Reload</Btn>
             </div>
+            {!GUEST && <button className="fblink" onClick={() => this.setState({ feedback: true })}>Tell us what you were doing</button>}
           </section>
         </div></main>
+        {this.state.feedback && <FeedbackSheet onClose={() => this.setState({ feedback: false })} />}
       </div>
     );
   }
@@ -2339,6 +2453,22 @@ export default function MiseApp({ guest = false, onboarding = false }) {
      storage, and the default screen — rather than re-rendering the exact state
      that just threw. */
   const [epoch, setEpoch] = useState(0);
+  /* Uncaught errors and rejected promises anywhere in the page. Only the
+     message and stack are sent (see reportError). */
+  useEffect(() => {
+    const onErr = (e) => {
+      // Resource load failures (an image 404) arrive here with no message.
+      if (!e?.message && !e?.error) return;
+      reportError(e.message || String(e.error), e.error?.stack, { kind: "error" });
+    };
+    const onRej = (e) => {
+      const r = e?.reason;
+      reportError(`Unhandled: ${r?.message || String(r)}`, r?.stack, { kind: "rejection" });
+    };
+    window.addEventListener("error", onErr);
+    window.addEventListener("unhandledrejection", onRej);
+    return () => { window.removeEventListener("error", onErr); window.removeEventListener("unhandledrejection", onRej); };
+  }, []);
   return (
     <ErrorBoundary onReset={() => setEpoch((n) => n + 1)}>
       <App key={epoch} />
@@ -2369,6 +2499,7 @@ function App() {
   /* Usage events (lib/track.js) for the private stats page: which screens
      people reach, and in onboarding which step they stop at. */
   useEffect(() => {
+    if (view !== CURRENT_VIEW) { if (CURRENT_VIEW !== "me") PREV_VIEW = CURRENT_VIEW; CURRENT_VIEW = view; }
     if (!loaded) return;
     if (ONBOARD) track("onboard", view === "setup" ? { at: view, step } : { at: view });
     else track("view", { v: view });
@@ -2474,6 +2605,7 @@ function App() {
      across reloads, until "New week" is pressed. */
   const hasWeek = !!weekId || candidates.length > 0;
   const [newWeekAsk, setNewWeekAsk] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   /* The current week's draw. Persisted onto the archived week so future draws can
      weight against it — without that, the weighting has no history and week
      twelve looks exactly like week one again. */
@@ -5368,6 +5500,7 @@ Respond with ONLY this JSON:
             historyNode={historyNode}
             style={style} onStyle={setStyleAndSave}
             onEdit={() => { setView("setup"); setStep(0); }}
+            onFeedback={() => setFeedbackOpen(true)}
           />
         )}
     </>
@@ -5628,6 +5761,8 @@ Respond with ONLY this JSON:
           </div>
         </div>
       )}
+
+      {feedbackOpen && <FeedbackSheet onClose={() => setFeedbackOpen(false)} />}
 
       {busy && busy !== "mise" && !hasLocalIndicator && (
         <div className="topbar no-print" role="status" aria-live="polite">
@@ -7997,7 +8132,7 @@ function AiSource() {
   );
 }
 
-function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
+function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle, onFeedback }) {
   /* Everything folds. This page was the tallest in the app — a full setup
      summary, then every dish ever rated, twice over, then the AI note — and
      almost none of it is what you came for. Opening it to a short stack of
@@ -8111,7 +8246,7 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
       {/* Last thing on the page, collapsed. */}
       <AiSource />
 
-      <Account />
+      <Account onFeedback={onFeedback} />
     </div>
   );
 }
@@ -8120,7 +8255,7 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle }) {
    nothing in the app calling them — the pricing page promises "Cancel anytime.
    Manage it yourself", and there was no way to, or to sign out on a shared
    device. */
-function Account() {
+function Account({ onFeedback }) {
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
 
@@ -8161,6 +8296,7 @@ function Account() {
         <Btn small variant="ghost" onClick={signOut} disabled={!!busy}>
           {busy === "out" ? "Signing out…" : "Sign out"}
         </Btn>
+        {onFeedback && <Btn small variant="ghost" onClick={onFeedback}>Send feedback</Btn>}
       </div>
       <YourData />
     </section>
@@ -9358,6 +9494,9 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .nwsheet{padding:1rem 1.3rem calc(1.2rem + env(safe-area-inset-bottom))}
 .nwsheet h2{margin:.4rem 0 .3rem}
 .nwsheet__btns{display:flex;flex-direction:column;gap:.55rem;margin-top:1rem}
+.fbsheet textarea{margin-top:.6rem;min-height:7.5rem;resize:vertical}
+.fblink{display:inline-block;margin-top:1rem;background:none;border:none;padding:.4rem 0;color:var(--muted);
+  font:700 .92em 'Nunito',system-ui,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .setup-edit{margin:0 0 .9rem}
 .setup-edit .btn{width:100%}
 

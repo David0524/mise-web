@@ -30,6 +30,8 @@ export default function Privacy() {
         <li><strong>A sign-in cookie</strong> that keeps you logged in (see the <a href="/cookies">Cookie Policy</a>).</li>
         <li><strong>Your IP address,</strong> used briefly in memory to slow down password-guessing attacks. We don't store it, and we don't use it to locate or track you.</li>
         <li><strong>Error logs</strong> that record that a request failed and why, without the content of your plans or questions.</li>
+        <li><strong>Feedback you send</strong> from the app, with the screen you were on, your screen size, browser and app version, so we can see what you mean.</li>
+        <li><strong>Error reports:</strong> when something in the app fails, what failed and on which screen, never what you typed.</li>
         <li><strong>How you use Mise:</strong> which features and screens you use and when (for example &ldquo;planned a week&rdquo; or &ldquo;opened a recipe&rdquo;), kept in our own database with your account so we can see what works and improve it. It never includes what you type. Before you create an account, onboarding screens are only counted, with nothing that identifies you. We keep these records for up to 400 days, and they're deleted with your account.</li>
       </ul>
       <p>We don't use third-party analytics, advertising or tracking tools, nothing is stored on your device for this, and we don't collect your location, contacts or device identifiers.</p>
