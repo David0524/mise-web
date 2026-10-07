@@ -32,6 +32,8 @@ export async function GET() {
       history: await data("histories"),
       recipe_book: await data("recipe_books"),
       current_week: await data("current_weeks"),
+      usage_events: (await query(`select name, props, created_at from events where user_id = $1 order by created_at`, [userId])
+        .catch(() => ({ rows: [] }))).rows,
       note: "Payment details are held by Stripe, not Mise. Your own AI key, if you added one, is stored only in your browser.",
     };
     return new NextResponse(JSON.stringify(out, null, 2), {

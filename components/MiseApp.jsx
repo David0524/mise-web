@@ -5,6 +5,7 @@ import { guestGet, guestSet } from "@/lib/guest";
 import AuthOptions from "@/components/AuthOptions";
 import ConsentChecks from "@/components/ConsentChecks";
 import { EmailField, NewPasswordFields, credentialsReady } from "@/components/CredentialFields";
+import { track } from "@/lib/track";
 
 /* The one definition of the app's directional daylight, shared with the
    sign-in / sign-up / pricing pages so the app and its front door are lit the
@@ -1857,6 +1858,7 @@ ${groups.map(([sec, items]) => `<section><h2>${esc(sec)}</h2><ul class="box">${i
 }
 
 function printRecipe(rec) {
+  track("printed");
   const body = `<h1>${esc(rec.title)}</h1>
 <p class="sub">${esc([rec.servings, rec.time].filter(Boolean).join(" · "))}</p>
 ${(rec.components || []).map((c) => `<section><h2>${esc(c.name || "Ingredients")}</h2><ul class="box">${(c.items || [])
@@ -2292,6 +2294,15 @@ function App() {
      wouldn't do. */
   const [building, setBuilding] = useState({ ideas: false, shopping: false, leftovers: false, recipe: null });
   const mark = (k, v) => setBuilding((b) => ({ ...b, [k]: v }));
+
+  /* Usage events (lib/track.js) for the private stats page: which screens
+     people reach, and in onboarding which step they stop at. */
+  useEffect(() => {
+    if (!loaded) return;
+    if (ONBOARD) track("onboard", view === "setup" ? { at: view, step } : { at: view });
+    else track("view", { v: view });
+  }, [loaded, view, view === "setup" ? step : -1]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (loaded && !ONBOARD) track("app_open"); }, [loaded]);
 
   const [profile, setProfile] = useState({
     people: 1,
@@ -2966,6 +2977,7 @@ not the names:
      a fresh dated entry rather than overwriting the old one, so the record shows
      that you've made it twice and how it went each time. */
   function cookAgain(dish) {
+    track("cook_again");
     /* If the actual recipe was baked into this history entry, reopen exactly that
        one — same ingredients, same steps, same technique note — rather than asking
        the model to write a fresh recipe that could easily come out differently.
@@ -3044,6 +3056,7 @@ not the names:
   /* Clear everything week-specific and start fresh. Profile, favourites and
      history are deliberately kept — those are the things that accumulate. */
   function startNewWeek() {
+    track("new_week");
     /* Anything still in flight belongs to the week being cleared. Bumping the
        generation makes each of those calls drop its answer when it lands,
        instead of writing last week's shopping list into this one. */
@@ -3757,6 +3770,7 @@ Respond with ONLY this JSON, no backticks:
       await polishTitles(dishes, seed);
       if (gen !== weekGenRef.current) return;
       setEcosystem(out.ecosystem && typeof out.ecosystem === "object" ? out.ecosystem : null);
+      track("week_planned", { dishes: dishes.length, adventure: Number(profile.adventure) || 0 });
       setCandidates(dishes.map((d) => ({ ...d, id: uid(), reaction: null, note: "" })));
       setConvo([{ role: "user", content: prompt }, { role: "assistant", content: raw }]);
       setThread([{ who: "mise", text: str(out.say) }, ...(guardNote ? [{ who: "mise", text: guardNote }] : [])]);
@@ -3818,6 +3832,7 @@ Respond with ONLY this JSON: {"titles":["one per dish, same order"]}` }], { tier
   }
 
   async function sendFeedback(text) {
+    track("feedback_sent");
     const gen = weekGenRef.current;   // see startNewWeek
     if (!text.trim()) return;
     setErr("");
@@ -3892,6 +3907,7 @@ Return the FULL revised list.`;
 
   /* One-tap alternative — no typing required. */
   async function swapDish(id) {
+    track("dish_swapped");
     const gen = weekGenRef.current;   // see startNewWeek
     const dish = candidates.find((c) => c.id === id);
     if (!dish) return;
@@ -3941,6 +3957,7 @@ Respond with ONLY this JSON:
   /* --------------------------------------------------------------- shopping */
 
   async function buildShopping() {
+    track("list_built");
     const gen = weekGenRef.current;   // see startNewWeek
     mark("shopping", true);
     setErr("");
@@ -4065,6 +4082,7 @@ Respond with ONLY this JSON:
   }
 
   async function reviseShopping(instruction) {
+    track("list_edited");
     const gen = weekGenRef.current;   // see startNewWeek
     if (!instruction.trim()) return;
     /* Only the newest revision may land. Two quick taps ("Cheaper", then
@@ -4156,6 +4174,7 @@ Respond with ONLY this JSON:
     }
   }
   async function buildRecipe(dishId, opts = {}) {
+    track("recipe_opened");
     const gen = weekGenRef.current;   // see startNewWeek
     const dish = candidates.find((c) => c.id === dishId);
     if (!dish) return;   // must precede mark(), or the flag sticks on forever
@@ -4262,6 +4281,7 @@ Respond with ONLY this JSON:
      tradeoffs, not a silent rewrite — because the interesting answer to "no buns" is
      usually a different dish, not the same dish minus bread. */
   async function proposeRecipeChange(instruction, forDish = cookingId) {
+    track("recipe_change_asked");
     const gen = weekGenRef.current;   // see startNewWeek
     const dishId = forDish;
     instruction = str(instruction);
@@ -4327,6 +4347,7 @@ Respond with ONLY this JSON:
 
   /* Stage two: you picked one, now she rewrites. */
   async function applyRecipeChange(option) {
+    track("recipe_changed");
     const gen = weekGenRef.current;   // see startNewWeek
     const dishId = option?.dishId || cookingId;
     if (!dishId || !recipes[dishId]) return;
@@ -4432,6 +4453,7 @@ Respond with ONLY this JSON:
   /* -------------------------------------------------------------- leftovers */
 
   async function getLeftoverIdeas(focusItems = null) {
+    track("leftovers");
     const gen = weekGenRef.current;   // see startNewWeek
     mark("leftovers", true);
     setErr("");
@@ -4554,6 +4576,7 @@ Respond with ONLY this JSON:
   /* ------------------------------------------------------------- sous chef */
 
   async function askMise(text) {
+    track("ask_mise", { screen: view });
     const gen = weekGenRef.current;   // see startNewWeek
     if (!text.trim()) return;
     setMiseThread((t) => [...t, { who: "me", text }]);
@@ -4682,6 +4705,7 @@ Respond with ONLY this JSON:
   /* ---------------------------------------------------------------- rating */
 
   async function saveRating(dishId, rating, missing, note, photos = []) {
+    track("dish_rated", { rating: Number(rating) || 0 });
     const dish = candidates.find((c) => c.id === dishId);
     if (!dish) return;
     const entry = { id: uid(), title: dish.title, blurb: dish.blurb, rating, missing, note,
@@ -8331,6 +8355,8 @@ function useSpeech() {
   const speak = useCallback(
     (text, force = false) => {
       if (!supported || (!on && !force) || !text) return;
+      // Counted once per ten minutes of listening, not per step read aloud.
+      if (Date.now() - lastVoiceEvent > 600000) { lastVoiceEvent = Date.now(); track("voice_used"); }
       if (force) prime();
       stop();
       if (!neural) { synthSay(text); return; }
@@ -8363,6 +8389,8 @@ function useSpeech() {
 
 /* Timers live above the step list so they survive navigation — rice keeps going
    while you read the sauce step. */
+let lastVoiceEvent = 0;
+
 function useTimers(onDone) {
   const [timers, setTimers] = useState([]);
   const firedRef = useRef({});
@@ -8389,7 +8417,7 @@ function useTimers(onDone) {
     return () => clearInterval(iv);
   }, [timers, onDone]);
 
-  const add = (label, seconds, stepIndex) =>
+  const add = (label, seconds, stepIndex) => track("timer_started") ||
     setTimers((ts) => [
       ...ts,
       {

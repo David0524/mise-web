@@ -4,6 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { query } from "@/lib/db";
 import { PLANS, INTRO } from "@/lib/billing";
 import { ensureSchema } from "@/lib/schema";
+import { logEvent } from "@/lib/events";
 
 /* Sends the user to Stripe Checkout for the plan they picked.
 
@@ -79,6 +80,7 @@ export async function POST(req) {
       ...(process.env.STRIPE_AUTOMATIC_TAX === "1" ? { automatic_tax: { enabled: true } } : {}),
     });
 
+    await logEvent(userId, "checkout_started", { plan: plan.id });
     return NextResponse.json({ url: session.url });
   } catch (e) {
     console.error("checkout failed:", e?.type || e?.code || "", e?.message || e);
