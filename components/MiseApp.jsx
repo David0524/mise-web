@@ -10078,7 +10078,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   radial-gradient(80% 70% at 22% 0%, rgba(226,238,250,.95), transparent 64%),
   linear-gradient(170deg,#FDFAF9,#F1E9E8);
   border:1px solid var(--rule)}
-.looks__sw--retro{border-radius:0;border:2px solid #1E1A17;background:
+.looks__sw--retro{border-radius:7px;border:2px solid #1E1A17;background:
   linear-gradient(90deg,#B44722 0 50%,#F2C12E 50%) top/100% 50% no-repeat,
   linear-gradient(90deg,#5BAA3C 0 50%,#3E52C4 50%) bottom/100% 50% no-repeat}
 .looks__sw--canvas{background:
@@ -10801,7 +10801,7 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
    ----------------------------------------------------------------------------
    A third complete look, selected in My Kitchen and applied by
    [data-style="retro"] on .app. Pixel-art stickers on grainy grey paper: chunky
-   ink outlines, square corners, hard 1-step drop shadows, a pixel face for
+   ink outlines, softly rounded corners, short hard drop shadows, a pixel face for
    headings only.
 
    Colour rule: the base palette still does the work — paper, ink, and brick for
@@ -10825,7 +10825,8 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   --rule-input:#1E1A17;
   --glass:#FBFAF7; --glass-rim:#1E1A17; --glass-blur:none;
   --spec:none; --lift-1:none; --lift-2:none; --shadow-lift:none;
-  --px:3px;                 /* one "pixel" of outline */
+  --px:2px;                 /* one "pixel" of outline */
+  --r:14px;                 /* stickers have soft corners, not a grid */
   --coin:#F2C12E;           /* coin yellow */
   --cash:#5BAA3C;           /* cash green */
   --cart:#3E52C4;           /* cartridge blue */
@@ -10851,21 +10852,21 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .app[data-style="retro"] .card::before,
 .app[data-style="retro"] .card::after{display:none}
 
-/* Cards: square, a thick ink outline, and a hard grey drop shadow one block
-   down and right — a sticker lifted off the page, not a glow. */
+/* Cards: rounded stickers with an ink outline and a short hard grey drop
+   shadow down and right — a sticker lifted off the page, not a glow. */
 .app[data-style="retro"] .card{
-  background:var(--surface);border:var(--px) solid var(--ink);border-radius:0;
-  box-shadow:6px 6px 0 rgba(30,26,23,.18)}
+  background:var(--surface);border:var(--px) solid var(--ink);border-radius:var(--r);
+  box-shadow:4px 4px 0 rgba(30,26,23,.14)}
 /* Dark panels (the week's draw) keep their night fill and light text. */
-.app[data-style="retro"] .card--dark{background:var(--night);border-color:var(--ink);box-shadow:6px 6px 0 rgba(30,26,23,.28)}
+.app[data-style="retro"] .card--dark{background:var(--night);border-color:var(--ink);box-shadow:4px 4px 0 rgba(30,26,23,.22)}
 
 /* Dish cards: the same square sticker, a thinner outline so a list of them
    doesn't turn into a wall of ink; picked dishes get a cash-green edge. */
-.app[data-style="retro"] .dish{background:var(--surface);border:2px solid var(--ink);border-radius:0;
-  box-shadow:4px 4px 0 rgba(30,26,23,.16);-webkit-backdrop-filter:none;backdrop-filter:none}
-.app[data-style="retro"] .dish:hover{border-color:var(--ink);box-shadow:5px 5px 0 rgba(30,26,23,.22)}
-.app[data-style="retro"] .dish--yes{border-color:var(--cash);box-shadow:4px 4px 0 var(--cash);background:var(--surface)}
-.app[data-style="retro"] .dish__add{border-radius:0;box-shadow:3px 3px 0 var(--ink)}
+.app[data-style="retro"] .dish{background:var(--surface);border:var(--px) solid var(--ink);border-radius:var(--r);
+  box-shadow:3px 3px 0 rgba(30,26,23,.14);-webkit-backdrop-filter:none;backdrop-filter:none}
+.app[data-style="retro"] .dish:hover{border-color:var(--ink);box-shadow:4px 4px 0 rgba(30,26,23,.2)}
+.app[data-style="retro"] .dish--yes{border-color:var(--cash);box-shadow:3px 3px 0 var(--cash);background:var(--surface)}
+.app[data-style="retro"] .dish__add{border-radius:12px;box-shadow:2px 2px 0 var(--ink)}
 
 /* Pixel face for headings. Silkscreen runs wide, so a touch smaller and
    tracked open; it's display type, so short lines only. */
@@ -10885,11 +10886,11 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 /* Buttons: square blocks with a hard ink shadow; pressing pushes the block
    into its shadow, like an arcade button. */
 .app[data-style="retro"] .btn{
-  border-radius:0;border:var(--px) solid var(--ink);box-shadow:4px 4px 0 var(--ink);
+  border-radius:12px;border:var(--px) solid var(--ink);box-shadow:3px 3px 0 var(--ink);
   transition:transform .06s steps(2), box-shadow .06s steps(2)}
-.app[data-style="retro"] .btn:hover:not(:disabled){filter:none;transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}
-.app[data-style="retro"] .btn:active:not(:disabled){transform:translate(4px,4px);box-shadow:0 0 0 var(--ink)}
-.app[data-style="retro"] .btn--ghost{background:var(--surface);color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.app[data-style="retro"] .btn:hover:not(:disabled){filter:none;transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.app[data-style="retro"] .btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.app[data-style="retro"] .btn--ghost{background:var(--surface);color:var(--ink);box-shadow:2px 2px 0 var(--ink)}
 .app[data-style="retro"] .btn:disabled{box-shadow:none}
 
 /* Inputs: inset pixel wells. */
@@ -10898,20 +10899,20 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .app[data-style="retro"] input[type=password],
 .app[data-style="retro"] textarea,
 .app[data-style="retro"] select{
-  border-radius:0;border:2px solid var(--ink);background:var(--surface);
-  box-shadow:inset 3px 3px 0 rgba(30,26,23,.08)}
+  border-radius:10px;border:var(--px) solid var(--ink);background:var(--surface);
+  box-shadow:inset 2px 2px 0 rgba(30,26,23,.07)}
 .app[data-style="retro"] input:focus,
 .app[data-style="retro"] textarea:focus,
 .app[data-style="retro"] select:focus{outline:3px solid var(--coin);outline-offset:1px}
 
 /* Recessed wells and open rows: a flat sunk grey. */
 .app[data-style="retro"] .sec,
-.app[data-style="retro"] .row2--open{background:var(--sunk);border-radius:0}
+.app[data-style="retro"] .row2--open{background:var(--sunk);border-radius:10px}
 
 /* Chips and quick asks: square tags; the chosen one goes brick with an ink edge. */
 .app[data-style="retro"] .chip,
 .app[data-style="retro"] .quick{
-  border-radius:0;border:2px solid var(--ink);background:var(--surface);box-shadow:2px 2px 0 var(--ink)}
+  border-radius:10px;border:var(--px) solid var(--ink);background:var(--surface);box-shadow:2px 2px 0 var(--ink)}
 .app[data-style="retro"] .chip--on{background:var(--brick);color:#fff;border-color:var(--ink)}
 
 /* Tab bar: a solid strip with an ink top edge; the active tab sits on a
@@ -10919,30 +10920,32 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .app[data-style="retro"] .tabbar{background:var(--surface);border-top:var(--px) solid var(--ink);box-shadow:none}
 .app[data-style="retro"] .tabbar__l{font-family:'Silkscreen','Nunito',sans-serif;font-weight:400;font-size:.68em;letter-spacing:0}
 .app[data-style="retro"] .tabbar__b--on{color:var(--ink)}
-.app[data-style="retro"] .tabbar__b--on .tabbar__i{background:var(--coin);border-radius:0;box-shadow:0 0 0 2px var(--ink)}
+.app[data-style="retro"] .tabbar__b--on .tabbar__i{background:var(--coin);border-radius:10px;box-shadow:0 0 0 2px var(--ink)}
 .app[data-style="retro"] .tabbar__dot{box-shadow:0 0 0 2px var(--surface)}
 
 /* The Ask Mise bubble becomes a gold coin-block. */
 .app[data-style="retro"] .fab{
-  background:var(--coin);color:var(--ink);border:var(--px) solid var(--ink);border-radius:0;
-  box-shadow:4px 4px 0 var(--ink)}
+  background:var(--coin);color:var(--ink);border:var(--px) solid var(--ink);border-radius:999px;
+  box-shadow:3px 3px 0 var(--ink)}
 .app[data-style="retro"] .fab::before,
-.app[data-style="retro"] .fab::after{border-radius:0}
-.app[data-style="retro"] .fab__av{background:var(--surface);border-radius:0;box-shadow:0 0 0 2px var(--ink)}
+.app[data-style="retro"] .fab::after{border-radius:inherit}
+.app[data-style="retro"] .fab__av{background:var(--surface);border-radius:50%;box-shadow:0 0 0 2px var(--ink)}
 
 /* Sheets, the pinned ask bar and the stove's ask card: square stickers. */
 .app[data-style="retro"] .sheet,
 .app[data-style="retro"] .rsheet,
-.app[data-style="retro"] .cask{border-radius:0;border:var(--px) solid var(--ink);box-shadow:6px 6px 0 rgba(30,26,23,.25)}
-.app[data-style="retro"] .askbar__in{border-radius:0;box-shadow:0 0 0 var(--px) var(--ink),4px 4px 0 var(--ink)}
+.app[data-style="retro"] .cask{border-radius:20px;border:var(--px) solid var(--ink);box-shadow:4px 4px 0 rgba(30,26,23,.2)}
+.app[data-style="retro"] .askbar__in{border-radius:999px;box-shadow:0 0 0 var(--px) var(--ink),3px 3px 0 var(--ink)}
+/* The pill is the field; the input inside it stays bare. */
+.app[data-style="retro"] .askbar__in input{border:none;box-shadow:none;background:none;outline:none}
 .app[data-style="retro"] .askbar__av,
-.app[data-style="retro"] .askbar__go{border-radius:0}
+.app[data-style="retro"] .askbar__go{border-radius:50%}
 
 /* Loading: a bar of blocks filling in, in the strip's colours. */
-.app[data-style="retro"] .lbar__track{background:var(--surface);border:2px solid var(--ink);border-radius:0}
-.app[data-style="retro"] .lbar__fill{border-radius:0;
+.app[data-style="retro"] .lbar__track{background:var(--surface);border:var(--px) solid var(--ink);border-radius:999px;overflow:hidden}
+.app[data-style="retro"] .lbar__fill{border-radius:999px;
   background:repeating-linear-gradient(90deg,var(--brick) 0 10px,var(--coin) 10px 20px,var(--cash) 20px 30px,var(--cart) 30px 40px)}
 
-.app[data-style="retro"] .alert{border:var(--px) solid var(--ink);border-radius:0;box-shadow:4px 4px 0 var(--ink)}
+.app[data-style="retro"] .alert{border:var(--px) solid var(--ink);border-radius:var(--r);box-shadow:3px 3px 0 var(--ink)}
 
 `;
