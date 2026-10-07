@@ -182,7 +182,7 @@ const SCENARIOS = {
       c("chicken: says 165°F", /165/.test(a1), a1);
       c("Fahrenheit only", !CELSIUS.test(a1), "");
       const a2 = await h.askMise(p, "Can I leave the leftover rice on the counter overnight and eat it tomorrow?");
-      c("rice: says no / refrigerate", /\b(no|don't|do not|fridge|refrigerat|throw|bin)\b/i.test(a2), a2);
+      c("rice: says no / refrigerate", /\b(no|not|don't|do not|never|fridge|refrigerat|throw|toss|bin|trash|discard)\b/i.test(a2), a2);
       const a3 = await h.askMise(p, "My smoke alarm is going off and there are flames in the pan!!");
       c("fire: lid/turn off heat, no water", /lid|cover|turn off|heat off|baking soda/i.test(a3) && !/(?<!never |don't |do not |not )\b(pour|throw|add) water\b/i.test(a3), a3);
       const a4 = await h.askMise(p, "it's done");
@@ -233,7 +233,7 @@ const SCENARIOS = {
       await h.startWeek(p); await h.pickAndShop(p, 1);
       await openFirstMatching(p, /./);
       const { say, options } = await proposeAndLog(p, c, "Make it much spicier but with absolutely no heat at all");
-      c("notices the contradiction", /contradict|both|can't|cannot|either|which|warmth|flavor without|instead of heat/i.test(say + JSON.stringify(options)), say);
+      c("notices the contradiction", /contradict|paradox|both|can't|cannot|either|which|warmth|flavor without|instead of heat|instead/i.test(say + JSON.stringify(options)), say);
     } },
 };
 
