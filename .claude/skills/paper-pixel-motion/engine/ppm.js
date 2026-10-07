@@ -382,7 +382,7 @@
           const n = Math.floor(w * h * .02 * dens);
           for (let i = 0; i < n; i++) { const px = r() * w, py = r() * h, d = Math.hypot((px - w / 2) / (w / 2), (py - h / 2) / (h / 2)); x2.fillStyle = r() < d * .9 ? cols[1] : cols[0]; const s = (r() < .5 ? 2 : 3) * U; x2.fillRect(px, py, s, s); }
           x2.restore();
-          if (o.rim) { x2.save(); x2.shadowColor = o.rim; x2.shadowBlur = (o.rimBlur || 25) * U; x2.strokeStyle = o.rim; x2.lineWidth = 6 * U; for (let q = 0; q < 2; q++) { const k3 = g.__swap(x2); g.starPath(w / 2, h / 2, w / 2 - 3, h / 2 - 3, 0, o.k || 1); g.__swap(k3); x2.stroke(); } const k2 = g.__swap(x2); g.starPath(w / 2, h / 2, w / 2 - 3, h / 2 - 3, 0, o.k || 1); g.__swap(k2); x2.stroke(); x2.restore(); }
+          if (o.rim) { x2.save(); x2.shadowColor = o.rim; x2.strokeStyle = o.rim; const k3 = g.__swap(x2); g.starPath(w / 2, h / 2, w / 2 - 3, h / 2 - 3, 0, o.k || 1); g.__swap(k3); x2.save(); x2.filter = `blur(${(o.rimBlur || 12) * U}px)`; x2.globalAlpha = .6; x2.lineWidth = 10 * U; x2.stroke(); x2.restore(); x2.lineWidth = 3.5 * U; const k2 = g.__swap(x2); g.starPath(w / 2, h / 2, w / 2 - 3, h / 2 - 3, 0, o.k || 1); g.__swap(k2); x2.stroke(); x2.restore(); }
           film._cache[key] = tile;
         }
         ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha *= o.alpha ?? 1; ctx.drawImage(tile, -w / 2, -h / 2); ctx.restore();
@@ -550,7 +550,7 @@
         if (T.vignette) {
           const vg = out.createRadialGradient(w * .5 - 120 * h / 1080, h * .5 - 80 * h / 1080, 0, w * .5 - 120 * h / 1080, h * .5 - 80 * h / 1080, h * 1.08);
           const va = (s.o.vignette ?? 1) * (T.vignetteAmount ?? 1);
-          if (paper) { [[0, 0], [.35, .03], [.55, .1], [.75, .24], [1, .42]].forEach(([k, a]) => vg.addColorStop(k, `rgba(40,36,38,${a * va})`)); }
+          if (paper) { [[0, 0], [.35, .012], [.55, .045], [.75, .11], [1, .21]].forEach(([k, a]) => vg.addColorStop(k, `rgba(40,36,38,${a * va})`)); }
           else { vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${.45 * va})`); }
           out.fillStyle = vg; out.fillRect(0, 0, w, h);
         }
@@ -598,7 +598,7 @@
         c.bezierCurveTo(-10, 15, 10, 4, 40, 0);
         c.closePath(); c.fill();
         // tousled hair bumps
-        [[20, -2, 34], [80, -16, 36], [140, -10, 38], [200, 20, 34], [240, 70, 30], [-20, 28, 26]].forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); });
+        [[14, -6, 30, .3], [62, -22, 44, -.4], [128, -18, 34, .6], [176, 2, 46, -.2], [232, 52, 28, .9], [-24, 30, 22, .1], [100, -36, 20, 1.2]].forEach(([x, y, r, a]) => { c.beginPath(); c.ellipse(x, y, r * 1.25, r * .8, a, 0, 7); c.fill(); });
         c.restore();
       };
     },
@@ -621,13 +621,13 @@
         c.beginPath(); c.moveTo(-105, 80); c.bezierCurveTo(-100, -80, -92, -170, -88, -240);
         c.bezierCurveTo(-120, -300, -112, -380, -70, -430); c.lineTo(110, -440); c.bezierCurveTo(140, -380, 128, -300, 98, -240);
         c.bezierCurveTo(100, -170, 104, -80, 112, 80); c.closePath(); c.fill();
-        finger(-58, -428, -1.98, 250, 50, 34, .06);        // index
-        finger(4, -446, -1.66, 285, 52, 35, .02);          // middle
-        finger(62, -436, -1.36, 262, 49, 33, -.03);        // ring
-        finger(104, -404, -1.02 - .1 * (spread - 1), 200, 42, 29, -.05); // little
+        finger(-56, -428, -1.86, 262, 56, 36, .1);         // index (bent at the middle joint)
+        finger(4, -446, -1.64, 300, 58, 38, .02);          // middle
+        finger(60, -436, -1.43, 280, 54, 36, -.03);        // ring
+        finger(104, -404, -1.2 - .1 * (spread - 1), 210, 46, 30, -.12); // little (bent)
         // thumb with a web: wide base off the palm side, out and up
         c.beginPath(); c.moveTo(-96, -250); c.quadraticCurveTo(-170, -290, -205, -360); c.lineTo(-160, -390); c.quadraticCurveTo(-120, -340, -70, -330); c.closePath(); c.fill();
-        finger(-180, -372, -2.35 * spread, 150, 48, 34, .15);
+        finger(-180, -372, -2.3 * spread, 168, 54, 36, .18);
         c.restore();
       };
     },
