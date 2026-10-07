@@ -21,6 +21,8 @@ pixel objects, light, transitions, motion, beat structure, don'ts). Every decisi
 | `references/spec.md` | Film spec format: beat types, fields, timing rules |
 | `engine/plan.js` | Planner: aligns beats to word timings or estimates them, assigns worlds, accelerates section ends, picks transitions, lints |
 | `engine/compose.js` | Composer: one builder per beat type (cut and flow), so a film renders straight from its spec |
+| `tools/score.py` | `python3 score.py plan.json score.wav`: an original synthesised lo-fi score + synced SFX from the timed plan (no samples, no voiceover needed) |
+| `tools/image-to-grid.py` | Turns an upscaled pixel-art PNG (e.g. a ChatGPT sprite) into a `PPM.defGrid` sprite |
 | `tools/plan.mjs` | `node plan.mjs film.film.js [words.json] [--md out.md]`: beat sheet, warnings and errors without rendering |
 | `examples/sauce.film.js` + `examples/compose.html` | A complete spec-driven film (original, shape "steps") |
 | `references/recipes.md` | Copy-paste shot recipes for every beat archetype, with timings |
@@ -77,7 +79,8 @@ shots are only for moments the beat types don't cover.
    `film.shot()`s for one-offs.
 7. **Show 8 stills before the full render** (`render.mjs compose.html stills/ --times …`, one per section).
 8. **Render and review loop** (below) until every shot passes.
-9. **Deliver.** Render the full MP4 (flow mode: `--query fps=60 --subframes 8`), lay the original audio back on
+9. **Score.** No music supplied? `node tools/plan.mjs film.film.js --json plan.json && python3 tools/score.py plan.json score.wav`, then render with `--audio score.wav`.
+10. **Deliver.** Render the full MP4 (flow mode: `--query fps=60 --subframes 8`), lay the original audio back on
    (`--audio`), and produce a contact sheet plus the final beat sheet (`plan.mjs --md`).
 
 ## Render and review loop (orchestrator + reviewer)

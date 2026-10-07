@@ -166,7 +166,7 @@
     out.forEach((b, k) => {
       const n = out[k + 1];
       if (!n) { b.transition = 'end'; return; }
-      if (mode === 'flow') b.transition = (b.type === 'spell' && n.type === 'spell') || b.type === 'flash' || n.type === 'flash' ? 'cut' : 'handoff'; // flashes always cut, in and out
+      if (mode === 'flow') b.transition = b.type === 'spell' || b.type === 'flash' || n.type === 'flash' ? 'cut' : 'handoff'; // spell letters and flashes always cut (no world crossfades) // flashes always cut, in and out
       else b.transition = n.section !== b.section ? 'cut-on-beat' : 'cut';
     });
     // ── start times ──

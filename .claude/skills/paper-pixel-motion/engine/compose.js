@@ -88,7 +88,7 @@
       const hot = b.hotspot || (isHand ? [760, 980, 150] : [1090, 940, 115, 170]);
       const ring = b.orbit ? g.clamp((s.t - .5) / .7) : 0, [ox, oy] = isHand ? [760, 560] : [1010, 430];
       if (ring > 0 && ring < 1) g.orbit(ox, oy, 340, 110, -.5, ring, 'back');
-      if (shp.img) g.layer({ blur: (1 - heat) * 24, alpha: heat, y: (1 - rise) * 300 }, () => { const sc = Math.max(1440 / shp.img.width, 1080 / shp.img.height); g.ctx.drawImage(shp.img, 720 - shp.img.width * sc / 2, 540 - shp.img.height * sc / 2, shp.img.width * sc, shp.img.height * sc); });
+      if (shp.img) g.layer({ blur: (1 - heat) * 24, alpha: heat, y: (1 - rise) * 300, blend: 'screen' }, () => { /* screen: the image's black adds nothing, so the film's void (and grain) stay */ const sc = Math.max(1440 / shp.img.width, 1080 / shp.img.height); g.ctx.drawImage(shp.img, 720 - shp.img.width * sc / 2, 540 - shp.img.height * sc / 2, shp.img.width * sc, shp.img.height * sc); });
       else g.layer({ blur: (1 - heat) * 24 }, () => g.heat(shp.src, { key: b.shape, t: s.T, heat, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: hot, hotspotStrength: isHand ? .3 : .65 }));
       if (ring > 0 && ring < 1) g.orbit(ox, oy, 340, 110, -.5, ring, 'front');
       const words = tokens(b.text);

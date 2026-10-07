@@ -21,7 +21,7 @@
 | 13.71 | 0.25 | paper | spell[M] | M | — | estimate | cut |
 | 13.96 | 0.25 | void | spell[I] | M I | — | estimate | cut |
 | 14.21 | 0.25 | red | spell[S] | M I S | — | estimate | cut |
-| 14.46 | 0.25 | void | spell[E] | M I S E | — | estimate | handoff |
+| 14.46 | 0.25 | void | spell[E] | M I S E | — | estimate | cut |
 | 14.71 | 3.20 | paper | resolve | mise | mise | fixed | end |
 
 No warnings.
