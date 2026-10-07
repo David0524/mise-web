@@ -86,7 +86,53 @@ async function load() {
            jsonb_array_elements(coalesce(p.data->'favorites', '[]'::jsonb)) f
      order by f->>'date' desc nulls last limit 60`);
 
-  return { totals, onboard, conv, features, screens, people, rated };
+  /* Every recipe per person: the log of what Mise wrote (since it started),
+     plus anything still saved in their current week or history from before,
+     de-duplicated by title. */
+  const logged = await rows(`
+    select coalesce(u.email, u.phone, '(no email)') as who, r.kind, r.recipe, r.created_at as at
+      from recipe_log r join users u on u.id = r.user_id
+     order by r.created_at desc limit 3000`);
+  const saved = await rows(`
+    select coalesce(u.email, u.phone, '(no email)') as who, 'saved' as kind, x.value as recipe, c.updated_at as at
+      from current_weeks c join users u on u.id = c.user_id,
+           jsonb_each(case when jsonb_typeof(c.data->'recipes') = 'object' then c.data->'recipes' else '{}'::jsonb end) x
+    union all
+    select coalesce(u.email, u.phone, '(no email)'), 'saved', d->'recipe', (w->>'startedAt')::timestamptz
+      from histories h join users u on u.id = h.user_id,
+           jsonb_array_elements(case when jsonb_typeof(h.data) = 'array' then h.data else '[]'::jsonb end) w,
+           jsonb_array_elements(case when jsonb_typeof(w->'dishes') = 'array' then w->'dishes' else '[]'::jsonb end) d
+     where jsonb_typeof(d->'recipe') = 'object'`).catch(() => []);
+  const recipes = new Map();
+  for (const r of [...logged, ...saved]) {
+    if (!r.recipe || typeof r.recipe !== "object") continue;
+    const list = recipes.get(r.who) || [];
+    const key = `${String(r.recipe.title || "").toLowerCase()}|${r.kind}`;
+    if (r.kind === "saved" && list.some((x) => String(x.recipe.title || "").toLowerCase() === key.split("|")[0])) continue;
+    if (!list.some((x) => x.key === key && x.at === r.at)) list.push({ ...r, key });
+    recipes.set(r.who, list);
+  }
+
+  return { totals, onboard, conv, features, screens, people, rated, recipes: [...recipes.entries()] };
+}
+
+const str = (v) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
+function Recipe({ r }) {
+  const rec = r.recipe || {};
+  const comps = Array.isArray(rec.components) ? rec.components : [];
+  const steps = Array.isArray(rec.steps) ? rec.steps : [];
+  return (
+    <details className="ad__rec">
+      <summary>{str(rec.title) || "(untitled)"} <span className="ad__tag">{r.kind}</span> <span className="ad__when">{fmtDay(r.at)}</span></summary>
+      <p className="ad__meta">{[str(rec.servings) && `Serves ${str(rec.servings)}`, str(rec.time)].filter(Boolean).join(" · ")}</p>
+      {comps.map((c, i) => (
+        <div key={i}><strong>{str(c?.name)}</strong>
+          <ul>{(Array.isArray(c?.items) ? c.items : []).map((it, j) => <li key={j}>{str(it)}</li>)}</ul></div>
+      ))}
+      {steps.length > 0 && <ol>{steps.map((st, i) => <li key={i}>{str(st?.do || st)}{str(st?.why) && <em> — {str(st.why)}</em>}</li>)}</ol>}
+      {str(rec.assembly) && <p><strong>To serve:</strong> {str(rec.assembly)}</p>}
+    </details>
+  );
 }
 
 const fmtDay = (d) => (d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—");
@@ -162,9 +208,10 @@ export default async function AdminPage() {
       </>)}
 
       <h2>People</h2>
+      <p className="ad__sub">Weeks planned: how many times they asked for a weekly plan, re-plans included. Last seen: the last thing they did that's recorded (opening the app, at most once an hour, changing screens, or using a feature).</p>
       <div className="ad__scroll">
         <table className="ad__t">
-          <thead><tr><th>Who</th><th>Joined</th><th>Last seen</th><th className="ad__num">Days active</th><th className="ad__num">Weeks</th><th className="ad__num">Recipes</th><th className="ad__num">Questions</th><th className="ad__num">AI calls (7d)</th><th>Access</th></tr></thead>
+          <thead><tr><th>Who</th><th>Joined</th><th>Last seen</th><th className="ad__num">Days active</th><th className="ad__num">Weeks planned</th><th className="ad__num">Recipes</th><th className="ad__num">Questions</th><th className="ad__num">AI calls (7d)</th><th>Access</th></tr></thead>
           <tbody>
             {d.people.map((p) => (
               <tr key={p.id}>
@@ -192,6 +239,15 @@ export default async function AdminPage() {
         </div>
       ) : <p className="ad__sub">No ratings yet.</p>}
 
+      <h2>Recipes</h2>
+      <p className="ad__sub">Every recipe Mise wrote for each person: new, changed on request, or saved from earlier weeks. Tap to open.</p>
+      {d.recipes.length ? d.recipes.map(([who, list]) => (
+        <details className="ad__who" key={who}>
+          <summary><strong>{who}</strong> · {list.length} recipe{list.length === 1 ? "" : "s"}</summary>
+          {list.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0)).map((r, i) => <Recipe key={i} r={r} />)}
+        </details>
+      )) : <p className="ad__sub">No recipes yet.</p>}
+
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
     </main>
   );
@@ -216,5 +272,13 @@ body{background:var(--ad-bg)}
 .ad__t th{font-size:.8rem;color:var(--ad-mute);font-weight:800;white-space:nowrap}
 .ad__num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ad__barcell{width:40%}
+.ad__who{background:var(--ad-card);border:1px solid var(--ad-line);border-radius:12px;padding:10px 14px;margin:0 0 8px}
+.ad__who>summary{cursor:pointer}
+.ad__rec{border-top:1px solid var(--ad-line);padding:8px 0 4px;margin-top:8px}
+.ad__rec>summary{cursor:pointer;font-weight:700}
+.ad__tag{font-size:.75rem;font-weight:800;color:var(--ad-acc);text-transform:uppercase;margin-left:.4rem}
+.ad__when{color:var(--ad-mute);font-size:.85rem;margin-left:.3rem}
+.ad__meta{color:var(--ad-mute);margin:.3rem 0}
+.ad__rec ul,.ad__rec ol{margin:.3rem 0 .6rem 1.2rem;padding:0}
 .ad__bar{display:block;height:10px;border-radius:5px;background:var(--ad-acc);min-width:2px}
 `;
