@@ -6,7 +6,7 @@ import AuthOptions from "@/components/AuthOptions";
 import ConsentChecks from "@/components/ConsentChecks";
 import { EmailField, NewPasswordFields, credentialsReady } from "@/components/CredentialFields";
 import { track, trackRecipe } from "@/lib/track";
-import { DISH_BANK, ROLE_TIERS } from "@/lib/dishBank";
+import { DISH_BANK, ROLE_TIERS, SLOW_DISHES } from "@/lib/dishBank";
 
 /* The one definition of the app's directional daylight, shared with the
    sign-in / sign-up / pricing pages so the app and its front door are lit the
@@ -694,6 +694,8 @@ function nameBankDishes(dishes, slots) {
   });
 }
 
+const fitsTime = (d, profile) => !SLOW_DISHES.has(d.name) || Number(profile?.time) >= 60;
+
 /* The role a dish fills when its slot is unknown (a dish added by feedback,
    a week saved before slots existed): the level's usual one. */
 const LEVEL_ROLE = ["classic", "twist", "known", "regional", "deep"];
@@ -715,7 +717,8 @@ function freshBankDishes(profile, role, { avoidTraditions = [], avoidFormats = [
   const all = Object.values(DISH_BANK).flat().filter((d) => {
     const text = `${d.name} ${d.gloss}`;
     return keys.has(d.format) && tw(d.tradition) > 0 && !avoidTraditions.includes(d.tradition)
-      && !avoid.some((a) => a.includes(d.name.toLowerCase())) && ok(text) && !(guard.active && guard.hits(text).length);
+      && !avoid.some((a) => a.includes(d.name.toLowerCase())) && ok(text) && !(guard.active && guard.hits(text).length)
+      && fitsTime(d, profile);
   });
   for (const strict of [true, false]) {
     for (const t of tiers) {
@@ -815,7 +818,8 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
   const recentDishes = (history || []).flatMap((w) => (w.seed?.slots || []).map((sl) => sl.dish?.name).filter(Boolean));
   const dishOk = (d) => {
     const text = `${d.name} ${d.gloss}`;
-    return ok(text) && !(guard.active && guard.hits(text).length) && !recentDishes.slice(0, 15).includes(d.name);
+    return ok(text) && !(guard.active && guard.hits(text).length) && !recentDishes.slice(0, 15).includes(d.name)
+      && fitsTime(d, profile);
   };
   const keyOf = (name) => FORMATS.find((f) => f.name === name)?.key;
   const dishes = formats.map(() => null);
