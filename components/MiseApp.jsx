@@ -331,6 +331,80 @@ function applyListEdit(list, adds, removes, jobs) {
   return { next: [...kept, ...fresh], added: fresh.map((a) => a.item), removed };
 }
 
+/* ------------------------------------------- recipe ↔ shopping list
+
+   The recipe prompt says "stay inside the list", and flash-lite mostly does —
+   but qa/recipes.js found recipes calling for things nobody was buying (a
+   garnish, a stock, the herb the list forgot), so the person discovers it at
+   the stove. A prompt rule is a request; this is the check. After a recipe is
+   written, any ingredient line that isn't a pantry staple, isn't on the list
+   and isn't something they deliberately removed is added to the list.
+
+   Matching is by the ingredient's core name: quantity, prep state ("thinly
+   sliced"), and descriptors ("fresh", "boneless", "red") are dropped, so
+   "1 bulb fennel, thinly sliced" is the list's "fresh fennel", while "soy
+   sauce" is still not "fish sauce". */
+const RECIPE_STAPLES = /\b(salt|black pepper|white pepper|peppercorns?|pepper|oil|water|ice|sugar|vinegar|cumin|paprika|turmeric|coriander|cinnamon|oregano|chili powder|garlic powder|onion powder|curry powder|garam masala|bay leaf|bay leaves|nutmeg|cloves|allspice|cardamom|fennel seeds?|mustard seeds?|cayenne|red pepper flakes|cooking spray|baking soda|baking powder|dried \w+|ground (?!beef|pork|lamb|turkey|chicken|meat)\w+)\b/i;
+const NOT_STAPLE = /\b(bell|sweet|poblano|banana|shishito) peppers?\b/i;
+const CORE_DROP = new Set(("fresh large small medium big boneless skinless bone-in skin-on ripe whole chopped minced sliced diced " +
+  "grated finely thinly roughly extra firm extra-firm soft low-sodium reduced-sodium canned tinned frozen raw cooked leftover day-old cold warm " +
+  "red green yellow white baby unsalted salted plain kosher toasted packed lean good-quality optional bulb bulbs stalk stalks sprig sprigs " +
+  "leaves leaf piece pieces shredded crumbled peeled seeded halved quartered rinsed drained trimmed torn plus more for to taste serve serving " +
+  "garnish and or the of into cut about").split(/\s+/));
+function coreName(line) {
+  const t = str(line).toLowerCase().replace(/\([^)]*\)/g, " ").split(/,|;| — | – | - /)[0];
+  const words = t.replace(/[^\p{L}\s'-]+/gu, " ").split(/\s+/).filter(Boolean);
+  while (words.length > 1 && QTY_WORD.test(words[0])) words.shift();
+  const singular = (w) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss")
+    ? (/(?:ches|shes|xes|oes)$/.test(w) ? w.slice(0, -2) : w.slice(0, -1)) : w);
+  return words.filter((w) => w.length > 2 && !CORE_DROP.has(w) && !QTY_WORD.test(w)).map(singular);
+}
+/* "25 minutes", "1 hr 10 min", "35-40 min" (the top of a range) -> minutes. */
+function recipeMinutes(t) {
+  const s = str(t).toLowerCase();
+  const range = s.match(/(\d+)\s*(?:-|–|to)\s*(\d+)\s*(?:min|m\b)/);
+  if (range) return Number(range[2]);
+  const hr = s.match(/(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hours?)\b/);
+  const mn = s.match(/(\d+)\s*(?:m|mins?|minutes?)\b/);
+  if (!hr && !mn) return null;
+  return Math.round((hr ? Number(hr[1]) * 60 : 0) + (mn ? Number(mn[1]) : 0));
+}
+/* Every word of the shorter core name appears in the longer one. */
+function sameIngredient(a, b) {
+  const x = coreName(a), y = coreName(b);
+  if (!x.length || !y.length) return false;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  return short.every((w) => long.includes(w));
+}
+/* Ingredient lines (and "missing" items) a recipe needs that nothing on the
+   list, in the fridge note, or on the removed list covers. Returned as list
+   items: the core name, and the line's leading amount as the quantity. */
+function unboughtIngredients(recipe, list, { removed = [], onHand = "" } = {}) {
+  const lines = [...(recipe?.components || []).flatMap((c) => c.items || []), ...(recipe?.missing || [])];
+  const have = [...list.map((i) => i.item), ...removed, ...str(onHand).split(/,|;|\n| and /)].filter(Boolean);
+  const out = [];
+  for (const line of lines) {
+    const core = coreName(line);
+    if (!core.length) continue;
+    const name = core.join(" ");
+    if (RECIPE_STAPLES.test(name) && !NOT_STAPLE.test(name)) continue;
+    if (have.some((h) => sameIngredient(h, line)) || out.some((o) => sameIngredient(o.item, line))) continue;
+    const lead = str(line).replace(/\([^)]*\)/g, " ").trim().split(/\s+/);
+    const qty = /^[\d½¼¾⅓⅔.,/-]+$/.test(lead[0] || "")
+      ? lead.slice(0, QTY_WORD.test(lead[1] || "") && !/^\d/.test(lead[1] || "") ? 2 : 1).join(" ") : "";
+    out.push({ item: name, qty: qty.trim(), section: "Other", days: 7 });
+  }
+  return out;
+}
+/* What a recipe was written against. Items a recipe itself added (fromRecipe)
+   don't count: adding the fennel one recipe needed changes nothing for the
+   others, and counting it marked every other recipe "changed since". */
+const listSignature = (list) => list
+  .filter((i) => !i.fromRecipe)
+  .map((i) => `${(i.item || "").trim().toLowerCase()}@${(i.qty || "").trim().toLowerCase()}`)
+  .sort()
+  .join("|");
+
 /* Does this message ask for a change, as opposed to asking a question? */
 const CHANGE_REQUEST = /\b(add|remove|take|drop|swap|replace|get rid|don'?t (?:need|want)|no more|skip|cut|put|include|instead|change|switch|more|less|fewer|extra|double|halve|triple|make (?:it|this|them)|without|buy|grab|scale|lighter|milder|spicier|cheaper|vegan|vegetarian)\b|off my list|on my list|to my list/i;
 
@@ -3512,14 +3586,13 @@ ${palate.map((x) => `- ${x}`).join("\n")}`
       .slice(0, 24); // history is newest first; keep the most recent weeks
   }, [history, candidates]);
 
-  const shoppingSignature = useMemo(
-    () =>
-      shopping
-        .map((i) => `${(i.item || "").trim().toLowerCase()}@${(i.qty || "").trim().toLowerCase()}`)
-        .sort()
-        .join("|"),
-    [shopping]
-  );
+  const shoppingSignature = useMemo(() => listSignature(shopping), [shopping]);
+  /* The list as of the latest render. Background recipe writes run one after
+     another from a single effect, so their closures hold the list as it was
+     when the first started; reconciling against that would re-add what the
+     previous recipe just added. */
+  const shoppingRef = useRef(shopping);
+  shoppingRef.current = shopping;
 
   /* How many written recipes no longer match the current list. Surfaced in the nav
      so an edit on the Shopping screen is visible from anywhere. */
@@ -3569,9 +3642,11 @@ ${palate.map((x) => `- ${x}`).join("\n")}`
     pending.forEach((id) => prefetchedRef.current.add(id));
     setPrefetching(pending.length);
 
+    const started = new Set();
     (async () => {
       for (const id of pending) {
         if (cancelled) return;
+        started.add(id);
         try {
           await getRecipe(id, { quiet: true });
         } catch (_) {
@@ -3583,7 +3658,15 @@ ${palate.map((x) => `- ${x}`).join("\n")}`
       }
     })();
 
-    return () => { cancelled = true; };
+    /* The first recipe landing changes `recipes`, which re-runs this effect
+       and cancels this loop. The dishes it hadn't reached yet were still marked
+       as prefetched, so the re-run skipped them and only the first recipe was
+       ever written ahead (qa/recipes.js waited minutes for the other two).
+       Un-mark what never started so the re-run picks it up. */
+    return () => {
+      cancelled = true;
+      pending.forEach((id) => { if (!started.has(id)) prefetchedRef.current.delete(id); });
+    };
     // eslint-disable-next-line
   }, [shopping.length, busy, scheduled.map((s) => s.dish.id).join(","),
       chosen.map((c) => c.id).join(","), Object.keys(recipes).join(",")]);
@@ -4301,6 +4384,20 @@ prep state ("bone-in, skin on, patted dry"), not just a quantity. Where doneness
 the sensory cue first and the temperature second. Every duration needs the thing to look for
 next to it.
 
+WRITTEN TO BE FOLLOWED EXACTLY (a recipe tester flagged each of these):
+- Every ingredient line has an amount — garnishes and finishing herbs too ("2 tbsp torn basil").
+- Anything a step uses is in "components" with its amount; never "cover with water" or "a splash" — say how much.
+- Name the vessel and its size the first time ("a 12-inch skillet", "a 3-quart pot") and the burner level (medium-high).
+- Amounts are what the cook measures for exactly ${servingsFor(dishId)} (tbsp, cups, oz, "2 cloves"), never the package size from the list ("1 bag almonds").
+- Salt for the quantity: about 1 tsp kosher salt per pound of meat or vegetables, plus 1/2 tsp per cup of dry rice or grain; less when soy, fish sauce or stock already brings salt.
+- If the pan would be crowded at this quantity, cook in batches and say so. If the pot is small for it, name a bigger one.
+- Order the work so it all lands hot together: start the slowest thing first (preheat the oven in step 1, water on to boil, rice going) and prep while it cooks.
+- Cooking times must be real for the cut and size. Dried lentils, raw beets, thick chops and bone-in chicken are slow: cut smaller, choose a quick kind (red lentils), or finish in the oven so the time is honest.
+- Every listed ingredient is used in a step, and if a step uses "half the cilantro", another step uses the rest. Fractions, not decimals ("1/2 lime").
+- Any meat, poultry, fish or shellfish: "doneness" gives the look AND its safe °F temperature.
+- "time" is the honest total, prep included, and fits their ${profile.time} minutes.
+- The title must be what the recipe really is: keep the dish's defining ingredients and seasonings; if the list forced a swap, rename it ("Swiss chard", not "Espinacas").
+
 LENGTH: up to 12 steps, each "do" 40 words or fewer. Use the room for seasoning points and
 doneness cues rather than more steps. "why" on at most four steps.
 
@@ -4311,18 +4408,49 @@ Respond with ONLY this JSON:
          retry, told exactly what it used. If it still does, it's kept but
          flagged on the recipe page rather than shown as if it were fine. */
       const guard = restrictionGuard(profile);
-      let parsedRecipe = null, hits = [];
+      /* Too long for their night is the other thing worth one retry: qa/recipes.js
+         saw "40 minutes" written for a 25-minute cook. */
+      const limit = Number(profile.time) || 0;
+      let parsedRecipe = null, hits = [], tooLong = null, cutShort = false;
       for (let attempt = 0; attempt < 2; attempt++) {
-        const ask = attempt === 0 ? prompt
-          : `${prompt}\n\nYOUR LAST VERSION USED ${describeHits(hits)}. That breaks their constraints. Rewrite it without those, keeping the dish.`;
+        const ask = attempt === 0 || cutShort ? prompt
+          : `${prompt}\n\n${hits.length ? `YOUR LAST VERSION USED ${describeHits(hits)}. That breaks their constraints. Rewrite it without those, keeping the dish.` : ""}${
+            tooLong ? `\nYOUR LAST VERSION TOOK ${tooLong} MINUTES; they have ${limit}. Rewrite it to fit — a faster cut, a smaller dice, a hotter pan, or doing two things at once — and state the real total in "time".` : ""}`;
         const raw = await callClaude([{ role: "user", content: ask }], { maxTokens: 1900, docSlices: ["core", "flavor"] });
         if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
-        parsedRecipe = normalizeRecipe(parseJSON(raw));
-        if (!parsedRecipe || !parsedRecipe.steps.length) {
+        let repaired = false;
+        const next = normalizeRecipe(parseJSON(raw, () => { repaired = true; }));
+        if (!next || !next.steps.length) {
+          if (parsedRecipe) break;   // keep the first version rather than fail the retry
           throw new Error("That recipe came back incomplete. Give it another go.");
         }
+        /* A recipe cut off mid-answer still parses — qa/recipes.js got a
+           koshari with one step ("bring water to a boil") and nothing else.
+           One fresh try; a longer second answer replaces it. */
+        const short = repaired || next.steps.length < 4;
+        if (parsedRecipe && short && next.steps.length <= parsedRecipe.steps.length) break;
+        parsedRecipe = next;
         hits = guard.hits(recipeText(parsedRecipe));
-        if (!hits.length) break;
+        const mins = recipeMinutes(parsedRecipe.time);
+        tooLong = limit && mins && mins > limit ? mins : null;
+        cutShort = short && attempt === 0;
+        if (!cutShort && !hits.length && !tooLong) break;
+      }
+      /* The headcount is the app's to know, not the model's: "servings" is
+         stated from the night it's cooked on, whatever came back. */
+      const serves = servingsFor(dishId);
+      parsedRecipe = { ...parsedRecipe, servings: `${serves} ${serves === 1 ? "serving" : "servings"}` };
+      /* Anything the recipe needs that nobody is buying goes on the list now,
+         not at the stove — see unboughtIngredients. */
+      if (shoppingRef.current.length) {
+        const { kept: adds } = screenItems(unboughtIngredients(parsedRecipe, shoppingRef.current,
+          { removed: excluded, onHand: thisWeek.fridge }).map((a) => ({ ...a, fromRecipe: true })));
+        const edit = applyListEdit(shoppingRef.current, adds, [], dish.title);
+        if (edit.added.length) {
+          shoppingRef.current = edit.next;
+          setShopping((cur) => applyListEdit(cur, adds, [], dish.title).next);
+          setThread((t) => [...t, { who: "mise", text: `${dish.title} needs ${edit.added.join(", ")} — I've added ${edit.added.length === 1 ? "it" : "them"} to your list.` }]);
+        }
       }
       const built = {
         ...parsedRecipe,
@@ -4492,10 +4620,7 @@ Respond with ONLY this JSON:
       const edit = applyListEdit(shopping, adds, out.shoppingRemove, "Added with a recipe change");
       let nextSignature = shoppingSignature;
       if (edit.added.length || edit.removed.length) {
-        nextSignature = edit.next
-          .map((i) => `${(i.item || "").trim().toLowerCase()}@${(i.qty || "").trim().toLowerCase()}`)
-          .sort()
-          .join("|");
+        nextSignature = listSignature(edit.next);
         setShopping(edit.next);
         if (edit.removed.length) setExcluded((x) => [...new Set([...x, ...edit.removed])]);
       }

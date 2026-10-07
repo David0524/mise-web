@@ -113,7 +113,7 @@ const DESCRIPTORS = new Set(("fresh large small medium big boneless skinless bon
   "red green yellow white black brown baby young english italian thai unsalted salted plain kosher sea toasted roasted packed loosely " +
   "lean ground good-quality quality optional block head bunch heads cloves clove stalks stalk sprigs sprig leaves leaf piece pieces " +
   "bulb bulbs boil-in-bag shredded crumbled peeled seeded halved quartered rinsed drained trimmed").split(/\s+/));
-const QTY = /^(?:[\d½¼¾⅓⅔⅛.,/-]+|x|a|an|one|two|three|four|five|six|eight|half|of|about|approx\.?|lbs?|pounds?|oz|ounces?|g|grams?|kg|ml|l|cups?|tbsp|tablespoons?|tsp|teaspoons?|cans?|tins?|packs?|packages?|bags?|bottles?|jars?|pinch(?:es)?|handfuls?|dash|splash|bunch(?:es)?|heads?|cloves?|stalks?|sprigs?|pieces?|inch|in\.?|knob|thumb|sticks?|blocks?|slices?|fillets?|quarts?|pints?|liters?|cartons?)$/i;
+const QTY = /^(?:[\d½¼¾⅓⅔⅛.,/-]+|x|a|an|one|two|three|four|five|six|eight|half|of|about|approx\.?|lbs?|pounds?|oz|ounces?|g|grams?|kg|ml|l|cups?|tbsp|tablespoons?|tsp|teaspoons?|cans?|tins?|packs?|packages?|bags?|bottles?|jars?|pinch(?:es)?|handfuls?|dash|splash|bunch(?:es)?|heads?|cloves?|stalks?|sprigs?|pieces?|inch|in\.?|knob|thumb|sticks?|blocks?|slices?|fillets?|wedges?|quarts?|pints?|liters?|cartons?)$/i;
 const sing = (w) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? (/(?:oes|ches|shes)$/.test(w) ? w.slice(0, -2) : w.slice(0, -1)) : w);
 const SYN = { scallion: "green onion", "spring onion": "green onion", coriander: "cilantro", garbanzo: "chickpea" };
 
@@ -235,7 +235,7 @@ async function gemini(model, prompt) {
 async function judgeRecipe(r, ctx) {
   const prompt = `You are a demanding recipe tester for a cooking magazine. A home cook will follow this recipe exactly as written, tonight.
 
-The cook: ${ctx.label}. Appliances: ${ctx.equipment.join(", ")}. With a stovetop they have ordinary pots, pans, a skillet and lids; everyone has a knife, board, bowls, spoons, a spatula and measuring cups. Restrictions: ${(ctx.restrictions || []).join(", ") || "none"}. Chili-heat ceiling (spiciness, NOT stove heat): ${ctx.spice} on 0-4. Cooking for ${ctx.headcount} tonight, about ${ctx.limit} minutes. A °F doneness temperature is welcome when a visual cue is given too; don't count a thermometer as missing equipment.
+The cook: ${ctx.label}. Appliances: ${ctx.equipment.join(", ")}. With a stovetop they have ordinary pots, pans, a skillet and lids; everyone has a knife, board, bowls, spoons, a whisk, tongs, a spatula, a colander, a grater and measuring cups. Restrictions: ${(ctx.restrictions || []).join(", ") || "none"}. Chili-heat ceiling (spiciness, NOT stove heat): ${ctx.spice} on 0-4. Cooking for ${ctx.headcount} tonight, about ${ctx.limit} minutes. A °F doneness temperature is welcome when a visual cue is given too; don't count a thermometer as missing equipment.
 
 RECIPE:
 ${JSON.stringify({ title: r.title, servings: r.servings, time: r.time, doneness: r.doneness, components: r.components, steps: r.steps }, null, 1)}
