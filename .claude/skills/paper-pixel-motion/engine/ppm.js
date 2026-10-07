@@ -551,7 +551,7 @@
           const vg = out.createRadialGradient(w * .5 - 120 * h / 1080, h * .5 - 80 * h / 1080, 0, w * .5 - 120 * h / 1080, h * .5 - 80 * h / 1080, h * 1.08);
           const va = (s.o.vignette ?? 1) * (T.vignetteAmount ?? 1);
           if (paper) { [[0, 0], [.35, .012], [.55, .045], [.75, .11], [1, .21]].forEach(([k, a]) => vg.addColorStop(k, `rgba(40,36,38,${a * va})`)); }
-          else { vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${.45 * va})`); }
+          else { vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(.5, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${.32 * va})`); }
           out.fillStyle = vg; out.fillRect(0, 0, w, h);
         }
         if (T.grain) {

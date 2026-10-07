@@ -63,7 +63,7 @@
     for (let i = 0; i < w * h; i++) D[i] = D[i] >= INF ? 0 : D[i] / 3;
     return D;
   }
-  const HEAT_RAMP = [[0, '#050202'], [.12, '#3d0704'], [.3, '#B3170F'], [.5, '#E8420F'], [.68, '#FF8A1E'], [.84, '#FFC45A'], [.95, '#FFEBC0'], [1, '#FFF8EC']];
+  const HEAT_RAMP = [[0, '#050202'], [.12, '#3d0704'], [.3, '#B3170F'], [.5, '#E8420F'], [.68, '#FF8A1E'], [.84, '#FFBE50'], [.94, '#FFDDA0'], [1, '#FFEDC8']]; // warm to the very top: never neutral white
 
   /** Build (once) a heat source from a shape fn ((ctx)=>fill in 1440×1080 space) or an image/canvas with alpha. */
   function heatSource(film, key, src, o) {
@@ -150,7 +150,7 @@
       const ox = (o.offset?.x || 0) * g.U, oy = (o.offset?.y || 0) * g.U, sc = o.scale || 1, ax = (o.anchor?.[0] ?? 720) * g.U, ay = (o.anchor?.[1] ?? 540) * g.U;
       ctx.translate(ax + ox, ay + oy); ctx.scale(sc, sc); ctx.translate(-ax, -ay);
       ctx.globalAlpha *= o.alpha ?? 1;
-      ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.filter = `blur(${(o.glow ?? 26) * g.U}px)`; ctx.globalAlpha *= (o.glowAlpha ?? .45) * heat; ctx.drawImage(L, 0, 0); ctx.restore();
+      ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.filter = `blur(${(o.glow ?? 26) * g.U}px)`; ctx.globalAlpha *= (o.glowAlpha ?? .35) * heat; ctx.drawImage(L, 0, 0); ctx.restore();
       ctx.drawImage(L, 0, 0);
       ctx.restore();
       return hs;
