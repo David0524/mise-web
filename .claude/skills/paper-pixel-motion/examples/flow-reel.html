@@ -43,7 +43,7 @@ film.shot(1.8, 'paper', (g, s) => {
   const p = g.clamp((s.t - .2) / .9);
   g.block('pan', 700, 640, 240);
   g.block('egg', 676, 606, 110, { flipX: Math.cos(E.inOut(p) * Math.PI * 4), lift: Math.sin(p * Math.PI) * 260, shadow: false });
-  g.sparks(676, 640, (s.t - 1.1) / .14, { seed: 6, n: 8, color: '#E2A21A' });
+  g.sparks(676, 640, (s.t - 1.1) / .22, { seed: 6, n: 8, color: '#E2A21A' });
 });
 
 // D ── burn: the page closes in on a pot behind a hot edge, ends black
@@ -72,12 +72,14 @@ film.shot(1.9, 'void', (g, s) => {
 // G ── fall-through: a tomato block on the page becomes a window onto the void that scales past the lens
 film.shot(2.0, 'paper', (g, s) => {
   const p = (s.t - .35) / 1.2, mask = g.blockMask('tomato', 720, 560, 420);
-  g.block('tomato', 720, 560, 420);
-  if (p > 0) g.fallThrough(mask, 720, 560, p, (gg) => {
+  const gone = E.inOut(g.clamp(p / .22)); // the face covers the window exactly, so the inner page only shows through dropped cells
+  if (p > 0) g.layer({}, () => g.fallThrough(mask, 720, 560, p, (gg) => {
     gg.bg('void'); gg.glow(720, 540, 520, '#C41E14', .5);
     ['knife', 'spoon', 'chili', 'cup', 'bread', 'whisk'].forEach((n, i) => gg.block(n, 260 + i * 185, 540 + Math.sin(i * 1.9) * 220, 130, { rot: Math.sin(i * 2.3) * .4 }));
-  }, { k: 40, innerK: .9 });
-  if (p > 0 && p < .25) g.block('tomato', 720, 560, 420 * (1 + 40 * Math.pow(p, 3)), { alpha: 1 - E.inOut(p / .25), shadow: false }); // the tomato face dissolves into the window
+  }, { k: 40, innerK: .9 }));
+  // the tomato face drops out cell by cell (colours unchanged), scaling with the window
+  const sc = 1 + 40 * Math.pow(g.clamp(p), 3);
+  if (gone < 1) { if (p <= 0) g.block('tomato', 720, 560, 420); else g.blockDissolve('tomato', 720, 560, 420 * sc, gone, { seed: 3 }); }
 });
 
 window.film = film;

@@ -155,6 +155,18 @@
       ctx.restore();
       return hs;
     };
+    /** Block that dissolves by dropping whole cells (dither dropout, colours unchanged). p 0..1 = fraction gone. */
+    g.blockDissolve = function (name, x, y, size, p, o = {}) {
+      if (p >= 1) return; if (p <= 0) return g.block(name, x, y, size, o);
+      const L = film.layer(8), lx = L.getContext('2d'), old = g.__swap(lx);
+      lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.clearRect(0, 0, film.w, film.h);
+      g.block(name, x, y, size, { ...o, shadow: false }); g.__swap(old);
+      const cell = size * g.U / PPM.sprite(name).h, x0 = x - size * g.U, y0 = y - size * g.U;
+      lx.globalCompositeOperation = 'destination-out';
+      for (let cy = 0; cy < size * 2 * g.U / cell; cy++) for (let cx = 0; cx < size * 2 * g.U / cell; cx++) if (PPM.hash(cx * 7919 + cy * 104729 + (o.seed || 1)) < p) lx.fillRect(x0 + cx * cell - .5, y0 + cy * cell - .5, cell + 1, cell + 1);
+      lx.globalCompositeOperation = 'source-over';
+      g.ctx.save(); g.ctx.setTransform(1, 0, 0, 1, 0, 0); g.ctx.drawImage(L, 0, 0); g.ctx.restore();
+    };
     /** Full-frame alpha mask of a block sprite at (x,y,size) — a window for fallThrough. Cached. */
     g.blockMask = function (name, x, y, size) {
       const k = 'bmask_' + [name, x, y, size].join('_'); if (film._cache[k]) return film._cache[k];
@@ -207,7 +219,7 @@
       const ctx = g.ctx, U = g.U, Rmax = Math.hypot(film.w, film.h) * .75, R = lerp(Rmax, o.toR ?? 0, ease.inOut(clamp(p)));
       if (p <= 0) return;
       const tq = Math.floor((o.t ?? p * 10) * 12) / 12, amp = (o.amp ?? 30) * U, lobes = o.lobes ?? 8;
-      const ring = (dr) => { const pts = []; for (let i = 0; i < 96; i++) { const a = i / 96 * Math.PI * 2, n = noise1(a / (Math.PI * 2) * lobes + tq * 1.7, 21) * .7 + noise1(a / (Math.PI * 2) * lobes * 2.3 - tq, 22) * .3; pts.push([x + Math.cos(a) * Math.max(0, R + n * amp + dr), y + Math.sin(a) * Math.max(0, R + n * amp + dr)]); } return pts; };
+      const ring = (dr) => { const pts = []; for (let i = 0; i < 240; i++) { const a = i / 240 * Math.PI * 2, n = noise1(a / (Math.PI * 2) * lobes + tq * 1.7, 21) * .75 + noise1(a / (Math.PI * 2) * lobes * 3 - tq * 2.3, 22) * .27 + noise1(a / (Math.PI * 2) * lobes * 7 + tq * 3, 23) * .12; pts.push([x + Math.cos(a) * Math.max(0, R + n * amp + dr), y + Math.sin(a) * Math.max(0, R + n * amp + dr)]); } return pts; };
       const path = (c, pts) => { c.beginPath(); pts.forEach(([X, Y], i) => (i ? c.lineTo(X, Y) : c.moveTo(X, Y))); c.closePath(); };
       const L = film.layer(6), lx = L.getContext('2d'); lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.clearRect(0, 0, film.w, film.h);
       const edge = ring(0);
@@ -215,8 +227,8 @@
       lx.save(); path(lx, edge); lx.clip(); lx.filter = `blur(${(o.edge || 40) * U * .5}px)`; lx.strokeStyle = '#FF6A1E'; lx.lineWidth = (o.edge || 40) * U; path(lx, ring(-4 * U)); lx.stroke(); lx.restore();
       // char band + black outside
       lx.save(); lx.fillStyle = o.color || C.void; lx.beginPath(); lx.rect(0, 0, film.w, film.h); edge.slice().reverse().forEach(([X, Y], i) => (i ? lx.lineTo(X, Y) : lx.moveTo(X, Y))); lx.closePath(); lx.fill('evenodd'); lx.restore();
-      lx.save(); lx.strokeStyle = '#2A1810'; lx.lineWidth = (o.char ?? 12) * U; lx.lineJoin = 'round'; path(lx, edge); lx.stroke(); lx.restore();
-      lx.save(); lx.strokeStyle = 'rgba(255,170,60,.9)'; lx.lineWidth = 2 * U; path(lx, ring(-(o.char ?? 12) * U * .5 - 2 * U)); lx.stroke(); lx.restore();
+      lx.save(); lx.strokeStyle = '#2A1810'; lx.lineWidth = (o.char ?? 16) * U; lx.lineJoin = 'round'; path(lx, edge); lx.stroke(); lx.restore();
+      lx.save(); lx.strokeStyle = 'rgba(255,170,60,.9)'; lx.lineWidth = 2 * U; path(lx, ring(-(o.char ?? 16) * U * .5 - 2 * U)); lx.stroke(); lx.restore();
       ctx.drawImage(L, 0, 0);
     };
     /**
@@ -270,8 +282,8 @@
       if (p <= 0 || p >= 1) return; const r = rng(o.seed || 9), n = o.n || 9, ctx = g.ctx;
       ctx.save(); ctx.strokeStyle = o.color || '#FFD24A'; ctx.lineCap = 'round'; ctx.shadowColor = o.color || '#FFB21E'; ctx.shadowBlur = 8 * g.U;
       for (let i = 0; i < n; i++) {
-        const a = -Math.PI / 2 + r.range(-1.3, 1.3), sp = r.range(80, 200) * g.U, d0 = sp * ease.out(p) * .6, d1 = sp * ease.out(p);
-        ctx.globalAlpha = 1 - p; ctx.lineWidth = r.range(2, 4) * g.U * (1 - p * .6);
+        const a = -Math.PI / 2 + r.range(-1.3, 1.3), sp = r.range(90, 180) * g.U, d0 = sp * (.25 + .75 * ease.out(p)) * .55, d1 = sp * (.25 + .75 * ease.out(p)); // visible from frame 1
+        ctx.globalAlpha = 1 - p * p; ctx.lineWidth = r.range(3, 4.5) * g.U * (1 - p * .5);
         ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * d0, y + Math.sin(a) * d0 + p * p * 60 * g.U); ctx.lineTo(x + Math.cos(a) * d1, y + Math.sin(a) * d1 + p * p * 60 * g.U); ctx.stroke();
       }
       ctx.restore();
