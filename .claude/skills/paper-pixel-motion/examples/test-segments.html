@@ -86,7 +86,7 @@ film.shot(56 / 24, 'void', (g, s) => {
   const heat = g.ease.out(s.t / .35), wash = g.clamp((s.t - 1.85) / .35);
   const ringP = g.clamp((s.t - .55) / .6);
   if (ringP > 0 && ringP < 1) g.orbit(1010, 420, 330, 110, -.55, ringP, 'back');
-  g.layer({ blur: (1 - heat) * 26 }, () => g.heat(head, { key: 'head', t: s.T, heat, hotspot: [1090, 880, 115], hotspotStrength: .65 }));
+  g.layer({ blur: (1 - heat) * 26 }, () => g.heat(head, { key: 'head', t: s.T, heat, hotspot: [1090, 940, 115, 170], hotspotStrength: .65 }));
   if (ringP > 0 && ringP < 1) g.orbit(1010, 420, 330, 110, -.55, ringP, 'front');
   const ans = s.t < 1.1 ? ['you', "can't."] : ['you', 'just', 'cook', 'it.'];
   const tt = s.t < 1.1 ? [.1, .3] : [1.1, 1.35, 1.55, 1.75];
@@ -161,7 +161,7 @@ film.shot(44 / 24, 'paper', (g, s) => {
 const handShape = PPM.SHAPES.hand(760, 1130, 1.05, .95);
 film.shot(48 / 24, 'void', (g, s) => {
   const rise = g.ease.out(s.t / .4), hh = g.ease.out(s.t / .5);
-  g.layer({ blur: (1 - hh) * 22 }, () => g.heat(handShape, { key: 'hand', t: s.T, heat: hh, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: [760, 900, 150], hotspotStrength: .5 }));
+  g.layer({ blur: (1 - hh) * 22 }, () => g.heat(handShape, { key: 'hand', t: s.T, heat: hh, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: [760, 980, 150], hotspotStrength: .3 }));
   g.words(['with', 'your'], [.25, .4], s.t, 440 - g.measure('with your', 52), 520, { size: 52, color: C.white });
   const rw = g.words(['own', 'two', 'hands'], [.7, .95, 1.2], s.t, 1010, 520, { size: 52, color: C.white });
   if (s.t > .7 && s.t < 1.3) g.cursor(1010 + g.measure(['own', 'two', 'hands'].slice(0, Math.min(3, 1 + Math.floor((s.t - .7) / .25))).join(' '), 52) + 40, 520, 52, s.t, 'block'); void rw;

@@ -129,7 +129,7 @@ Turn pieces off with `PPM.film(canvas, { treatment: { weave: false } })`.
 
 - **sprites:** `PPM.defGrid(name, rows16, palette)` for hand-placed 16×16 cells; `block(name,x,y,size,{rot,flipX,lift,ink,shadow})`;
   `ring(names,cx,cy,R,{tilt,spin,t,bob,size,per})` (a perspective ring: front items bigger, lower, drawn last); `ringFrontLeft(n, spin)`
-- **heat:** `heat(shapeFnOrMask,{key,t,heat,hotspot:[x,y,r],noise,glow,offset,scale,thick})`, `maskOf(key)`;
+- **heat:** `heat(shapeFnOrMask,{key,t,heat,hotspot:[x,y,r,ry?],noise,glow,offset,scale,thick})`, `maskOf(key)`;
   `PPM.loadMask(url,{luma,invert})` → `PPM.placeMask(mask,{x,y,h,flip})`
 - **type:** `typed(str,t0,cps,t)`, `typedFromWords(words,t)`, `caption(shown,x,y,{align:'center',size,color,cursor,blink})`, `underline(x,y,w,p)`
 - **transitions:** `flood(x,y,p,color)` + `inFlood(x,y,p,fn)`, `burn(x,y,p,{toR,edge})`, `fallThrough(mask,px,py,p,innerFn,{k,innerK})`,
