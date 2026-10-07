@@ -155,6 +155,12 @@
       ctx.restore();
       return hs;
     };
+    /** Full-frame alpha mask of a block sprite at (x,y,size) — a window for fallThrough. Cached. */
+    g.blockMask = function (name, x, y, size) {
+      const k = 'bmask_' + [name, x, y, size].join('_'); if (film._cache[k]) return film._cache[k];
+      const c = mk(film.w, film.h), cx = c.getContext('2d'), old = g.__swap(cx); g.block(name, x, y, size, { shadow: false }); g.__swap(old);
+      return (film._cache[k] = c);
+    };
     /** Draw fn into a layer clipped to a heat source's full-res mask transformed like g.heat(o). */
     g.maskOf = (key) => film._cache['heat_' + key]?.full;
 
@@ -195,14 +201,22 @@
       const R = Math.hypot(Math.max(x, film.w - x), Math.max(y, film.h - y)) * 1.05 * ease.inOut(clamp(p));
       if (R <= 0) return; const ctx = g.ctx; ctx.save(); ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.clip(); fn(); ctx.restore();
     };
-    /** Black closes in from the edges onto (x,y) behind a hot red edge. p 0..1. */
+    /** Paper burns away: black closes in from the edges onto (x,y). Ragged noisy edge (boils on twos), a dark char
+     *  band and a narrow hot glow just outside the unburnt area. p 0..1; o: toR, edge (glow px), char (px), t (s). */
     g.burn = function (x, y, p, o = {}) {
-      const ctx = g.ctx, Rmax = Math.hypot(film.w, film.h), R = lerp(Rmax, o.toR ?? 0, ease.inOut(clamp(p)));
-      const edge = (o.edge || 90) * g.U, L = film.layer(6), lx = L.getContext('2d');
-      lx.setTransform(1, 0, 0, 1, 0, 0); lx.clearRect(0, 0, film.w, film.h);
-      const gr = lx.createRadialGradient(x, y, Math.max(0, R - edge * .2), x, y, R + edge);
-      gr.addColorStop(0, 'rgba(217,32,26,0)'); gr.addColorStop(.12, 'rgba(255,90,30,.95)'); gr.addColorStop(.35, 'rgba(190,24,16,1)'); gr.addColorStop(.7, 'rgba(40,8,6,1)'); gr.addColorStop(1, o.color || C.void);
-      lx.fillStyle = gr; lx.fillRect(0, 0, film.w, film.h);
+      const ctx = g.ctx, U = g.U, Rmax = Math.hypot(film.w, film.h) * .75, R = lerp(Rmax, o.toR ?? 0, ease.inOut(clamp(p)));
+      if (p <= 0) return;
+      const tq = Math.floor((o.t ?? p * 10) * 12) / 12, amp = (o.amp ?? 30) * U, lobes = o.lobes ?? 8;
+      const ring = (dr) => { const pts = []; for (let i = 0; i < 96; i++) { const a = i / 96 * Math.PI * 2, n = noise1(a / (Math.PI * 2) * lobes + tq * 1.7, 21) * .7 + noise1(a / (Math.PI * 2) * lobes * 2.3 - tq, 22) * .3; pts.push([x + Math.cos(a) * Math.max(0, R + n * amp + dr), y + Math.sin(a) * Math.max(0, R + n * amp + dr)]); } return pts; };
+      const path = (c, pts) => { c.beginPath(); pts.forEach(([X, Y], i) => (i ? c.lineTo(X, Y) : c.moveTo(X, Y))); c.closePath(); };
+      const L = film.layer(6), lx = L.getContext('2d'); lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.clearRect(0, 0, film.w, film.h);
+      const edge = ring(0);
+      // hot glow hugging the inside of the edge
+      lx.save(); path(lx, edge); lx.clip(); lx.filter = `blur(${(o.edge || 40) * U * .5}px)`; lx.strokeStyle = '#FF6A1E'; lx.lineWidth = (o.edge || 40) * U; path(lx, ring(-4 * U)); lx.stroke(); lx.restore();
+      // char band + black outside
+      lx.save(); lx.fillStyle = o.color || C.void; lx.beginPath(); lx.rect(0, 0, film.w, film.h); edge.slice().reverse().forEach(([X, Y], i) => (i ? lx.lineTo(X, Y) : lx.moveTo(X, Y))); lx.closePath(); lx.fill('evenodd'); lx.restore();
+      lx.save(); lx.strokeStyle = '#2A1810'; lx.lineWidth = (o.char ?? 12) * U; lx.lineJoin = 'round'; path(lx, edge); lx.stroke(); lx.restore();
+      lx.save(); lx.strokeStyle = 'rgba(255,170,60,.9)'; lx.lineWidth = 2 * U; path(lx, ring(-(o.char ?? 12) * U * .5 - 2 * U)); lx.stroke(); lx.restore();
       ctx.drawImage(L, 0, 0);
     };
     /**
@@ -239,12 +253,14 @@
         M = film._cache[key] = { pairs, ha: A[0]?.h || 16, hb: B[0]?.h || 16 };
       }
       const cell = size * g.U / lerp(M.ha, M.hb, ease.inOut(p));
+      if (o.shadow !== false) { ctx.save(); ctx.globalAlpha *= .25; ctx.filter = `blur(${10 * g.U}px)`; ctx.fillStyle = '#1a1414'; ctx.beginPath(); ctx.ellipse(x + 6 * g.U, y + size * g.U * .55 + 40 * g.U * 0, size * g.U * .42, size * g.U * .07, 0, 0, 7); ctx.fill(); ctx.restore(); }
       ctx.save();
-      for (const pr of M.pairs) {
+      for (const pass of o.flat ? [1] : [0, 1]) for (const pr of M.pairs) {
         const k = ease.inOut(clamp((p - pr.d) / .65)), sa = size * g.U / M.ha, sb = size * g.U / M.hb;
         const X = x + lerp(pr.a.x * sa, pr.b.x * sb, k), Y = y + lerp(pr.a.y * sa, pr.b.y * sb, k);
-        const c = pr.a.c.map((v, j) => lerp(v, pr.b.c[j], k) | 0);
-        ctx.fillStyle = `rgb(${c})`; ctx.fillRect(X, Y, cell + .6, cell + .6);
+        const c = pr.a.c.map((v, j) => (lerp(v, pr.b.c[j], k) * (pass ? 1 : .5)) | 0), d = pass ? 0 : cell * .55;
+        ctx.fillStyle = `rgb(${c})`; ctx.fillRect(X + d, Y + d, cell + .6, cell + .6);
+        if (pass) { ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(X, Y, cell, cell * .12); ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(X, Y + cell * .88, cell, cell * .12); }
       }
       ctx.restore();
     };
