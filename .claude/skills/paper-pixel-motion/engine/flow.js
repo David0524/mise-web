@@ -131,7 +131,7 @@
     g.heat = function (src, o = {}) {
       const hs = heatSource(film, o.key || 'h', src, o), { w, h, q, base, alpha } = hs, ctx = g.ctx, W = film.w, H = film.h;
       const ic = hs.img.getContext('2d'), id = ic.createImageData(w, h), d = id.data, lut = PPM.thermalLUT(o.ramp || HEAT_RAMP);
-      const t = o.t || 0, heat = o.heat ?? 1, nz = o.noise ?? .14;
+      const t = o.t || 0, heat = o.heat ?? 1, nz = o.noise ?? .08;
       const [hx, hy, hr] = o.hotspot || [0, 0, 0], sxs = 1440 / W * q, sys = 1080 / H * q;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const i = y * w + x; let v = base[i];

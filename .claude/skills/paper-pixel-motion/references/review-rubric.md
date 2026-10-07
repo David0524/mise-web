@@ -26,9 +26,9 @@ wording unless it breaks the type rules.
 
 | Technique | Must look like |
 |---|---|
-| Sentence type | Tiny (about 2.3 % of H), Medium, on the vertical centre line, left at about 4 % W, lower-case, word by word, newest word greyer |
-| Hero word | About 25–30 % of H, Bold, tight tracking, dashed guides edge to edge, on a flash card or paper |
-| Card word | About 4 % of H, SemiBold, white, trailing period, thin blinking bar cursor about 2.5 em to the right, hero object on the left |
+| Sentence type | x-height about 2.4 % of H (a font size of about 52 px at 1080), Medium, on the vertical centre line, left at about 4 % W, lower-case, word by word, newest word greyer |
+| Hero word | Font size about 350 px at 1080, Bold, tight tracking, dashed guides edge to edge, on a flash card or paper |
+| Card word | Font size about 80 px at 1080, SemiBold, white, trailing period, thin blinking bar cursor about 2.5 em to the right, hero object on the left |
 | Scribble | Thin pen line with a pressure taper, choppy (on twos), writes on in 4–8 frames, related to a word (under, around) |
 | Brush smear | Soft grey wide body plus a dark thin core, sweeping, gone within about 6 frames |
 | Spray blot | Dense core plus speckled spray edge (not a clean circle). It turns the object it hits into a black silhouette |

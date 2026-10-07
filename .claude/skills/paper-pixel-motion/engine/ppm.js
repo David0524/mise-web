@@ -321,7 +321,7 @@
       streaks(n, seed, f, o = {}) {
         const r = rng(seed + stepped(f, 1) * 3);
         ctx.save(); ctx.fillStyle = o.color || C.red;
-        for (let i = 0; i < n; i++) { const y = r() * H, x = r() * W, l = r.range(50, 320) * U, h = r.range(1.2, 3) * U; ctx.globalAlpha = r.range(.25, .7); ctx.fillRect(x, y, l, h); }
+        for (let i = 0; i < n; i++) { const y = r() * H, x = r() * W, l = r.range(200, 420) * U, h = r.range(2, 3.2) * U; ctx.globalAlpha = o.alpha ?? r.range(.25, .7); ctx.fillRect(x, y, l, h); }
         ctx.restore();
       },
 
@@ -382,7 +382,7 @@
           const n = Math.floor(w * h * .02 * dens);
           for (let i = 0; i < n; i++) { const px = r() * w, py = r() * h, d = Math.hypot((px - w / 2) / (w / 2), (py - h / 2) / (h / 2)); x2.fillStyle = r() < d * .9 ? cols[1] : cols[0]; const s = (r() < .5 ? 2 : 3) * U; x2.fillRect(px, py, s, s); }
           x2.restore();
-          if (o.rim) { x2.save(); x2.shadowColor = o.rim; x2.shadowBlur = 25 * U; x2.strokeStyle = o.rim; x2.lineWidth = 6 * U; const k2 = g.__swap(x2); g.starPath(w / 2, h / 2, w / 2 - 3, h / 2 - 3, 0, o.k || 1); g.__swap(k2); x2.stroke(); x2.restore(); }
+          if (o.rim) { x2.save(); x2.shadowColor = o.rim; x2.shadowBlur = (o.rimBlur || 25) * U; x2.strokeStyle = o.rim; x2.lineWidth = 6 * U; for (let q = 0; q < 2; q++) { const k3 = g.__swap(x2); g.starPath(w / 2, h / 2, w / 2 - 3, h / 2 - 3, 0, o.k || 1); g.__swap(k3); x2.stroke(); } const k2 = g.__swap(x2); g.starPath(w / 2, h / 2, w / 2 - 3, h / 2 - 3, 0, o.k || 1); g.__swap(k2); x2.stroke(); x2.restore(); }
           film._cache[key] = tile;
         }
         ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha *= o.alpha ?? 1; ctx.drawImage(tile, -w / 2, -h / 2); ctx.restore();
@@ -415,15 +415,15 @@
        * heat 0..1 (0 = blurred dull red entry, 1 = full hot gradient), blur extra px.
        */
       thermal(shapeFn, o = {}) {
-        const sc = .25, w = Math.ceil(W * sc), h = Math.ceil(H * sc), key = 'th_' + (o.key || 'x') + '_' + (o.frameKey ?? '');
+        const sc = .5, w = Math.ceil(W * sc), h = Math.ceil(H * sc), key = 'th_' + (o.key || 'x') + '_' + (o.frameKey ?? '');
         let out = film._cache[key];
         if (!out) {
           const m = mk(w, h), mx = m.getContext('2d'); mx.scale(sc * W / 1440, sc * H / 1080); mx.fillStyle = '#fff'; shapeFn(mx);
-          const b = mk(w, h), bx = b.getContext('2d'); bx.filter = `blur(${(o.core || 110) * sc}px)`; bx.drawImage(m, 0, 0);
+          const b = mk(w, h), bx = b.getContext('2d'); bx.filter = `blur(${(o.core || 60) * sc}px)`; bx.drawImage(m, 0, 0);
           const md = mx.getImageData(0, 0, w, h).data, bd = bx.getImageData(0, 0, w, h), d = bd.data;
           const lut = thermalLUT(o.palette);
           for (let i = 0; i < d.length; i += 4) {
-            const inside = md[i + 3] / 255, v = clamp(((d[i + 3] / 255) - .45) / .5 + (o.bias || 0)), j = Math.floor(Math.pow(v, 1.15) * 255) * 3;
+            const inside = md[i + 3] / 255, v = clamp(((d[i + 3] / 255) - .55) / .45 + (o.bias || 0)), j = Math.floor(Math.pow(v, 1.15) * 255) * 3;
             d[i] = lut[j]; d[i + 1] = lut[j + 1]; d[i + 2] = lut[j + 2]; d[i + 3] = inside * 255;
           }
           bx.filter = 'none'; bx.putImageData(bd, 0, 0); out = b; film._cache[key] = out;
@@ -431,8 +431,8 @@
         const heat = o.heat ?? 1;
         ctx.save(); ctx.imageSmoothingEnabled = true;
         // outer halation
-        ctx.filter = `blur(${(30 + (1 - heat) * 30) * U}px)`; ctx.globalAlpha *= .55; ctx.drawImage(out, 0, 0, W, H); ctx.globalAlpha /= .55;
-        ctx.filter = `blur(${(1.5 + (o.blur || 0) + (1 - heat) * 26) * U}px)` + (heat < 1 ? ` hue-rotate(${-(1 - heat) * 25}deg) saturate(${1 + (1 - heat)})` : '');
+        ctx.filter = `blur(${(18 + (1 - heat) * 30) * U}px)`; ctx.globalAlpha *= .3; ctx.drawImage(out, 0, 0, W, H); ctx.globalAlpha /= .3;
+        ctx.filter = `blur(${(.5 + (o.blur || 0) + (1 - heat) * 26) * U}px)` + (heat < 1 ? ` hue-rotate(${-(1 - heat) * 25}deg) saturate(${1 + (1 - heat)})` : '');
         ctx.globalAlpha *= o.alpha ?? 1; ctx.drawImage(out, 0, 0, W, H);
         ctx.restore();
       },
@@ -548,9 +548,10 @@
         out.filter = 'none';
         if (T.halation && !paper) { out.save(); out.globalCompositeOperation = 'screen'; out.globalAlpha = .28; out.filter = `blur(${10 * h / 1080}px)`; out.drawImage(scene, 0, 0); out.restore(); }
         if (T.vignette) {
-          const vg = out.createRadialGradient(w * .5, h * .48, 0, w * .5, h * .5, h * 1.0);
-          if (paper) { [[0, 0], [.35, .03], [.55, .1], [.75, .24], [1, .42]].forEach(([k, a]) => vg.addColorStop(k, `rgba(40,36,38,${a * (T.vignetteAmount ?? 1)})`)); }
-          else { vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${.45 * (T.vignetteAmount ?? 1)})`); }
+          const vg = out.createRadialGradient(w * .5 - 120 * h / 1080, h * .5 - 80 * h / 1080, 0, w * .5 - 120 * h / 1080, h * .5 - 80 * h / 1080, h * 1.08);
+          const va = (s.o.vignette ?? 1) * (T.vignetteAmount ?? 1);
+          if (paper) { [[0, 0], [.35, .03], [.55, .1], [.75, .24], [1, .42]].forEach(([k, a]) => vg.addColorStop(k, `rgba(40,36,38,${a * va})`)); }
+          else { vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${.45 * va})`); }
           out.fillStyle = vg; out.fillRect(0, 0, w, h);
         }
         if (T.grain) {
@@ -604,15 +605,29 @@
     /** Generic open hand reaching up from the bottom edge, fingers splayed. */
     hand(cx = 760, wristY = 1080, s = 1, spread = 1) {
       return (c) => {
-        c.save(); c.translate(cx, wristY); c.scale(s, s); c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = '#fff';
-        // forearm + palm
-        c.beginPath(); c.moveTo(-95, 60); c.lineTo(-80, -260); c.bezierCurveTo(-90, -360, -40, -420, 30, -430); c.bezierCurveTo(110, -420, 130, -360, 115, -270); c.lineTo(95, 60); c.closePath(); c.fill();
-        const finger = (bx, by, ang, len, wid) => { c.lineWidth = wid; c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + Math.cos(ang) * len * .5 + 10, by + Math.sin(ang) * len * .5, bx + Math.cos(ang) * len, by + Math.sin(ang) * len); c.stroke(); };
-        finger(-60, -330, -2.35 * spread - .2 * (1 - spread), 230, 54); // thumb, out to the left
-        finger(-20, -420, -1.9, 260, 48);
-        finger(30, -430, -1.62, 290, 48);
-        finger(80, -410, -1.28, 270, 46);
-        finger(110, -350, -0.95, 200, 40);
+        c.save(); c.translate(cx, wristY); c.scale(s, s);
+        // finger: tapered capsule from base (bx,by) along angle, with a slight knuckle bend
+        const finger = (bx, by, ang, len, w0, w1, bend = .12) => {
+          const segs = 3, pts = []; let x = bx, y = by, a = ang;
+          for (let i = 0; i <= segs; i++) { pts.push([x, y, lerp(w0, w1, i / segs)]); if (i < segs) { x += Math.cos(a) * len / segs; y += Math.sin(a) * len / segs; a += bend * (i === 0 ? .4 : 1); } }
+          for (let i = 0; i < segs; i++) {
+            const [x0, y0, r0] = pts[i], [x1, y1, r1] = pts[i + 1], an = Math.atan2(y1 - y0, x1 - x0), nx = -Math.sin(an), ny = Math.cos(an);
+            c.beginPath(); c.moveTo(x0 + nx * r0 / 2, y0 + ny * r0 / 2); c.lineTo(x1 + nx * r1 / 2, y1 + ny * r1 / 2); c.lineTo(x1 - nx * r1 / 2, y1 - ny * r1 / 2); c.lineTo(x0 - nx * r0 / 2, y0 - ny * r0 / 2); c.closePath(); c.fill();
+            c.beginPath(); c.arc(x1, y1, r1 / 2 * 1.04, 0, 7); c.fill();          // knuckle joint
+          }
+          c.beginPath(); c.arc(bx, by, w0 / 2, 0, 7); c.fill();
+        };
+        // forearm → wrist → palm
+        c.beginPath(); c.moveTo(-105, 80); c.bezierCurveTo(-100, -80, -92, -170, -88, -240);
+        c.bezierCurveTo(-120, -300, -112, -380, -70, -430); c.lineTo(110, -440); c.bezierCurveTo(140, -380, 128, -300, 98, -240);
+        c.bezierCurveTo(100, -170, 104, -80, 112, 80); c.closePath(); c.fill();
+        finger(-58, -428, -1.98, 250, 50, 34, .06);        // index
+        finger(4, -446, -1.66, 285, 52, 35, .02);          // middle
+        finger(62, -436, -1.36, 262, 49, 33, -.03);        // ring
+        finger(104, -404, -1.02 - .1 * (spread - 1), 200, 42, 29, -.05); // little
+        // thumb with a web: wide base off the palm side, out and up
+        c.beginPath(); c.moveTo(-96, -250); c.quadraticCurveTo(-170, -290, -205, -360); c.lineTo(-160, -390); c.quadraticCurveTo(-120, -340, -70, -330); c.closePath(); c.fill();
+        finger(-180, -372, -2.35 * spread, 150, 48, 34, .15);
         c.restore();
       };
     },

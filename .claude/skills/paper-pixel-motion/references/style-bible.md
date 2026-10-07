@@ -63,13 +63,13 @@ hues allowed. **Rule:** paper scenes are monochrome plus sprites, void scenes ar
 - **Face:** a geometric sans with a **single-storey "a"**, round o, tight spacing. Medium or SemiBold.
   Bundled: **Outfit**. Near-equivalents: Poppins, Urbanist, Gilroy, Euclid Circular, Lexend.
 - **Size contrast is the hook:**
-  - *Hero word*: huge (about 25–30 % of the frame height), Bold, tight tracking (−4 %), with dashed horizontal guide lines
+  - *Hero word*: huge (font size about 32 % of the frame height, ≈350 px at 1080; glyphs ≈ 24 % tall), Bold, tight tracking (−4 %), with dashed horizontal guide lines
     at the baseline and the x-height or cap height, running edge to edge.
-  - *Sentence*: tiny (about 2.3 % of the frame height, roughly 25 px at 1080), Medium, **one line across the vertical centre**,
+  - *Sentence*: small (**x-height** about 2.4 % of the frame height, i.e. a font size of about 52 px at 1080), Medium, **one line across the vertical centre**,
     left-aligned at about 4 % from the left edge. It can run nearly the full width.
-  - *Card word*: medium-small (about 4 % of the frame height), Bold, white on void, with a trailing period ("word.") and
+  - *Card word*: medium (x-height about 3.7 % of H, a font size of about 80 px at 1080), Bold, white on void, with a trailing period ("word.") and
     a **thin vertical text-cursor bar** after it, separated by a gap of about 2.5 em.
-  - *Spaced letters*: capital letters spread across the frame with large gaps, one appearing per beat. The empty
+  - *Spaced letters*: capitals (cap height about 4.4 % of H, a font size of about 64 px) spread across the frame with large gaps, one appearing per beat. The empty
     slots get filled by **objects** that act as letters.
 - **Lower case** for all speech. Punctuation is minimal, apostrophes are optional, the period is kept. Capitals only for spaced letters.
 - **Reveal grammar:**

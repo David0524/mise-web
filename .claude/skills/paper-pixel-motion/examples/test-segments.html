@@ -11,6 +11,7 @@
 <body><canvas></canvas>
 <script src="../engine/ppm.js"></script>
 <script src="../engine/sprites.js"></script>
+<script src="../engine/flow.js"></script>
 <script>
 /* Test reel: one shot (or cluster) per technique in the style bible, original copy (a cooking theme). */
 const film = PPM.film(document.querySelector('canvas'), { w: 1440, h: 1080, fps: 24 });
@@ -20,36 +21,36 @@ const ITEMS = ['mug', 'vinyl', 'book', 'camera', 'cat', 'coin', 'controller', 'c
 
 // ── 1. cold open: flash card hero word ──
 film.shot(4 / 24, 'yellow', (g) => {
-  g.text('how', 720, 520, { size: 290, weight: 700, color: C.ink, align: 'center', track: -.04, baseline: 'alphabetic' });
+  g.text('how', 720, 560, { size: 350, weight: 700, color: C.ink, align: 'center', track: -.04, baseline: 'alphabetic' });
   g.guides([110, 1000], { offset: 0 });
-});
+}, { vignette: .25 });
 // ── 2. scribbled hero → clean hero + guides → block wipe ──
 film.shot(8 / 24, 'paper', (g, s) => {
-  if (s.f < 3) { g.sketchText('how', 720, 600, 300, s.F, { passes: 10 }); return; }
+  if (s.f < 3) { g.sketchText('how', 720, 620, 350, s.F, { passes: 10 }); return; }
   const x = 720 - (s.f - 3) * 30;
-  g.text('how', x, 560, { size: 300, weight: 700, align: 'center', track: -.04, baseline: 'alphabetic' });
-  g.guides([565], { x0: 0, x1: 1440, alpha: .8 });
+  g.text('how', x, 580, { size: 350, weight: 700, align: 'center', track: -.04, baseline: 'alphabetic' });
+  g.guides([585], { x0: 0, x1: 1440, alpha: .8 });
   g.stroke([[x + 160, 600], [x + 150, 650], [x + 500, 640], [x + 760, 620]], (s.f - 2) / 4, { width: 2.6 });
   g.blockWipe(x + 200, 330, 1300, 260, (s.f - 3) / 3);
 });
 // ── 3. focus pull of the smeared sentence bar + cursor dashes ──
 film.shot(6 / 24, 'paper', (g, s) => {
   const b = (1 - g.ease.out(s.p)) * 9;
-  g.layer({ blur: b }, () => g.words(Q.slice(0, 4), [0, 0, 0, 0], 1, 90, 540, { size: 27 }));
+  g.layer({ blur: b }, () => g.words(Q.slice(0, 4), [0, 0, 0, 0], 1, 90, 540, { size: 52 }));
   g.layer({ blur: 1.5 }, () => { for (let i = 0; i < 4; i++) g.ctx.fillRect(700, 470 + i * 34, 16, 10); });
 });
 // ── 4. selection box + scribble signature + brush smear ──
 film.shot(6 / 24, 'paper', (g, s) => {
-  const r = g.words(Q.slice(0, 4), [0, 0, 0, 0], 1, 630, 540, { size: 27 });
-  g.selectBox(615, 506, r.w + 32, 66);
+  const r = g.words(Q.slice(0, 4), [0, 0, 0, 0], 1, 630, 540, { size: 52 });
+  g.selectBox(600, 478, r.w + 60, 125);
   g.stroke(g.scribblePath('signature', 750, 650, 260, 70, 4), (s.f + 1) / 6, { width: 2.4 });
   g.stroke([[640, 300], [650, 1080]], 1, { width: 2, blur: 1.2 });
-  g.brushSmear([[1150, 120], [900, 230], [700, 260], [1200, 320], [1440, 260]], (s.f + 3) / 6, { p0: Math.max(0, (s.f - 2) / 6) });
+  if (s.f >= 2) g.brushSmear([[1150, 120], [900, 230], [700, 260], [1200, 320], [1440, 260]], (s.f + 1) / 6, { p0: Math.max(0, (s.f - 4) / 6) });
 });
 // ── 5. sentence builds word by word, scribbles writing under it ──
 film.shot(26 / 24, 'paper', (g, s) => {
   const times = Q.map((_, i) => 0.0 + i * 0.12);
-  const r = g.words(Q, times, s.t, 40, 540, { size: 27 });
+  const r = g.words(Q, times, s.t, 40, 540, { size: 52 });
   const k = Math.min(Q.length - 1, Math.floor(s.t / .12));
   const anchor = r.positions[k];
   g.stroke(g.scribblePath(['zigzag', 'signature', 'hook'][k % 3], anchor.x + 20, 600, 120, 120, k + 1), ((s.t % .36) / .24), { width: 2.5 });
@@ -58,26 +59,26 @@ film.shot(26 / 24, 'paper', (g, s) => {
 // ── 6. smear whip into the flare ──
 film.shot(4 / 24, 'paper', (g, s) => {
   g.layer({ blur: 7 }, () => {
-    g.motionBlur(140, 40, () => { g.words(Q, Q.map(() => 0), 1, 20, 540, { size: 27 }); ['mug', 'book', 'coin', 'camera'].forEach((n, i) => g.sprite(n, 600 + i * 120, 330 + (i % 2) * 300, 70, { rot: .5 })); }, 6);
+    g.motionBlur(140, 40, () => { g.words(Q, Q.map(() => 0), 1, 20, 540, { size: 52 }); ['mug', 'book', 'coin', 'camera'].forEach((n, i) => g.sprite(n, 600 + i * 120, 330 + (i % 2) * 300, 70, { rot: .5 })); }, 6);
     for (let i = 0; i < 7; i++) g.ctx.fillRect(100 + i * 180, 200 + (i * 97) % 700, 260, 6);
   });
 });
 // ── 7. huge cyan dithered flare + floating sprites + light pool + white highlight ──
 film.shot(38 / 24, 'paper', (g, s) => {
   const pool = g.ease.inOut((s.t - .6) / 1.0);
-  g.ditherStar(-40, 540, 520, 720, .05 + s.t * .03, s.F, { colors: ['#2E5BFF', '#32B9E1'], density: .8, base: .9, rim: '#45E0F0', k: 1.25 });
+  g.ditherStar(-40, 540, 700, 900, .05 + s.t * .03, s.F, { colors: ['#2E5BFF', '#32B9E1'], density: .8, base: .9, rim: '#45E0F0', rimBlur: 50, k: 1.25 });
   [['mug', 900, 310], ['clapper', 1180, 300], ['coin', 1090, 640], ['camera', 1260, 830]].forEach(([n, x, y], i) =>
     g.sprite(n, x + Math.sin(s.t * 2 + i) * 6, y + Math.cos(s.t * 1.7 + i) * 5, 54, { rot: Math.sin(s.t + i) * .35 }));
   if (pool > 0) g.lightPool(1040 + pool * 80, 560, 620 - pool * 160, 520 - pool * 120, .2 + pool * .75);
   const hi = s.t > 1.1 ? { 2: C.white } : null;
-  g.words(Q, Q.map(() => 0), 1, 40, 540, { size: 27, highlight: hi });
+  g.words(Q, Q.map(() => 0), 1, 40, 540, { size: 52, highlight: hi });
   g.stroke(g.scribblePath('hook', 520, 900, 40, 60, 9), 1, { width: 2.4 });
 });
 // ── 8. red glow dissolve ──
 film.shot(6 / 24, 'void', (g, s) => {
   g.glow(800 - s.p * 120, 560, 420, '#E52A1F', 1);
   g.ditherStar(700, 560, 700, 260, 0, s.F, { colors: ['#6a0d0b', '#C41E14'], density: .5, base: .7 });
-  g.words(Q.slice(0, 5), [0, 0, 0, 0, 0], 1, 40, 540, { size: 27, highlight: { 2: C.white } });
+  g.words(Q.slice(0, 5), [0, 0, 0, 0, 0], 1, 40, 540, { size: 52, highlight: { 2: C.white } });
 });
 // ── 9. thermal profile + answer words + orbit ring → exposure wash → olive cut-out ──
 const head = PPM.SHAPES.profile(1000, 190, 1.05);
@@ -85,28 +86,27 @@ film.shot(56 / 24, 'void', (g, s) => {
   const heat = g.ease.out(s.t / .35), wash = g.clamp((s.t - 1.85) / .35);
   const ringP = g.clamp((s.t - .55) / .6);
   if (ringP > 0 && ringP < 1) g.orbit(1010, 420, 330, 110, -.55, ringP, 'back');
-  g.thermal(head, { key: 'head', heat, blur: 0 });
+  g.layer({ blur: (1 - heat) * 26 }, () => g.heat(head, { key: 'head', t: s.T, heat, hotspot: [1080, 640, 160] }));
   if (ringP > 0 && ringP < 1) g.orbit(1010, 420, 330, 110, -.55, ringP, 'front');
   const ans = s.t < 1.1 ? ['you', "can't."] : ['you', 'just', 'cook', 'it.'];
   const tt = s.t < 1.1 ? [.1, .3] : [1.1, 1.35, 1.55, 1.75];
-  g.words(ans, tt, s.t, 130, 540, { size: 27, color: C.white, settle: .08 });
-  if (s.t > .3 && s.t < 1.1) g.cursor(130 + g.measure("you can't.", 27, 500) + 60, 540, 27, s.t, 'bar');
+  g.words(ans, tt, s.t, 130, 540, { size: 52, color: C.white, settle: .08 });
+  if (s.t > .3 && s.t < 1.1) g.cursor(130 + g.measure("you can't.", 52, 500) + 90, 540, 52, s.t, 'bar');
   if (wash > 0) { g.ctx.fillStyle = `rgba(110,92,92,${wash * .75})`; g.ctx.fillRect(0, 0, 1440, 1080); }
   if (wash > .6) g.cutout(head);
-  if (wash > .6) g.words(ans, [0, 0, 0, 0], 1, 130, 540, { size: 27, color: '#4a4040' });
+  if (wash > .6) g.words(ans, [0, 0, 0, 0], 1, 130, 540, { size: 52, color: '#4a4040' });
 });
 // ── 10. carousel of objects + spray blot strikes + splatter hit ──
 film.shot(46 / 24, 'paper', (g, s) => {
   const rot = s.t * .35, sil = new Set();
   const hits = [[.55, 2], [1.15, 9]];
-  g.carousel(ITEMS, 720, 540, 470, 300, rot, { size: 150, per: (i) => ({ opts: { silhouette: hits.some(([t, j]) => j === i && s.t > t + .12) ? 1 : 0 } }) });
+  g.carousel(ITEMS, 720, 540, 400, 260, rot, { size: 250, back: .8, front: 1.3, per: (i) => ({ opts: { silhouette: hits.some(([t, j]) => j === i && s.t > t + .12) ? 1 : 0 } }) });
   hits.forEach(([t, j], k) => {
-    const a = rot + (j / ITEMS.length) * Math.PI * 2, x = 720 + Math.cos(a) * 470, y = 540 + Math.sin(a) * 300, lp = (s.t - t) / .18;
+    const a = rot + (j / ITEMS.length) * Math.PI * 2, x = 720 + Math.cos(a) * 400, y = 540 + Math.sin(a) * 260, lp = (s.t - t) / .18;
     if (lp > -1 && lp < 0) g.brushSmear([[x - 180, y - 260], [x - 60, y - 120], [x, y]], 1 + lp, { width: 30, core: 6 });
     if (lp >= 0 && lp < 1.4) g.sprayBlot(x, y, 70, Math.min(1, lp), 30 + k);
     if (lp >= .3 && lp < .55) g.splatter(x, y, 120, 4 + k);
   });
-  g.sprayBlot(940, 140, 34, 1, 8, { sx: 1.6 });
   g.flecks(5, 31, s.f);
 });
 // ── 11. hero object + "value." card + red sparkle (blur-in, fly-through) ──
@@ -115,19 +115,19 @@ const card = (word, sprite, extra) => (g, s) => {
   g.ditherStar(1020, 520, 380, 520, 0, s.F, { colors: ['#2a0c0e', '#8a1a1a'], density: .3, base: .5, alpha: 1 - inK * .8 });
   extra && extra(g, s);
   const fly = g.clamp((s.t - .6) / .25), sc = 1 + g.ease.in(fly) * 2.2;
-  g.layer({ blur: (1 - inK) * 10 + fly * 4 }, () => g.sprite(sprite, 430 - fly * 120, 520 + fly * 120, 220 * sc, { rot: -.12 - fly * .5, squash: fly * .3 }));
-  g.sparkle(470 + fly * 40, 470 - fly * 60, 90 * g.ease.back(s.t / .2) * (1 + fly), { rot: .3 + s.t * .3, ax: 1.2, ay: .8, k: 1.2 });
-  const tw = g.text(word, 880, 520, { size: 44, weight: 600, color: C.white, glow: 'rgba(255,240,230,.4)' });
-  g.cursor(880 + tw + 56, 520, 44, s.t, s.t < .15 ? 'block' : 'bar');
-  if (s.t < .1) g.ctx.fillStyle = C.white, g.ctx.fillRect(880 + tw * .7, 494, tw * .5, 52);
+  g.layer({ blur: (1 - inK) * 10 + fly * 4 }, () => g.sprite(sprite, 400 - fly * 120, 520 + fly * 120, 380 * sc, { rot: -.12 - fly * .5, squash: fly * .3 }));
+  g.sparkle(400 + 380 * .42 * sc, 520 - 380 * .42 * sc, 110 * g.ease.back(s.t / .2) * (1 + fly), { rot: .3 + s.t * .3, ax: 1.2, ay: .8, k: 1.9, glow: 22 });
+  const tw = g.text(word, 820, 520, { size: 80, weight: 600, color: C.white, glow: 'rgba(255,240,230,.4)' });
+  g.cursor(820 + tw + 90, 520, 80, s.t, s.t < .15 ? 'block' : 'bar');
+  if (s.t < .1) g.ctx.fillStyle = C.white, g.ctx.fillRect(820 + tw * .7, 474, tw * .5, 92);
 };
 film.shot(20 / 24, 'void', card('patience.', 'mug'));
 // ── 12. conveyor with speed streaks ──
 const conveyor = (seed) => (g, s) => {
   const off = s.t * 1400;
   ['heart', 'cap', 'controller', 'coin', 'cat', 'camera', 'book', 'vinyl', 'plant', 'cash'].forEach((n, i) =>
-    g.motionBlur(-26, 0, () => g.sprite(n, 1500 - off + i * 230 - seed * 300, 540, 250, { rot: (i % 2 ? .04 : -.04) }), 5));
-  g.streaks(6, seed, s.f);
+    g.motionBlur(-26, 0, () => g.sprite(n, 1100 - off + i * 200 - seed * 300, 540, 330, { rot: (i % 2 ? .04 : -.04) }), 5));
+  g.streaks(10, seed, s.f, { alpha: 1 });
 };
 film.shot(10 / 24, 'paper', conveyor(1));
 // ── 13. beam card ──
@@ -150,7 +150,7 @@ film.shot(44 / 24, 'paper', (g, s) => {
     const a = .4 + (i / ITEMS.length) * Math.PI * 2, x0 = 720 + Math.cos(a) * 470, y0 = 540 + Math.sin(a) * 300;
     const x1 = r.range(120, 1320), y1 = r.range(120, 960), x = g.lerp(x0, x1, k), y = g.lerp(y0, y1, k);
     const sil = (i % 3 === 0) ? g.clamp((s.t - 1 - i * .02) / .15) : 0;
-    g.sprite(n, x, y, g.lerp(150, 80, k), { rot: g.lerp(0, r.range(-.6, .6), k) + Math.sin(s.t + i) * .05, silhouette: sil });
+    g.sprite(n, x, y, g.lerp(150, 130, k), { rot: g.lerp(0, r.range(-.6, .6), k) + Math.sin(s.t + i) * .05, silhouette: sil });
     if (sil > 0 && sil < 1) g.sprayBlot(x, y, 60, sil * 1.2, i);
   });
   if (s.t > .3 && s.t < .9) { const p = (s.t - .3) / .6; g.brushSmear([[200, 300], [380, 200], [300, 420], [520, 520], [700, 380]], p * 1.4, { p0: Math.max(0, p - .3), width: 30, core: 5 }); }
@@ -158,12 +158,13 @@ film.shot(44 / 24, 'paper', (g, s) => {
   g.flecks(8, 51, s.f);
 });
 // ── 16. thermal hand + words both sides ──
+const handShape = PPM.SHAPES.hand(760, 1130, 1.05, .95);
 film.shot(48 / 24, 'void', (g, s) => {
-  const rise = g.ease.out(s.t / .4), spread = .9 + Math.sin(s.t * 1.4) * .08;
-  g.thermal(PPM.SHAPES.hand(760, 1120 + (1 - rise) * 260, 1.05, spread), { key: 'hand', frameKey: Math.round(s.t * 6), heat: g.ease.out(s.t / .5), bias: .05 });
-  g.words(['with', 'your'], [.25, .4], s.t, 420, 520, { size: 27, color: C.white });
-  g.words(['own', 'two', 'hands'], [.7, .95, 1.2], s.t, 930, 520, { size: 27, color: C.white });
-  if (s.t > .7 && s.t < 1.3) g.cursor(1170, 520, 27, s.t, 'block');
+  const rise = g.ease.out(s.t / .4), hh = g.ease.out(s.t / .5);
+  g.layer({ blur: (1 - hh) * 22 }, () => g.heat(handShape, { key: 'hand', t: s.T, heat: hh, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: [760, 900, 150] }));
+  g.words(['with', 'your'], [.25, .4], s.t, 420, 520, { size: 52, color: C.white });
+  g.words(['own', 'two', 'hands'], [.7, .95, 1.2], s.t, 930, 520, { size: 52, color: C.white });
+  if (s.t > .7 && s.t < 1.3) g.cursor(1250, 520, 52, s.t, 'block');
   for (let i = 0; i < 4; i++) { const y = (300 + i * 90 - s.t * 260 * (1 + i * .2)) % 700 + 120; g.stroke([[640 + i * 60, y], [636 + i * 60, y + 18]], 1, { color: '#e8e2da', width: 2 }); }
   if (s.t > 1.7) { g.ctx.fillStyle = `rgba(120,100,100,${(s.t - 1.7) / .3 * .7})`; g.ctx.fillRect(0, 0, 1440, 1080); }
 });
@@ -172,9 +173,10 @@ const letters = ['M', 'I', 'S', 'E'], lx = [90, 470, 850, 1230];
 const slot = ['heart', 'camera', 'book', 'vinyl'], worlds = ['paper', 'void', 'red', 'void'];
 letters.forEach((_, k) => film.shot(6 / 24, worlds[k], (g, s) => {
   const ink = worlds[k] === 'paper' ? C.ink : C.white;
-  for (let j = 0; j <= k; j++) g.text(letters[j], lx[j], 540, { size: 34, weight: 600, color: (k === 2 && j === 1) ? C.teal : ink });
-  if (worlds[k] === 'void') g.glow(lx[k] + 200, 540, 190, '#C41E14', .9);
-  g.sprite(slot[k], lx[k] + 200, 540, k === 2 ? 60 : 170, { rot: k === 3 ? 0 : -.05, squash: k === 3 ? (1 - s.p) * .7 : 0 });
+  for (let j = 0; j <= k; j++) g.text(letters[j], lx[j], 540, { size: 64, weight: 600, color: (k === 2 && j === 1) ? C.teal : ink });
+  const sx = k < 3 ? (lx[k] + lx[k + 1]) / 2 : (lx[1] + lx[2]) / 2;
+  if (worlds[k] === 'void') g.glow(sx, 540, 230, '#C41E14', .9);
+  g.sprite(slot[k], sx, 540, k === 2 ? 110 : 220, { rot: k === 3 ? 0 : -.05, squash: k === 3 ? (1 - s.p) * .7 : 0 });
 }));
 // ── 18. brush smears → scattered rotated letters with red loops → converge into an ink knot ──
 film.shot(76 / 24, 'paper', (g, s) => {
@@ -188,11 +190,14 @@ film.shot(76 / 24, 'paper', (g, s) => {
   L.forEach((l, i) => {
     const drift = Math.sin(s.t * .9 + i) * 20, settle = g.ease.out(g.clamp((s.t - .3) / 1.2));
     const x = g.lerp(l.x + drift, 720 + (i - 1.5) * 40, conv), y = g.lerp(l.y, 540, conv), a = g.lerp(l.a * (1 - settle * .8), 0, conv);
-    g.layer({ x, y, rot: a, scale: 1 + conv * 3 }, () => g.text(l.ch, 0, 0, { size: 30, weight: 600, align: 'center' }));
+    g.layer({ x, y, rot: a, scale: 1 + conv * 1.5, alpha: 1 - g.clamp((conv - .6) / .4) }, () => g.text(l.ch, 0, 0, { size: 56, weight: 600, align: 'center' }));
     if (s.t > 1.4) g.redLoops(x, y, 40 + conv * 80, s.f, i + 1, { loops: s.t > 2 ? 2 : 1 });
   });
   const dots = r; for (let i = 0; i < 4; i++) { const dx = dots.range(150, 1300), dy = dots.range(150, 950); g.ctx.fillStyle = C.ink; g.ctx.beginPath(); g.ctx.arc(dx, dy, 4, 0, 7); g.ctx.fill(); }
-  if (conv > .7) g.stroke([[600, 500], [640, 430], [700, 480], [680, 600], [760, 610], [820, 470], [840, 430]], 1, { width: 10 });
+  if (conv > .5) { // heavy ink knot the letters collapse into, boiling on twos
+    const kr = PPM.rng(90 + g.stepped(s.f, 2)), grow = g.clamp((conv - .5) / .5);
+    for (let j = 0; j < 4; j++) { const pts = []; for (let q = 0; q < 6; q++) pts.push([720 + kr.range(-80, 80), 540 + kr.range(-70, 70)]); g.stroke(pts, grow, { width: g.lerp(10, 22, grow), taper: false }); }
+  }
 });
 
 window.film = film;
