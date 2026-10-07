@@ -29,6 +29,17 @@ katsu, nut allergy asking for peanut pad thai, microwave-only, zero heat,
 chat, dairy for a dairy-free profile, off-topic/prompt-dump attempts, five
 edits in a row, contradictory instructions).
 
+## Smoke test (no key, ~30 s)
+
+```
+BASE_URL=http://localhost:3000 node qa/smoke.js
+```
+
+One new person's whole path with the fake model: onboarding at `/start`,
+sign-up, paywall and `VIP26`, a planned week, shopping, a recipe, cook mode,
+one question to Mise, the new-week sheet. Fails on any page error or API 5xx.
+CI runs this on every push.
+
 ## Harness self-test (no key)
 
 ```

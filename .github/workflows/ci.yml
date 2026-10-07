@@ -1,0 +1,88 @@
+# Checks every push and pull request: build, unit tests, then the app started
+# for real against Postgres and driven end to end by qa/smoke.js with the fake
+# model (no AI key, no quota). Pushing to main still deploys on Vercel either
+# way; this is the signal to look at before merging.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mise
+          POSTGRES_PASSWORD: mise
+          POSTGRES_DB: mise
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mise"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Placeholders only: nothing here reaches a real service.
+      DATABASE_URL: postgres://mise:mise@localhost:5432/mise?sslmode=disable
+      SESSION_SECRET: ci-only-secret-0123456789abcdef0123
+      APP_URL: http://localhost:3000
+      AI_PROVIDER: gemini
+      GEMINI_API_KEY: not-used-the-smoke-test-fakes-the-model
+      NEXT_TELEMETRY_DISABLED: "1"
+      BASE_URL: http://localhost:3000
+      QA_OUT: qa/out
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No package-lock.json is committed, so `npm ci` can't run; install from
+      # package.json the way Vercel does.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
+      # The browser driver isn't an app dependency. Pin it to the version the
+      # QA scripts were written against, and install the Chromium it expects.
+      - name: Install browser for the smoke test
+        run: |
+          npm install --no-save --no-audit --no-fund playwright-core@1.63.0
+          npx playwright-core install --with-deps chromium
+          echo "CHROMIUM=$(node -p "require('playwright-core').chromium.executablePath()")" >> "$GITHUB_ENV"
+
+      - name: Start the app
+        run: |
+          mkdir -p qa/out
+          nohup npx next start -p 3000 > qa/out/server.log 2>&1 &
+          timeout 60 bash -c 'until curl -s -o /dev/null localhost:3000/api/health; do sleep 1; done'
+          curl -s localhost:3000/api/health
+
+      - name: End-to-end smoke test (fake model)
+        run: node qa/smoke.js
+
+      - name: Upload QA output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-out
+          path: qa/out/
+          if-no-files-found: ignore

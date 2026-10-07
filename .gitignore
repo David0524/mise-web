@@ -1,0 +1,14 @@
+node_modules
+.next/
+out/
+
+# Local secrets
+.env
+.env*.local
+
+# QA output and logs
+qa/out/
+*.log
+
+.DS_Store
+.vercel
