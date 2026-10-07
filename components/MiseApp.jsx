@@ -653,10 +653,15 @@ const EVERYDAY = {
   bake: "lasagna, baked ziti, chicken pot pie, meatloaf, tuna casserole",
 };
 
-function slotLine(sl, seed, level) {
+/* `keep` screens the everyday examples against the person's restrictions:
+   unscreened, a vegan's soup slot said "one of chicken noodle soup, beef
+   chili…", the model obliged, and the guard then threw those dishes away,
+   leaving two ideas for a four-night week. */
+function slotLine(sl, seed, level, keep = () => true) {
   const uses = sl.uses || [];
   const role = (sl.role || "known").toUpperCase();
-  const everyday = EVERYDAY[FORMATS.find((f) => f.name === sl.format)?.key];
+  const everyday = (EVERYDAY[FORMATS.find((f) => f.name === sl.format)?.key] || "")
+    .split(", ").filter(keep).join(", ");
   const anchor = everyday && sl.role === "classic" ? ` · a dish like ${everyday}`
     : everyday && sl.role === "twist" ? ` · one of ${everyday} or the like, with ONE twist from its cuisine (a sauce, spice or technique) named in the title` : "";
   if (sl.dish) {
@@ -3970,6 +3975,9 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
     const slots = Array.isArray(seed.slots) && seed.slots.length
       ? seed.slots : seed.formats.map((format) => ({ format, tradition: seed.tradition || "any" }));
     const level = levelOf(profile);
+    const exampleGuard = restrictionGuard(profile);
+    const exampleOk = allowedIngredient(profile);
+    const keepExample = (name) => exampleOk(name) && !(exampleGuard.active && exampleGuard.hits(name).length);
 
     /* The umami list is filtered against their restrictions BEFORE it reaches the
        prompt. Previously the doctrine named miso and soy as the standard fix for a
@@ -3997,7 +4005,7 @@ THIS WEEK'S DRAW — decided already, not up for negotiation:
 - HOW ADVENTUROUS THIS COOK IS: ${level} of 5. ${ADVENTURE_BRIEF[level - 1]}
 - DISH SLOTS, one dish per slot. Each slot fixes how the dish is cooked, how
   familiar it should be, and which shared ingredients it MUST use:
-${slots.map((sl, i) => `    ${i + 1}. ${slotLine(sl, seed, level)}`).join("\n")}
+${slots.map((sl, i) => `    ${i + 1}. ${slotLine(sl, seed, level, keepExample)}`).join("\n")}
   What the familiarity labels mean:
 ${[...new Set(slots.map((sl) => sl.role || "known"))].map((r) => `    ${r.toUpperCase()}: ${DISH_ROLES[r]}.`).join("\n")}
   Respect the NOT lists exactly: that is what stops five dishes turning into the
