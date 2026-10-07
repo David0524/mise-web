@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Render a paper-pixel-motion HTML film to PNG frames and (optionally) MP4.
 //
-//   node render.mjs <film.html> <outDir> [--from 0] [--to N] [--step 1] [--mp4 out.mp4] [--audio track.mp3] [--scale 1]
+//   node render.mjs <film.html> <outDir> [--from 0] [--to N] [--step 1] [--times 0.4,2.1] [--subframes 8] [--query fps=60]
+//                   [--mp4 out.mp4] [--audio track.mp3]
 //
 // The HTML must expose `window.film` (from PPM.film) and set `window.ready = true`
 // once fonts/images are loaded. Frames are deterministic, so any subset can be rendered.
@@ -28,13 +29,15 @@ const browser = await chromium.launch({ executablePath: exe, args: ['--allow-fil
 const page = await browser.newPage();
 page.on('console', m => { if (m.type() === 'error') console.error('[page]', m.text()); });
 page.on('pageerror', e => console.error('[pageerror]', e.message));
-await page.goto('file://' + path.resolve(html) + '?render=1');
+await page.goto('file://' + path.resolve(html) + '?render=1' + (flag('query') ? '&' + flag('query') : ''));
 await page.waitForFunction(() => window.ready === true && window.film, null, { timeout: 30000 });
 const total = await page.evaluate(() => window.film.frames);
 const from = +flag('from', 0), to = Math.min(+flag('to', total - 1), total - 1), step = +flag('step', 1);
 const fps = await page.evaluate(() => window.film.fps);
-console.log(`frames ${from}..${to} step ${step} of ${total} @ ${fps}fps`);
-for (let f = from; f <= to; f += step) {
+if (flag('subframes')) await page.evaluate((n) => { window.film.subframes = n; }, +flag('subframes'));
+const list = flag('times') ? flag('times').split(',').map(t => Math.round(+t * fps)) : null;
+console.log(list ? `stills at frames ${list}` : `frames ${from}..${to} step ${step} of ${total} @ ${fps}fps`);
+for (const f of list || Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, i) => from + i * step)) {
   const data = await page.evaluate((f) => { window.film.renderFrame(f); return document.querySelector('canvas').toDataURL('image/png'); }, f);
   fs.writeFileSync(path.join(outDir, `f${String(f).padStart(5, '0')}.png`), Buffer.from(data.split(',')[1], 'base64'));
 }

@@ -118,7 +118,7 @@
   function kit(film, ctx) {
     const W = film.w, H = film.h, U = H / 1080; // U = unit: 1 px at 1080p
     const g = {
-      C, W, H, U, ctx, ease, clamp, lerp, rng, noise1, stepped,
+      film, C, W, H, U, ctx, ease, clamp, lerp, rng, noise1, stepped,
 
       /** Fill the frame with a world colour. */
       bg(world = 'paper') { ctx.fillStyle = WORLD_BG[world] || world; ctx.fillRect(0, 0, W, H); },
@@ -146,7 +146,7 @@
       },
 
       // ─────────── type ───────────
-      font(size, weight = 500) { return `${weight} ${size * U}px ${FONT}`; },
+      font(size, weight = 500) { return `${weight} ${size * U}px ${film.font ? `"${film.font}", ` : ''}${FONT}`; },
       measure(str, size, weight = 500, track = 0) { ctx.save(); ctx.font = g.font(size, weight); const w = ctx.measureText(str).width + track * size * U * str.length; ctx.restore(); return w; },
       /** Draw text. size is in 1080p px. Returns width. */
       text(str, x, y, o = {}) {
@@ -455,8 +455,10 @@
         ctx.restore();
       },
     };
+    KIT_EXT.forEach(ext => ext(g, film));
     return g;
   }
+  const KIT_EXT = [];
 
   function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; }
   const LUTS = {};
@@ -485,38 +487,74 @@
   function film(canvas, opts = {}) {
     const w = opts.w || 1440, h = opts.h || 1080, fps = opts.fps || 24;
     canvas.width = w; canvas.height = h;
-    const out = canvas.getContext('2d'), scene = mk(w, h), sctx = scene.getContext('2d');
+    const out = canvas.getContext('2d'), scene = mk(w, h), sctx = scene.getContext('2d'), acc = mk(w, h), actx = acc.getContext('2d');
     const F = {
-      w, h, fps, shots: [], _cache: {}, treatment: Object.assign({ grain: true, vignette: true, flicker: true, weave: true, specks: true, halation: true }, opts.treatment || {}),
+      w, h, fps, shots: [], _cache: {}, subframes: opts.subframes || 1, font: opts.font || null,
+      // camera: float = handheld drift amplitude (1080p px), push = default scale gain across each shot
+      camera: Object.assign({ float: 0, rot: 0, push: 0 }, opts.camera || {}),
+      treatment: Object.assign({ grain: true, vignette: true, flicker: true, weave: true, specks: true, halation: true }, opts.treatment || {}),
+      /** o: { push, camera:false, blur:(s)=>px, paperTreatment } */
       shot(dur, world, draw, o = {}) { F.shots.push({ dur, world, draw, o, seed: F.shots.length * 7919 + 17 }); return F; },
       get duration() { return F.shots.reduce((a, s) => a + s.dur, 0); },
       get frames() { return Math.round(F.duration * fps); },
-      at(fr) { let t = fr / fps, acc = 0; for (const s of F.shots) { if (t < acc + s.dur - 1e-9) return { s, t: t - acc, start: acc }; acc += s.dur; } const s = F.shots[F.shots.length - 1]; return { s, t: s.dur - 1e-6, start: acc - s.dur }; },
-      renderFrame(fr) {
-        const { s, t, start } = F.at(fr), g = kit(F, sctx), T = F.treatment;
-        sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalAlpha = 1; sctx.filter = 'none'; sctx.globalCompositeOperation = 'source-over';
+      atTime(T) { let acc = 0; for (let i = 0; i < F.shots.length; i++) { const s = F.shots[i]; if (T < acc + s.dur - 1e-9) return { s, i, t: T - acc, start: acc }; acc += s.dur; } const i = F.shots.length - 1, s = F.shots[i]; return { s, i, t: s.dur - 1e-6, start: acc - s.dur }; },
+      at(fr) { return F.atTime(fr / fps); },
+      shotStart(i) { let a = 0; for (let k = 0; k < i; k++) a += F.shots[k].dur; return a; },
+      /** Draw shot i at local time t (camera included) into ctx2. Used for continuous handoffs. */
+      drawShot(i, t, ctx2) {
+        const s = F.shots[Math.max(0, Math.min(F.shots.length - 1, i))], g = kit(F, ctx2), T = F.shotStart(F.shots.indexOf(s)) + t;
+        ctx2.save(); ctx2.setTransform(1, 0, 0, 1, 0, 0); ctx2.globalAlpha = 1; ctx2.filter = 'none'; ctx2.globalCompositeOperation = 'source-over';
         g.bg(s.world);
-        const st = { t, f: Math.round(t * fps), d: s.dur, p: t / s.dur, F: fr, start, rnd: rng(s.seed) };
-        sctx.save(); s.draw(g, st); sctx.restore();
-        // ── post ──
+        const st = { t, f: Math.round(t * fps), d: s.dur, p: t / s.dur, F: Math.round(T * fps), T, start: T - t, i: F.shots.indexOf(s), rnd: rng(s.seed) };
+        if (s.o.camera !== false) F.applyCamera(ctx2, T, st, s);
+        ctx2.save(); s.draw(g, st); ctx2.restore(); ctx2.restore();
+      },
+      applyCamera(c, T, st, s) {
+        const cam = F.camera, push = s.o.push ?? cam.push, U = h / 1080;
+        const k = 1 + push * st.p; // slow push across the shot
+        const fx = cam.float * U * (noise1(T * .55, 11) + .5 * noise1(T * 1.3, 12)), fy = cam.float * U * (noise1(T * .5, 13) + .5 * noise1(T * 1.2, 14));
+        const r = (cam.rot || 0) * Math.PI / 180 * noise1(T * .4, 15);
+        c.translate(w / 2 + fx, h / 2 + fy); c.rotate(r); c.scale(k, k); c.translate(-w / 2, -h / 2);
+      },
+      _layers: [],
+      /** Offscreen canvas pool for compositing helpers. */
+      layer(n) { return F._layers[n] || (F._layers[n] = mk(w, h)); },
+      renderTime(T) {
+        const N = Math.max(1, F.subframes | 0);
+        if (N === 1) { F.drawShot(F.atTime(T).i, F.atTime(T).t, sctx); }
+        else {
+          // true motion blur: average N sub-frames spread over a 180° shutter
+          actx.setTransform(1, 0, 0, 1, 0, 0); actx.globalAlpha = 1; actx.clearRect(0, 0, w, h);
+          for (let k = 0; k < N; k++) {
+            const tt = T + (k / N - .5) * (.5 / fps), a = F.atTime(Math.max(0, tt));
+            F.drawShot(a.i, a.t, sctx);
+            actx.globalAlpha = 1 / (k + 1); actx.drawImage(scene, 0, 0);
+          }
+          sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalAlpha = 1; sctx.drawImage(acc, 0, 0);
+        }
+        F.post(T, F.atTime(T));
+      },
+      renderFrame(fr) { F.renderTime(fr / fps); },
+      post(Tm, at) {
+        const s = at.s, T = F.treatment, fr = Math.round(Tm * 24); // film defects tick at 24 fps whatever the output rate
+        const st = { t: at.t, p: at.t / s.dur, d: s.dur };
         const paper = s.world === 'paper' || s.o.paperTreatment;
         out.setTransform(1, 0, 0, 1, 0, 0); out.filter = 'none'; out.globalAlpha = 1; out.globalCompositeOperation = 'source-over';
         out.fillStyle = '#000'; out.fillRect(0, 0, w, h);
         const wx = T.weave ? noise1(fr * .15, 1) * 1.2 * h / 1080 : 0, wy = T.weave ? noise1(fr * .15, 2) * 1.2 * h / 1080 : 0;
         const fl = T.flicker ? 1 + noise1(fr * .9, 3) * .025 + (hash(fr * 31) - .5) * .02 : 1;
         out.filter = `brightness(${fl})` + (s.o.blur ? ` blur(${s.o.blur(st) * h / 1080}px)` : '');
-        // scale slightly so weave never shows edges
-        out.drawImage(scene, -4 + wx, -3 + wy, w + 8, h + 6);
+        out.drawImage(scene, -4 + wx, -3 + wy, w + 8, h + 6); // oversize so weave never shows edges
         out.filter = 'none';
         if (T.halation && !paper) { out.save(); out.globalCompositeOperation = 'screen'; out.globalAlpha = .28; out.filter = `blur(${10 * h / 1080}px)`; out.drawImage(scene, 0, 0); out.restore(); }
         if (T.vignette) {
           const vg = out.createRadialGradient(w * .5, h * .48, 0, w * .5, h * .5, h * 1.0);
-          if (paper) { [[0, 0], [.35, .03], [.55, .1], [.75, .24], [1, .42]].forEach(([k, a]) => vg.addColorStop(k, `rgba(40,36,38,${a})`)); }
-          else { vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.45)'); }
+          if (paper) { [[0, 0], [.35, .03], [.55, .1], [.75, .24], [1, .42]].forEach(([k, a]) => vg.addColorStop(k, `rgba(40,36,38,${a * (T.vignetteAmount ?? 1)})`)); }
+          else { vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${.45 * (T.vignetteAmount ?? 1)})`); }
           out.fillStyle = vg; out.fillRect(0, 0, w, h);
         }
         if (T.grain) {
-          out.save(); out.globalCompositeOperation = 'overlay'; out.globalAlpha = paper ? .16 : .22;
+          out.save(); out.globalCompositeOperation = 'overlay'; out.globalAlpha = (paper ? .16 : .22) * (T.grainAmount ?? 1);
           const tile = grainTile(fr % 8), pat = out.createPattern(tile, 'repeat'), ox = hash(fr) * 256, oy = hash(fr + 99) * 256;
           out.translate(-ox, -oy); out.fillStyle = pat; out.fillRect(0, 0, w + 256, h + 256); out.restore();
         }
@@ -528,7 +566,7 @@
         }
       },
       play() {
-        let start = performance.now(); const tick = () => { const fr = Math.floor((performance.now() - start) / 1000 * fps) % F.frames; F.renderFrame(fr); requestAnimationFrame(tick); }; tick();
+        const start = performance.now(), tick = () => { F.renderTime(((performance.now() - start) / 1000) % F.duration); requestAnimationFrame(tick); }; tick();
       },
     };
     return F;
@@ -580,5 +618,5 @@
     },
   };
 
-  root.PPM = { film, C, ease, rng, noise1, stepped, defSprite, sprite, registerImageSprite, SHAPES, shade, clamp, lerp };
+  root.PPM = { film, mk, hexA, thermalLUT, hash, extendKit: (fn) => KIT_EXT.push(fn), SPRITES, SPRITE_DEFS, C, ease, rng, noise1, stepped, defSprite, sprite, registerImageSprite, SHAPES, shade, clamp, lerp };
 })(typeof window !== 'undefined' ? window : globalThis);

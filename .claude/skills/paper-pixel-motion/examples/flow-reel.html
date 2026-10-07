@@ -1,0 +1,89 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Paper Pixel Technique Sampler</title>
+<style>
+  @font-face { font-family: Geist; font-weight: 400; src: url(../engine/fonts/Geist-400.woff2); }
+  @font-face { font-family: Geist; font-weight: 500; src: url(../engine/fonts/Geist-500.woff2); }
+  @font-face { font-family: Geist; font-weight: 600; src: url(../engine/fonts/Geist-600.woff2); }
+  @font-face { font-family: Geist; font-weight: 700; src: url(../engine/fonts/Geist-700.woff2); }
+  html, body { margin: 0; background: #0b0b0b; }
+  canvas { display: block; max-width: 100vw; max-height: 100vh; margin: auto; }
+</style></head>
+<body><canvas></canvas>
+<script src="../engine/ppm.js"></script>
+<script src="../engine/sprites.js"></script>
+<script src="../engine/flow.js"></script>
+<script src="../engine/grid-sprites.js"></script>
+<script>
+/* Technique sampler for the flow extensions. Standalone vignettes, one technique each, original kitchen copy.
+ * This is a test bench, not a template for story order: build films from the user's own beat sheet. */
+const FPS = +(new URLSearchParams(location.search).get('fps') || 24);
+const film = PPM.film(document.querySelector('canvas'), { w: 1440, h: 1080, fps: FPS, camera: { float: 7, rot: .35, push: .04 }, font: 'Geist' });
+const C = PPM.C, E = PPM.ease;
+
+// A ── typed, centred caption with block cursor + red underline on the key word; grid of 3D block sprites
+film.shot(2.6, 'paper', (g, s) => {
+  ['egg', 'whisk', 'bread', 'garlic', 'spoon', 'lemon'].forEach((n, i) => {
+    const x = 330 + (i % 3) * 390, y = 290 + Math.floor(i / 3) * 520, a = E.inOut((s.t - i * .08) / .5);
+    g.block(n, x, y + (1 - a) * 40 + Math.sin(s.t * 2.2 + i) * 5, 150, { alpha: a, rot: Math.sin(s.t + i) * .05 });
+  });
+  const words = [['mise', .5, .8], ['en', .85, 1], ['place', 1.05, 1.45]].map(([word, start, end]) => ({ word, start, end }));
+  const shown = g.typedFromWords(words, s.t), r = g.caption(shown, 720, 545, { size: 30, align: 'center', t: s.t });
+  if (shown.includes('place')) g.underline(r.x0 + g.measure('mise en ', 30), 568, g.measure('place', 30), (s.t - 1.05) / .4);
+});
+
+// B ── pixel morph chain
+const CHAIN = ['tomato', 'egg', 'lemon', 'garlic'];
+film.shot(2.4, 'paper', (g, s) => {
+  const k = Math.min(CHAIN.length - 2, Math.floor(s.t / .8)), p = E.inOut((s.t - k * .8) / .65);
+  g.morph(CHAIN[k], CHAIN[k + 1], p, 720, 520, 300);
+});
+
+// C ── egg tossed from a pan: flipX + lift, sparks on landing
+film.shot(1.8, 'paper', (g, s) => {
+  const p = g.clamp((s.t - .2) / .9);
+  g.block('pan', 700, 640, 240);
+  g.block('egg', 640, 560, 120, { flipX: Math.cos(E.inOut(p) * Math.PI * 4), lift: Math.sin(p * Math.PI) * 260, shadow: false });
+  g.sparks(640, 600, (s.t - 1.1) / .5, { seed: 6, color: '#FFE08A' });
+});
+
+// D ── burn: the page closes in on a pot behind a hot edge, ends black
+film.shot(1.8, 'paper', (g, s) => {
+  g.block('pot', 720, 520, 260, { lift: Math.sin(s.t * 2) * 4 });
+  g.caption('low and slow', 720, 800, { size: 28, align: 'center', cursor: false });
+  g.burn(720, 520, (s.t - .3) / 1.3, { toR: 0, edge: 120 });
+});
+
+// E ── heat hand: distance-transform heat, drifting hotspot, moving noise, razor edge + outer glow
+const hand = PPM.SHAPES.hand(820, 1080, 1.05, .95);
+film.shot(2.6, 'void', (g, s) => {
+  const rise = E.inOut(s.t / .8);
+  g.heat(hand, { key: 'hand', t: s.T, heat: E.inOut(s.t / 1.0), offset: { x: 0, y: (1 - rise) * 560 }, hotspot: [800 + Math.sin(s.t * 1.3) * 60, 720, 170] });
+  g.caption(g.typed('taste as you go.', .9, 16, s.t), 110, 900, { size: 30, color: C.white, cursorColor: C.white, t: s.t, blink: s.t > 2 });
+});
+
+// F ── flood: paper floods out of a whisk over the void, word types in ink inside the flood
+film.shot(1.9, 'void', (g, s) => {
+  const fl = (s.t - .25) / .8;
+  g.flood(420, 540, fl, C.paper);
+  g.block('whisk', 420, 540, 260, { rot: Math.sin(s.t * 6) * .12 * (1 - g.clamp(fl)), shadow: fl > .6 });
+  g.inFlood(420, 540, fl, () => g.caption(g.typed('stir.', 1.05, 10, s.t), 820, 540, { size: 46, weight: 600, t: s.t }));
+});
+
+// G ── fall-through: a tomato-shaped window scales past the lens into a scattered-utensil page
+const tomatoMask = (() => { const c = PPM.mk(1440, 1080), x = c.getContext('2d'); x.fillStyle = '#fff'; x.beginPath(); x.ellipse(720, 560, 190, 165, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(720, 395, 60, 26, 0, 0, 7); x.fill(); return c; })();
+film.shot(2.0, 'void', (g, s) => {
+  g.ctx.save(); g.ctx.globalAlpha = .9; g.ctx.drawImage(tomatoMask, 0, 0); g.ctx.restore();
+  g.ctx.save(); g.ctx.globalCompositeOperation = 'source-atop'; g.ctx.fillStyle = '#D9261C'; g.ctx.fillRect(0, 0, 1440, 1080); g.ctx.restore();
+  g.fallThrough(tomatoMask, 720, 560, (s.t - .35) / 1.2, (gg) => {
+    gg.bg('paper');
+    ['knife', 'spoon', 'chili', 'cup', 'bread', 'whisk'].forEach((n, i) => gg.block(n, 260 + i * 185, 540 + Math.sin(i * 1.9) * 220, 130, { rot: Math.sin(i * 2.3) * .4 }));
+  }, { k: 40, innerK: .9 });
+});
+
+window.film = film;
+Promise.all([document.fonts.load('600 40px Geist'), document.fonts.load('500 30px Geist')]).then(() => document.fonts.ready).then(() => {
+  window.ready = true;
+  if (!location.search.includes('render')) film.play();
+});
+</script>
+</body></html>

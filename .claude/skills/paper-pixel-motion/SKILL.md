@@ -27,25 +27,54 @@ pixel objects, light, transitions, motion, beat structure, don'ts). Every decisi
 | `tools/render.mjs` | `node render.mjs film.html outDir [--from --to --step --mp4 out.mp4 --audio a.mp3]` |
 | `tools/contact-sheet.sh` | `contact-sheet.sh video.mp4 out.png [fps] [cols] [width]`: timestamped grid for review |
 
+## Two modes
+
+| | **cut** (as measured in the style bible) | **flow** (continuous) |
+|---|---|---|
+| Edit | Hard cuts on beats, 1–3-frame flash cards, whips | Every handoff starts on the exact last frame of the shot before (`g.under`); hard cuts only on final beat flips |
+| Motion | Pops, overshoot, ink and scribbles on twos | Eased glides of about 0.5 s with a soft start (`ease.inOut`); nothing pops |
+| Frame rate | 24 fps | 60 fps with `subframes: 8` (true motion blur) |
+| Camera | Static, with an occasional push | `camera: { float: 7, rot: .35, push: .04 }`: handheld float plus a slow push per shot |
+| Sprites | Flat (`g.sprite`) | 3D blocks (`g.block`): extrusion, bevel, contact shadow |
+| Silhouettes | `g.thermal` (blur-based) | `g.heat` (distance transform + hotspot + noise, razor edge) |
+| Type | Word-by-word fades | Typed behind a block cursor (`g.caption` + `g.typedFromWords`) |
+| Example | `examples/test-segments.html` | `examples/flow-reel.html` (technique sampler) |
+
+Ask which mode the user wants if they haven't said. Default to **cut** for a raw, zine-like feel and **flow**
+for a polished, continuous one. Elements can be mixed.
+
 ## Workflow
 
-1. **Brief.** Get from the user: the message (one question → one answer → three values → one agency line → one
-   final word is the native shape), the length (default 20 s), whether there is a voice-over or music file, and
-   **10–16 personal objects** that stand for the subject. If they give only a topic, write the script yourself in
-   the style: lower-case, short, conversational, one tiny line at a time.
+1. **Intake. Ask for everything in one message:**
+   - the voice-over or song with a spoken line (audio file) plus its transcript, or just a topic and you write the script;
+   - **10–12 small objects** that sum up the subject (their life, product or brand world);
+   - the silhouettes to light like a heat camera (e.g. a head in profile, a raised hand), as photos or PNGs with the body in alpha;
+   - the **3 words** that should land hardest;
+   - the mode (cut / flow), the aspect ratio (default 4:3 at 1440×1080) and the length (default 20 s).
+   If they skip something, derive it from **their topic** (objects from their world, words from their script) and
+   say what you chose. The built-in sets (`PPM.KITCHEN_SET`, `PPM.SPRITE_SET`) are demo placeholders, not defaults
+   to ship. Silhouettes: use `PPM.SHAPES`, the user's own photos, CC0 images (Openverse, with the licence checked) or
+   generated images (see `references/image-prompts.md`).
+   The native script shape is one question → one answer → three values → one agency line → one final word, but
+   follow the user's message; this is a shape, not a script to reuse. Lower-case, short, one tiny line at a time.
 2. **Beat sheet.** Map the script onto the beat structure in style-bible §11. Write a table:
    `t_start | dur | world | archetype | words + reveal times | objects | transition out`. Rules: average shot about 1 s,
    alternate worlds on every idea, accelerate cuts before each section ends, the end is messier than the start.
-   If there is audio, get the onsets (`ffmpeg … astats` RMS per 0.1 s, or the user's timestamps) and snap word
-   reveals and cuts to them.
+   If there is audio, measure word timings with
+   `python3 tools/word-timings.py voice.mp3 words.json --transcript "…"` (faster-whisper, 8 s chunks, snapped to
+   the transcript) and hang every reveal and cut on those times. Without speech, use RMS onsets
+   (`ffmpeg … astats`).
 3. **Assets decision.** Go through the objects and silhouettes against the table in `references/image-prompts.md`.
    If any would be clearly better as a generated image, **ask the user once** with ready-to-paste prompts and file
    names, and offer to skip. Keep building with procedural stand-ins meanwhile, and swap them when the files arrive.
 4. **Build.** Copy `examples/test-segments.html` into the user's project (keep the relative `engine/` path, or copy
    `engine/` alongside it). Replace the shots using `references/recipes.md`. One `film.shot(dur, world, fn)` per cut.
    Keep each shot's code small; the kit does the heavy lifting.
-5. **Render and review loop** (below) until every shot passes.
-6. **Deliver.** Render the full MP4 (with audio if provided) plus a contact sheet. Report the file paths, the
+5. **Show 8 stills before the full render.** Render one key frame per section
+   (`render.mjs film.html stills/ --times 0.4,2.1,…`), send them to the user and adjust before spending a full render.
+6. **Render and review loop** (below) until every shot passes.
+7. **Deliver.** Render the full MP4 (flow mode: `?fps=60` with `--subframes 8`), lay the original audio back on
+   (`--audio`), and produce a contact sheet. Report the file paths, the
    beat sheet and anything still procedural that would improve with generated images.
 
 ## Render and review loop (orchestrator + reviewer)
@@ -94,6 +123,30 @@ Turn pieces off with `PPM.film(canvas, { treatment: { weave: false } })`.
 
 **Thermal caching:** `thermal()` caches by `key` + `frameKey`. A shape that moves needs a changing `frameKey`
 (e.g. `Math.round(s.t*6)`, which also gives a nice on-sixes step). A static one needs none.
+
+## Flow kit (engine/flow.js + engine/grid-sprites.js)
+
+- **sprites:** `PPM.defGrid(name, rows16, palette)` for hand-placed 16×16 cells; `block(name,x,y,size,{rot,flipX,lift,ink,shadow})`;
+  `ring(names,cx,cy,R,{tilt,spin,t,bob,size,per})` (a perspective ring: front items bigger, lower, drawn last); `ringFrontLeft(n, spin)`
+- **heat:** `heat(shapeFnOrMask,{key,t,heat,hotspot:[x,y,r],noise,glow,offset,scale,thick})`, `maskOf(key)`;
+  `PPM.loadMask(url,{luma,invert})` → `PPM.placeMask(mask,{x,y,h,flip})`
+- **type:** `typed(str,t0,cps,t)`, `typedFromWords(words,t)`, `caption(shown,x,y,{align:'center',size,color,cursor,blink})`, `underline(x,y,w,p)`
+- **transitions:** `flood(x,y,p,color)` + `inFlood(x,y,p,fn)`, `burn(x,y,p,{toR,edge})`, `fallThrough(mask,px,py,p,innerFn,{k,innerK})`,
+  `under(shotIndex,t)`, `morph(a,b,p,x,y,size)`, `sparks(x,y,p)`
+- **film opts:** `fps`, `subframes`, `camera:{float,rot,push}`, per-shot `{push}`, `font:'Geist'`
+
+## Gotchas
+
+- A mask PNG with no alpha fills the whole box with heat. Put the silhouette in alpha, or load it with `PPM.loadMask(url, {luma:true})`.
+- A limb cut by the photo's border shows a straight edge. Place the mask so it runs past the frame; the distance
+  transform ignores out-of-frame neighbours, so the cut does not read as an edge.
+- A handoff only reads as smooth when the last frame of one shot equals the first frame of the next. Draw the
+  outgoing shot underneath (`g.under(i-1, dur-ε)`), and give every shot that shows the same formation one shared
+  zoom or position function of global time `s.T`.
+- A flood that is still retreating when the next shot starts reads as a hard cut. Let it finish inside the shot.
+- A fast ease-out flood reads as a jump. Use `ease.inOut` (soft start).
+- `thermal()`/`heat()` cache by `key`. Use a new key for each different shape.
+- Subframes multiply render time by N. Preview at `subframes: 1` and do the final render only at 8.
 
 ## Non-negotiables
 
