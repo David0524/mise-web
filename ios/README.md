@@ -17,16 +17,11 @@ link that expires. This app has no bundled UI of its own; until that URL is
 real and live, it's a blank window. After editing it, run `npx cap sync ios`
 from the `mise-web` folder to push the change into the native project.
 
-## ⚠ Before you test this with anyone but yourself
-
-`components/MiseApp.jsx` in this repo is out of sync with the current
-artifact (`mise-en-place.jsx`) — it predates several rounds of work and is
-missing: the photo/share-card feature, the health-conscious toggle, the swap
-dialog, the compact shopping-list rows, the "sort out my week" ordering
-feature, and the token-efficiency fix that strips `basis` from prompts. If
-you build this as-is, testers see a real but noticeably older version of the
-app than the one you've been iterating on. Worth re-syncing that file before
-this goes to anyone external — happy to do that port next.
+Because the WebView loads the live site, the app always shows whatever is
+currently deployed: there is no copy of the web app inside the iOS project to
+keep in sync. A web deploy updates the app too; rebuilding in Xcode is only
+needed for native changes (this folder, `capacitor.config.json`, the icon,
+permission strings).
 
 ## What only a Mac can do from here
 
@@ -34,9 +29,9 @@ Everything up to this point (config, native project, icon, permission
 strings) is done. The rest requires Xcode, which Apple only licenses for
 macOS:
 
-1. Open `App.xcworkspace` in Xcode — not `App.xcodeproj`. This project uses
-   Swift Package Manager (Capacitor generated a `Package.swift`), so there's
-   no CocoaPods step, no `pod install` needed.
+1. Run `npx cap open ios` from the repo root (or open `ios/App/App.xcodeproj`
+   in Xcode). This project uses Swift Package Manager (`ios/App/CapApp-SPM`),
+   so there's no CocoaPods step and no `.xcworkspace`.
 2. In the App target → Signing & Capabilities, set your Apple Developer team
    and confirm the bundle identifier (`com.mise.app` — change it if you want
    your own reverse-DNS, e.g. `com.yourname.mise`).
