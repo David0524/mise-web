@@ -439,7 +439,7 @@ const UNUSUAL_VEG = new Set(["kohlrabi", "celery root", "escarole", "radicchio",
 const tierOf = (table, item) => (table[1]?.includes(item) ? 1 : table[2]?.includes(item) ? 2 : 3);
 /* How much each tier (1, 2, 3) weighs at each adventure level. 0 = never. */
 const TIER_WEIGHTS = {
-  tradition: { 1: [1, 0, 0], 2: [3, 1, 0], 3: [0.5, 3, 1.5], 4: [0, 2, 1], 5: [0, 0, 1] },
+  tradition: { 1: [1, 0, 0], 2: [3, 1, 0], 3: [0.5, 3, 1.5], 4: [0, 1, 1], 5: [0, 0, 1] },
   pantry: { 1: [1, 0, 0], 2: [1, 2, 0], 3: [1, 2, 1], 4: [0.3, 1, 2], 5: [0, 0.5, 2] },
   protein: { 1: [1, 0, 0], 2: [2, 1, 0], 3: [1, 1, 0.5], 4: [1, 1, 1], 5: [0.5, 1, 1.5] },
 };
@@ -657,7 +657,7 @@ function slotLine(sl, seed, level) {
   const role = (sl.role || "known").toUpperCase();
   const everyday = EVERYDAY[FORMATS.find((f) => f.name === sl.format)?.key];
   const anchor = everyday && sl.role === "classic" ? ` · a dish like ${everyday}`
-    : everyday && sl.role === "twist" ? ` · one of ${everyday} or the like, with ONE twist` : "";
+    : everyday && sl.role === "twist" ? ` · one of ${everyday} or the like, with ONE twist from its cuisine (a sauce, spice or technique) named in the title` : "";
   if (sl.dish) {
     /* Below level 5 the week's vegetable still goes in (most dishes take a
        vegetable without becoming something else), so the shopping stays shared. */
@@ -687,8 +687,10 @@ function nameBankDishes(dishes, slots) {
     const words = norm(name).split(/[\s,'-]+/).filter((w) => w.length > 3 && !COMMON_NAME_WORDS.has(w));
     if (!words.length || words.some((w) => norm(d.title).includes(w))) return;
     if (!words.some((w) => norm(`${d.basedOn} ${d.blurb}`).includes(w))) return;
-    const rest = d.title.charAt(0).toLowerCase() + d.title.slice(1);
-    d.title = `${name} — ${rest}`;
+    // "Pil-Pil - Salt cod in garlic oil": the head is a mangled name; keep the gloss.
+    const gloss = d.title.match(/^\S.{0,40}?\s[—–-]\s(.+)$/)?.[1];
+    const rest = gloss || d.title;
+    d.title = `${name} — ${/^[A-Z][a-z]/.test(rest) ? rest.charAt(0).toLowerCase() + rest.slice(1) : rest}`;
   });
 }
 
