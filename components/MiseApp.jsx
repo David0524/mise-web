@@ -2550,6 +2550,8 @@ function App() {
   /* Visual style. Two complete looks, not a colour tweak:
        "modern" — the original: cool paper, glass panels, soft shadows.
        "canvas" — hand-drawn: warm stock, drawn frames, hatching, no shadows.
+       "retro"  — pixel stickers: grey grain, ink outlines, hard shadows, a
+                  pixel face for headings and a few arcade colours.
      Persisted with the profile so it survives a reload, and applied as a data
      attribute on .app so the whole stylesheet can branch on it without any
      component needing to know which look is active. */
@@ -2809,7 +2811,7 @@ function App() {
           // Older saves predate this flag; a stored profile with real cooking
           // nights means they got through setup, so don't re-onboard them.
           if (d.setupDone || (d.profile?.nights?.length && d.savedAt)) setSetupDone(true);
-          if (d.style === "canvas" || d.style === "modern") setStyle(d.style);
+          if (["canvas", "modern", "retro"].includes(d.style)) setStyle(d.style);
         }
       } catch (_) {
         /* first run, or storage unavailable — defaults are fine */
@@ -8226,7 +8228,7 @@ function MyKitchen({ profile, savedAt, onEdit, historyNode, style, onStyle, onFe
           were telling you what your eyes were about to tell you anyway. */}
       <div className="looks" role="group" aria-label="Look">
         <span className="looks__k">Look</span>
-        {[["modern", "Modern"], ["canvas", "Canvas"]].map(([id, label]) => (
+        {[["modern", "Modern"], ["canvas", "Canvas"], ["retro", "Retro"]].map(([id, label]) => (
           <button
             key={id}
             className={`looks__o${style === id ? " looks__o--on" : ""}`}
@@ -10065,11 +10067,20 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   font-family:'Nunito',sans-serif;font-weight:700;font-size:.88em;color:var(--muted);
   transition:border-color .16s ease, color .16s ease}
 .looks__o--on{border-color:var(--brick);color:var(--ink)}
+/* Three looks have to share one line on a small phone. */
+@media (max-width:420px){
+  .looks{gap:.3rem}
+  .looks__k{margin-right:0}
+  .looks__o{gap:.3rem;padding:.25rem .55rem .25rem .3rem}
+  .looks__sw{width:22px;height:22px}}
 .looks__sw{flex:0 0 auto;width:26px;height:26px;border-radius:50%;position:relative;overflow:hidden}
 .looks__sw--modern{background:
   radial-gradient(80% 70% at 22% 0%, rgba(226,238,250,.95), transparent 64%),
   linear-gradient(170deg,#FDFAF9,#F1E9E8);
   border:1px solid var(--rule)}
+.looks__sw--retro{border-radius:0;border:2px solid #1E1A17;background:
+  linear-gradient(90deg,#B44722 0 50%,#F2C12E 50%) top/100% 50% no-repeat,
+  linear-gradient(90deg,#5BAA3C 0 50%,#3E52C4 50%) bottom/100% 50% no-repeat}
 .looks__sw--canvas{background:
   repeating-linear-gradient(-45deg, rgba(255,244,225,.9) 0 5px, transparent 5px 10px),
   #F6EFE3;
@@ -10785,4 +10796,153 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
   .recap__list li{flex-direction:column;gap:.1rem}
   .recap__list strong{text-align:left}
 }
+/* ============================================================================
+   THE RETRO LOOK
+   ----------------------------------------------------------------------------
+   A third complete look, selected in My Kitchen and applied by
+   [data-style="retro"] on .app. Pixel-art stickers on grainy grey paper: chunky
+   ink outlines, square corners, hard 1-step drop shadows, a pixel face for
+   headings only.
+
+   Colour rule: the base palette still does the work — paper, ink, and brick for
+   "act here". The arcade colours (coin yellow, cash green, cartridge blue) are
+   accents in small doses: the active tab, the Ask Mise coin, a four-colour pixel
+   strip under section headings and in progress bars. Never on body text, never
+   as a large fill.
+
+   Body copy stays Nunito: a recipe has to be readable at the stove.
+   ============================================================================ */
+
+.app[data-style="retro"]{
+  --paper:#ECEAE6;          /* cool grey stock, like the sticker sheet */
+  --surface:#FBFAF7;
+  --sunk:#E4E1DB;
+  --ink:#1E1A17;
+  --ink-2:#463E38;
+  --muted:#5F5751;          /* 4.9:1 on --paper */
+  --rule:rgba(30,26,23,.16);
+  --rule-2:rgba(30,26,23,.32);
+  --rule-input:#1E1A17;
+  --glass:#FBFAF7; --glass-rim:#1E1A17; --glass-blur:none;
+  --spec:none; --lift-1:none; --lift-2:none; --shadow-lift:none;
+  --px:3px;                 /* one "pixel" of outline */
+  --coin:#F2C12E;           /* coin yellow */
+  --cash:#5BAA3C;           /* cash green */
+  --cart:#3E52C4;           /* cartridge blue */
+  --strip:linear-gradient(90deg,var(--brick) 0 25%,var(--coin) 25% 50%,var(--cash) 50% 75%,var(--cart) 75% 100%);
+}
+
+/* Grainy paper with a soft vignette: a fine dot field on grey, darker at the
+   edges, the way the sticker sheet was photographed. */
+.app[data-style="retro"] .surface{
+  background-image:
+    radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(30,26,23,.10) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='6' height='6'><rect x='1' y='2' width='1' height='1' fill='%231E1A17' opacity='.07'/><rect x='4' y='5' width='1' height='1' fill='%231E1A17' opacity='.05'/></svg>");
+  background-size:cover, 6px 6px;
+  background-color:var(--paper)}
+
+/* No glass anywhere: every panel is an opaque sticker with an ink outline. */
+.app[data-style="retro"] .card,
+.app[data-style="retro"] .sheet,
+.app[data-style="retro"] .tabbar,
+.app[data-style="retro"] .fab,
+.app[data-style="retro"] .alert{
+  -webkit-backdrop-filter:none;backdrop-filter:none}
+.app[data-style="retro"] .card::before,
+.app[data-style="retro"] .card::after{display:none}
+
+/* Cards: square, a thick ink outline, and a hard grey drop shadow one block
+   down and right — a sticker lifted off the page, not a glow. */
+.app[data-style="retro"] .card{
+  background:var(--surface);border:var(--px) solid var(--ink);border-radius:0;
+  box-shadow:6px 6px 0 rgba(30,26,23,.18)}
+/* Dark panels (the week's draw) keep their night fill and light text. */
+.app[data-style="retro"] .card--dark{background:var(--night);border-color:var(--ink);box-shadow:6px 6px 0 rgba(30,26,23,.28)}
+
+/* Dish cards: the same square sticker, a thinner outline so a list of them
+   doesn't turn into a wall of ink; picked dishes get a cash-green edge. */
+.app[data-style="retro"] .dish{background:var(--surface);border:2px solid var(--ink);border-radius:0;
+  box-shadow:4px 4px 0 rgba(30,26,23,.16);-webkit-backdrop-filter:none;backdrop-filter:none}
+.app[data-style="retro"] .dish:hover{border-color:var(--ink);box-shadow:5px 5px 0 rgba(30,26,23,.22)}
+.app[data-style="retro"] .dish--yes{border-color:var(--cash);box-shadow:4px 4px 0 var(--cash);background:var(--surface)}
+.app[data-style="retro"] .dish__add{border-radius:0;box-shadow:3px 3px 0 var(--ink)}
+
+/* Pixel face for headings. Silkscreen runs wide, so a touch smaller and
+   tracked open; it's display type, so short lines only. */
+.app[data-style="retro"] h1,
+.app[data-style="retro"] h2,
+.app[data-style="retro"] .hero__h{
+  font-family:'Silkscreen','Nunito',system-ui,sans-serif;font-weight:400;
+  letter-spacing:.02em;line-height:1.15}
+.app[data-style="retro"] .card h2{font-size:1.05em;position:relative;padding-bottom:.55rem}
+/* The one place colour runs free: a four-block pixel strip under section
+   headings, the arcade's colours in a line. */
+.app[data-style="retro"] .card h2::after{
+  content:"";position:absolute;left:0;bottom:0;width:72px;height:6px;
+  background:var(--strip);box-shadow:0 0 0 2px var(--ink)}
+.app[data-style="retro"] .card--dark h2::after{box-shadow:0 0 0 2px #F2EFF6}
+
+/* Buttons: square blocks with a hard ink shadow; pressing pushes the block
+   into its shadow, like an arcade button. */
+.app[data-style="retro"] .btn{
+  border-radius:0;border:var(--px) solid var(--ink);box-shadow:4px 4px 0 var(--ink);
+  transition:transform .06s steps(2), box-shadow .06s steps(2)}
+.app[data-style="retro"] .btn:hover:not(:disabled){filter:none;transform:translate(-1px,-1px);box-shadow:5px 5px 0 var(--ink)}
+.app[data-style="retro"] .btn:active:not(:disabled){transform:translate(4px,4px);box-shadow:0 0 0 var(--ink)}
+.app[data-style="retro"] .btn--ghost{background:var(--surface);color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.app[data-style="retro"] .btn:disabled{box-shadow:none}
+
+/* Inputs: inset pixel wells. */
+.app[data-style="retro"] input[type=text],
+.app[data-style="retro"] input[type=email],
+.app[data-style="retro"] input[type=password],
+.app[data-style="retro"] textarea,
+.app[data-style="retro"] select{
+  border-radius:0;border:2px solid var(--ink);background:var(--surface);
+  box-shadow:inset 3px 3px 0 rgba(30,26,23,.08)}
+.app[data-style="retro"] input:focus,
+.app[data-style="retro"] textarea:focus,
+.app[data-style="retro"] select:focus{outline:3px solid var(--coin);outline-offset:1px}
+
+/* Recessed wells and open rows: a flat sunk grey. */
+.app[data-style="retro"] .sec,
+.app[data-style="retro"] .row2--open{background:var(--sunk);border-radius:0}
+
+/* Chips and quick asks: square tags; the chosen one goes brick with an ink edge. */
+.app[data-style="retro"] .chip,
+.app[data-style="retro"] .quick{
+  border-radius:0;border:2px solid var(--ink);background:var(--surface);box-shadow:2px 2px 0 var(--ink)}
+.app[data-style="retro"] .chip--on{background:var(--brick);color:#fff;border-color:var(--ink)}
+
+/* Tab bar: a solid strip with an ink top edge; the active tab sits on a
+   coin-yellow block. Labels in the pixel face, which is built for small sizes. */
+.app[data-style="retro"] .tabbar{background:var(--surface);border-top:var(--px) solid var(--ink);box-shadow:none}
+.app[data-style="retro"] .tabbar__l{font-family:'Silkscreen','Nunito',sans-serif;font-weight:400;font-size:.68em;letter-spacing:0}
+.app[data-style="retro"] .tabbar__b--on{color:var(--ink)}
+.app[data-style="retro"] .tabbar__b--on .tabbar__i{background:var(--coin);border-radius:0;box-shadow:0 0 0 2px var(--ink)}
+.app[data-style="retro"] .tabbar__dot{box-shadow:0 0 0 2px var(--surface)}
+
+/* The Ask Mise bubble becomes a gold coin-block. */
+.app[data-style="retro"] .fab{
+  background:var(--coin);color:var(--ink);border:var(--px) solid var(--ink);border-radius:0;
+  box-shadow:4px 4px 0 var(--ink)}
+.app[data-style="retro"] .fab::before,
+.app[data-style="retro"] .fab::after{border-radius:0}
+.app[data-style="retro"] .fab__av{background:var(--surface);border-radius:0;box-shadow:0 0 0 2px var(--ink)}
+
+/* Sheets, the pinned ask bar and the stove's ask card: square stickers. */
+.app[data-style="retro"] .sheet,
+.app[data-style="retro"] .rsheet,
+.app[data-style="retro"] .cask{border-radius:0;border:var(--px) solid var(--ink);box-shadow:6px 6px 0 rgba(30,26,23,.25)}
+.app[data-style="retro"] .askbar__in{border-radius:0;box-shadow:0 0 0 var(--px) var(--ink),4px 4px 0 var(--ink)}
+.app[data-style="retro"] .askbar__av,
+.app[data-style="retro"] .askbar__go{border-radius:0}
+
+/* Loading: a bar of blocks filling in, in the strip's colours. */
+.app[data-style="retro"] .lbar__track{background:var(--surface);border:2px solid var(--ink);border-radius:0}
+.app[data-style="retro"] .lbar__fill{border-radius:0;
+  background:repeating-linear-gradient(90deg,var(--brick) 0 10px,var(--coin) 10px 20px,var(--cash) 20px 30px,var(--cart) 30px 40px)}
+
+.app[data-style="retro"] .alert{border:var(--px) solid var(--ink);border-radius:0;box-shadow:4px 4px 0 var(--ink)}
+
 `;
