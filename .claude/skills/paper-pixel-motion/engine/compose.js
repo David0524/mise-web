@@ -34,7 +34,7 @@
     const size = o.size || 52, color = o.color || C.ink, words = tokens(b.text), hi = {};
     const ki = keyIndex(b); if (ki >= 0 && o.highlightKey) hi[ki] = o.highlightKey;
     if (ctx.flow) {
-      const shown = typedAt(b, t), r = g.caption(shown, o.x ?? 720, o.y ?? 540, { size, color, cursorColor: o.cursorColor || color, align: o.align || 'center', t, blink: t > (b.reveal?.at(-1)?.t ?? 0) + .4 });
+      const lead = Math.min(.15, b.reveal?.[0]?.t ?? 0), shown = typedAt(b, t + lead), r = g.caption(shown, o.x ?? 720, o.y ?? 540, { size, color, cursorColor: o.cursorColor || color, align: o.align || 'center', t, blink: t > (b.reveal?.at(-1)?.t ?? 0) + .4 });
       if (ki >= 0 && shown.split(' ').length > ki) { const pre = words.slice(0, ki).join(' ') + (ki ? ' ' : ''); g.underline(r.x0 + g.measure(pre, size), (o.y ?? 540) + size * .62, g.measure(words[ki], size), (t - b.reveal[ki].t) / .35); }
       return r;
     }
@@ -48,7 +48,7 @@
     hero(g, s, b, ctx) {
       const word = tokens(b.text)[0];
       if (ctx.flow) { // shot world is paper; the yellow card wipes off to the left
-        const wipe = E.inOut((s.t - s.d * .2) / (s.d * .8));
+        const wipe = E.in(s.t / s.d); // soft start, leaves the frame exactly at the beat end
         g.layer({ x: -wipe * 1500 }, () => { g.ctx.fillStyle = C.yellowFlash; g.ctx.fillRect(0, 0, 1440, 1080); g.text(word, 720, 600, { size: 350, weight: 700, align: 'center', track: -.04, baseline: 'alphabetic', color: C.ink }); g.guides([110, 1000]); });
         return;
       }

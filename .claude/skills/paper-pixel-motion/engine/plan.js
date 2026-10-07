@@ -28,6 +28,7 @@
     flash:      { base: .12, perWord: 0,   min: .08, max: .16, world: ['yellow', 'red'],  words: [0, 1],   text: 'optional' },
   };
   const WPS_LIMIT = 4.2;
+  const FLASH_MAX = 4 / 24;      // flashes never exceed 4 frames, even when voice-timed
   const HOLD = .35;              // seconds a beat's last word stays on screen after it is spoken          // readable kinetic-type speed (words per second on screen)
   const SECTION_ACCEL = [1, .8, .6, .45]; // multiplier on the last beats of a section (last beat first)
 
@@ -112,6 +113,7 @@
             if (short > .05) errors.push(`beat ${b.i}: last word "${b._voice.reveal.at(-1).word}" gets ${(HOLD - short).toFixed(2)}s on screen (needs ${HOLD}s); move the next line later in the voice, or shorten this beat's text`);
           }
           b.dur = Math.max(floor, Math.max(e2, end) - st);
+          if (b.type === 'flash' && b.dur > FLASH_MAX) { const prevB = beats[k - 1]; if (prevB) prevB.dur += b.dur - FLASH_MAX; b.dur = FLASH_MAX; } // a flash is 2–4 frames; the spare time extends the previous hold
           b.reveal = b._voice.reveal.map(r => ({ word: r.word, t: Math.max(0, r.t - st) }));
           cursor = st + b.dur;
         } else cursor += b.dur;
