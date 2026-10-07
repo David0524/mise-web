@@ -136,3 +136,14 @@ create table if not exists events (
 );
 create index if not exists idx_events_created on events(created_at);
 create index if not exists idx_events_user on events(user_id, created_at);
+
+-- Every recipe Mise writes, as written (lib/events.js logRecipe).
+create table if not exists recipe_log (
+  id         bigserial primary key,
+  user_id    uuid not null references users(id) on delete cascade,
+  kind       text not null default 'new',
+  title      text,
+  recipe     jsonb not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_recipe_log_user on recipe_log(user_id, created_at);

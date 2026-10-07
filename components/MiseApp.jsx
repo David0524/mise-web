@@ -5,7 +5,7 @@ import { guestGet, guestSet } from "@/lib/guest";
 import AuthOptions from "@/components/AuthOptions";
 import ConsentChecks from "@/components/ConsentChecks";
 import { EmailField, NewPasswordFields, credentialsReady } from "@/components/CredentialFields";
-import { track } from "@/lib/track";
+import { track, trackRecipe } from "@/lib/track";
 
 /* The one definition of the app's directional daylight, shared with the
    sign-in / sign-up / pricing pages so the app and its front door are lit the
@@ -386,32 +386,93 @@ const TRADITIONS = [
   "Lowcountry", "Appalachian", "Pacific Northwest", "New Mexican",
 ];
 
+
 /* Broad flavour worlds. A week draws at most one cuisine from each, because
    Shanghainese, Cantonese and Thai in one week read as one "East Asian" week. */
 const REGION = {
-  "East Asia": ["Sichuan", "Hunan", "Cantonese", "Shanghainese", "Japanese", "Korean"],
+  "East Asia": ["Sichuan", "Hunan", "Cantonese", "Shanghainese", "Japanese", "Korean", "Chinese-American"],
   "Southeast Asia": ["Vietnamese", "Thai", "Malaysian", "Filipino"],
   "South Asia": ["Bengali", "Gujarati", "South Indian", "Punjabi", "Sri Lankan"],
   "Middle East": ["Persian", "Lebanese", "Turkish", "Levantine", "Armenian", "Egyptian"],
   "Caucasus & Eastern Europe": ["Georgian", "Georgian Black Sea", "Polish", "Hungarian"],
   "Africa": ["Moroccan", "Tunisian", "Senegalese", "Nigerian", "Ethiopian", "South African"],
-  "Mexico": ["Oaxacan", "Yucatecan", "Northern Mexican", "New Mexican"],
+  "Mexico": ["Oaxacan", "Yucatecan", "Northern Mexican", "New Mexican", "Tex-Mex"],
   "South America & Caribbean": ["Peruvian", "Brazilian", "Argentine", "Cuban", "Puerto Rican", "Jamaican"],
-  "Italy": ["Southern Italian", "Northern Italian"],
+  "Italy": ["Southern Italian", "Northern Italian", "Italian-American"],
   "Iberia": ["Basque", "Catalan", "Portuguese"],
   "France & Greece": ["Provençal", "Lyonnaise", "Greek"],
-  "American South": ["Cajun", "Lowcountry", "Appalachian"],
+  "American South": ["Cajun", "Lowcountry", "Appalachian", "Southern US"],
+  "American": ["American comfort"],
   "Pacific Northwest": ["Pacific Northwest"],
 };
 const regionOf = (t) => Object.keys(REGION).find((r) => REGION[r].includes(t)) || t;
 
-/* For cooks who asked for familiar food: the cuisines most people already
-   know, so a cautious week is still five different places rather than one. */
-const FAMILIAR_TRADITIONS = [
-  "Southern Italian", "Northern Italian", "Greek", "Provençal", "Cantonese",
-  "Japanese", "Korean", "Thai", "Vietnamese", "Punjabi", "Northern Mexican",
-  "Cajun", "Lowcountry", "Portuguese", "Levantine", "Cuban", "Turkish",
-  "Pacific Northwest", "Lyonnaise", "Catalan",
+/* ------------------------------------------------- the adventure ladder
+
+   The adventure setting has to change the food, not one sentence of the
+   prompt. Every drawn ingredient carries a familiarity tier (1 = in every
+   home kitchen, 2 = known from restaurants, 3 = something to seek out), and
+   each level weights the tiers differently. Each dish also gets a role that
+   says how far from the familiar it should be. Measured by qa/adventure.js:
+   a blind judge should be able to tell the levels apart. */
+const TRADITION_TIER = {
+  1: ["Italian-American", "American comfort", "Tex-Mex", "Chinese-American", "Southern Italian", "Greek", "Southern US"],
+  2: ["Japanese", "Korean", "Thai", "Vietnamese", "Cantonese", "Punjabi", "Northern Italian", "Provençal", "Lyonnaise",
+      "Levantine", "Lebanese", "Turkish", "Moroccan", "Cuban", "Northern Mexican", "Cajun", "Lowcountry",
+      "Pacific Northwest", "Portuguese", "Catalan"],
+};
+const PANTRY_TIER = {
+  1: ["smoked paprika", "chipotle in adobo", "sherry vinegar", "capers", "olives", "tomato paste", "coconut milk",
+      "fennel seed", "dried mushrooms", "buttermilk", "creme fraiche", "maple syrup", "brown butter", "roasted garlic",
+      "oyster sauce", "ginger and scallion"],
+  2: ["miso", "tahini", "harissa", "pomegranate molasses", "za'atar", "sumac", "dried chiles", "fish sauce", "anchovy",
+      "gochujang", "caraway", "mustard seeds", "chickpea flour", "pickled ginger", "labneh", "tamarind", "furikake"],
+};
+const PROTEIN_TIER = {
+  1: ["chicken thighs", "whole chicken legs", "ground beef", "ground pork", "pork chops", "salmon",
+      "cod or another white fish", "shrimp", "eggs", "Italian sausage", "ground turkey", "black beans", "chickpeas", "flank steak"],
+  2: ["pork shoulder", "ground lamb", "firm tofu", "lentils", "white beans", "halloumi", "paneer", "canned sardines or mackerel"],
+};
+// Vegetables a cautious cook may not know what to do with.
+const UNUSUAL_VEG = new Set(["kohlrabi", "celery root", "escarole", "radicchio", "endive", "collards", "okra", "artichokes"]);
+const tierOf = (table, item) => (table[1]?.includes(item) ? 1 : table[2]?.includes(item) ? 2 : 3);
+/* How much each tier (1, 2, 3) weighs at each adventure level. 0 = never. */
+const TIER_WEIGHTS = {
+  tradition: { 1: [1, 0, 0], 2: [3, 1, 0], 3: [1, 3, 1], 4: [0, 2, 1], 5: [0, 0, 1] },
+  pantry: { 1: [1, 0, 0], 2: [1, 2, 0], 3: [1, 2, 1], 4: [0.3, 1, 2], 5: [0, 0.5, 2] },
+  protein: { 1: [1, 0, 0], 2: [2, 1, 0], 3: [1, 1, 0.5], 4: [1, 1, 1], 5: [0.5, 1, 1.5] },
+};
+// The everyday cuisines live only in the tier list; the full pool is both.
+const ALL_TRADITIONS = [...new Set([...TRADITION_TIER[1], ...TRADITIONS])];
+const levelOf = (profile) => Math.min(5, Math.max(1, Number(profile?.adventure) || 3));
+const tierWeight = (kind, table, level) => (item) => TIER_WEIGHTS[kind][level][tierOf(table, item) - 1];
+
+/* What each dish is for. Assigned per slot so a level-3 week is mostly
+   "ordered it, never cooked it" with one twist, rather than the model's
+   default middle for everyone. */
+const DISH_ROLES = {
+  classic: "a classic they already know and like, cooked really well (chicken parm, beef tacos, pot roast). No unfamiliar ingredient or dish name; the interest is in doing it right. Title: the plain name people use (\"Chicken parmesan with a crisp crust\")",
+  twist: "a dish they know with ONE clear twist (a different sauce, spice or technique). Everything else familiar, every ingredient from an ordinary supermarket. Title: the familiar dish plus its twist (\"Roast chicken with miso butter\")",
+  known: "a dish they've heard of or ordered but probably never cooked (shakshuka, bibimbap, tikka masala, pad see ew, carnitas). Title starts with that dish's real name (\"Shakshuka with feta and greens\")",
+  regional: "a regional specialty most people haven't eaten, made the real way, with at most one ingredient they'd need to seek out. Title: its real name, then a dash and a short plain-English gloss (\"Chakhokhbili — Georgian chicken stewed with tomato and herbs\")",
+  deep: "the real regional dish with the technique or ingredient that defines it, even if they've never heard of it; it may add the one ingredient that defines it, and the blurb names that ingredient or technique. Never a dish from a typical takeout or restaurant menu (no shakshuka, pad thai, tikka masala, pho, ramen, bibimbap, tacos, hash, frittata, stir-fry). Don't tame it, don't swap in something familiar. Title: its real name, a dash, a short plain-English gloss (\"Lablabi — Tunisian chickpea soup with harissa and egg\")",
+};
+function rolesFor(level, n) {
+  const fill = (first, rest) => [...first, ...Array(Math.max(0, n - first.length)).fill(rest)].slice(0, n);
+  const roles = level === 1 ? fill([], "classic")
+    : level === 2 ? fill(["classic"], "twist")
+    : level === 3 ? fill(["twist"], "known")
+    : level === 4 ? fill(["known", "known"], "regional")
+    : fill([], "deep");
+  return roles.sort(() => Math.random() - 0.5);
+}
+/* The level in plain words, for every prompt that carries the profile. */
+const ADVENTURE_BRIEF = [
+  "Food they already know. Every dish is a familiar classic most home cooks have eaten many times, made really well. No unfamiliar ingredients or dish names.",
+  "Familiar with a twist. Dishes they know, each with exactly one fresh change. Nothing that needs explaining; every ingredient from an ordinary supermarket.",
+  "New but recognizable. Dishes they've heard of or ordered out but probably never cooked. At most one ingredient per dish they might need to look for.",
+  "Show me something new. Mostly regional dishes they haven't cooked or eaten, made the real way. Skip the obvious version of every cuisine.",
+  "Push me. Every dish new to them: regional specialties with the techniques and ingredients that define them. Never tame a dish to make it familiar.",
 ];
 
 /* The week's main protein, drawn like everything else. Left to the model it
@@ -522,7 +583,7 @@ const TECHNIQUES = [
 
 /* Weighted draw: anything used in the recent past is far less likely to come up
    again, which is what makes week twelve feel different from week one. */
-function drawWeighted(pool, recent, recencyWindow = 8) {
+function drawWeighted(pool, recent, recencyWindow = 8, base = () => 1) {
   const seen = new Map();
   recent.slice(0, recencyWindow).forEach((v, i) => {
     // more recent = heavier penalty
@@ -530,8 +591,10 @@ function drawWeighted(pool, recent, recencyWindow = 8) {
   });
   const weighted = pool.map((item) => {
     const penalty = seen.get(item) || 0;
-    return { item, w: 1 / (1 + penalty * penalty) };
-  });
+    return { item, w: base(item) / (1 + penalty * penalty) };
+  }).filter((x) => x.w > 0);
+  // Every item weighted out (e.g. a level with no tier left after filtering): any will do.
+  if (!weighted.length) return pool[Math.floor(Math.random() * pool.length)];
   const total = weighted.reduce((a, b) => a + b.w, 0);
   let r = Math.random() * total;
   for (const { item, w } of weighted) {
@@ -593,8 +656,9 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
      model's repertoire collapses to a few cuisines — while the week the person
      actually SEES is organised around an ingredient. */
   const ok = allowedIngredient(profile);
+  const level = levelOf(profile);
   const pantryPool = PANTRY.filter(ok);
-  const pantry = drawWeighted(pantryPool.length ? pantryPool : ["roasted garlic"], recentPantry, 10);
+  const pantry = drawWeighted(pantryPool.length ? pantryPool : ["roasted garlic"], recentPantry, 10, tierWeight("pantry", PANTRY_TIER, level));
 
 
   // Seasonal produce first, falling back to the full list so the draw never fails.
@@ -604,7 +668,10 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
      undefined and put "undefined" in the prompt. Cabbage is the backstop
      because nothing in the restriction map excludes it. */
   const vegFallback = VEGETABLES.filter(ok);
-  const vegPool = inSeason.length >= 4 ? inSeason : (vegFallback.length ? vegFallback : ["cabbage"]);
+  let vegPool = inSeason.length >= 4 ? inSeason : (vegFallback.length ? vegFallback : ["cabbage"]);
+  // A cautious cook gets vegetables they already know what to do with.
+  const familiarVeg = (list) => (level <= 2 && list.filter((v) => !UNUSUAL_VEG.has(v)).length >= 2 ? list.filter((v) => !UNUSUAL_VEG.has(v)) : list);
+  vegPool = familiarVeg(vegPool);
   const vegetable = drawWeighted(vegPool, recentVegetables, 6);
 
   const technique = drawWeighted(TECHNIQUES, recentTechniques, 10);
@@ -622,19 +689,20 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
   /* A cuisine per dish, all different, each weighted against past weeks. Left
      to the model a week drifted to one flavour world ("Kale and Fish" five
      ways); assigned in code, five dishes are five places. */
-  const tradPool = Number(profile.adventure) <= 2 ? FAMILIAR_TRADITIONS : TRADITIONS;
+  const tradWeight = tierWeight("tradition", TRADITION_TIER, level);
+  const tradPool = ALL_TRADITIONS.filter((t) => tradWeight(t) > 0);
   const traditions = [];
   while (traditions.length < formats.length) {
     const usedRegions = new Set(traditions.map(regionOf));
     let avail = tradPool.filter((x) => !traditions.includes(x) && !usedRegions.has(regionOf(x)));
     if (!avail.length) avail = tradPool.filter((x) => !traditions.includes(x));
     if (!avail.length) break;
-    traditions.push(drawWeighted(avail, recentTraditions, 16));
+    traditions.push(drawWeighted(avail, recentTraditions, 16, tradWeight));
   }
 
   const guard = restrictionGuard(profile);
   const proteinPool = PROTEINS.filter((x) => ok(x) && !(guard.active && guard.hits(x).length));
-  const protein = drawWeighted(proteinPool.length ? proteinPool : ["eggs"], recentProteins, 4);
+  const protein = drawWeighted(proteinPool.length ? proteinPool : ["eggs"], recentProteins, 4, tierWeight("protein", PROTEIN_TIER, level));
 
   /* Which dishes carry the shared ingredients, decided here rather than left
      to the model: asked to "use it in two or three dishes" it either put the
@@ -645,20 +713,23 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
   // A raw slot never gets meat: "citrus pork tartare" came out of exactly that pairing.
   const rawSlot = formats.findIndex((f) => FORMATS.find((x) => x.name === f)?.raw);
   const rawSafe = /fish|salmon|shrimp|tofu|bean|chickpea|lentil|halloumi|paneer|egg|sardine|mackerel/.test(protein);
-  const withProtein = new Set(pick(Math.ceil(n / 2), rawSafe ? -1 : rawSlot));
-  const withPantry = new Set(pick(Math.min(n, n >= 6 ? 3 : 2)));
+  /* At level 5 fewer dishes carry the shared protein: forcing it into every
+     regional dish produced "Thiebou Keur Sounou" that was really poached eggs. */
+  const withProtein = new Set(pick(level >= 5 ? Math.max(2, Math.floor(n / 3)) : Math.ceil(n / 2), rawSafe ? -1 : rawSlot));
+  const withPantry = new Set(pick(level >= 5 ? 1 : Math.min(n, n >= 6 ? 3 : 2)));
   const withVeg = new Set(pick(Math.min(n, n >= 6 ? 3 : 2)));
   /* A dish that carries none of the shared ingredients still needs something
      to be about, or it falls back to "spiced chickpea stew". It gets a second
      vegetable of its own. */
-  const accentPool = VEGETABLES.filter((v) => v !== vegetable && ok(v));
+  const accentPool = familiarVeg(VEGETABLES.filter((v) => v !== vegetable && ok(v)));
   const accent = accentPool.length ? accentPool[Math.floor(Math.random() * accentPool.length)] : "";
+  const roles = rolesFor(level, n);
   const slots = formats.map((format, i) => {
     const uses = [withProtein.has(i) && protein, withPantry.has(i) && pantry, withVeg.has(i) && vegetable].filter(Boolean);
-    if (!uses.length && accent) uses.push(accent);
-    return { format, tradition: traditions[i] || tradPool[i], uses };
+    if (!uses.length && accent && level <= 3) uses.push(accent);
+    return { format, tradition: traditions[i] || tradPool[i], uses, role: roles[i] };
   });
-  return { pantry, tradition: traditions[0], traditions, vegetable, technique, protein, formats, slots, month };
+  return { pantry, tradition: traditions[0], traditions, vegetable, technique, protein, formats, slots, level, month };
 }
 
 const SECTIONS = ["Produce", "Protein", "Dairy & eggs", "Bakery", "Pantry", "Frozen", "Other"];
@@ -3332,7 +3403,7 @@ preparations, roasting or searing over deep-frying, reaching for vegetables/acid
 cream or extra cheese when a dish needs more, but only where it doesn't cost real flavor or
 interest. This is a lean, not a diet: no calorie counting, no forbidden foods, no lecturing.
 A genuinely good dish that happens to be lighter is the goal, never a worse dish that's virtuous.` : ""}
-ADVENTUROUSNESS: ${ADVENTURE[profile.adventure - 1].label} — ${ADVENTURE[profile.adventure - 1].note}
+ADVENTUROUSNESS: ${levelOf(profile)} of 5, ${ADVENTURE[levelOf(profile) - 1].label.toLowerCase()}. ${ADVENTURE_BRIEF[levelOf(profile) - 1]} Every suggestion, swap and change should sit at this level: not tamer, not wilder.
 EQUIPMENT THEY OWN — THIS IS A HARD CONSTRAINT, NOT A PREFERENCE: ${profile.equipment.join(", ") || "nothing specified"}
 Every single step must be achievable with ONLY that equipment plus a knife, a board, a bowl and
 a can opener.${!profile.equipment.includes("Stovetop") ? " They have no kettle: hot water comes from the microwave." : ""} Do not propose a dish that needs anything absent, and do not write a step that
@@ -3617,6 +3688,7 @@ DIDN'T LAND: ${favorites.filter((f) => f.rating <= 2).map((f) => `${f.title} (${
     // Seeds saved before dish slots existed: pair their formats with the one tradition.
     const slots = Array.isArray(seed.slots) && seed.slots.length
       ? seed.slots : seed.formats.map((format) => ({ format, tradition: seed.tradition || "any" }));
+    const level = levelOf(profile);
 
     /* The umami list is filtered against their restrictions BEFORE it reaches the
        prompt. Previously the doctrine named miso and soy as the standard fix for a
@@ -3641,42 +3713,51 @@ THIS WEEK'S DRAW — decided already, not up for negotiation:
 - Main protein: ${seed.protein || "your choice, one for the week"}
 - Vegetable: ${seed.vegetable}
 - Technique to teach in passing: ${seed.technique}
-- DISH SLOTS, one dish per slot. Each slot fixes how the dish is cooked and which
-  shared ingredients it MUST use:
+- HOW ADVENTUROUS THIS COOK IS: ${level} of 5. ${ADVENTURE_BRIEF[level - 1]}
+- DISH SLOTS, one dish per slot. Each slot fixes how the dish is cooked, how
+  familiar it should be, and which shared ingredients it MUST use:
 ${slots.map((sl, i) => {
     const uses = sl.uses || [];
     const not = [seed.protein, seed.pantry, seed.vegetable].filter((x) => x && !uses.includes(x));
-    return `    ${i + 1}. ${sl.format} · uses ${uses.join(" and ") || "one hero ingredient of its own"}${not.length ? ` · NOT ${not.join(", not ")}` : ""}`;
+    return `    ${i + 1}. ${sl.format} · ${(sl.role || "known").toUpperCase()} · uses ${uses.join(" and ") || (level >= 4 ? "the ingredient that defines its dish" : "one hero ingredient of its own")}${not.length ? ` · NOT ${not.join(", not ")}` : ""}`;
   }).join("\n")}
+  What the familiarity labels mean:
+${[...new Set(slots.map((sl) => sl.role || "known"))].map((r) => `    ${r.toUpperCase()}: ${DISH_ROLES[r]}.`).join("\n")}
   Respect the NOT lists exactly: that is what stops five dishes turning into the
   same protein and vegetable in five sauces.
+- Every dish is a dinner main for the night: never a dessert, a side or a snack.
+- Only give a dish a real dish's name if it truly is that dish. If a slot's
+  ingredients don't fit the dish you had in mind, choose a different real dish they
+  do fit, rather than putting a famous name on something else.
 - CUISINES for this week: ${slots.map((sl) => sl.tradition).join(", ")}. Every dish takes
   exactly one of these, each used once, and NONE other: not "fusion", not "Mediterranean",
   not "Asian", not "-inspired". Pair each with the slot it suits best (steamed suits
   Cantonese, a handheld suits a Japanese sando or a Mexican torta, a braise suits Georgian).
-- Each dish starts from a REAL dish its cuisine actually cooks (Georgian chakhokhbili,
-  Persian kuku, Sri Lankan devilled prawns, Catalan escalivada), adapted to the slot's
+- Each dish starts from a REAL dish its cuisine actually cooks (${level <= 2
+    ? "chicken parmesan, beef chili, shrimp and grits, lemon-oregano chicken, beef and broccoli"
+    : level === 3 ? "shakshuka, bibimbap, chicken tikka, carnitas, pad see ew"
+    : "Georgian chakhokhbili, Persian kuku, Sri Lankan devilled prawns, Catalan escalivada"}), adapted to the slot's
   ingredients, and close enough that someone from there would recognise it. Write that
   dish in "basedOn" first, then the title. A generic dish with a cuisine's seasoning
   sprinkled on (a "Thai" stir-fry, a "Mexican" rice bowl, a "Cajun" sheet-pan hash)
   is not this.
 
-These were drawn so the weeks don't blur together. Don't drift back to a more familiar week.
+These were drawn so the weeks don't blur together. ${level <= 2
+    ? "Keep every dish as familiar as its label says: a cautious cook should never meet a dish or ingredient they'd have to look up."
+    : "Don't drift back to a more familiar week than the labels ask for."}
 
 TITLES AND VARIETY — check before answering:
-- A title is a dish name a good restaurant menu would print ("Chicken with green
-  olives and preserved lemon", "Cauliflower shawarma with tahini"). Never a
+- Name each dish the way its familiarity label says (see the labels above). A title
+  is a dish name a good restaurant menu would print, never a
   description of the format: no "Sheet-Pan Roast", "Handheld Wrap", "Skillet
-  Plate", "Grain Bowl" or "Steamed Parcels" as filler words. Never put the
-  cuisine's name in the title unless it's part of the dish's real name.
+  Plate", "Grain Bowl" or "Steamed Parcels" as filler words. Outside the short gloss
+  after a dash, never put the cuisine's name in the title.
 - ${seed.pantry} appears in at most ONE title, ${seed.vegetable} in at most TWO, and no two titles
   start with the same word or share their main noun.
-- Each dish has one hook that makes it worth cooking: an unexpected pairing, a
-  texture contrast, a technique, a sauce that cuisine is known for. Put it in "why".
-  For this cook (${ADVENTURE[profile.adventure - 1].label.toLowerCase()}) ${
-    profile.adventure <= 2 ? "that means familiar dishes with one fresh twist, never anything that needs explaining."
-    : profile.adventure >= 4 ? "aim for dishes they won't have cooked before; skip the obvious version of every cuisine." : "something they'd recognise but haven't made."}
-- Avoid the default dish of each cuisine (no plain stir-fry, tacos with salsa, chicken curry, pesto pasta, Caesar, fried rice) unless the hook makes it new.
+- Each dish has one hook that makes it worth cooking, and the hook matches its label:
+  for a CLASSIC it's the execution (a proper sear, a sauce built from the pan); for a
+  TWIST it's the one change; further up it's the dish itself. Put it in "why".${level >= 3 ? `
+- Avoid the default dish of each cuisine (no plain stir-fry, tacos with salsa, chicken curry, pesto pasta, Caesar, fried rice) unless the hook makes it new.` : ""}
 
 If a dish tastes flat, these are the fixes available given their restrictions:
 ${umami.join(", ")}.
@@ -3808,7 +3889,8 @@ The dishes, in order:
 ${dishes.map((d, i) => `${i + 1}. ${d.title} (${[d.cuisine, d.basedOn, d.blurb].filter(Boolean).join("; ")})`).join("\n")}
 
 Change only the titles that cause a problem, and only the words that need to change. Each title
-must still describe the same dish truthfully: same ingredients, same cooking. A title is a dish
+must still describe the same dish truthfully: same ingredients, same cooking. Keep a dish's real
+name (shakshuka, chakhokhbili) and any plain-English gloss after a dash. A title is a dish
 name a good menu would print, under 8 words, never a description of the format.
 Respond with ONLY this JSON: {"titles":["one per dish, same order"]}` }], { tier: "fast", maxTokens: 300, docSlices: ["core"] });
       const out = parseJSON(raw);
@@ -4252,6 +4334,7 @@ Respond with ONLY this JSON:
       // A new recipe starts with nothing ticked — old ticks belonged to old steps.
       setDoneSteps((d) => ({ ...d, [dishId]: {} }));
       setRecipes((r) => ({ ...r, [dishId]: built }));
+      trackRecipe(built, "new");
       // Into the book, keyed by title. This is the copy cookAgain will find.
       const dishTitle = candidates.find((c) => c.id === dishId)?.title;
       rememberRecipe(dishTitle, built);
@@ -4423,6 +4506,7 @@ Respond with ONLY this JSON:
         ...(hits.length ? { conflicts: describeHits(hits) } : {}),
       };
       setRecipes((r) => ({ ...r, [dishId]: revised }));
+      trackRecipe(revised, "changed");
       // New steps, so nothing is ticked: old ticks pointed at old step numbers.
       setDoneSteps((d) => ({ ...d, [dishId]: {} }));
       if (asked) setRecipeAsks((m) => ({ ...m, [dishId]: [...(m[dishId] || []), asked].slice(-8) }));
