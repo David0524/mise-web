@@ -7,7 +7,7 @@
 // shuffled together. If the setting works, the blind ratings climb with the
 // level and land close to it.
 //
-//   GEMINI_API_KEY=... BASE_URL=http://localhost:3000 node qa/adventure.js
+//   GEMINI_API_KEY=... BASE_URL=http://localhost:3000 [JUDGE_RUNS=3] node qa/adventure.js
 //   (the key is only for the judge, read from the env)
 //
 // Writes adventure.md and adventure.json to $QA_OUT (default qa/out).
@@ -125,10 +125,19 @@ const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
   // Blind judging: every dish, shuffled.
   const all = [];
   for (const [level, l] of Object.entries(result.levels)) l.weeks.forEach((w, wi) => w.dishes.forEach((d, di) => all.push({ level: Number(level), wi, di, ...d })));
-  const order = all.map((_, i) => i).sort(() => Math.random() - 0.5);
-  const { model, scores } = await blindJudge(order.map((i) => all[i]));
-  order.forEach((i, k) => { all[i].score = scores[k]; });
-  result.judge = model;
+  /* JUDGE_RUNS > 1 averages several blind passes, each freshly shuffled: one
+     pass over ~50 dishes moved a level's mean by 0.3 between identical runs. */
+  const RUNS = Math.max(1, Number(process.env.JUDGE_RUNS || 1));
+  const sums = all.map(() => []);
+  let model;
+  for (let run = 0; run < RUNS; run++) {
+    const order = all.map((_, i) => i).sort(() => Math.random() - 0.5);
+    const r = await blindJudge(order.map((i) => all[i]));
+    model = r.model;
+    order.forEach((i, k) => { if (r.scores[k]) sums[i].push(r.scores[k]); });
+  }
+  all.forEach((d, i) => { d.score = sums[i].length ? Math.round((10 * sums[i].reduce((a, b) => a + b, 0)) / sums[i].length) / 10 : null; });
+  result.judge = RUNS > 1 ? `${model} ×${RUNS}` : model;
 
   const byLevel = {};
   for (const lv of Object.keys(result.levels).map(Number)) {

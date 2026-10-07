@@ -6,6 +6,7 @@ import AuthOptions from "@/components/AuthOptions";
 import ConsentChecks from "@/components/ConsentChecks";
 import { EmailField, NewPasswordFields, credentialsReady } from "@/components/CredentialFields";
 import { track, trackRecipe } from "@/lib/track";
+import { DISH_BANK, ROLE_TIERS } from "@/lib/dishBank";
 
 /* The one definition of the app's directional daylight, shared with the
    sign-in / sign-up / pricing pages so the app and its front door are lit the
@@ -438,7 +439,7 @@ const UNUSUAL_VEG = new Set(["kohlrabi", "celery root", "escarole", "radicchio",
 const tierOf = (table, item) => (table[1]?.includes(item) ? 1 : table[2]?.includes(item) ? 2 : 3);
 /* How much each tier (1, 2, 3) weighs at each adventure level. 0 = never. */
 const TIER_WEIGHTS = {
-  tradition: { 1: [1, 0, 0], 2: [3, 1, 0], 3: [1, 3, 1], 4: [0, 2, 1], 5: [0, 0, 1] },
+  tradition: { 1: [1, 0, 0], 2: [3, 1, 0], 3: [0.5, 3, 1.5], 4: [0, 2, 1], 5: [0, 0, 1] },
   pantry: { 1: [1, 0, 0], 2: [1, 2, 0], 3: [1, 2, 1], 4: [0.3, 1, 2], 5: [0, 0.5, 2] },
   protein: { 1: [1, 0, 0], 2: [2, 1, 0], 3: [1, 1, 0.5], 4: [1, 1, 1], 5: [0.5, 1, 1.5] },
 };
@@ -462,7 +463,7 @@ function rolesFor(level, n) {
   const roles = level === 1 ? fill([], "classic")
     : level === 2 ? fill(["classic"], "twist")
     : level === 3 ? fill(["twist"], "known")
-    : level === 4 ? fill(["known", "known"], "regional")
+    : level === 4 ? fill(["known"], "regional")
     : fill([], "deep");
   return roles.sort(() => Math.random() - 0.5);
 }
@@ -517,19 +518,20 @@ const PANTRY = [
   "maple syrup", "brown butter", "roasted garlic", "ginger and scallion",
 ];
 
+// "key" ties a format to the dish bank (lib/dishBank.js).
 const FORMATS = [
-  { name: "a braise or stew", needs: ["Stovetop", "Big pot", "Slow cooker"] },
-  { name: "a sheet-pan roast", needs: ["Oven", "Sheet pans"] },
-  { name: "a rice, grain or legume dish with its own sauce (a pilaf, a congee, a dal, a risotto), not a salad bowl", needs: [] },
-  { name: "a noodle or pasta dish", needs: ["Stovetop", "Big pot"] },
-  { name: "a soup", needs: ["Stovetop", "Big pot", "Microwave", "Slow cooker"] },
-  { name: "a handheld — wrap, taco, sandwich", needs: [] },
-  { name: "a plate a vegetable genuinely leads", needs: [] },
-  { name: "a hard sear in a hot pan", needs: ["Cast iron pan", "Nonstick pan", "Stovetop"] },
-  { name: "a raw or barely-cooked plate a vegetable or seafood leads (never raw meat, poultry or pork)", needs: [], raw: true },
-  { name: "a steamed dish", needs: ["Microwave", "Big pot", "Stovetop"] },
-  { name: "eggs as dinner", needs: ["Stovetop", "Nonstick pan", "Microwave"] },
-  { name: "a bake or gratin", needs: ["Oven"] },
+  { key: "braise", name: "a braise or stew", needs: ["Stovetop", "Big pot", "Slow cooker"] },
+  { key: "roast", name: "a sheet-pan roast", needs: ["Oven", "Sheet pans"] },
+  { key: "grain", name: "a rice, grain or legume dish with its own sauce (a pilaf, a congee, a dal, a risotto), not a salad bowl", needs: [] },
+  { key: "noodle", name: "a noodle or pasta dish", needs: ["Stovetop", "Big pot"] },
+  { key: "soup", name: "a soup", needs: ["Stovetop", "Big pot", "Microwave", "Slow cooker"] },
+  { key: "handheld", name: "a handheld — wrap, taco, sandwich", needs: [] },
+  { key: "veg", name: "a plate a vegetable genuinely leads", needs: [] },
+  { key: "sear", name: "a hard sear in a hot pan", needs: ["Cast iron pan", "Nonstick pan", "Stovetop"] },
+  { key: "raw", name: "a raw or barely-cooked plate a vegetable or seafood leads (never raw meat, poultry or pork)", needs: [], raw: true },
+  { key: "steam", name: "a steamed dish", needs: ["Microwave", "Big pot", "Stovetop"] },
+  { key: "eggs", name: "eggs as dinner", needs: ["Stovetop", "Nonstick pan", "Microwave"] },
+  { key: "bake", name: "a bake or gratin", needs: ["Oven"] },
 ];
 
 /* Underused on purpose. The vegetable slot has drifted to whatever is easiest to
@@ -627,6 +629,102 @@ function candidateCount(profile) {
    and stays; tartare/carpaccio of anything that walks does not. */
 const RAW_MEAT = /\b(?:(?:beef|steak|lamb|pork|chicken|turkey|veal|venison|sausage|duck)(?:\s+[\w-]+){0,2}\s+(?:tartare|carpaccio|crudo)|(?:tartare|carpaccio|raw)(?:\s+of)?(?:\s+[\w-]+){0,1}\s+(?:beef|steak|lamb|pork|chicken|turkey|veal|venison|sausage|duck))\b|\b(?:kibbeh nayyeh|steak tartare|yukhoe|kitfo|mett)\b/i;
 
+/* One line of the ideas prompt's DISH SLOTS list. A slot with a dish from the
+   bank carries its cuisine and the dish itself; the week's shared ingredients
+   are only offered to it, because forcing the week's tofu and cauliflower into
+   a regional dish is what tamed it ("Chakhokhbili" made of cauliflower). */
+/* Everyday dishes by format, for CLASSIC and TWIST slots. Without a concrete
+   anchor a level-1 "steamed" or "raw" slot came out as "Crispy delicata squash
+   rings with fennel remoulade": familiar words, unfamiliar food. The model
+   picks whichever fits the slot's ingredients, or one just like them. */
+const EVERYDAY = {
+  braise: "pot roast, chicken cacciatore, beef stew, braised chicken thighs with potatoes",
+  roast: "roast chicken and potatoes, sausage and peppers, lemon salmon with vegetables",
+  grain: "chicken and rice, red beans and rice, mushroom risotto, chicken fried rice",
+  noodle: "spaghetti and meatballs, shrimp scampi, chicken alfredo, baked mac and cheese",
+  soup: "chicken noodle soup, minestrone, beef chili, black bean soup, potato leek soup",
+  handheld: "burgers, beef tacos, chicken quesadillas, Philly cheesesteak, fish tacos",
+  veg: "stuffed peppers, eggplant parmesan, loaded baked potatoes, cauliflower steaks with gravy",
+  sear: "pork chops with pan gravy, steak and potatoes, chicken piccata, salmon with lemon butter",
+  raw: "Cobb salad, shrimp cocktail salad, Greek salad with chicken, tuna salad plate",
+  steam: "steamed mussels with garlic bread, lemon-herb fish steamed in foil, shrimp boil",
+  eggs: "a cheese omelet, breakfast-for-dinner scramble, a spinach frittata, egg fried rice",
+  bake: "lasagna, baked ziti, chicken pot pie, meatloaf, tuna casserole",
+};
+
+function slotLine(sl, seed, level) {
+  const uses = sl.uses || [];
+  const role = (sl.role || "known").toUpperCase();
+  const everyday = EVERYDAY[FORMATS.find((f) => f.name === sl.format)?.key];
+  const anchor = everyday && sl.role === "classic" ? ` · a dish like ${everyday}`
+    : everyday && sl.role === "twist" ? ` · one of ${everyday} or the like, with ONE twist` : "";
+  if (sl.dish) {
+    /* Below level 5 the week's vegetable still goes in (most dishes take a
+       vegetable without becoming something else), so the shopping stays shared. */
+    /* From level 4 the protein and jar are left out altogether: offered as
+       "only if it fits", Flash-Lite still put the week's tempeh in every dish
+       ("Beef rendang — tempeh rendang"). */
+    const must = level <= 4 ? uses.filter((u) => u === seed.vegetable) : [];
+    const may = level <= 3 ? uses.filter((u) => !must.includes(u)) : [];
+    return `${sl.format} · ${role} · ${sl.tradition} · THE DISH: ${sl.dish.name} (${sl.dish.gloss})${must.length ? ` · add ${must[0]}` : ""}${may.length ? ` · use ${may.join(" or ")} only if this dish is really made with it or something close, otherwise the dish's own` : " · the dish's own protein and other ingredients, not the week's"}`;
+  }
+  const not = [seed.protein, seed.pantry, seed.vegetable].filter((x) => x && !uses.includes(x));
+  return `${sl.format} · ${role}${anchor} · uses ${uses.join(" and ") || (level >= 4 ? "the ingredient that defines its dish" : "one hero ingredient of its own")}${not.length ? ` · NOT ${not.join(", not ")}` : ""}`;
+}
+
+/* Puts the bank dish's real name back on a title that dropped it ("Fried rice
+   noodles with beef" for char kway teow), but only when the model says it
+   cooked that dish — a different dish keeps its own title. */
+const COMMON_NAME_WORDS = new Set(["beef", "chicken", "pork", "fish", "lamb", "shrimp", "rice", "with", "eggs", "soup", "curry",
+  "noodles", "noodle", "stew", "style", "fried", "steamed", "salad", "sandwich", "rolls", "beans", "green", "chile", "pasta"]);
+function nameBankDishes(dishes, slots) {
+  const norm = (x) => String(x || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  dishes.forEach((d) => {
+    const sl = slots?.[Number(d.slot) - 1];
+    const name = sl?.dish?.name;
+    if (!name) return;
+    // Its distinctive words: "Beef rendang" is named by "rendang", not "beef".
+    const words = norm(name).split(/[\s,'-]+/).filter((w) => w.length > 3 && !COMMON_NAME_WORDS.has(w));
+    if (!words.length || words.some((w) => norm(d.title).includes(w))) return;
+    if (!words.some((w) => norm(`${d.basedOn} ${d.blurb}`).includes(w))) return;
+    const rest = d.title.charAt(0).toLowerCase() + d.title.slice(1);
+    d.title = `${name} — ${rest}`;
+  });
+}
+
+/* The role a dish fills when its slot is unknown (a dish added by feedback,
+   a week saved before slots existed): the level's usual one. */
+const LEVEL_ROLE = ["classic", "twist", "known", "regional", "deep"];
+const roleOf = (dish, seed, level) => dish?.role || seed?.slots?.[Number(dish?.slot) - 1]?.role || LEVEL_ROLE[level - 1];
+
+/* Real dishes for a swap or a feedback round, so a replacement sits at the
+   same familiarity as the week instead of the model's middle-of-the-road
+   default: same tier rules and screening as drawWeekSeed, from cuisines and
+   formats not already on the menu where possible. */
+function freshBankDishes(profile, role, { avoidTraditions = [], avoidFormats = [], avoidNames = [], n = 1 } = {}) {
+  const tiers = ROLE_TIERS[role];
+  if (!tiers) return [];
+  const level = levelOf(profile);
+  const ok = allowedIngredient(profile);
+  const guard = restrictionGuard(profile);
+  const keys = new Set(availableFormats(profile.equipment).map((f) => f.key));
+  const tw = tierWeight("tradition", TRADITION_TIER, level);
+  const avoid = avoidNames.map((x) => String(x || "").toLowerCase()).filter(Boolean);
+  const all = Object.values(DISH_BANK).flat().filter((d) => {
+    const text = `${d.name} ${d.gloss}`;
+    return keys.has(d.format) && tw(d.tradition) > 0 && !avoidTraditions.includes(d.tradition)
+      && !avoid.some((a) => a.includes(d.name.toLowerCase())) && ok(text) && !(guard.active && guard.hits(text).length);
+  });
+  for (const strict of [true, false]) {
+    for (const t of tiers) {
+      const list = all.filter((d) => d.tier === t && (!strict || !avoidFormats.includes(d.format))).sort(() => Math.random() - 0.5);
+      const out = list.filter((d, i) => list.findIndex((x) => x.tradition === d.tradition) === i).slice(0, n);
+      if (out.length) return out;
+    }
+  }
+  return [];
+}
+
 const TITLE_FILLER = /\b(sheet-pan roast|handheld|skillet plate|grain bowl|legume bowl|parcels?|packets?|steam-cooked)\b/i;
 function titleProblems(titles, seed) {
   const key = (term) => String(term || "").toLowerCase().split(/\s+(?:and|in|or)\s+/)[0].replace(/s$/, "").split(" ").slice(-1)[0];
@@ -701,6 +799,48 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
   }
 
   const guard = restrictionGuard(profile);
+  const roles = rolesFor(level, formats.length);
+
+  /* Above "twist", the dish itself comes from the bank (lib/dishBank.js): a
+     real dish of the slot's cuisine, at the role's familiarity, cooked the
+     slot's way. Left to choose, Flash-Lite tamed level-5 slots into "spiced
+     cauliflower stew" and put famous names on things that weren't that dish.
+     When the cuisine has no dish in the slot's format, the slot takes the
+     dish's format instead (from a slot not yet matched, or from the unused
+     formats), so the week still has one format per dish. Dishes the person
+     can't eat — or that a heat ceiling or missing tool rules out — never get
+     offered; ones from the last few weeks are skipped. */
+  const recentDishes = (history || []).flatMap((w) => (w.seed?.slots || []).map((sl) => sl.dish?.name).filter(Boolean));
+  const dishOk = (d) => {
+    const text = `${d.name} ${d.gloss}`;
+    return ok(text) && !(guard.active && guard.hits(text).length) && !recentDishes.slice(0, 15).includes(d.name);
+  };
+  const keyOf = (name) => FORMATS.find((f) => f.name === name)?.key;
+  const dishes = formats.map(() => null);
+  const matched = new Set();
+  for (const i of [...formats.keys()].sort(() => Math.random() - 0.5)) {
+    const tiers = ROLE_TIERS[roles[i]];
+    if (!tiers) continue;
+    const bank = (DISH_BANK[traditions[i]] || []).filter(dishOk);
+    const reachable = (d) => {
+      const f = pool.find((x) => x.key === d.format);
+      if (!f) return false;
+      const j = formats.indexOf(f.name);
+      return j === -1 || j === i || !matched.has(j);
+    };
+    // The role's tier beats the slot's format: a level-5 slot takes a deep dish
+    // cooked another way over a tamer one cooked this way.
+    const cands = tiers.flatMap((t) => [(d) => d.tier === t && d.format === keyOf(formats[i]), (d) => d.tier === t && reachable(d)])
+      .map((test) => bank.filter(test)).find((l) => l.length);
+    if (!cands) continue;
+    const name = drawWeighted(cands.map((d) => d.name), recentDishes, 30);
+    const dish = cands.find((d) => d.name === name);
+    const f = pool.find((x) => x.key === dish.format).name;
+    const j = formats.indexOf(f);
+    if (j !== i) { if (j >= 0) formats[j] = formats[i]; formats[i] = f; }
+    dishes[i] = dish;
+    matched.add(i);
+  }
   const proteinPool = PROTEINS.filter((x) => ok(x) && !(guard.active && guard.hits(x).length));
   const protein = drawWeighted(proteinPool.length ? proteinPool : ["eggs"], recentProteins, 4, tierWeight("protein", PROTEIN_TIER, level));
 
@@ -723,11 +863,11 @@ function drawWeekSeed(profile, history, month = new Date().getMonth()) {
      vegetable of its own. */
   const accentPool = familiarVeg(VEGETABLES.filter((v) => v !== vegetable && ok(v)));
   const accent = accentPool.length ? accentPool[Math.floor(Math.random() * accentPool.length)] : "";
-  const roles = rolesFor(level, n);
   const slots = formats.map((format, i) => {
     const uses = [withProtein.has(i) && protein, withPantry.has(i) && pantry, withVeg.has(i) && vegetable].filter(Boolean);
-    if (!uses.length && accent && level <= 3) uses.push(accent);
-    return { format, tradition: traditions[i] || tradPool[i], uses, role: roles[i] };
+    if (!uses.length && accent && level <= 3 && !dishes[i]) uses.push(accent);
+    const dish = dishes[i] && { name: dishes[i].name, gloss: dishes[i].gloss, tier: dishes[i].tier };
+    return { format, tradition: traditions[i] || tradPool[i], uses, role: roles[i], ...(dish ? { dish } : {}) };
   });
   return { pantry, tradition: traditions[0], traditions, vegetable, technique, protein, formats, slots, level, month };
 }
@@ -3716,23 +3856,27 @@ THIS WEEK'S DRAW — decided already, not up for negotiation:
 - HOW ADVENTUROUS THIS COOK IS: ${level} of 5. ${ADVENTURE_BRIEF[level - 1]}
 - DISH SLOTS, one dish per slot. Each slot fixes how the dish is cooked, how
   familiar it should be, and which shared ingredients it MUST use:
-${slots.map((sl, i) => {
-    const uses = sl.uses || [];
-    const not = [seed.protein, seed.pantry, seed.vegetable].filter((x) => x && !uses.includes(x));
-    return `    ${i + 1}. ${sl.format} · ${(sl.role || "known").toUpperCase()} · uses ${uses.join(" and ") || (level >= 4 ? "the ingredient that defines its dish" : "one hero ingredient of its own")}${not.length ? ` · NOT ${not.join(", not ")}` : ""}`;
-  }).join("\n")}
+${slots.map((sl, i) => `    ${i + 1}. ${slotLine(sl, seed, level)}`).join("\n")}
   What the familiarity labels mean:
 ${[...new Set(slots.map((sl) => sl.role || "known"))].map((r) => `    ${r.toUpperCase()}: ${DISH_ROLES[r]}.`).join("\n")}
   Respect the NOT lists exactly: that is what stops five dishes turning into the
-  same protein and vegetable in five sauces.
+  same protein and vegetable in five sauces.${slots.some((sl) => sl.dish) ? `
+  Where a slot names THE DISH, cook exactly that dish the way its cuisine does, with
+  the ingredient or technique that defines it (name that in the blurb), changed only
+  as far as their restrictions, equipment and time limit require. Its title starts
+  with that real name${level >= 4 ? ", then a dash and a short plain-English gloss" : ""}, and "basedOn" is that name. Don't swap
+  in something more familiar.` : ""}${slots.some((sl) => sl.role === "twist") ? `
+  For a TWIST slot, "basedOn" is a dish an ordinary American home cook already makes;
+  its cuisine lends only the one twist.` : ""}
 - Every dish is a dinner main for the night: never a dessert, a side or a snack.
 - Only give a dish a real dish's name if it truly is that dish. If a slot's
   ingredients don't fit the dish you had in mind, choose a different real dish they
   do fit, rather than putting a famous name on something else.
 - CUISINES for this week: ${slots.map((sl) => sl.tradition).join(", ")}. Every dish takes
   exactly one of these, each used once, and NONE other: not "fusion", not "Mediterranean",
-  not "Asian", not "-inspired". Pair each with the slot it suits best (steamed suits
-  Cantonese, a handheld suits a Japanese sando or a Mexican torta, a braise suits Georgian).
+  not "Asian", not "-inspired". A slot that names its cuisine keeps it; pair the rest
+  with the slot each suits best (steamed suits Cantonese, a handheld suits a Japanese
+  sando or a Mexican torta, a braise suits Georgian).
 - Each dish starts from a REAL dish its cuisine actually cooks (${level <= 2
     ? "chicken parmesan, beef chili, shrimp and grits, lemon-oregano chicken, beef and broccoli"
     : level === 3 ? "shakshuka, bibimbap, chicken tikka, carnitas, pad see ew"
@@ -3848,6 +3992,7 @@ Respond with ONLY this JSON, no backticks:
         dedupeDishes((Array.isArray(out.dishes) ? out.dishes : []).map(normalizeDish).filter(Boolean)));
       // An empty list used to land as a silent "No ideas yet" with no error.
       if (!dishes.length) throw new Error(guardNote || "I didn't get any dishes back that time. Give it another go.");
+      nameBankDishes(dishes, slots);
       await polishTitles(dishes, seed);
       if (gen !== weekGenRef.current) return;
       setEcosystem(out.ecosystem && typeof out.ecosystem === "object" ? out.ecosystem : null);
@@ -3929,9 +4074,20 @@ Respond with ONLY this JSON: {"titles":["one per dish, same order"]}` }], { tier
        on every feedback round, which meant re-sending the original prompt (~1,500
        tokens) and growing from there — but it was only doing one job: reminding
        her what was on the list. Saying so directly does that in ~80 tokens. */
+    /* Each dish carries its slot's familiarity, and new dishes come from the
+       bank at the level's own tier: asked only to "go a different direction",
+       replacements drifted to the model's default middle whatever the level. */
+    const level = levelOf(profile);
+    const roleTag = (c) => roleOf(c, weekSeed, level).toUpperCase();
     const board = candidates
-      .map((c) => `- ${c.title} (${c.blurb})${c.reaction === "yes" ? " [KEEP]" : c.reaction === "no" ? " [rejected]" : ""}`)
+      .map((c) => `- ${c.title} (${c.blurb}) [${roleTag(c)}]${c.reaction === "yes" ? " [KEEP]" : c.reaction === "no" ? " [rejected]" : ""}`)
       .join("\n");
+    const boardRoles = [...new Set(candidates.map((c) => roleOf(c, weekSeed, level)))];
+    const fresh = freshBankDishes(profile, LEVEL_ROLE[level - 1], {
+      avoidTraditions: candidates.map((c) => c.cuisine).filter(Boolean),
+      avoidNames: candidates.flatMap((c) => [c.title, c.basedOn]),
+      n: 4,
+    });
 
     const prompt = `The candidates currently on their screen:
 ${board || "none"}
@@ -3944,6 +4100,12 @@ They said: ${quoteUser(text)}
 Work WITH this. Don't defend your list. Agree when they're right. Replace anything they turned
 down with something in a different direction, considering what's already on the menu. Keep
 dishes marked YES untouched.
+
+Unless they ask otherwise, everything stays at their adventure level, ${level} of 5:
+${ADVENTURE_BRIEF[level - 1]} A replacement keeps the familiarity tag of the dish it replaces:
+${boardRoles.map((r) => `- ${r.toUpperCase()}: ${DISH_ROLES[r]}.`).join("\n")}${fresh.length ? `
+For a new dish, start from one of these real dishes, cooked the way it really is, and title
+it with its real name: ${fresh.map((d) => `${d.name} (${d.tradition}: ${d.gloss})`).join("; ")}.` : ""}
 
 ${CHAT_VOICE} That applies to "say". Each "blurb" and "why" 14 words or fewer.
 
@@ -3969,7 +4131,8 @@ Return the FULL revised list.`;
       const prior = new Map(candidates.map((c) => [str(c.title).toLowerCase(), c]));
       const revised = dishes.map((d) => {
         const old = prior.get(d.title.toLowerCase());
-        return { ...d, id: old?.id || uid(), reaction: old?.reaction ?? null, note: old?.note || "" };
+        return { ...d, ...(old ? { slot: old.slot, role: old.role, cuisine: d.cuisine || old.cuisine } : {}),
+          id: old?.id || uid(), reaction: old?.reaction ?? null, note: old?.note || "" };
       });
       /* Picked dishes are theirs, not the model's. The prompt says to keep
          them untouched, but a lightly renamed one ("…with Dill") matched
@@ -3996,11 +4159,29 @@ Return the FULL revised list.`;
     setErr("");
     setBusy(`Finding something instead of ${dish.title}`);
     const others = candidates.filter((c) => c.id !== id).map((c) => c.title).join(", ");
+    /* The replacement keeps the slot's familiarity. Without this a level-5
+       swap came back as a tame stir-fry and a level-1 swap as something they'd
+       have to look up: the prompt said "same slot" but never what the slot was. */
+    const level = levelOf(profile);
+    const role = roleOf(dish, weekSeed, level);
+    const slotKey = (c) => FORMATS.find((f) => f.name === weekSeed?.slots?.[Number(c.slot) - 1]?.format)?.key;
+    const [pick] = freshBankDishes(profile, role, {
+      avoidTraditions: candidates.map((c) => c.cuisine).filter(Boolean),
+      avoidFormats: candidates.filter((c) => c.id !== id).map(slotKey).filter(Boolean),
+      avoidNames: candidates.flatMap((c) => [c.title, c.basedOn]),
+    });
     const prompt = `They don't want: ${dish.title} (${dish.blurb})
 Still on the menu: ${others || "nothing else yet"}
 
-Offer ONE replacement that fills the same slot but goes a different direction, still using the
-week's shared ingredients. If the menu already has something rich and fried, go fresher.
+Offer ONE replacement that fills the same slot but goes a different direction, ${pick
+    ? "using the week's shared ingredients only where the dish really takes them"
+    : "still using the week's shared ingredients"}. If the menu already has something rich and fried, go fresher.
+
+Keep it at their adventure level, ${level} of 5: ${ADVENTURE_BRIEF[level - 1]} This slot is
+${role.toUpperCase()}: ${DISH_ROLES[role]}.${pick ? `
+Make it this real ${pick.tradition} dish: ${pick.name} (${pick.gloss}), cooked the way it
+really is, with the ingredient or technique that defines it named in the blurb. "basedOn" is
+"${pick.name}".` : ""}
 
 Use a different COOKING FORMAT from the one they turned down and from everything else on the
 menu — if they rejected a stir-fry, don't offer another stir-fry with a different sauce. And
@@ -4009,7 +4190,7 @@ don't reach for a dish already listed above as recently suggested.
 ${CHAT_VOICE} "why" and "blurb" 14 words or fewer, "say" is truly one short sentence.
 
 Respond with ONLY this JSON:
-{"title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","format":"how it\u0027s cooked, one or two words","spice":0,"minutes":30,"say":"one short sentence on why this instead"}`;
+{"basedOn":"the real dish this is","title":"","blurb":"","why":"the actual idea — not \u0027healthy\u0027 or \u0027quick\u0027, the specific thing that makes this worth having thought of","format":"how it\u0027s cooked, one or two words","spice":0,"minutes":30,"say":"one short sentence on why this instead"}`;
     try {
       const raw = await callClaude([{ role: "user", content: prompt }], { docSlices: ["core", "flavor"] });
       if (gen !== weekGenRef.current) return;   // the week was cleared while this was out
@@ -4018,6 +4199,10 @@ Respond with ONLY this JSON:
       if (!swapped) throw new Error("I didn't get a replacement back that time. Give it another go.");
       const clash = restrictionGuard(profile).hits(`${swapped.title} ${swapped.blurb} ${swapped.why}`);
       if (clash.length) throw new Error(`The replacement used ${describeHits(clash)}, so I didn't add it. Try again.`);
+      if (RAW_MEAT.test(`${swapped.title} ${swapped.blurb}`)) throw new Error("The replacement served meat raw, so I didn't add it. Try again.");
+      // Same slot, same familiarity; the bank dish's real name stays on the title.
+      Object.assign(swapped, { slot: dish.slot, role, ...(pick ? { cuisine: pick.tradition } : {}) });
+      if (pick) { const d = { ...swapped, slot: 1 }; nameBankDishes([d], [{ dish: pick }]); swapped.title = d.title; }
       setCandidates((cs) => cs.map((c) => (c.id === id ? { ...swapped, id: c.id, reaction: null, note: "" } : c)));
       /* The replacement inherits the slot's id, so everything keyed to the old
          dish has to go with it — otherwise "Swapped Lentil Soup" opened the
