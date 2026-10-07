@@ -158,6 +158,7 @@
     /** Block that dissolves by dropping whole cells (dither dropout, colours unchanged). p 0..1 = fraction gone. */
     g.blockDissolve = function (name, x, y, size, p, o = {}) {
       if (p >= 1) return; if (p <= 0) return g.block(name, x, y, size, o);
+      if (o.shadow !== false) { const c = g.ctx; c.save(); c.globalAlpha *= (o.shadowAlpha ?? .28) * Math.pow(1 - p, 1.5); c.filter = `blur(${10 * g.U}px)`; c.fillStyle = '#1a1414'; c.beginPath(); c.ellipse(x + 6 * g.U, y + size * g.U * .55, size * g.U * .42, size * g.U * .07, 0, 0, 7); c.fill(); c.restore(); } // shadow fades with the dropout
       const L = film.layer(8), lx = L.getContext('2d'), old = g.__swap(lx);
       lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.clearRect(0, 0, film.w, film.h);
       g.block(name, x, y, size, { ...o, shadow: false }); g.__swap(old);
