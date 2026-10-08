@@ -173,7 +173,7 @@
       ctx.save();
       const ox = (o.offset?.x || 0) * g.U, oy = (o.offset?.y || 0) * g.U, sc = o.scale || 1, ax = (o.anchor?.[0] ?? 720) * g.U, ay = (o.anchor?.[1] ?? 540) * g.U;
       ctx.translate(ax + ox, ay + oy); ctx.scale(sc, sc); ctx.translate(-ax, -ay);
-      if (o.rot) { const [px, py] = (o.pivot || [720, 1080]).map(v => v * g.U); ctx.translate(px, py); ctx.rotate(o.rot); ctx.translate(-px, -py); } // sway about the wrist / neck
+      if (o.rot || o.sx != null) { const [px, py] = (o.pivot || [720, 1080]).map(v => v * g.U); ctx.translate(px, py); if (o.rot) ctx.rotate(o.rot); if (o.sx != null) ctx.scale(Math.sign(o.sx || 1) * Math.max(.02, Math.abs(o.sx)), 1); ctx.translate(-px, -py); } // sway about the wrist / neck; sx = wrist twirl (−1 back of hand … 0 edge-on … 1 palm)
       ctx.globalAlpha *= o.alpha ?? 1;
       // o.warp(yN) → dx (1080 units): bend the body in horizontal strips (fingers flex, a head nods) without re-heating it
       let img = L; if (o.warp) { const Lw = film.layer(12), wx = Lw.getContext('2d'), sh = Math.max(2, Math.round(6 * g.U)); wx.setTransform(1, 0, 0, 1, 0, 0); wx.clearRect(0, 0, W, H); for (let y = 0; y < H; y += sh) wx.drawImage(L, 0, y, W, sh, o.warp(y / H) * g.U, y, W, sh); img = Lw; } // warp once into a scratch layer

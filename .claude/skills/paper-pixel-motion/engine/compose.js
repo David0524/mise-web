@@ -333,15 +333,18 @@
     const shp = ctx.shapes[b.shape], isHand = shp.kind === 'hand', Lo = LY(g), U = g.U, t = s.t, d = s.d;
     const entry = E.out(t / .42), rise = isHand ? E.expo(t / .5) : 1, exitK = b.exit === false ? 0 : g.clamp((t - (d - .42)) / .42), whip = b.exit === false ? 0 : g.clamp((t - (d - .13)) / .13);
     const sway = isHand ? Math.sin(t * 1.4 + .6) * .03 + (1 - rise) * .12 : Math.sin(t * 1.1) * .012;
+    // the twirl: the wrist turns as the hand rises (back of hand → edge-on → palm), keeps a slow twist while held, and turns away on the exit
+    const tw = isHand && b.twirl !== false, twIn = .33 + .67 * E.out(t / .55), twOut = g.clamp((t - (d - .32)) / .32);
+    const sx = tw ? -Math.cos(Math.PI * twIn) * (1 - .1 * Math.sin(t * 1.1) ** 2) * (1 - .55 * E.in(twOut)) : undefined, roll = tw ? (1 - E.out(t / .55)) * .5 - E.in(twOut) * .22 : 0;
     const warp = isHand ? (y) => { const k = Math.max(0, 1 - y / .62); return Math.sin(t * 2.3 + y * 7) * 16 * k * k + Math.sin(t * 3.7 + 1) * 7 * k * k * k; } : (y) => Math.sin(t * 1.6) * 4 * Math.max(0, 1 - y / .5);
     if (exitK > 0) { g.ctx.fillStyle = `rgba(96,58,56,${exitK * .7})`; g.ctx.fillRect(0, 0, g.W, g.H); }
     const h0 = b.hotspot || (isHand ? [760, 980, 150] : [1090, 940, 115, 170]), hot = [h0[0] + Math.sin(t * .9) * 26, h0[1] + Math.cos(t * .7) * 18, h0[2], h0[3]];
     let hs;
-    g.layer({ blur: (1 - entry) * 22 }, () => { hs = g.heat(shp.src, { key: b.shape + (b.thick || ''), t: s.T, heat: entry, offset: { x: 0, y: (1 - rise) * 320 }, hotspot: hot, hotspotStrength: b.hotspotStrength ?? (isHand ? .3 : .65), thick: b.thick, glowAlpha: .5, rot: sway, pivot: isHand ? [720, 1140] : [980, 760], warp, noise: .1, pale: exitK * .75 }); });
+    g.layer({ blur: (1 - entry) * 22 }, () => { hs = g.heat(shp.src, { key: b.shape + (b.thick || ''), t: s.T, heat: entry, offset: { x: 0, y: (1 - rise) * 320 }, hotspot: hot, hotspotStrength: b.hotspotStrength ?? (isHand ? .3 : .65), thick: b.thick, glowAlpha: .5, rot: sway + roll, sx, pivot: isHand ? [720, 1140] : [980, 760], warp, noise: .1, pale: exitK * .75 }); });
     const [bx0, by0, bx1, by1] = hs.bbox, cx = (bx0 + bx1) / 2, cy = (by0 + by1) / 2 + (1 - rise) * 320;
     if (t < .62) { const k = t / .62; [0, 1, 2].forEach(i => g.layer({ alpha: (1 - k) * .85, blur: 1.2 }, () => { for (const side of ['back', 'front']) g.orbit(cx * U, cy * U, ((bx1 - bx0) * .5 + i * 46) * U, ((by1 - by0) * .32 + i * 30) * U, -.55 + i * .65, k * 1.35 + i * .18, side, { len: 1.1, width: 4.5 - i, color: '#F2F0EC' }); })); } // light streaks swirl in with the body
     if (entry > .6 && exitK < .5 && hs.tips.length) { const r = PPM.rng(Math.floor(t * 12) + b.i * 31); g.ctx.save(); g.ctx.fillStyle = '#F6EFE2';
-      for (let i = 0; i < (isHand ? 3 : 1); i++) { const [tx, ty] = hs.tips[r.int(0, hs.tips.length - 1)], x = tx + warp(ty / Lo.H) + r.range(-34, 34), y = ty + (1 - rise) * 320 - r.range(14, 70), l = r.range(2, 7); g.ctx.globalAlpha = r.range(.5, .95); g.ctx.fillRect(x * U, y * U, 2.2 * U, l * U); } g.ctx.restore(); } // sparks flick off the tips
+      for (let i = 0; i < (isHand ? 3 : 1); i++) { const [tx, ty] = hs.tips[r.int(0, hs.tips.length - 1)], x = 720 + (tx - 720) * (sx ?? 1) + warp(ty / Lo.H) + r.range(-34, 34), y = ty + (1 - rise) * 320 - r.range(14, 70), l = r.range(2, 7); g.ctx.globalAlpha = r.range(.5, .95); g.ctx.fillRect(x * U, y * U, 2.2 * U, l * U); } g.ctx.restore(); } // sparks flick off the tips
     const words = tokens(b.text), white = { color: C.white, cursorColor: C.white };
     if (isHand && Lo.portrait) line(g, ctx, b, t, { y: Lo.H * .3, size: 56, ...white });
     else if (isHand) {

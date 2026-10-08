@@ -154,6 +154,14 @@
 
       /** Run fn with save/restore and optional transform + filter + alpha. */
       layer(o, fn) {
+        if (o.blur > .3) { // blur once: draw the contents sharp on a scratch canvas, then composite it blurred. A filter left on
+          // ctx would re-blur every draw call inside fn (hundreds of strokes → seconds per frame).
+          const S = film.layer(20 + (g._depth = (g._depth || 0) + 1)), sx = S.getContext('2d'); sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalAlpha = 1; sx.globalCompositeOperation = 'source-over'; sx.filter = 'none'; sx.clearRect(0, 0, W, H);
+          sx.setTransform(ctx.getTransform()); const old = g.__swap(sx);
+          try { g.layer({ x: o.x, y: o.y, rot: o.rot, sx: o.sx, sy: o.sy, scale: o.scale }, fn); } finally { g.__swap(old); g._depth--; }
+          ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); if (o.alpha != null) ctx.globalAlpha *= o.alpha; if (o.blend) ctx.globalCompositeOperation = o.blend;
+          ctx.filter = `blur(${o.blur * U}px)`; ctx.drawImage(S, 0, 0); ctx.restore(); return;
+        }
         ctx.save();
         if (o.alpha != null) ctx.globalAlpha *= o.alpha;
         if (o.blend) ctx.globalCompositeOperation = o.blend;
@@ -563,10 +571,21 @@
           // true motion blur: average N sub-frames spread over a 180° shutter
           actx.setTransform(1, 0, 0, 1, 0, 0); actx.globalAlpha = 1; actx.clearRect(0, 0, w, h);
           const home = F.atTime(T), lo = home.start, hi = home.start + home.s.dur - 1e-4; // never sample across a shot boundary: cuts stay single-frame cuts
-          for (let k = 0; k < N; k++) {
-            const tt = Math.min(hi, Math.max(lo, T + (k / N - .5) * (.5 / fps))), a = F.atTime(Math.max(0, tt));
-            F.drawShot(a.i, a.t, sctx);
-            actx.globalAlpha = 1 / (k + 1); actx.drawImage(scene, 0, 0);
+          const at = (k) => { const tt = Math.min(hi, Math.max(lo, T + (k / N - .5) * (.5 / fps))); return F.atTime(Math.max(0, tt)); };
+          // adaptive: render the shutter's two ends first; if they match (nothing moved) their average is the frame.
+          // Only frames with real motion pay for all N samples. Deterministic: the test depends only on the frame's content.
+          let a = at(0); F.drawShot(a.i, a.t, sctx); actx.globalAlpha = 1; actx.drawImage(scene, 0, 0);
+          a = at(N - 1); F.drawShot(a.i, a.t, sctx);
+          const P = F._probe || (F._probe = [mk(96, 72), mk(96, 72), mk(w, h)]), p0 = P[0].getContext('2d', { willReadFrequently: true }), p1 = P[1].getContext('2d', { willReadFrequently: true });
+          p0.drawImage(acc, 0, 0, 96, 72); p1.drawImage(scene, 0, 0, 96, 72);
+          const d0 = p0.getImageData(0, 0, 96, 72).data, d1 = p1.getImageData(0, 0, 96, 72).data; let sum = 0, mx = 0;
+          for (let i = 0; i < d0.length; i += 4) { const e = Math.abs(d0[i] - d1[i]) + Math.abs(d0[i + 1] - d1[i + 1]) + Math.abs(d0[i + 2] - d1[i + 2]); sum += e; if (e > mx) mx = e; }
+          F.stats = F.stats || { still: 0, moving: 0 }; F.lastDiff = [sum / (96 * 72), mx];
+          if (sum / (96 * 72) < 1) { /* mean only: blinks, sparks and on-twos strokes are discrete pops, not motion */ actx.globalAlpha = .5; actx.drawImage(scene, 0, 0); F.stats.still++; }
+          else {
+            F.stats.moving++; const endc = P[2].getContext('2d'); endc.globalAlpha = 1; endc.clearRect(0, 0, w, h); endc.drawImage(scene, 0, 0);
+            for (let k = 1; k < N - 1; k++) { a = at(k); F.drawShot(a.i, a.t, sctx); actx.globalAlpha = 1 / (k + 1); actx.drawImage(scene, 0, 0); }
+            actx.globalAlpha = 1 / N; actx.drawImage(P[2], 0, 0);
           }
           sctx.setTransform(1, 0, 0, 1, 0, 0); sctx.globalAlpha = 1; sctx.drawImage(acc, 0, 0);
         }
