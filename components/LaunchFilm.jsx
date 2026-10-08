@@ -11,9 +11,10 @@ import { createPortal } from "react-dom";
    - It tries to start with sound. Browsers often refuse unmuted autoplay before
      the visitor has touched the page, so if that is refused it falls back to
      muted autoplay with a prominent "Sound on" button.
-   - Reduced motion: never autoplays. The first visit still offers it, paused on
-     its poster with a Play button.
-   - Autoplay blocked (iOS Low Power Mode, data saver): same paused state.
+   - It autoplays even with reduced motion on: it is the site's opening, and
+     Skip and Escape are always there.
+   - If the browser blocks autoplay outright (iOS Low Power Mode, data saver),
+     the visitor's first touch or key anywhere starts it, with sound.
    - Decided after mount, like HomeScreenTip, so server and client render the
      same nothing and crawlers see the landing page, not a video. */
 
@@ -58,14 +59,12 @@ export default function LaunchFilm() {
   }, []);
 
   // Start playback once open: with sound if the browser allows it, else muted,
-  // else the paused poster. Reduced motion never autoplays.
+  // else it waits for the first touch.
   useEffect(() => {
     if (!open || closing) return;
     const v = video.current;
     if (!v) return;
     skipBtn.current?.focus();
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) { setPaused(true); return; }
     let cancelled = false;
     v.muted = false; setMuted(false);
     const p = v.play();
@@ -73,9 +72,24 @@ export default function LaunchFilm() {
       if (cancelled) return;
       v.muted = true; setMuted(true);
       const q = v.play();
-      if (q && q.catch) q.then(() => setPaused(false)).catch(() => setPaused(true));
+      if (q && q.catch) q.then(() => setPaused(false)).catch(() => {
+        if (cancelled) return;
+        setPaused(true);
+        // Blocked outright: any first touch is a gesture, so start then, with sound.
+        const kick = (e) => {
+          if (e.key === "Escape" || e.target?.closest?.(".lf__btn")) return; // Skip / Sound / Esc handle themselves
+          off();
+          v.muted = false; setMuted(false);
+          v.play()?.catch?.(() => {});
+        };
+        const evs = ["pointerdown", "touchstart", "keydown"];
+        const off = () => evs.forEach((n) => document.removeEventListener(n, kick, true));
+        evs.forEach((n) => document.addEventListener(n, kick, true));
+        unhook = off;
+      });
     });
-    return () => { cancelled = true; };
+    let unhook = () => {};
+    return () => { cancelled = true; unhook(); };
   }, [open, closing]);
 
   useEffect(() => {
