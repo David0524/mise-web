@@ -36,6 +36,28 @@ Rules that fall out of this:
   burst direction) and tumble (spin rate grows with time and index).
 - **Every hit is one event.** Nib, burst, kick, heat flash and soot are keyed to the same frame and object.
 
+## Intro: the type does the work (frames at 24 fps)
+
+| Frames | What happens |
+|---|---|
+| 0 | The first word, sketched by a pen (many jittered passes) on paper |
+| 1 | Red frame; the word in black, stretched about 2.7× tall and cropped |
+| 2 | Yellow card; the word with dashed guides top and bottom |
+| 3 → | Oversized words (≈210 px) on two full-width dashed rulers (baseline, x-height). A new word every ~4 frames. The camera **jumps** to keep the newest word's right edge at ~80 %; for one frame the previous framing ghosts at ~40 % (crisp double exposure, never a smear). A black block fills the next word's slot 2 frames before it lands. A pen underlines the first two words and lassos the last |
+| +1 | The line pixelates (one frame, ≈16 px cells) |
+| +4 | Each word collapses to a broken dash (random segments) flying to its slot in the small sentence; the cursor becomes a vertical dotted bar |
+| then | The small sentence sits in a dotted selection box with I-beam handles, blinking on frames 0, 1, 2, 4. Defocused handwriting ghosts behind, fading over ~14 frames, and a cursive pen line writes under it. Remaining words type every ~5 frames, the pen looping each new word (draw 3 frames, retract after 6) |
+
+Pen marks are **cursive**, with loops at the top like a handwritten l or e and a slant (`scribblePath('cursive')`), never zigzags.
+
+## Hand: a performance, not a still
+
+The silhouette must feel filmed:
+- **Entry (~10 frames):** it rises out of focus and **cold** (violet/magenta → red → orange as the heat comes up), with 2–3 white light-streak arcs swirling around it. Cut to it hard; never cross-fade from the previous shot.
+- **Life:** the wrist sways (±2°, ~1.4 rad/s) about a pivot below the frame, the fingers flex (a horizontal strip warp that grows toward the fingertips), the hotspot drifts, and tiny white sparks flick off the fingertips every couple of frames.
+- **Type beside it:** each next word is previewed by a white block the width of that word, which collapses to a thin bar within ~3 frames of the word landing.
+- **Exit (~10 frames):** the background washes warm (maroon-grey), the body pales toward skin (exposure wash), and it whips out horizontally in the last ~3 frames.
+
 ## Thermal palette
 
 A heat camera, not fire. The cold rim is **violet**, which makes it read as thermal imaging:

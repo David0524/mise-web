@@ -68,6 +68,54 @@
 
   // ───────────── builders ─────────────
   const B = {
+    /** Type-led opening (see references/motion-craft.md › Intro): sketch → red stretch → yellow card → oversized words on
+     *  dashed rulers with a panning camera, ghosting, a block-cursor wipe and pen marks → pixelate → collapse to broken
+     *  dashes → the small sentence in a blinking selection box, then typed word by word with a pen looping each new word.
+     *  Fields: text, big (words shown oversized, default 3), bigFrames, smallFrames, key, hold, bigSize, size. */
+    intro(g, s, b, ctx) {
+      const S = PPMPlan.introSchedule(b), F = S.F, t = s.t, Lo = LY(g), U = g.U, w = S.words, nB = S.nBig;
+      const BIG = b.bigSize || (Lo.portrait ? 160 : 210), base = (Lo.cy + BIG * .3) * U, x1080 = (v) => v * U;
+      if (t < F) { g.sketchText(w[0], x1080(Lo.cx), x1080(Lo.cy + 130), 400, s.F, { passes: 11 }); return; }
+      if (t < 2 * F) { g.bg('red'); g.layer({}, () => { g.ctx.translate(x1080(Lo.cx), x1080(Lo.cy)); g.ctx.scale(1, 2.7); g.text(w[0], 0, 0, { size: 330, weight: 700, align: 'center', color: '#141414', track: -.04 }); }); return; }
+      if (t < 3 * F) { g.bg('yellow'); g.text(w[0], x1080(Lo.cx), x1080(Lo.cy + 60), { size: 300, weight: 700, align: 'center', baseline: 'alphabetic', track: -.04 }); g.guides([x1080(Lo.H * .1), x1080(Lo.H * .926)]); return; }
+      const sp = g.measure(' ', BIG, 700), xs = [], ws = []; let acc = 0;
+      for (let i = 0; i < nB; i++) { xs.push(acc); ws.push(g.measure(w[i], BIG, 700, -.03)); acc += ws[i] + sp; }
+      const startX = (k) => { const right = xs[k - 1] + ws[k - 1]; return Math.min((g.W - ws[0]) / 2, g.W * .8 - right); }; // keep the newest word's right edge at 80 % of the frame
+      const bigLine = (X, upto, o = {}) => { for (let i = 0; i < upto; i++) g.text(w[i], X + xs[i], base, { size: BIG, weight: 700, baseline: 'alphabetic', track: -.03, color: o.color || C.ink }); };
+      const SS = b.size || (Lo.portrait ? 40 : 30), full = g.measure(S.words.join(' '), SS), sx0 = (g.W - full) / 2, sy = x1080(Lo.cy), sxs = []; { let a2 = 0; for (const wd of w) { sxs.push(a2); a2 += g.measure(wd + ' ', SS); } }
+      if (t < S.tPix) { // oversized words, rulers, panning camera
+        const shown = Math.max(1, S.bigAt.filter(a => a <= t).length), tk = S.bigAt[shown - 1], pk = t - tk < F ? .55 : 1 /* the camera jumps on 24-fps frames: a crisp double exposure, not a smear */, prevX = startX(Math.max(1, shown - 1)), X = g.lerp(prevX, startX(shown), pk);
+        g.guides([base, base - BIG * .52 * U], { alpha: .85, width: 2.2, offset: -X / U * .6 });
+        if (pk < 1 && shown > 1) g.layer({ alpha: .38 * (1 - pk) }, () => bigLine(prevX, shown)); // double exposure as the camera jumps
+        bigLine(X, shown);
+        if (shown < nB && t >= S.bigAt[shown] - 2 * F) { g.ctx.fillStyle = '#151313'; g.ctx.fillRect(X + xs[shown], base - BIG * .74 * U, ws[shown], BIG * .9 * U); } // block cursor wipes in the next word's slot
+        if (shown >= 2) { const u = (t - S.bigAt[1] - F) / (3 * F); if (u > 0) g.stroke(g.scribblePath('underline', X + xs[0] - 30 * U, base + 34 * U, xs[1] + ws[1] + 60 * U, 40 * U, 3 + b.i), u, { width: 3 }); }
+        if (shown === nB && nB > 1) { const u = (t - S.bigAt[nB - 1] - F) / (3 * F); if (u > 0) g.stroke(g.scribblePath('lasso', X + xs[nB - 1] + ws[nB - 1] / 2, base - BIG * .3 * U, ws[nB - 1] + 60 * U, BIG * 1.05 * U, 7 + b.i), u, { width: 2.6 }); }
+        return;
+      }
+      const XF = startX(nB);
+      if (t < S.tDash) { // one frame of pixelation
+        const T = g.film.layer(8), tx = T.getContext('2d'); tx.setTransform(1, 0, 0, 1, 0, 0); tx.clearRect(0, 0, g.W, g.H); const old = g.__swap ? g.__swap(tx) : null;
+        if (old) { bigLine(XF, nB); g.__swap(old); } const q = Math.max(4, Math.round(16 * U)), m = g.film.layer(10), mx = m.getContext('2d'); m.width = Math.ceil(g.W / q); m.height = Math.ceil(g.H / q);
+        mx.imageSmoothingEnabled = true; mx.drawImage(T, 0, 0, m.width, m.height); g.ctx.save(); g.ctx.imageSmoothingEnabled = false; g.ctx.drawImage(m, 0, 0, g.W, g.H); g.ctx.restore();
+        g.guides([base, base - BIG * .52 * U], { alpha: .6, width: 2.2, dash: 8, gap: 22 }); return;
+      }
+      if (t < S.tSmall) { // collapse into broken dashes that fly to the small sentence's word slots
+        const k = E.inOut((t - S.tDash) / (S.tSmall - S.tDash)), r = PPM.rng(70 + b.i); g.ctx.save(); g.ctx.fillStyle = C.ink;
+        for (let i = 0; i < nB; i++) { const x = g.lerp(XF + xs[i], sx0 + sxs[i], k), wd = g.lerp(ws[i], g.measure(w[i], SS), k), y = g.lerp(base - BIG * .3 * U, sy, k), th = g.lerp(BIG * .16 * U, 3 * U, E.out(k));
+          let a = 0; while (a < 1) { const seg = r.range(.12, .45), gap = r.range(.05, .14); g.ctx.fillRect(x + wd * a, y - th / 2, wd * Math.min(seg, 1 - a), th); a += seg + gap; } }
+        const ex = g.lerp(XF + xs[nB - 1] + ws[nB - 1] + 40 * U, sx0 + sxs[nB - 1] + g.measure(w[nB - 1], SS) + 12 * U, k); for (let j = -1; j <= 1; j++) g.ctx.fillRect(ex, sy + j * g.lerp(26, 9, k) * U - 3 * U, 5 * U, 6 * U); // the cursor, as a dotted bar
+        g.ctx.restore(); return;
+      }
+      const u = (t - S.tSmall) / F, shownN = S.smallAt.filter(a => a <= t).length, shownStr = w.slice(0, shownN).join(' ');
+      if (u < 14) g.layer({ alpha: .24 * (1 - u / 14) }, () => g.stroke(g.scribblePath('cursive', x1080(Lo.cx - 300), x1080(Lo.cy - 150), 600 * U, 110 * U, 5 + b.i), 1, { width: 14, blur: 8 })); // defocused handwriting behind
+      g.text(shownStr, sx0, sy, { size: SS, weight: 500, color: C.ink });
+      if (u < 6 && [0, 1, 2, 4].includes(Math.floor(u))) { const wB = g.measure(w.slice(0, nB).join(' '), SS); g.selectBox(sx0 - 10 * U, sy - SS * .78 * U, wB + 20 * U, SS * 1.56 * U); }
+      if (u > 1 && u < 16) g.layer({ alpha: g.clamp((16 - u) / 4) }, () => g.stroke(g.scribblePath('cursive', sx0 + 30 * U, sy + 112 * U, 230 * U, 36 * U, 9 + b.i), (u - 1) / 6, { width: 2.4 }));
+      for (let j = nB; j < w.length; j++) { const a = (t - S.smallAt[j]) / F; if (a < 0 || a > 10) continue; const ww = g.measure(w[j], SS); g.stroke(g.scribblePath('lasso', sx0 + sxs[j] + ww / 2, sy, ww + 34 * U, SS * 1.7 * U, 11 + j), a / 3, { p0: Math.max(0, (a - 6) / 3), width: 2.2 }); } // the pen loops each new word
+      const ki = keyIndex(b); if (ki >= 0 && t >= S.smallAt[ki]) g.underline(sx0 + sxs[ki], sy + SS * .62 * U, g.measure(w[ki], SS), (t - S.smallAt[ki]) / .35);
+      g.cursor(sx0 + g.measure(shownStr, SS) + 8 * U, sy, SS, t, 'bar', C.ink);
+    },
     hero(g, s, b, ctx) {
       const word = tokens(b.text)[0];
       if (ctx.flow) { // shot world is paper; the yellow card wipes off to the left
@@ -107,6 +155,7 @@
       if (b.text) line(g, ctx, b, s.t, { x: ctx.flow && !LY(g).portrait ? LY(g).cx + 130 : undefined, highlight: pool > .5 && keyIndex(b) >= 0 ? { [keyIndex(b)]: C.white } : null, underline: false }); // flow: centred right of the flare's reach
     },
     silhouette(g, s, b, ctx) {
+      if (ctx.flow && !ctx.shapes[b.shape].img) return livingSilhouette(g, s, b, ctx);
       const shp = ctx.shapes[b.shape], isHand = shp.kind === 'hand', heat = E.out(s.t / .45), rise = isHand ? E.out(s.t / .45) : 1;
       const hot = b.hotspot || (isHand ? [760, 980, 150] : [1090, 940, 115, 170]);
       const ring = b.orbit ? g.clamp((s.t - .5) / .7) : 0, [ox, oy] = isHand ? [760, 560] : [1010, 430];
@@ -267,6 +316,43 @@
       if (b.tagline && tk > 0) { const ty = BY + BS * .285 + 78 + (1 - tk) * 12; g.text(b.tagline, Lo.cx * U, ty * U, { size: 34, weight: 500, align: 'center', color: '#4B4136', alpha: tk, track: .06 });
         g.ctx.save(); g.ctx.globalAlpha *= tk; g.ctx.fillStyle = '#D9201A'; g.ctx.beginPath(); g.ctx.arc(Lo.cx * U, (ty + 54) * U, 6.5 * U, 0, 7); g.ctx.fill(); g.ctx.restore(); }
     }
+  }
+  /** Cursor width (1080 units) that previews the next word: a block the width of the word appears ~5 frames before
+   *  it, then collapses to a thin bar within ~3 frames of the word landing. part = { text, reveal }. */
+  function placeholderW(g, part, t, size, weight = 500) {
+    const ws = tokens(part.text), rv = part.reveal || [], bar = size * .07, i = rv.findIndex(r => r.t > t);
+    if (i >= 0 && rv[i].t - t < .2) return g.measure(ws[i], size, weight) / g.U;
+    const j = (i < 0 ? rv.length : i) - 1; if (j >= 0 && t - rv[j].t < .14) return g.lerp(g.measure(ws[j], size, weight) / g.U * .35, bar, E.out((t - rv[j].t) / .14));
+    return bar;
+  }
+  /** Flow silhouette as a performance, not a still: it rises out of focus and cold (violet → orange over ~10
+   *  frames) inside swirling light streaks, then lives: the wrist sways, the fingers flex (strip warp), the heat
+   *  drifts, sparks flick off the fingertips. It leaves on a warm exposure wash (the body pales) and a horizontal whip.
+   *  Captions preview each next word with a block cursor. Beat fields: hotspot, hotspotStrength, thick, exit:false. */
+  function livingSilhouette(g, s, b, ctx) {
+    const shp = ctx.shapes[b.shape], isHand = shp.kind === 'hand', Lo = LY(g), U = g.U, t = s.t, d = s.d;
+    const entry = E.out(t / .42), rise = isHand ? E.expo(t / .5) : 1, exitK = b.exit === false ? 0 : g.clamp((t - (d - .42)) / .42), whip = b.exit === false ? 0 : g.clamp((t - (d - .13)) / .13);
+    const sway = isHand ? Math.sin(t * 1.4 + .6) * .03 + (1 - rise) * .12 : Math.sin(t * 1.1) * .012;
+    const warp = isHand ? (y) => { const k = Math.max(0, 1 - y / .62); return Math.sin(t * 2.3 + y * 7) * 16 * k * k + Math.sin(t * 3.7 + 1) * 7 * k * k * k; } : (y) => Math.sin(t * 1.6) * 4 * Math.max(0, 1 - y / .5);
+    if (exitK > 0) { g.ctx.fillStyle = `rgba(96,58,56,${exitK * .7})`; g.ctx.fillRect(0, 0, g.W, g.H); }
+    const h0 = b.hotspot || (isHand ? [760, 980, 150] : [1090, 940, 115, 170]), hot = [h0[0] + Math.sin(t * .9) * 26, h0[1] + Math.cos(t * .7) * 18, h0[2], h0[3]];
+    let hs;
+    g.layer({ blur: (1 - entry) * 22 }, () => { hs = g.heat(shp.src, { key: b.shape + (b.thick || ''), t: s.T, heat: entry, offset: { x: 0, y: (1 - rise) * 320 }, hotspot: hot, hotspotStrength: b.hotspotStrength ?? (isHand ? .3 : .65), thick: b.thick, glowAlpha: .5, rot: sway, pivot: isHand ? [720, 1140] : [980, 760], warp, noise: .1, pale: exitK * .75 }); });
+    const [bx0, by0, bx1, by1] = hs.bbox, cx = (bx0 + bx1) / 2, cy = (by0 + by1) / 2 + (1 - rise) * 320;
+    if (t < .62) { const k = t / .62; [0, 1, 2].forEach(i => g.layer({ alpha: (1 - k) * .85, blur: 1.2 }, () => { for (const side of ['back', 'front']) g.orbit(cx * U, cy * U, ((bx1 - bx0) * .5 + i * 46) * U, ((by1 - by0) * .32 + i * 30) * U, -.55 + i * .65, k * 1.35 + i * .18, side, { len: 1.1, width: 4.5 - i, color: '#F2F0EC' }); })); } // light streaks swirl in with the body
+    if (entry > .6 && exitK < .5 && hs.tips.length) { const r = PPM.rng(Math.floor(t * 12) + b.i * 31); g.ctx.save(); g.ctx.fillStyle = '#F6EFE2';
+      for (let i = 0; i < (isHand ? 3 : 1); i++) { const [tx, ty] = hs.tips[r.int(0, hs.tips.length - 1)], x = tx + warp(ty / Lo.H) + r.range(-34, 34), y = ty + (1 - rise) * 320 - r.range(14, 70), l = r.range(2, 7); g.ctx.globalAlpha = r.range(.5, .95); g.ctx.fillRect(x * U, y * U, 2.2 * U, l * U); } g.ctx.restore(); } // sparks flick off the tips
+    const words = tokens(b.text), white = { color: C.white, cursorColor: C.white };
+    if (isHand && Lo.portrait) line(g, ctx, b, t, { y: Lo.H * .3, size: 56, ...white });
+    else if (isHand) {
+      const half = Math.ceil(words.length / 2), L = { text: words.slice(0, half).join(' '), reveal: b.reveal.slice(0, half) }, R = { text: words.slice(half).join(' '), reveal: b.reveal.slice(half) };
+      const LE = b.leftEnd ?? 440, RS = b.rightStart ?? 1010, TY = b.textY ?? 520, fs = Math.max(40, Math.min(52, 52 * (LE - 58) / Math.max(1, g.measure(L.text, 52)), 52 * (1382 - RS) / Math.max(1, g.measure(R.text, 52) + 40)));
+      const lx = Math.max(58, LE - g.measure(L.text, fs)), onR = R.reveal.length && t >= R.reveal[0].t - .2;
+      g.caption(typedAt(L, t), lx, TY, { size: fs, ...white, align: 'left', cursor: !onR, cursorW: placeholderW(g, L, t, fs), t, blink: t > (L.reveal.at(-1)?.t ?? 0) + .5 });
+      g.caption(typedAt(R, t), RS, TY, { size: fs, ...white, align: 'left', cursor: onR, cursorW: placeholderW(g, R, t, fs), t, blink: t > (R.reveal.at(-1)?.t ?? 0) + .5 });
+    } else line(g, ctx, b, t, { x: 110, align: 'left', ...white });
+    if (whip > 0) { const T = g.film.layer(9), tx = T.getContext('2d'); tx.setTransform(1, 0, 0, 1, 0, 0); tx.clearRect(0, 0, g.W, g.H); tx.drawImage(g.ctx.canvas, 0, 0);
+      g.ctx.save(); g.ctx.setTransform(1, 0, 0, 1, 0, 0); for (let k = 1; k <= 6; k++) { g.ctx.globalAlpha = .2; g.ctx.drawImage(T, -E.in(whip) * 300 * U * k / 6, 0); } g.ctx.restore(); } // horizontal whip out
   }
   /** Card title, fframes-style: the whole word snaps in from (+48, +18) in 4 frames, a red block cursor collapses
    *  to a bar in 3, and an optional mono subtitle (b.sub) rises 24 px a frame later. */

@@ -264,6 +264,10 @@
             pts.push([lx, top], [lx + w / n * .5, bot]); cx += w / n;
           }
           pts.push([x + w * 1.1, y - h * .7]);
+        } else if (kind === 'cursive') { // loopy handwriting: a prolate trochoid with per-letter heights and the odd ascender
+          const n = Math.max(3, Math.round(w / (h * .55))), U2 = n * Math.PI * 2; let hj = 1;
+          for (let u = 0; u <= U2; u += .22) { const li = Math.floor(u / (Math.PI * 2)); if (u % (Math.PI * 2) < .22) hj = r() < .22 ? r.range(1.5, 2.2) : r.range(.45, 1);
+            const yy = h * hj * .5 * (1 + Math.cos(u)); pts.push([x + w * u / U2 - Math.sin(u) * h * .2 + yy * .35, y - yy + Math.sin(u * .5 + li) * h * .04]); } // loops at the top (l, e), slanted like a right hand
         } else if (kind === 'zigzag') {
           const n = r.int(3, 5); for (let i = 0; i <= n; i++) pts.push([x + r.range(-.15, .15) * w + (i % 2) * w * .5, y + (i / n) * h]);
         } else if (kind === 'spiral') {
@@ -282,9 +286,13 @@
         if (pts.length < 2 || p <= 0) return;
         const sm = smooth(pts, 8), n = sm.length, end = Math.floor(clamp(p) * (n - 1)), start = Math.floor(clamp(o.p0 || 0) * (n - 1));
         if (end <= start) return;
+        if (o.blur) { // blur once: draw sharp on a scratch layer, then composite it blurred (per-segment filters are very slow)
+          const L = film.layer(11), lx = L.getContext('2d'); lx.setTransform(1, 0, 0, 1, 0, 0); lx.clearRect(0, 0, W, H); lx.setTransform(ctx.getTransform());
+          const old = g.__swap(lx); g.stroke(pts, p, { ...o, blur: 0 }); g.__swap(old);
+          ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = `blur(${o.blur * U}px)`; ctx.drawImage(L, 0, 0); ctx.restore(); return;
+        }
         ctx.save(); ctx.strokeStyle = o.color || C.ink; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         const lw = (o.width || 2.4) * U;
-        if (o.blur) ctx.filter = `blur(${o.blur * U}px)`;
         // pressure: thinner at ends
         for (let i = start + 1; i <= end; i++) {
           const k = (i - start) / Math.max(1, end - start), press = o.taper === false ? 1 : .45 + .55 * Math.sin(Math.PI * clamp(k * .9 + .05));

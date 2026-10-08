@@ -25,6 +25,7 @@
     scatter:    { base: 1.6, perWord: 0,   min: 1.2, max: 2.2, world: ['paper'],          words: [0, 0],   text: false },
     spell:      { base: .25, perWord: 0,   min: .2,  max: .35, world: ['paper', 'void', 'red', 'void'], words: [1, 1], text: true, perLetter: true },
     resolve:    { base: 2.4, perWord: .2,  min: 2.0, max: 3.4, world: ['paper'],          words: [1, 2],   text: true },
+    intro:      { base: 2.4, perWord: .2,  min: 2.0, max: 4.2, world: ['paper'],          words: [3, 12],  text: true },
     flash:      { base: .12, perWord: 0,   min: .08, max: .16, world: ['yellow', 'red'],  words: [0, 1],   text: 'optional' },
   };
   const WPS_LIMIT = 4.2;
@@ -37,8 +38,17 @@
   const tokens = (s) => String(s || '').split(/\s+/).filter(Boolean);
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
+  /** The intro's frame-exact schedule (24-fps frames → s): sketch, red stretch, yellow card, oversized words with a
+   *  panning camera, pixelate, collapse to dashes, then the small sentence. Shared by the planner and the composer. */
+  function introSchedule(beat) {
+    const F = 1 / 24, w = tokens(beat.text), nBig = Math.min(w.length, beat.big ?? 3), per = beat.bigFrames ?? 4;
+    const bigAt = w.slice(0, nBig).map((_, i) => (3 + i * per) * F), tPix = (3 + nBig * per + 2) * F, tDash = tPix + F, tSmall = tDash + 4 * F;
+    const smallAt = w.map((_, i) => i < nBig ? tSmall : tSmall + (6 + (i - nBig) * (beat.smallFrames ?? 5)) * F);
+    return { F, words: w, nBig, bigAt, tPix, tDash, tSmall, smallAt, end: smallAt.at(-1) + (beat.hold ?? .7) };
+  }
   function estimate(beat, mode) {
     const T = TYPES[beat.type], n = tokens(beat.text).length;
+    if (beat.type === 'intro') return introSchedule(beat).end;
     if (mode === 'flow' && beat.type === 'card') return clamp(T.base + T.perWord * n, FLOW_CARD_MIN, Math.max(T.max, FLOW_CARD_MIN)); // flow: typing (~.22s) + hold + flood-out
     if (T.perLetter) return (beat.letterDur ?? T.base) * Math.max(1, norm(beat.text).length);
     return clamp(T.base + T.perWord * n, T.min, T.max);
@@ -158,6 +168,7 @@
     // ── reveals (estimated beats: words spread over the first ~60 % of the beat) ──
     out.forEach(b => {
       if (b.reveal || !b.text || b.type === 'spell') return;
+      if (b.type === 'intro') { const S = introSchedule(b); b.reveal = S.words.map((w, j) => ({ word: w, t: j < S.nBig ? S.bigAt[j] : S.smallAt[j] })); return; }
       const t = tokens(b.text), span = Math.min(b.dur * .6, t.length / WPS_LIMIT * 1.4), lead = b.type === 'card' ? .12 : .08;
       const sp = Math.min(span, Math.max(0, b.dur - HOLD - lead));
       b.reveal = t.map((w, j) => ({ word: w, t: lead + (t.length > 1 ? sp * j / (t.length - 1) : 0) }));
@@ -206,7 +217,7 @@
       ...(p.warnings.length ? ['**Warnings**', ...p.warnings.map(e => '- ' + e)] : ['No warnings.'])].join('\n');
   }
 
-  const api = { plan, table, TYPES, estimate, align };
+  const api = { plan, table, TYPES, estimate, align, introSchedule };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.PPMPlan = api;
 })(typeof window !== 'undefined' ? window : globalThis);

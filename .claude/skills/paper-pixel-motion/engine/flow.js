@@ -154,14 +154,15 @@
     g.heat = function (src, o = {}) {
       const hs = heatSource(film, o.key || 'h', src, o), { w, h, q, base, alpha } = hs, ctx = g.ctx, W = film.w, H = film.h;
       const ic = hs.img.getContext('2d'), id = ic.createImageData(w, h), d = id.data, lut = PPM.thermalLUT(o.ramp === 'v1' ? HEAT_RAMP_V1 : o.ramp || HEAT_RAMP_V2);
-      const t = o.t || 0, heat = o.heat ?? 1, nz = o.noise ?? .08;
+      const t = o.t || 0, heat = o.heat ?? 1, nz = o.noise ?? .08, pale = clamp(o.pale || 0);
       const [hx, hy, hr, hry] = o.hotspot || [0, 0, 0], hr2 = hry || hr, sxs = 1440 / W * q, sys = 1080 / H * q;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const i = y * w + x; let v = base[i];
         if (hr) { const dx = x * sxs - hx, dy = y * sys - hy; v += (o.hotspotStrength ?? .2) * Math.exp(-(dx * dx) / (hr * hr) - (dy * dy) / (hr2 * hr2)); }
         if (nz) v += nz * (noise2(x * .045, y * .045 + t * .35, 1) * .65 + noise2(x * .11 + t * .2, y * .11, 2) * .35);
         v = clamp(v * (.25 + .75 * heat)); const j = (v * 255 | 0) * 3;
-        d[i * 4] = lut[j]; d[i * 4 + 1] = lut[j + 1]; d[i * 4 + 2] = lut[j + 2]; d[i * 4 + 3] = 255;
+        if (pale) { d[i * 4] = lut[j] + (236 - lut[j]) * pale; d[i * 4 + 1] = lut[j + 1] + (208 - lut[j + 1]) * pale; d[i * 4 + 2] = lut[j + 2] + (186 - lut[j + 2]) * pale; } // exposure wash: the body pales toward skin
+        else { d[i * 4] = lut[j]; d[i * 4 + 1] = lut[j + 1]; d[i * 4 + 2] = lut[j + 2]; } d[i * 4 + 3] = 255;
       }
       ic.putImageData(id, 0, 0);
       // upscale → cut with the full-res mask (razor edge) → glow outside
@@ -172,10 +173,16 @@
       ctx.save();
       const ox = (o.offset?.x || 0) * g.U, oy = (o.offset?.y || 0) * g.U, sc = o.scale || 1, ax = (o.anchor?.[0] ?? 720) * g.U, ay = (o.anchor?.[1] ?? 540) * g.U;
       ctx.translate(ax + ox, ay + oy); ctx.scale(sc, sc); ctx.translate(-ax, -ay);
+      if (o.rot) { const [px, py] = (o.pivot || [720, 1080]).map(v => v * g.U); ctx.translate(px, py); ctx.rotate(o.rot); ctx.translate(-px, -py); } // sway about the wrist / neck
       ctx.globalAlpha *= o.alpha ?? 1;
-      ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.filter = `blur(${(o.glow ?? 26) * g.U}px)`; ctx.globalAlpha *= (o.glowAlpha ?? .35) * heat; ctx.drawImage(L, 0, 0); ctx.restore();
-      ctx.drawImage(L, 0, 0);
+      // o.warp(yN) → dx (1080 units): bend the body in horizontal strips (fingers flex, a head nods) without re-heating it
+      let img = L; if (o.warp) { const Lw = film.layer(12), wx = Lw.getContext('2d'), sh = Math.max(2, Math.round(6 * g.U)); wx.setTransform(1, 0, 0, 1, 0, 0); wx.clearRect(0, 0, W, H); for (let y = 0; y < H; y += sh) wx.drawImage(L, 0, y, W, sh, o.warp(y / H) * g.U, y, W, sh); img = Lw; } // warp once into a scratch layer
+      const put = () => ctx.drawImage(img, 0, 0);
+      ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.filter = `blur(${(o.glow ?? 26) * g.U}px)`; ctx.globalAlpha *= (o.glowAlpha ?? .35) * heat; put(); ctx.restore();
+      put();
       ctx.restore();
+      if (!hs.bbox) { let x0 = w, y0 = h, x1 = 0, y1 = 0; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (alpha[y * w + x] > 127) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+        hs.bbox = [x0 * q / g.U, y0 * q / g.U, x1 * q / g.U, y1 * q / g.U]; hs.tips = []; for (let x = 0; x < w; x++) { for (let y = 0; y < h; y++) if (alpha[y * w + x] > 127) { if (y < y0 + (y1 - y0) * .25) hs.tips.push([x * q / g.U, y * q / g.U]); break; } } } // tips: topmost body points (fingertips, crown)
       return hs;
     };
     /**
