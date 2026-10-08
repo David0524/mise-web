@@ -173,13 +173,13 @@
       const names = b.objects || ctx.objects, k = E.inOut((s.t - .2) / .6), r = PPM.rng(5 + b.i), Lo = LY(g), U = g.U;
       names.forEach((n, i) => {
         const a = .4 + (i / names.length) * Math.PI * 2, pile = b.from === 'pile', pr = PPM.rng(900 + i * 7 + b.i);
-        const PR = Math.min(230, Lo.W * .2), x0 = pile ? Lo.cx + pr.range(-PR, PR) : Lo.cx + Math.cos(a) * 400, y0 = pile ? Lo.cy + 60 + pr.range(-150, 130) : Lo.cy + Math.sin(a) * 260, r0 = pile ? pr.range(-1.2, 1.2) : 0, x1 = r.range(120, Lo.W - 120), y1 = r.range(120, Lo.H - 120);
+        const PR = Math.min(230, Lo.W * .2), x0 = pile ? Lo.cx + pr.range(-PR, PR) : Lo.cx + Math.cos(a) * 400, y0 = pile ? Lo.cy + 60 + pr.range(-150, 130) : Lo.cy + Math.sin(a) * 260, r0 = pile ? pr.range(-1.2, 1.2) : 0, x1 = Lo.portrait ? r.range(Lo.W * .1, Lo.W * .9) : r.range(120, Lo.W - 120), y1 = Lo.portrait ? r.range(Lo.H * .14, Lo.H * .84) : r.range(120, Lo.H - 120); // portrait: keep clear of phone UI at top/bottom
         const x = g.lerp(x0, x1, k) * U, y = g.lerp(y0, y1, k) * U, rot = g.lerp(r0, r.range(-.6, .6), k), ink = i % 3 === 0 ? g.clamp((s.t - .9 - i * .02) / .15) : 0;
         if (ctx.flow) g.block(n, x, y, g.lerp(pile ? 150 : 120, 130, k), { rot, ink });
         else { g.sprite(n, x, y, g.lerp(150, 130, k), { rot, silhouette: ink }); if (ink > 0 && ink < 1) g.sprayBlot(x, y, 60, ink * 1.2, i); }
       });
       if (s.t > .25 && s.t < .85) { const p = (s.t - .25) / .6; g.brushSmear(scalePts([[200, 300], [380, 200], [300, 420], [520, 520], [700, 380]], Lo).map(([x, y]) => [x * U, y * U]), p * 1.4, { p0: Math.max(0, p - .3), width: 30, core: 5 }); }
-      if (ctx.flow) { const sw = E.inOut((s.t - (s.d - .8)) / .7); [[260, 220, 1], [1150, 300, 2], [700, 820, 3], [300, 820, 4], [1180, 860, 5], [720, 480, 6]].forEach(([x, y, q], j) => g.sprayBlot(x * Lo.sx * U, y * Lo.sy * U, 420 * Math.max(1, Lo.sy * .85), g.clamp(sw * 1.3 - j * .06), q, { hard: true })); const full = g.clamp((s.t - (s.d - .22)) / .2); if (full > 0) { g.ctx.fillStyle = `rgba(20,20,20,${full})`; g.ctx.fillRect(0, 0, g.W, g.H); } }
+      if (ctx.flow) { const sw = E.inOut((s.t - (s.d - .8)) / .7); [[260, 220, 1], [1150, 300, 2], [700, 820, 3], [300, 820, 4], [1180, 860, 5], [720, 480, 6]].forEach(([x, y, q], j) => g.sprayBlot(x * Lo.sx * U, (Lo.portrait ? Lo.H * (.14 + .7 * y / 1080) : y * Lo.sy) * U, 420 * Math.max(1, Lo.sy * .85), g.clamp(sw * 1.3 - j * .06), q, { hard: true })); const full = g.clamp((s.t - (s.d - .22)) / .2); if (full > 0) { g.ctx.fillStyle = `rgba(20,20,20,${full})`; g.ctx.fillRect(0, 0, g.W, g.H); } }
       g.flecks(8, 51 + b.i, s.f);
     },
     spell(g, s, b, ctx) {
