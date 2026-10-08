@@ -342,6 +342,12 @@
     const h0 = b.hotspot || (isHand ? [760, 980, 150] : [1090, 940, 115, 170]), hot = [h0[0] + Math.sin(t * .9) * 26, h0[1] + Math.cos(t * .7) * 18, h0[2], h0[3]];
     let hs;
     g.layer({ blur: (1 - entry) * 22 }, () => { hs = g.heat(shp.src, { key: b.shape + (b.thick || ''), t: s.T, heat: entry, offset: { x: 0, y: (1 - rise) * 320 }, hotspot: hot, hotspotStrength: b.hotspotStrength ?? (isHand ? .3 : .65), thick: b.thick, glowAlpha: .5, rot: sway + roll, sx, pivot: isHand ? [720, 1140] : [980, 760], warp, noise: .1, pale: exitK * .75 }); });
+    if (b.light && ctx.images[b.light]) { // a second element in plain light (not heat): it reaches down from the top, then shimmers. Never twirled with the body
+      const im = ctx.images[b.light], reach = E.out((t - .08) / .9), sh = .82 + .18 * PPM.hash(Math.floor(t * 12) + 7), fade = 1 - exitK * .35;
+      if (reach > 0) { g.ctx.save(); g.ctx.beginPath(); g.ctx.rect(0, 0, g.W, g.H * reach); g.ctx.clip(); g.ctx.globalCompositeOperation = 'screen';
+        g.ctx.globalAlpha = .55 * sh * fade; g.ctx.filter = `blur(${7 * U}px)`; g.ctx.drawImage(im, 0, 0, g.W, g.H); g.ctx.filter = 'none';
+        g.ctx.globalAlpha = sh * fade; g.ctx.drawImage(im, 0, 0, g.W, g.H); g.ctx.restore(); }
+    }
     const [bx0, by0, bx1, by1] = hs.bbox, cx = (bx0 + bx1) / 2, cy = (by0 + by1) / 2 + (1 - rise) * 320;
     if (t < .62) { const k = t / .62; [0, 1, 2].forEach(i => g.layer({ alpha: (1 - k) * .85, blur: 1.2 }, () => { for (const side of ['back', 'front']) g.orbit(cx * U, cy * U, ((bx1 - bx0) * .5 + i * 46) * U, ((by1 - by0) * .32 + i * 30) * U, -.55 + i * .65, k * 1.35 + i * .18, side, { len: 1.1, width: 4.5 - i, color: '#F2F0EC' }); })); } // light streaks swirl in with the body
     if (entry > .6 && exitK < .5 && hs.tips.length) { const r = PPM.rng(Math.floor(t * 12) + b.i * 31); g.ctx.save(); g.ctx.fillStyle = '#F6EFE2';
@@ -401,7 +407,8 @@
     const flow = plan.mode === 'flow';
     const film = PPM.film(canvas, { w: spec.size?.[0] || 1440, h: spec.size?.[1] || 1080, fps: +(new URLSearchParams(location.search).get('fps') || plan.fps), font: spec.font || (flow ? 'Geist' : 'Outfit'),
       camera: flow ? { float: 7, rot: .35, push: .04 } : { float: 0, push: 0 }, treatment: spec.treatment });
-    const ctx = { spec, plan, flow, objects: spec.objects?.length ? spec.objects : PPM.KITCHEN_SET, shapes: await loadShapes(spec) };
+    const ctx = { spec, plan, flow, objects: spec.objects?.length ? spec.objects : PPM.KITCHEN_SET, shapes: await loadShapes(spec), images: {} };
+    for (const url of new Set(spec.beats.map(b => b.light).filter(Boolean))) ctx.images[url] = await new Promise((ok, err) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => err(new Error('light image not found: ' + url)); im.src = url; });
     plan.beats.forEach((b, k) => {
       const fn = B[b.type], orig = spec.beats[b.i] || {};
       if (flow && b.type === 'card' && !orig.world) b.world = 'paper'; // flow cards flood void out of the object over the page
