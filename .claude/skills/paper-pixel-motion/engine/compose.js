@@ -50,7 +50,7 @@
         const yy = Y + (li - (lines.length - 1) / 2) * size * 1.35, part = shownAll.split(' ').slice(used, used + lw.length).join(' '), active = nShown > used && (nShown <= used + lw.length || li === lines.length - 1);
         if (part || li === 0) {
           const rr = g.caption(part, X, yy, { full: lw.join(' '), size, color, cursorColor: o.cursorColor || color, align: o.align || 'center', t, blink, cursor: lines.length === 1 || active || (li === 0 && !nShown) });
-          const kk = ki - used; if (kk >= 0 && kk < lw.length && nShown > ki) { const pre = lw.slice(0, kk).join(' ') + (kk ? ' ' : ''); g.underline(rr.x0 + g.measure(pre, size), yy + size * .62, g.measure(lw[kk], size), (t - b.reveal[ki].t) / .35); }
+          const kk = ki - used; if (o.underline !== false && kk >= 0 && kk < lw.length && nShown > ki) { const pre = lw.slice(0, kk).join(' ') + (kk ? ' ' : ''); g.underline(rr.x0 + g.measure(pre, size), yy + size * .62, g.measure(lw[kk], size), (t - b.reveal[ki].t) / .35); }
           r = r || rr;
         }
         used += lw.length;
@@ -116,7 +116,7 @@
         const iw = shp.img.width, ih = shp.img.height;
         if (Lo.portrait) { const sc = Lo.W * 1.3 / iw * g.U; g.ctx.drawImage(shp.img, (g.W - iw * sc) / 2, g.H - ih * sc, iw * sc, ih * sc); } // portrait: hand rises from the bottom, words above it
         else { const sc = Math.max(g.W / iw, g.H / ih); g.ctx.drawImage(shp.img, (g.W - iw * sc) / 2, (g.H - ih * sc) / 2, iw * sc, ih * sc); } });
-      else g.layer({ blur: (1 - heat) * 24 }, () => g.heat(shp.src, { key: b.shape, t: s.T, heat, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: hot, hotspotStrength: isHand ? .3 : .65 }));
+      else g.layer({ blur: (1 - heat) * 24 }, () => g.heat(shp.src, { key: b.shape + (b.thick || ''), t: s.T, heat, offset: { x: 0, y: (1 - rise) * 300 }, hotspot: hot, hotspotStrength: b.hotspotStrength ?? (isHand ? .3 : .65), thick: b.thick, glowAlpha: .5 }));
       if (ring > 0 && ring < 1) g.orbit(ox, oy, 340, 110, -.5, ring, 'front');
       const words = tokens(b.text);
       if (isHand && Lo.portrait) { line(g, ctx, b, s.t, { y: Lo.H * .3, size: 56, color: C.white, cursorColor: C.white }); }
@@ -147,6 +147,9 @@
             if (age < 7) bursts.push([p.x, p.y, age, h + 1]); });
           return { x: p.x + dx * U, y: p.y + dy * U, size: 220 * RR / 420 * sz, opts: { rot: Math.cos(p.a) * .1 + rot, tint: ['#FF7A1A', tint, 'screen'], ink: soot } }; };
         g.ring(names, Lo.cx * U, (Lo.cy + 20) * U, RR, { size: 220 * RR / 420, spin: rot, t: s.T, per: fh.length ? per : undefined });
+        fh.forEach(([t0, j], h) => { const age = (s.t - t0) * 24; if (age < -4 || age > 1) return; // the nib: a fast ink stroke diving onto the hit
+          const it = bursts.find(q => q[3] === h + 1); const a = s.T * .35 + j / names.length * Math.PI * 2, hx = it ? it[0] : (Lo.cx + Math.cos(a) * RR) * U, hy = it ? it[1] : (Lo.cy + 20 + Math.sin(a) * RR * .38) * U;
+          g.brushSmear([[hx - 220 * U, hy - 300 * U], [hx - 90 * U, hy - 140 * U], [hx, hy]], (age + 4) / 4, { p0: Math.max(0, (age + 1) / 3), width: 14, core: 2.5 }); });
         bursts.forEach(([x, y, age, h]) => g.impact(x, y, age, h + b.i * 7));
         return; }
       g.carousel(names, 720, 540, 400, 260, rot, { size: 250, back: .8, front: 1.3, per: (i) => ({ opts: { silhouette: hits.some(([t, j]) => j === i && s.t > t + .12) ? 1 : 0 } }) });
@@ -162,12 +165,12 @@
       const word = b.text, accent = b.accent || 'sparkle';
       if (ctx.flow) { // the page floods from the object; the word types inside the flood
         const nextW = ctx.plan.beats[ctx.plan.beats.indexOf(b) + 1]?.world, full = (b.reveal?.at(-1)?.t ?? 0) + .22, d0 = Math.max(s.d * .72, full + .35), carry = shortFlood(b), drain = nextW === 'void' || carry ? 0 : g.clamp((s.t - d0) / Math.max(.12, s.d - d0)); // flood out after a .35s hold; if there's no room, the next shot drains it
-        const fl = g.clamp((s.t - s.d * .05) / (s.d * .3)) * (1 - drain); // proportional; stays flooded when the next beat is on void
+        const fl = g.clamp((s.t - s.d * .05) / (s.d * .16)) * (1 - drain); // quick iris: the title must arrive within ~3 frames of the accent // proportional; stays flooded when the next beat is on void
         const Lo = LY(g), [ox, oy] = Lo.card, OS = Lo.portrait ? 420 : 380, U = g.U;
         g.flood(ox * U, oy * U, fl, C.void);
         g.inFlood(ox * U, oy * U, fl, () => { if (b.glow) g.glow(ox * U, oy * U, 330, '#C41E14', .65); accentFx(g, s, accent, ox * U, oy * U, OS, true);
           if (Lo.portrait) g.caption(typedAt(b, s.t), Lo.cx * U, (oy + 520) * U, { full: b.text, align: 'center', size: 96, weight: 600, color: C.white, cursorColor: C.white, t: s.t, soft: false });
-          else if (b.title === 'snap') titleSnap(g, s, b, 820, 520, 80);
+          else if (b.title === 'snap') titleSnap(g, { ...s, t: s.t - s.d * .14 }, b, 820, 520, 80); // starts once the flood has covered the title
           else g.caption(typedAt(b, s.t), 820, 520, { size: 80, weight: 600, color: C.white, cursorColor: C.white, t: s.t, soft: false }); });
         g.block(b.object, ox * U, oy * U, OS, { shadowAlpha: .28 * (1 - fl) });
         if (accent === 'sparkle') g.layer({ alpha: fl }, () => g.sparkle((ox + OS * .42) * U, (oy - OS * .42) * U, 110 * E.back(g.clamp((s.t - .15) / .2)), { rot: .3 + s.t * .3, ax: 1.2, ay: .8, k: 1.9, glow: 22 }));
@@ -202,13 +205,13 @@
       g.flecks(8, 51 + b.i, s.f);
     },
     spell(g, s, b, ctx) {
-      const Lo = LY(g), U = g.U, Y = Lo.cy * U, L = b.letters, k = b.letterIndex, n = L.length, xs = L.map((_, j) => (90 + j * ((Lo.W - 180) / Math.max(1, n - 1))) * U), OS = Math.min(220, (Lo.W - 180) / Math.max(1, n - 1) * .72);
+      const Lo = LY(g), U = g.U, Y = Lo.cy * U, L = b.letters, k = b.letterIndex, n = L.length, xs = L.map((_, j) => (90 + j * ((Lo.W - 180) / Math.max(1, n - 1))) * U), OS = Math.min(220, (Lo.W - 180) / Math.max(1, n - 1) * .5);
       const ink = b.world === 'paper' ? C.ink : C.white, slots = b.objects || ctx.objects;
       for (let j = 0; j <= k; j++) g.text(L[j], xs[j], Y, { size: 64, weight: 600, color: ink, align: 'center' });
-      const sx = k < n - 1 ? (xs[k] + xs[k + 1]) / 2 : (xs[Math.max(0, k - 2)] + xs[Math.max(1, k - 1)]) / 2;
-      if (b.world === 'void') g.glow(sx, Y, 230, '#C41E14', .9);
-      if (ctx.flow && k > 0) g.morph(slots[(k - 1) % slots.length], slots[k % slots.length], E.inOut(s.t / (s.d * .9)), sx, Y, OS, { shadow: b.world === 'paper' });
-      else obj(g, ctx, slots[k % slots.length], sx, Y, OS, { shadow: b.world === 'paper' });
+      const last = k === n - 1, sx = !last ? (xs[k] + xs[k + 1]) / 2 : Lo.cx * U, sy = last ? Y - 170 * U : Y; // the last object rises above the finished word instead of covering a letter
+      if (b.world === 'void') g.glow(sx, sy, 230, '#C41E14', .9);
+      if (ctx.flow && k > 0) g.morph(slots[(k - 1) % slots.length], slots[k % slots.length], E.inOut(s.t / (s.d * .9)), sx, sy, OS, { shadow: b.world === 'paper' });
+      else obj(g, ctx, slots[k % slots.length], sx, sy, OS, { shadow: b.world === 'paper' });
     },
     resolve(g, s, b, ctx) {
       if (b.end === 'brand' && b.land === 'snap') return brandSnap(g, s, b, ctx);
@@ -242,10 +245,10 @@
    *  is inside the word), then the camera pulls back to 1× in 4 frames on a snap curve. A tagline (b.tagline) and a
    *  small orange dot rise in after. b.gatherAt (s) sets the gather; default 45 % of the beat. */
   function brandSnap(g, s, b, ctx) {
-    const word = String(b.text).replace(/\s/g, '').toLowerCase(), r = PPM.rng(44 + b.i), Lo = LY(g), U = g.U, BS = b.size || 300, Z = 2.8;
+    const word = String(b.text).replace(/\s/g, '').toLowerCase(), r = PPM.rng(44 + b.i), Lo = LY(g), U = g.U, BS = b.size || 300, Z = 1.8, GA = .25, PB = .3; // gather + pull-back: still cut-speed, but no stutter under motion blur
     const BY = Lo.cy + (Lo.portrait ? 200 : 110), widths = [...word].map(ch => g.measure(ch, BS, 700, -.04)), totalW = widths.reduce((a, w) => a + w, 0);
     const bx = (i) => Lo.cx - totalW / 2 + widths.slice(0, i).reduce((a, w) => a + w, 0) + widths[i] / 2;
-    const gs = b.gatherAt ?? s.d * .45, gk = E.in((s.t - gs) / .125), pk = E.snap((s.t - gs - .125) / .167), landed = s.t >= gs + .125;
+    const gs = b.gatherAt ?? s.d * .45, gk = E.in((s.t - gs) / GA), pk = E.snap((s.t - gs - GA) / PB), landed = s.t >= gs + GA;
     if (s.t < .4) [[[60, 200], [250, 120], [200, 380], [420, 440]], [[700, 200], [950, 250], [1100, 420], [980, 520]], [[600, 900], [800, 720], [1100, 820], [1300, 700]]].forEach(pts => g.brushSmear(scalePts(pts, Lo).map(([x, y]) => [x * U, y * U]), s.t / .25 * 1.3, { p0: Math.max(0, s.t / .25 - .4), width: 14, core: 2.5 }));
     if (!landed) [...word].forEach((ch, i) => {
       const lx = r.range(250, Lo.W - 240), ly = r.range(200, Lo.H - 180), la = r.range(-2.4, 2.4), sp = s.t * (.8 + i * .03);
@@ -259,16 +262,16 @@
       g.layer({}, () => { g.ctx.translate(Lo.cx * U, Lo.cy * U); g.ctx.scale(z, z); g.ctx.translate(-Lo.cx * U, -Lo.cy * U);
         g.text(word, Lo.cx * U, BY * U, { size: BS, weight: 700, align: 'center', track: -.04, color: C.ink });
         if (b.object) obj(g, ctx, b.object, Lo.cx * U, (BY - (b.objectLift ?? 380)) * U, b.objectSize ?? 200, {}); });
-      const gl = g.clamp((s.t - gs - .29) / .35); if (gl > 0) g.guides([(BY + BS * .36) * U], { alpha: .8 * gl, x1: g.W * E.inOut(gl) });
-      const tk = E.out((s.t - gs - .29) / .25);
-      if (b.tagline && tk > 0) { const ty = BY + BS * .36 + 70 + (1 - tk) * 12; g.text(b.tagline, Lo.cx * U, ty * U, { size: 34, weight: 500, align: 'center', color: '#4B4136', alpha: tk, track: .06 });
-        g.ctx.save(); g.ctx.globalAlpha *= tk; g.ctx.fillStyle = '#EB6C35'; g.ctx.beginPath(); g.ctx.arc(Lo.cx * U, (ty + 52) * U, 5 * U, 0, 7); g.ctx.fill(); g.ctx.restore(); }
+      const gl = g.clamp((s.t - gs - GA - .1) / .35); if (gl > 0) g.guides([(BY + BS * .285) * U], { alpha: .8 * gl, x1: g.W * E.inOut(gl) });
+      const tk = E.out((s.t - gs - GA - .15) / .25);
+      if (b.tagline && tk > 0) { const ty = BY + BS * .285 + 78 + (1 - tk) * 12; g.text(b.tagline, Lo.cx * U, ty * U, { size: 34, weight: 500, align: 'center', color: '#4B4136', alpha: tk, track: .06 });
+        g.ctx.save(); g.ctx.globalAlpha *= tk; g.ctx.fillStyle = '#D9201A'; g.ctx.beginPath(); g.ctx.arc(Lo.cx * U, (ty + 54) * U, 6.5 * U, 0, 7); g.ctx.fill(); g.ctx.restore(); }
     }
   }
   /** Card title, fframes-style: the whole word snaps in from (+48, +18) in 4 frames, a red block cursor collapses
    *  to a bar in 3, and an optional mono subtitle (b.sub) rises 24 px a frame later. */
   function titleSnap(g, s, b, x, y, size) {
-    const U = g.U, k = E.snap(s.t / .167), dx = (1 - k) * 48, dy = (1 - k) * 18;
+    if (s.t < 0) return; const U = g.U, k = E.snap(s.t / .167), dx = (1 - k) * 48, dy = (1 - k) * 18;
     g.layer({ x: dx * U, y: dy * U }, () => g.caption(b.text, x, y, { size, weight: 600, color: C.white, cursorColor: '#ED3D27', cursorW: g.lerp(size * .68, size * .07, E.out(s.t / .125)), t: s.t, blink: s.t > .6, soft: false }));
     if (b.sub) { const k2 = E.expo((s.t - .042) / .21), a = E.out((s.t - .042) / .125); if (a > 0) g.text(b.sub, x + 4 * U, y + (70 + (1 - k2) * 24) * U, { size: 31, weight: 500, color: b.subColor || '#D4CABB', alpha: a, track: .04 }); }
   }
@@ -288,6 +291,10 @@
     for (const [k, v] of Object.entries(spec.silhouettes || {})) {
       const [kind, arg] = String(v).split(':');
       if (kind === 'shape') out[k] = { src: arg === 'hand' ? PPM.SHAPES.hand(760, 1130, 1.05, .95) : PPM.SHAPES.profile(980, 190, 1.05), kind: arg };
+      else if (kind === 'thermal') { // a heat render or any light-on-black image, re-lit through the engine's thermal ramp (luminance → body mask)
+        const m = await PPM.loadMask(v.slice(8), { luma: true, invert: true, threshold: 40 });
+        out[k] = { src: PPM.placeMask(m, { x: 720, y: 540, h: 1080 }), kind: /hand/i.test(k) ? 'hand' : 'head' };
+      }
       else if (kind === 'heat') { // a ready-made heat render on black: draw it as-is, derive the mask from its luminance
         const url = v.slice(5), img = await new Promise((ok, err) => { const im = new Image(); im.onload = () => ok(im); im.onerror = err; im.src = url; });
         const m = await PPM.loadMask(url, { luma: true, invert: true, threshold: 40 });
@@ -303,14 +310,14 @@
     if (plan.errors.length) throw new Error('spec errors:\n' + plan.errors.join('\n'));
     const flow = plan.mode === 'flow';
     const film = PPM.film(canvas, { w: spec.size?.[0] || 1440, h: spec.size?.[1] || 1080, fps: +(new URLSearchParams(location.search).get('fps') || plan.fps), font: spec.font || (flow ? 'Geist' : 'Outfit'),
-      camera: flow ? { float: 7, rot: .35, push: .04 } : { float: 0, push: 0 } });
+      camera: flow ? { float: 7, rot: .35, push: .04 } : { float: 0, push: 0 }, treatment: spec.treatment });
     const ctx = { spec, plan, flow, objects: spec.objects?.length ? spec.objects : PPM.KITCHEN_SET, shapes: await loadShapes(spec) };
     plan.beats.forEach((b, k) => {
       const fn = B[b.type], orig = spec.beats[b.i] || {};
       if (flow && b.type === 'card' && !orig.world) b.world = 'paper'; // flow cards flood void out of the object over the page
       if (flow && b.type === 'hero' && !orig.world) b.world = 'paper'; // the yellow card is drawn in-shot and wipes off to reveal paper
       film.shot(b.dur, b.world, (g, s) => {
-        const HO = Math.min(.18, b.dur * .25);
+        const HO = Math.min(.1, b.dur * .25); // a short blend, not a dissolve (≈6 frames @60)
         if (flow && k > 0 && plan.beats[k - 1].transition === 'handoff' && s.t < HO) { // continuous handoff: start on the outgoing shot's last frame, then cross to this one
           g.under(k - 1, plan.beats[k - 1].dur - 1e-3); g.ctx.save(); g.ctx.globalAlpha = E.inOut(s.t / HO); g.bg(b.world); g.ctx.restore();
           g.ctx.globalAlpha = E.inOut(s.t / HO);

@@ -166,7 +166,7 @@ for j, b in enumerate(spell): place(pluck(deg([0, 2, 4, 7][j % 4], 1), .55), b['
 
 # ── resolve: hold the tonic, bell when the title lands ──
 if resolve:
-    land = resolve['start'] + resolve['dur'] * .45
+    land = resolve['start'] + (resolve.get('gatherAt') or resolve['dur'] * .45) + (.25 if resolve.get('land') == 'snap' else 0)  # snap: the bell rings as the word lands, after the gather
     for s in chord(0, -1, (0, 2, 4, 6, 8)): place(piano(s, resolve['dur'] - .2, .38), resolve['start'] + .02)
     place(bass(deg(0, -2), resolve['dur'] - .3, .55), resolve['start'] + .02)
     place(bell(deg(0, 2), .55, min(2.4, DUR - land)), land, pan=.15)
@@ -190,6 +190,8 @@ if not NOSFX:
             for r, w in zip(b.get('reveal') or [], (b['text'] or '').split()):
                 for ci in range(len(w)): place(click(.55), st + r['t'] + ci * .22 / max(1, len(w)) + rng.uniform(0, .01), pan=rng.uniform(-.2, .2))
         if ty == 'card': place(whoosh(.5, .35), st + .02 + b['dur'] * .05)
+        if ty == 'ring':
+            for h in b.get('hits') or []: place(tap(.55, 900), st + h[0] - .01, pan=rng.uniform(-.3, .3)); place(clink(.35), st + h[0] + .01, pan=rng.uniform(-.3, .3))  # ink hits
         if ty == 'conveyor': place(whoosh(min(.5, b['dur'] + .1), .3, up=False), st - .05, pan=-.3)
         if ty == 'scatter':
             for k in range(5): place(thump(.45), st + .25 + k * b['dur'] / 6, pan=rng.uniform(-.5, .5))

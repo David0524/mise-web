@@ -9,24 +9,25 @@ window.SPEC = {
   length: 20,
   shape: 'steps',
   objects: window.RAMEN_SET,
-  silhouettes: { head: 'shape:profile', hand: 'heat:assets/hand.png' },
+  silhouettes: { head: 'shape:profile', hand: 'thermal:assets/hand.png' },  // the user's hand render, re-lit through the engine's thermal ramp
+  treatment: { grainAmount: 1.7, vignetteAmount: 1.8 },  // 3 a.m.: heavier grain, darker corners
   beats: [
     // awake
     { section: 0, type: 'hero', text: '3:07', world: 'void' },
-    { section: 0, type: 'silhouette', shape: 'head', text: "everyone's asleep. you're not." },
+    { section: 0, type: 'silhouette', shape: 'head', text: "everyone's asleep. you're not.", thick: 120, hotspot: [930, 380, 110, 150] },
     { section: 0, type: 'flash', text: 'click', world: 'yellow' },
     { section: 0, type: 'flare', text: 'might as well make ramen', key: 'ramen', objects: ['clock', 'moon', 'bulb', 'chopsticks'], mosaic: true, objectSize: 104 },
     // from scratch
-    { section: 1, type: 'card', text: 'broth.', object: 'pot', title: 'snap', sub: 'bones · kombu · hours', accent: 'orbits', glow: true },
+    { section: 1, type: 'card', text: 'broth.', object: 'pot', title: 'snap', sub: 'bones · kombu · hours', dur: 1.3, accent: 'orbits', glow: true },
     { section: 1, type: 'conveyor', objects: ['ginger', 'garlic', 'mushroom', 'scallion', 'nori', 'soy'] },
-    { section: 1, type: 'card', text: 'tare.', object: 'soy', title: 'snap', sub: 'soy · mirin · salt', accent: 'scribble' },
+    { section: 1, type: 'card', text: 'tare.', object: 'soy', title: 'snap', sub: 'soy · mirin · salt', dur: 1.3, accent: 'scribble', glow: true },
     { section: 1, type: 'conveyor', objects: ['flour', 'noodles', 'ajitama', 'chopsticks', 'ginger', 'garlic'] },
-    { section: 1, type: 'card', text: 'noodles.', object: 'noodles', title: 'snap', sub: 'flour · water · stubbornness', accent: 'sparkle' },
+    { section: 1, type: 'card', text: 'noodles.', object: 'noodles', title: 'snap', sub: 'flour · water · stubbornness', dur: 1.3, accent: 'sparkle' },
     // the quiet
     { section: 2, type: 'sentence', text: 'the kitchen is the only room awake', key: 'awake' },
-    { section: 2, type: 'flash', text: 'stir', world: 'void' },
-    { section: 2, type: 'ring', hits: [[.55, 3], [1.05, 7]] },
-    { section: 2, type: 'silhouette', shape: 'hand', text: 'just you and the steam', leftEnd: 420 },
+    { section: 2, type: 'flash', text: 'stir', world: 'void', dur: .1 },
+    { section: 2, type: 'ring', hits: [[.55, 3], [.88, 7]] },
+    { section: 2, type: 'silhouette', shape: 'hand', text: 'just you and the steam', leftEnd: 380, hotspot: [700, 860, 170] },
     // the bowl
     { section: 3, type: 'flash', text: 'slurp', world: 'red' },
     { section: 3, type: 'spell', text: 'RAMEN', objects: ['pot', 'soy', 'noodles', 'ajitama', 'ramen'], worlds: ['paper', 'void', 'red', 'paper', 'void'] },

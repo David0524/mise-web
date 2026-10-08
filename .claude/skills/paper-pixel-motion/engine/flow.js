@@ -97,10 +97,10 @@
     const D = distance(alpha, w, h);
     let max = 0; for (const v of D) max = Math.max(max, v);
     const thick = (o.thick ? o.thick / q : max) || 1, base = new Float32Array(w * h);
-    const v1 = o.ramp === 'v1', e0 = v1 ? .28 : .1, span = v1 ? .6 : .82, gam = v1 ? .5 : .62; // v2: a cooler rim (violet → crimson) and a longer climb to the core
+    const v1 = o.ramp === 'v1', e0 = v1 ? .28 : .04, span = v1 ? .6 : .9, gam = v1 ? .5 : .8; // v2: a violet rim, crimson band, long climb // v2: a cooler rim (violet → crimson) and a longer climb to the core
     for (let i = 0; i < w * h; i++) base[i] = e0 + span * Math.pow(clamp(D[i] / thick), gam);
     // hold the edge value outside so nothing dark bleeds in on upscale
-    const edgeV = v1 ? .3 : .1;
+    const edgeV = v1 ? .3 : .04;
     for (let i = 0; i < w * h; i++) if (!alpha[i]) base[i] = edgeV; else base[i] = Math.max(base[i], edgeV);
     return (cache[k] = { full, w, h, q, base, alpha, img: mk(w, h) });
   }
@@ -186,7 +186,7 @@
     g.impact = function (x, y, age, seed = 1, o = {}) {
       if (age < 0 || age >= 7) return; const ctx = g.ctx, U = g.U, fade = Math.exp(-age * .42), r = rng(seed * 977 + 13), col = o.color || [245, 150, 6];
       ctx.save(); ctx.translate(x, y); ctx.globalCompositeOperation = o.blend || 'source-over';
-      const sig = Math.sqrt((2300 + age * 380) / 2), dot = Math.max(1, Math.round(1.6 * U)), n = 900, cr = rng(seed * 31 + 5); // stippled cloud: gaussian falloff, grain-thresholded
+      const sig = Math.sqrt(2300 + age * 380), dot = Math.max(2, Math.round(2.4 * U)), n = 1400, cr = rng(seed * 31 + 5); // stippled cloud: gaussian falloff, grain-thresholded
       for (let i = 0; i < n; i++) { const px = (cr() - .5) * 340, py = (cr() - .5) * 340, a = Math.exp(-(px * px + py * py) / (2 * sig * sig)) * .76; const gr = cr(); if (gr < .16) continue; const k = a * clamp((gr - .16) / .76) * fade; if (k < .03) continue;
         ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${k})`; ctx.fillRect(px * U, py * U, dot, dot); }
       ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${fade})`;

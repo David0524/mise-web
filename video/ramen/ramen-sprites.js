@@ -34,10 +34,10 @@
     px(5, 14, 6, 2, '#9A9899'); px(5, 16, 6, 1, '#6E6C6E'); px(5, 17, 6, 2, '#9A9899'); px(6, 19, 4, 2, '#6E6C6E');
   });
 
-  D('noodles', 22, 16, ({ px }) => {
+  D('noodles', 24, 18, ({ px }) => {  // a dried bundle: wavy strands with gaps, tied with a paper band
     const Y = ['#F2D27A', '#E2B85A', '#F8E2A0'];
-    for (let r = 0; r < 6; r++) for (let i = 0; i < 20; i++) { const y = 3 + r * 2 + Math.round(Math.sin(i * .9 + r * 1.7) * 1.2); px(1 + i, y, 1, 2, Y[(r + (i > 10 ? 1 : 0)) % 3]); }
-    px(0, 6, 1, 6, '#E2B85A'); px(21, 5, 1, 7, '#E2B85A');
+    for (let r = 0; r < 7; r++) for (let i = 0; i < 22; i++) { const y = 2 + r * 2.1 + Math.sin(i * .75 + r * 2.1) * 1.6; px(1 + i, Math.round(y), 1, 1, Y[r % 3]); if (i % 3 === 0) px(1 + i, Math.round(y) + 1, 1, 1, Y[(r + 1) % 3]); }
+    px(10, 0, 4, 18, '#C9301F'); px(10, 0, 1, 18, '#E04A35'); px(11, 6, 2, 3, '#F7F3E8');
   });
 
   D('soy', 12, 24, ({ px, poly }) => {
