@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /* The launch film, full-screen, the first time someone opens the site. It is
    the pitch now (the app's old three-screen intro used to carry it), so it
@@ -32,11 +33,17 @@ export default function LaunchFilm() {
   const [closing, setClosing] = useState(false);
   const [muted, setMuted] = useState(true);
   const [paused, setPaused] = useState(false);
+  const [wide, setWide] = useState(false);
   const video = useRef(null);
+  const back = useRef(null);
   const skipBtn = useRef(null);
 
   useEffect(() => {
     if (seen()) return;
+    // Phones (portrait) get the film full-bleed. On a landscape screen covering
+    // would crop away the on-screen words, so the whole film sits in the middle
+    // and a blurred copy of it fills the rest of the screen.
+    setWide(window.innerWidth / window.innerHeight > 0.8);
     setOpen(true);
   }, []);
 
@@ -92,24 +99,35 @@ export default function LaunchFilm() {
     if (v.paused) play();
   };
 
+  // The backdrop copy follows the film: same play/pause, nudged back if it drifts.
+  const follow = (fn) => { const b = back.current; if (b) try { fn(b); } catch (_) {} };
+  const sync = () => follow((b) => {
+    const t = video.current?.currentTime || 0;
+    if (Math.abs(b.currentTime - t) > 0.25) b.currentTime = t;
+  });
+
   return (
     <>
-      {open && (
+      {open && createPortal(
         <div className={`lf${closing ? " lf--out" : ""}`} role="dialog" aria-modal="true" aria-label="Mise launch film" aria-describedby="lf-desc">
           <p id="lf-desc" className="lf-sr">
             A 18-second film. On screen: mess. Every good recipe starts the same way. A counter full of maybe.
             Prep. Place. Play. Everything right where your hands expect it. Mise.
           </p>
+          {wide && (
+            <video ref={back} className="lf__back" src={SRC} muted playsInline preload="auto" aria-hidden="true" tabIndex={-1} />
+          )}
           <video
             ref={video}
-            className="lf__video"
+            className={`lf__video${wide ? " lf__video--wide" : ""}`}
             src={SRC}
             poster={POSTER}
             playsInline
             preload="auto"
             onEnded={close}
-            onPause={() => setPaused(true)}
-            onPlay={() => setPaused(false)}
+            onPause={() => { setPaused(true); follow((b) => b.pause()); }}
+            onPlay={() => { setPaused(false); sync(); follow((b) => b.play()?.catch?.(() => {})); }}
+            onTimeUpdate={sync}
           />
           {paused && (
             <button type="button" className="lf__play" onClick={play} aria-label="Play the film">
@@ -124,7 +142,8 @@ export default function LaunchFilm() {
               Skip
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style dangerouslySetInnerHTML={{ __html: LF_CSS }} />
@@ -135,12 +154,14 @@ export default function LaunchFilm() {
 // Injected as raw HTML: as a text child, React escapes the quotes on the
 // server and the page fails to hydrate.
 const LF_CSS = `
-        .lf{position:fixed;inset:0;z-index:1000;background:#141414;display:flex;align-items:center;justify-content:center;
+        .lf{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;z-index:2147483600;background:#141414;display:flex;align-items:center;justify-content:center;
           animation:lf-in .35s ease-out both}
         .lf--out{animation:lf-out .35s ease-in both}
         @keyframes lf-in{from{opacity:0}to{opacity:1}}
         @keyframes lf-out{from{opacity:1}to{opacity:0}}
-        .lf__video{width:100%;height:100%;object-fit:contain;background:#141414}
+        .lf__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#141414}
+        .lf__video--wide{object-fit:contain;background:transparent}
+        .lf__back{position:absolute;inset:-6%;width:112%;height:112%;object-fit:cover;filter:blur(40px) brightness(.75);pointer-events:none}
         .lf__bar{position:absolute;left:0;right:0;bottom:max(16px,env(safe-area-inset-bottom));display:flex;justify-content:space-between;
           padding:0 16px;pointer-events:none}
         .lf__btn{pointer-events:auto;font:600 15px/1 'Nunito',system-ui,sans-serif;color:#F2F0EC;background:rgba(20,20,20,.55);
