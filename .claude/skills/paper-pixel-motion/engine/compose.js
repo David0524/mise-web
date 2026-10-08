@@ -209,7 +209,7 @@
       const ink = b.world === 'paper' ? C.ink : C.white, slots = b.objects || ctx.objects;
       for (let j = 0; j <= k; j++) g.text(L[j], xs[j], Y, { size: 64, weight: 600, color: ink, align: 'center' });
       const last = k === n - 1, sx = !last ? (xs[k] + xs[k + 1]) / 2 : Lo.cx * U, sy = last ? Y - 170 * U : Y; // the last object rises above the finished word instead of covering a letter
-      if (b.world === 'void') g.glow(sx, sy, 230, '#C41E14', .9);
+      if (b.world === 'void') g.glow(sx, sy, 160, '#C41E14', .9); // small enough to leave the neighbouring letters clean
       if (ctx.flow && k > 0) g.morph(slots[(k - 1) % slots.length], slots[k % slots.length], E.inOut(s.t / (s.d * .9)), sx, sy, OS, { shadow: b.world === 'paper' });
       else obj(g, ctx, slots[k % slots.length], sx, sy, OS, { shadow: b.world === 'paper' });
     },
@@ -248,7 +248,7 @@
     const word = String(b.text).replace(/\s/g, '').toLowerCase(), r = PPM.rng(44 + b.i), Lo = LY(g), U = g.U, BS = b.size || 300, Z = 1.8, GA = .25, PB = .3; // gather + pull-back: still cut-speed, but no stutter under motion blur
     const BY = Lo.cy + (Lo.portrait ? 200 : 110), widths = [...word].map(ch => g.measure(ch, BS, 700, -.04)), totalW = widths.reduce((a, w) => a + w, 0);
     const bx = (i) => Lo.cx - totalW / 2 + widths.slice(0, i).reduce((a, w) => a + w, 0) + widths[i] / 2;
-    const gs = b.gatherAt ?? s.d * .45, gk = E.in((s.t - gs) / GA), pk = E.snap((s.t - gs - GA) / PB), landed = s.t >= gs + GA;
+    const gs = b.gatherAt ?? s.d * .45, gk = E.inOut((s.t - gs) / GA), pk = E.snap((s.t - gs - GA) / PB), landed = s.t >= gs + GA;
     if (s.t < .4) [[[60, 200], [250, 120], [200, 380], [420, 440]], [[700, 200], [950, 250], [1100, 420], [980, 520]], [[600, 900], [800, 720], [1100, 820], [1300, 700]]].forEach(pts => g.brushSmear(scalePts(pts, Lo).map(([x, y]) => [x * U, y * U]), s.t / .25 * 1.3, { p0: Math.max(0, s.t / .25 - .4), width: 14, core: 2.5 }));
     if (!landed) [...word].forEach((ch, i) => {
       const lx = r.range(250, Lo.W - 240), ly = r.range(200, Lo.H - 180), la = r.range(-2.4, 2.4), sp = s.t * (.8 + i * .03);

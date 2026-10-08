@@ -191,7 +191,7 @@ if not NOSFX:
                 for ci in range(len(w)): place(click(.55), st + r['t'] + ci * .22 / max(1, len(w)) + rng.uniform(0, .01), pan=rng.uniform(-.2, .2))
         if ty == 'card': place(whoosh(.5, .35), st + .02 + b['dur'] * .05)
         if ty == 'ring':
-            for h in b.get('hits') or []: place(tap(.55, 900), st + h[0] - .01, pan=rng.uniform(-.3, .3)); place(clink(.35), st + h[0] + .01, pan=rng.uniform(-.3, .3))  # ink hits
+            for h in b.get('hits') or []: place(tap(.8, 900), st + h[0] - .01, pan=rng.uniform(-.3, .3)); place(clink(.35), st + h[0] + .01, pan=rng.uniform(-.3, .3))  # ink hits
         if ty == 'conveyor': place(whoosh(min(.5, b['dur'] + .1), .3, up=False), st - .05, pan=-.3)
         if ty == 'scatter':
             for k in range(5): place(thump(.45), st + .25 + k * b['dur'] / 6, pan=rng.uniform(-.5, .5))
