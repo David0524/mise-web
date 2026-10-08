@@ -83,7 +83,7 @@ const FORWARD = /^(Next|Set up my kitchen|Continue|Let's go|Got it|Make my accou
       await p.goto(h.B + "/start");
       await visible(p, p.getByRole("button", { name: "Essential only" }), "cookie banner");
       await p.getByRole("button", { name: "Essential only" }).click();
-      await visible(p, p.getByText("I'm Mise."), "intro");
+      await visible(p, p.getByText("First, tell me about your kitchen."), "intro");
       noErrors(p);
     });
 

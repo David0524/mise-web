@@ -34,7 +34,7 @@ export default function Landing({ searchParams }) {
         <p style={S.foot}>
           Already have an account? <a href="/login" style={S.link}>Sign in</a>
         </p>
-        {/* Plays itself full-screen on a first visit; this link replays it. */}
+        {/* Plays itself full-screen on a first visit only. */}
         <LaunchFilm />
       </div>
       <SiteFooter />
