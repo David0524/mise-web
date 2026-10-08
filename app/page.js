@@ -1,6 +1,7 @@
 import { S, FilterDefs } from "@/lib/authStyles";
 import SiteFooter from "@/components/SiteFooter";
 import MiseHello from "@/components/MiseHello";
+import LaunchFilm from "@/components/LaunchFilm";
 
 export default function Landing({ searchParams }) {
   const deleted = searchParams?.deleted === "1";
@@ -17,10 +18,10 @@ export default function Landing({ searchParams }) {
           <MiseHello />
         </div>
 
-        {/* Same hook the app's own intro leads with, so the pitch doesn't change
-            between the page that sells it and the product itself. */}
+        {/* Same line the launch film lands on, so the pitch doesn't change
+            between the film that opens the site and the page under it. */}
         <h1 style={{ ...S.h1, fontSize: "1.9rem", lineHeight: 1.15, marginTop: ".6rem" }}>
-          Nobody needs a whole bunch of dill for one dish.
+          Cooking feels calm when everything has a place.
         </h1>
         <p style={{ ...S.sub, marginBottom: "1.6rem" }}>
           I&apos;m Mise. I&apos;ll help you work out what to cook this week, build a shopping
@@ -33,6 +34,8 @@ export default function Landing({ searchParams }) {
         <p style={S.foot}>
           Already have an account? <a href="/login" style={S.link}>Sign in</a>
         </p>
+        {/* Plays itself full-screen on a first visit; this link replays it. */}
+        <LaunchFilm />
       </div>
       <SiteFooter />
     </main>

@@ -5781,65 +5781,25 @@ Respond with ONLY this JSON:
 
 /* ------------------------------------------------------------------- START */
 
-/* What a brand-new person sees before a single question gets asked. The value
-   here can't be demonstrated with real output — every dish depends on knowing
-   their kitchen — so this sells what Mise actually is in her own voice rather
-   than faking a sample week. Three screens, one idea each, then straight into
-   setup. The button sits in the same fixed spot as the wizard's, so the tap
-   target never moves across the whole of onboarding. */
+/* What a brand-new person sees before a single question gets asked. The pitch
+   itself now lives in the launch film that opens the site (components/
+   LaunchFilm.jsx), so this is just the hand-off into setup: one screen, Mise
+   saying what happens next. The button sits in the same fixed spot as the
+   wizard's, so the tap target never moves across the whole of onboarding. */
 function Intro({ onDone }) {
-  const [i, setI] = useState(0);
-  const lastScreen = 2;
-
-  const screens = [
-    {
-      art: (
-        <div className="introart">
-          <img src="/img/dill.webp" alt="" loading="eager" />
-        </div>
-      ),
-      h: "Nobody needs a whole bunch of dill for one dish.",
-      p: "I'm Mise. I plan your week so everything you buy gets used.",
-    },
-    {
-      art: <MiseAvatar mood="thinking" size={104} />,
-      h: "I'm not a recipe search box.",
-      p: "I suggest. You react. I change anything.",
-    },
-    {
-      art: <MiseAvatar mood="happy" size={104} />,
-      h: "First, tell me about your kitchen.",
-      p: "A few quick questions, then we cook.",
-    },
-  ];
-
-  const s = screens[i];
-  const next = () => (i === lastScreen ? onDone() : setI(i + 1));
-
   return (
     <div className="stack wiz-pad">
-      <section className="card card--big stepin" key={i}>
+      <section className="card card--big stepin">
         <div className="hero">
-          <div className="hero__mark">{s.art}</div>
-          <h1 className="hero__h">{s.h}</h1>
-          <p className="hero__sub">{s.p}</p>
+          <div className="hero__mark"><MiseAvatar mood="happy" size={104} /></div>
+          <h1 className="hero__h">First, tell me about your kitchen.</h1>
+          <p className="hero__sub">A few quick questions, then we cook.</p>
         </div>
       </section>
 
-      {/* Dots rather than "step 1 of 3" — this part isn't work to get through,
-          so counting it like a form would set the wrong expectation. */}
-      <div className="dots" role="group" aria-label={`Screen ${i + 1} of ${screens.length}`}>
-        {screens.map((_, n) => (
-          <span key={n} className={`dots__d${n === i ? " dots__d--on" : ""}`} aria-hidden="true" />
-        ))}
-      </div>
-
       <div className="wizbar">
         <div className="wizbar__in">
-          {i > 0 && <Btn variant="ghost" onClick={() => setI(i - 1)}>Back</Btn>}
-          <Btn onClick={next} wide={i === 0}>
-            {i === lastScreen ? "Set up my kitchen" : "Next"}
-          </Btn>
+          <Btn onClick={onDone} wide>Set up my kitchen</Btn>
         </div>
         {/* Empty, but it holds the same height as the wizard's caption so the
             button above it doesn't jump when the two phases meet. */}
@@ -10255,10 +10215,6 @@ h3 + .grid-2,h3 + .scale,h3 + .counts{margin-top:.9rem}
 .empty__art{margin:0 auto 1.1rem;max-width:280px}
 .empty__art img{width:100%;height:auto;max-height:200px;object-fit:cover;
   border-radius:20px;display:block;box-shadow:var(--lift-1)}
-.introart{margin:0 auto;max-width:300px}
-.introart img{width:100%;height:auto;max-height:230px;object-fit:cover;
-  border-radius:24px;display:block;box-shadow:var(--lift-2)}
-
 .advlink{display:block;width:100%;margin:.4rem 0 0;padding:.7rem;background:none;border:none;
   font-family:'Nunito',sans-serif;font-weight:700;font-size:.86em;color:var(--muted);
   cursor:pointer;text-align:center;border-radius:14px}
