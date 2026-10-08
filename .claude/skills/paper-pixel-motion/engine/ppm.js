@@ -525,8 +525,9 @@
         else {
           // true motion blur: average N sub-frames spread over a 180° shutter
           actx.setTransform(1, 0, 0, 1, 0, 0); actx.globalAlpha = 1; actx.clearRect(0, 0, w, h);
+          const home = F.atTime(T), lo = home.start, hi = home.start + home.s.dur - 1e-4; // never sample across a shot boundary: cuts stay single-frame cuts
           for (let k = 0; k < N; k++) {
-            const tt = T + (k / N - .5) * (.5 / fps), a = F.atTime(Math.max(0, tt));
+            const tt = Math.min(hi, Math.max(lo, T + (k / N - .5) * (.5 / fps))), a = F.atTime(Math.max(0, tt));
             F.drawShot(a.i, a.t, sctx);
             actx.globalAlpha = 1 / (k + 1); actx.drawImage(scene, 0, 0);
           }

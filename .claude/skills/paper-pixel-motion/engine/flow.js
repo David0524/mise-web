@@ -208,7 +208,9 @@
     /** Flood a colour out from (x,y) to cover the frame. p 0..1, soft start (inOut). Returns current radius. */
     g.flood = function (x, y, p, color = C.void) {
       const R = Math.hypot(Math.max(x, film.w - x), Math.max(y, film.h - y)) * 1.05 * ease.inOut(clamp(p));
-      if (R <= 0) return 0; const ctx = g.ctx; ctx.save(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); ctx.restore(); return R;
+      if (R <= 0) return 0; const ctx = g.ctx, F = 16 * g.U; // feathered edge: hides sub-frame steps when the flood moves fast
+      ctx.save(); const gr = ctx.createRadialGradient(x, y, Math.max(0, R - F), x, y, R); gr.addColorStop(0, color); gr.addColorStop(1, PPM.hexA(color, 0));
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, R, 0, 7); ctx.fill(); ctx.restore(); return R;
     };
     /** Clip subsequent drawing (fn) to the flood circle. */
     g.inFlood = function (x, y, p, fn) {
