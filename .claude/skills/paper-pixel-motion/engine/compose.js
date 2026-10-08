@@ -34,7 +34,7 @@
     const size = o.size || 52, color = o.color || C.ink, words = tokens(b.text), hi = {};
     const ki = keyIndex(b); if (ki >= 0 && o.highlightKey) hi[ki] = o.highlightKey;
     if (ctx.flow) {
-      const lead = Math.min(.15, b.reveal?.[0]?.t ?? 0), shown = typedAt(b, t + lead), r = g.caption(shown, o.x ?? 720, o.y ?? 540, { size, color, cursorColor: o.cursorColor || color, align: o.align || 'center', t, blink: t > (b.reveal?.at(-1)?.t ?? 0) + .4 });
+      const lead = Math.min(.15, b.reveal?.[0]?.t ?? 0), shown = typedAt(b, t + lead), r = g.caption(shown, o.x ?? 720, o.y ?? 540, { full: b.text, size, color, cursorColor: o.cursorColor || color, align: o.align || 'center', t, blink: t > (b.reveal?.at(-1)?.t ?? 0) + .4 });
       if (ki >= 0 && shown.split(' ').length > ki) { const pre = words.slice(0, ki).join(' ') + (ki ? ' ' : ''); g.underline(r.x0 + g.measure(pre, size), (o.y ?? 540) + size * .62, g.measure(words[ki], size), (t - b.reveal[ki].t) / .35); }
       return r;
     }

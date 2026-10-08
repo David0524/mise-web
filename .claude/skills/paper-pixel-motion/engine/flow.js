@@ -195,7 +195,8 @@
     g.caption = function (shown, x, y, o = {}) {
       const size = o.size || 26, weight = o.weight || 500, color = o.color || C.ink;
       const wNow = g.measure(shown, size, weight), cw = size * .55 * g.U;
-      const x0 = o.align === 'center' ? x - (wNow + cw * 1.4) / 2 : x;
+      const wLay = o.full != null ? g.measure(o.full, size, weight) : wNow; // lay out on the FINAL width so the line never re-centres while typing
+      const x0 = o.align === 'center' ? x - (wLay + cw * 1.4) / 2 : x;
       if (shown) g.text(shown, x0, y, { size, weight, color, soft: o.soft });
       if (o.cursor !== false && (!o.blink || Math.floor((o.t || 0) * 3.5) % 2 === 0)) { g.ctx.save(); g.ctx.fillStyle = o.cursorColor || color; g.ctx.fillRect(x0 + wNow + cw * .25, y - size * .6 * g.U, cw, size * 1.2 * g.U); g.ctx.restore(); }
       return { x0, w: wNow };
