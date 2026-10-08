@@ -12,9 +12,10 @@ window.SPEC = {
   font: 'Outfit',               // optional; default Outfit (cut) / Geist (flow)
   shape: 'steps',               // documentation only: which writing shape this follows
   objects: ['tomato', 'garlic', /* … 10–12 sprite names */],
-  silhouettes: {                // key → 'shape:hand' | 'shape:profile' | 'mask:assets/hand.png' (body in alpha) | 'heat:assets/hand.png' (a ready-made heat render on black, drawn as-is)
+  silhouettes: {                // key → 'shape:hand' | 'shape:profile' | 'mask:assets/hand.png' (body in alpha) | 'heat:assets/hand.png' (a ready-made heat render on black, drawn as-is) | 'thermal:assets/hand.png' (the same kind of image re-lit through the engine's thermal ramp: violet rim → cream core. Prefer this)
     hand: 'shape:hand',
   },
+  treatment: { grainAmount: 1, vignetteAmount: 1 },  // optional film-texture multipliers (a night film: ~1.7 / 1.8)
   beats: [ /* see below */ ],
 };
 ```
@@ -30,7 +31,7 @@ Type on `void`, `red` and `wash` defaults to white.
 | `hero` | 1 word | — | Flash card with a huge word and dashed guides. In flow mode the card wipes off to the left |
 | `sentence` | 3–12 words | `key` | Small line on the centre, word by word (cut) or typed and centred (flow), with the key word underlined in red. In cut mode a pen scribble writes under each new word |
 | `flare` | optional line | `objects`, `key`, `objectSize`, `mosaic` (objects wake from coarse pixels) | The cyan four-point flare, floating objects, and a light pool closing in. The key word turns white |
-| `silhouette` | 1–7 words | `shape`, `orbit`, `hotspot`, `wash`, `leftEnd`, `rightStart`, `textY` (hand text anchors) | Heat-lit body. A hand splits the line either side of it; a head puts the line on the left |
+| `silhouette` | 1–7 words | `shape`, `orbit`, `hotspot` ([x, y, r, ry?] in 1440×1080), `hotspotStrength`, `thick` (px of body thickness that reaches full heat; set it to the head's width for a profile, or only the torso gets hot), `wash`, `leftEnd`, `rightStart`, `textY` (hand text anchors) | Heat-lit body. A hand splits the line either side of it; a head puts the line on the left |
 | `ring` | — | `objects`, `hits:[[t, index]]` | Inventory carousel (cut) or tilted 3D ring (flow). `hits` are ink-blot strikes in cut mode; in flow mode each is a kick (pull, ease-out, spring back), a heat flash, soot and an impact burst |
 | `card` | 1 word + period | `object` (req), `accent`: `sparkle` \| `beam` \| `notes` \| `scribble` \| `orbits`, `glow` (red glow behind a dark object), `title: 'snap'` (flow: the word snaps in whole with a red collapsing cursor instead of typing), `sub` (a small subtitle under the word, e.g. an ingredient list) | Hero object on the left, the word on the right with a cursor. In flow mode the page floods from the object |
 | `conveyor` | — | `objects` | Fast row of objects with speed streaks |
