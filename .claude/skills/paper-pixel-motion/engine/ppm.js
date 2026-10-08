@@ -32,7 +32,20 @@
     in: t => Math.pow(clamp(t), 3),
     inOut: t => (t = clamp(t), t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
     back: t => { t = clamp(t); const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); },
+
+    /** CSS-style cubic-bezier(x1,y1,x2,y2) → t ↦ value. Solve x(u)=t by Newton, then bisection. */
+    bezier(x1, y1, x2, y2) {
+      const bx = (u) => 3 * x1 * u * (1 - u) ** 2 + 3 * x2 * u * u * (1 - u) + u ** 3, by = (u) => 3 * y1 * u * (1 - u) ** 2 + 3 * y2 * u * u * (1 - u) + u ** 3;
+      const dx = (u) => 3 * x1 * (1 - u) ** 2 + 6 * (x2 - x1) * u * (1 - u) + 3 * (1 - x2) * u * u;
+      return (t) => { t = clamp(t); if (t === 0 || t === 1) return t; let u = t; for (let i = 0; i < 6; i++) { const d = dx(u); if (Math.abs(d) < 1e-6) break; u = clamp(u - (bx(u) - t) / d); }
+        if (Math.abs(bx(u) - t) > 1e-4) { let lo = 0, hi = 1; for (let i = 0; i < 30; i++) { u = (lo + hi) / 2; if (bx(u) < t) lo = u; else hi = u; } } return by(u); };
+    },
+    /** Damped spring from 1 back to 0 over seconds t (mass 1). Defaults: stiffness 190, damping 14 (a quick, slightly bouncy settle). */
+    spring(t, k = 190, c = 14) { if (t <= 0) return 1; const w0 = Math.sqrt(k), z = c / (2 * w0); if (z >= 1) return Math.exp(-w0 * t) * (1 + w0 * t); const wd = w0 * Math.sqrt(1 - z * z); return Math.exp(-z * w0 * t) * (Math.cos(wd * t) + z * w0 / wd * Math.sin(wd * t)); },
   };
+  ease.expo = ease.bezier(.16, 1, .3, 1);    // a burst that lands soft (explosions, arrivals)
+  ease.snap = ease.bezier(.12, .92, .2, 1);  // a cut-speed settle: most of the move in the first frames
+  ease.std = ease.bezier(.42, 0, .58, 1);    // symmetrical ease for flights between poses
   function rng(seed) { // mulberry32
     let a = (seed >>> 0) || 1;
     const r = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -115,13 +128,29 @@
   }
 
   // ───────────────────────────── drawing kit ─────────────────────────────
+  /** Static paper fibre for a world: three octaves of value noise (280, 81, 14 px) baked into the world colour, so a
+   *  flat fill reads as a sheet of stock (±~9 levels on paper, ±~2 on void). Opaque, cached per world and size. */
+  const FIBRE = {}, FIBRE_AMT = { paper: .085, red: .09, yellow: .06, void: .021, wash: .03 };
+  function fibre(world, W, H) {
+    const amt = FIBRE_AMT[world]; if (!amt) return null;
+    const key = world + W + 'x' + H; if (FIBRE[key]) return FIBRE[key];
+    const base = parseInt((WORLD_BG[world] || '#808080').slice(1), 16), rgb = [base >> 16, base >> 8 & 255, base & 255];
+    const q = 2, w = Math.ceil(W / q), h = Math.ceil(H / q), c = mk(w, h), x = c.getContext('2d'), d = x.createImageData(w, h), u = 1080 / Math.min(W, H);
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const X = i * q * u, Y = j * q * u, v = (noise2v(X / 280, Y / 280, 1) * .5 + noise2v(X / 81, Y / 81, 2) * .22 + noise2v(X / 14, Y / 14, 3) * .09 - .4) * amt * 255;
+      const k = (j * w + i) * 4; d.data[k] = rgb[0] + v; d.data[k + 1] = rgb[1] + v; d.data[k + 2] = rgb[2] + v; d.data[k + 3] = 255;
+    }
+    x.putImageData(d, 0, 0); return (FIBRE[key] = c);
+  }
+  function noise2v(x, y, s) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), H = (a, b) => hash(Math.imul(a, 374761393) + Math.imul(b, 668265263) + s * 1013);
+    return lerp(lerp(H(xi, yi), H(xi + 1, yi), u), lerp(H(xi, yi + 1), H(xi + 1, yi + 1), u), v); }
   function kit(film, ctx) {
     const W = film.w, H = film.h, U = Math.min(W, H) / 1080; // U = unit: 1 px on a 1080-px short side (landscape 1440×1080 and portrait 1080×1920 both get U=1)
     const g = {
       film, C, W, H, U, ctx, ease, clamp, lerp, rng, noise1, stepped,
 
       /** Fill the frame with a world colour. */
-      bg(world = 'paper') { ctx.fillStyle = WORLD_BG[world] || world; ctx.fillRect(0, 0, W, H); },
+      bg(world = 'paper') { ctx.fillStyle = WORLD_BG[world] || world; ctx.fillRect(0, 0, W, H); const f = fibre(world, W, H); if (f) ctx.drawImage(f, 0, 0, W, H); },
 
       /** Run fn with save/restore and optional transform + filter + alpha. */
       layer(o, fn) {
@@ -492,7 +521,7 @@
       w, h, fps, shots: [], _cache: {}, subframes: opts.subframes || 1, font: opts.font || null,
       // camera: float = handheld drift amplitude (1080p px), push = default scale gain across each shot
       camera: Object.assign({ float: 0, rot: 0, push: 0 }, opts.camera || {}),
-      treatment: Object.assign({ grain: true, vignette: true, flicker: true, weave: true, specks: true, halation: true }, opts.treatment || {}),
+      treatment: Object.assign({ grain: true, vignette: true, flicker: true, weave: true, specks: true, halation: true, dust: true }, opts.treatment || {}),
       /** o: { push, camera:false, blur:(s)=>px, paperTreatment } */
       shot(dur, world, draw, o = {}) { F.shots.push({ dur, world, draw, o, seed: F.shots.length * 7919 + 17 }); return F; },
       get duration() { return F.shots.reduce((a, s) => a + s.dur, 0); },
@@ -559,6 +588,11 @@
           out.save(); out.globalCompositeOperation = 'overlay'; out.globalAlpha = (paper ? .16 : .22) * (T.grainAmount ?? 1);
           const tile = grainTile(fr % 8), pat = out.createPattern(tile, 'repeat'), ox = hash(fr) * 256, oy = hash(fr + 99) * 256;
           out.translate(-ox, -oy); out.fillStyle = pat; out.fillRect(0, 0, w + 256, h + 256); out.restore();
+        }
+        if (T.dust) { // ten motes drifting slowly in the light: continuous, unlike the per-frame specks
+          const tt = Tm, sx = w / 1440, sy = h / 1080; out.save(); out.fillStyle = paper ? 'rgba(44,40,37,.32)' : 'rgba(222,215,201,.32)';
+          for (let i = 0; i < 10; i++) { const x = 135 + (((i * 431 + tt * (11 + i)) % 1170) + 1170) % 1170, y = 110 + (((i * 197 - tt * (5 + i * 2)) % 860) + 860) % 860; out.beginPath(); out.arc(x * sx, y * sy, (i % 3 ? .8 : 1.7) * h / 1080, 0, 7); out.fill(); }
+          out.restore();
         }
         if (T.specks) {
           const r = rng(fr * 131 + 7), n = r.int(1, 6);

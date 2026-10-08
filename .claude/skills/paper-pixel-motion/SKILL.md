@@ -25,6 +25,7 @@ pixel objects, light, transitions, motion, beat structure, don'ts). Every decisi
 | `tools/image-to-grid.py` | Turns an upscaled pixel-art PNG (e.g. a ChatGPT sprite) into a `PPM.defGrid` sprite |
 | `tools/plan.mjs` | `node plan.mjs film.film.js [words.json] [--md out.md]`: beat sheet, warnings and errors without rendering |
 | `examples/sauce.film.js` + `examples/compose.html` | A complete spec-driven film (original, shape "steps") |
+| `references/motion-craft.md` | Frame counts, curves, thermal palette, paper and impact rules: the numbers behind a move that feels right. Read before tuning any motion |
 | `references/recipes.md` | Copy-paste shot recipes for every beat archetype, with timings |
 | `references/image-prompts.md` | When and how to ask the user for ChatGPT images, the prompt templates, and how to import them |
 | `references/review-rubric.md` | The reviewer checklist used in the build loop |
@@ -79,7 +80,7 @@ shots are only for moments the beat types don't cover.
    `film.shot()`s for one-offs.
 7. **Show 8 stills before the full render** (`render.mjs compose.html stills/ --times …`, one per section).
 8. **Render and review loop** (below) until every shot passes.
-9. **Score.** No music supplied? `node tools/plan.mjs film.film.js --json plan.json && python3 tools/score.py plan.json score.wav`, then render with `--audio score.wav`.
+9. **Score.** No music supplied? `node tools/plan.mjs film.film.js --json plan.json && python3 tools/score.py plan.json score.wav`, then render with `--audio score.wav`. For a quiet film (late night, calm), use `--bpm 80 --sfx-gain .55`, then trim to about −20 LUFS: `ffmpeg -i score.wav -af ebur128 -f null -` to measure, then `-af volume=<dB>`.
 10. **Deliver.** Render the full MP4 (flow mode: `--query fps=60 --subframes 8`), lay the original audio back on
    (`--audio`), and produce a contact sheet plus the final beat sheet (`plan.mjs --md`).
 

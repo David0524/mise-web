@@ -28,9 +28,16 @@
   };
 
   /** Bake the 3D block version once: extrusion layers down-right, then the face, then a thin bevel on every cell. */
-  function blockOf(name, cell = 10) {
-    const sp = PPM.sprite(name); if (sp.block) return sp.block;
-    const src = sp.img, gw = src.width, gh = src.height, d = src.getContext('2d').getImageData(0, 0, gw, gh).data;
+  function blockOf(name, cell = 10, mosaic = 0) {
+    const sp = PPM.sprite(name), mk_ = sp.img.width;
+    if (!mosaic || mosaic >= mk_) { if (sp.block) return sp.block; return (sp.block = bakeBlock(sp.img, cell)); }
+    sp.mosaics = sp.mosaics || {}; if (sp.mosaics[mosaic]) return sp.mosaics[mosaic];
+    // mosaic: the same object at fewer, bigger cells (average colour per cell, alpha thresholded); same face height
+    const m = mk(mosaic, Math.round(sp.img.height * mosaic / mk_)), mx = m.getContext('2d'); mx.imageSmoothingEnabled = true; mx.imageSmoothingQuality = 'high'; mx.drawImage(sp.img, 0, 0, m.width, m.height);
+    return (sp.mosaics[mosaic] = bakeBlock(m, cell * mk_ / mosaic));
+  }
+  function bakeBlock(src, cell) {
+    const gw = src.width, gh = src.height, d = src.getContext('2d').getImageData(0, 0, gw, gh).data;
     const depth = Math.round(cell * .55), W = gw * cell + depth + 2, H = gh * cell + depth + 2, c = mk(W, H), x = c.getContext('2d');
     const cells = [];
     for (let y = 0; y < gh; y++) for (let X = 0; X < gw; X++) { const i = (y * gw + X) * 4; if (d[i + 3] > 127) cells.push([X, y, d[i], d[i + 1], d[i + 2]]); }
@@ -47,8 +54,7 @@
       x.fillStyle = `rgba(255,255,255,.22)`; x.fillRect(px, py, cell, bv); x.fillRect(px, py, bv, cell);
       x.fillStyle = `rgba(0,0,0,.22)`; x.fillRect(px, py + cell - bv, cell, bv); x.fillRect(px + cell - bv, py, bv, cell);
     });
-    sp.block = { img: c, w: W, h: H, faceH: gh * cell, cell };
-    return sp.block;
+    return { img: c, w: W, h: H, faceH: gh * cell, cell };
   }
 
   // ───────────── heat silhouettes ─────────────
@@ -63,11 +69,24 @@
     for (let i = 0; i < w * h; i++) D[i] = D[i] >= INF ? 0 : D[i] / 3;
     return D;
   }
-  const HEAT_RAMP = [[0, '#050202'], [.12, '#3d0704'], [.3, '#B3170F'], [.5, '#E8420F'], [.68, '#FF8A1E'], [.84, '#FFBE50'], [.94, '#FFDDA0'], [1, '#FFEDC8']]; // warm to the very top: never neutral white
+  /** Thermal palette: violet cold edge → crimson → red → orange → amber → cream core, each band a smoothstep
+   *  window (so the colours cross-fade the way a real camera's ramp does). The violet rim is what makes it read as
+   *  a heat camera rather than a fire. */
+  const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+  function thermalRGB(h) {
+    const mixc = (c, d, k) => c.map((v, i) => v + (d[i] - v) * k);
+    let c = mixc([.15, .025, .28], [.65, .016, .14], smoothstep(.03, .24, h));
+    c = mixc(c, [.96, .075, .016], smoothstep(.24, .45, h)); c = mixc(c, [1, .51, .018], smoothstep(.44, .72, h));
+    c = mixc(c, [1, .83, .31], smoothstep(.69, .88, h)); return mixc(c, [1, .96, .80], smoothstep(.87, 1, h));
+  }
+  const toHex = (c) => '#' + c.map(v => Math.round(clamp(v) * 255).toString(16).padStart(2, '0')).join('');
+  const HEAT_RAMP_V2 = Array.from({ length: 41 }, (_, i) => [i / 40, toHex(thermalRGB(i / 40))]);
+  PPM.thermalRGB = thermalRGB; PPM.HEAT_RAMP = HEAT_RAMP_V2;
+  const HEAT_RAMP_V1 = [[0, '#050202'], [.12, '#3d0704'], [.3, '#B3170F'], [.5, '#E8420F'], [.68, '#FF8A1E'], [.84, '#FFBE50'], [.94, '#FFDDA0'], [1, '#FFEDC8']]; // warm to the very top: never neutral white
 
   /** Build (once) a heat source from a shape fn ((ctx)=>fill in 1440×1080 space) or an image/canvas with alpha. */
   function heatSource(film, key, src, o) {
-    const cache = film._cache, k = 'heat_' + key; if (cache[k]) return cache[k];
+    const cache = film._cache, k = 'heat_' + key + (o.ramp === 'v1' ? '_v1' : ''); if (cache[k]) return cache[k];
     const W = film.w, H = film.h, q = 4, w = Math.ceil(W / q), h = Math.ceil(H / q);
     const full = mk(W, H), fx = full.getContext('2d');
     if (typeof src === 'function') { fx.scale(W / 1440, H / 1080); fx.fillStyle = '#fff'; src(fx); }
@@ -78,9 +97,10 @@
     const D = distance(alpha, w, h);
     let max = 0; for (const v of D) max = Math.max(max, v);
     const thick = (o.thick ? o.thick / q : max) || 1, base = new Float32Array(w * h);
-    for (let i = 0; i < w * h; i++) base[i] = .28 + .6 * Math.pow(clamp(D[i] / thick), .5);
+    const v1 = o.ramp === 'v1', e0 = v1 ? .28 : .1, span = v1 ? .6 : .82, gam = v1 ? .5 : .62; // v2: a cooler rim (violet → crimson) and a longer climb to the core
+    for (let i = 0; i < w * h; i++) base[i] = e0 + span * Math.pow(clamp(D[i] / thick), gam);
     // hold the edge value outside so nothing dark bleeds in on upscale
-    const edgeV = .3;
+    const edgeV = v1 ? .3 : .1;
     for (let i = 0; i < w * h; i++) if (!alpha[i]) base[i] = edgeV; else base[i] = Math.max(base[i], edgeV);
     return (cache[k] = { full, w, h, q, base, alpha, img: mk(w, h) });
   }
@@ -91,7 +111,7 @@
 
     /** Sprite as a 3D pixel block: extrusion, bevel, soft contact shadow. o: rot, flip (coin flip: -1..1 x-scale), shadow, alpha, blur. */
     g.block = function (name, x, y, size, o = {}) {
-      const b = blockOf(name, o.cell || 10), ctx = g.ctx, s = (size * g.U) / b.faceH;
+      const b = blockOf(name, o.cell || 10, o.mosaic), ctx = g.ctx, s = (size * g.U) / b.faceH;
       if (o.shadow !== false) {
         ctx.save(); ctx.globalAlpha *= (o.alpha ?? 1) * (o.shadowAlpha ?? .28); ctx.filter = `blur(${10 * g.U}px)`; ctx.fillStyle = '#1a1414';
         ctx.beginPath(); ctx.ellipse(x + 6 * g.U, y + size * g.U * .55 + (o.lift || 0) * g.U, size * g.U * .42 * Math.abs(o.flipX ?? 1), size * g.U * .07, 0, 0, 7); ctx.fill(); ctx.restore();
@@ -100,7 +120,10 @@
       ctx.scale(s * (o.flipX ?? 1) * (o.flip ? -1 : 1), s); ctx.imageSmoothingEnabled = false; ctx.globalAlpha *= o.alpha ?? 1;
       if (o.blur) ctx.filter = `blur(${o.blur * g.U / s}px)`;
       ctx.drawImage(b.img, -b.faceH * (b.w / b.h) / 2, -b.faceH / 2);
-      if (o.ink) { ctx.globalAlpha *= clamp(o.ink); const sil = film._cache['inkblk_' + name] || (film._cache['inkblk_' + name] = (() => { const c = mk(b.w, b.h), x = c.getContext('2d'); x.drawImage(b.img, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#0d0c0c'; x.fillRect(0, 0, b.w, b.h); return c; })()); ctx.drawImage(sil, -b.faceH * (b.w / b.h) / 2, -b.faceH / 2); }
+      const sil = (col) => { const k = 'sil_' + name + '_' + (o.mosaic || 0) + col; return film._cache[k] || (film._cache[k] = (() => { const c = mk(b.w, b.h), x = c.getContext('2d'); x.drawImage(b.img, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, b.w, b.h); return c; })()); };
+      const at = [-b.faceH * (b.w / b.h) / 2, -b.faceH / 2];
+      if (o.tint && o.tint[1] > 0) { ctx.save(); ctx.globalAlpha *= clamp(o.tint[1]); ctx.globalCompositeOperation = o.tint[2] || 'source-over'; ctx.drawImage(sil(o.tint[0]), ...at); ctx.restore(); } // heat flash: [colour, amount, blend?]
+      if (o.ink) { ctx.globalAlpha *= clamp(o.ink); ctx.drawImage(sil('#0d0c0c'), ...at); }
       ctx.restore();
     };
 
@@ -130,7 +153,7 @@
      */
     g.heat = function (src, o = {}) {
       const hs = heatSource(film, o.key || 'h', src, o), { w, h, q, base, alpha } = hs, ctx = g.ctx, W = film.w, H = film.h;
-      const ic = hs.img.getContext('2d'), id = ic.createImageData(w, h), d = id.data, lut = PPM.thermalLUT(o.ramp || HEAT_RAMP);
+      const ic = hs.img.getContext('2d'), id = ic.createImageData(w, h), d = id.data, lut = PPM.thermalLUT(o.ramp === 'v1' ? HEAT_RAMP_V1 : o.ramp || HEAT_RAMP_V2);
       const t = o.t || 0, heat = o.heat ?? 1, nz = o.noise ?? .08;
       const [hx, hy, hr, hry] = o.hotspot || [0, 0, 0], hr2 = hry || hr, sxs = 1440 / W * q, sys = 1080 / H * q;
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -154,6 +177,22 @@
       ctx.drawImage(L, 0, 0);
       ctx.restore();
       return hs;
+    };
+    /**
+     * Ink-nib impact: a stippled orange flare cloud plus seven tapered rays, ~7 frames at 24 fps.
+     * age in 24-fps frames since contact (draw while 0 ≤ age < 7). Pair it with a kick on the struck object
+     * (ease out over 2 frames, then PPM.ease.spring back), a 5-frame heat tint and a short soot stain.
+     */
+    g.impact = function (x, y, age, seed = 1, o = {}) {
+      if (age < 0 || age >= 7) return; const ctx = g.ctx, U = g.U, fade = Math.exp(-age * .42), r = rng(seed * 977 + 13), col = o.color || [245, 150, 6];
+      ctx.save(); ctx.translate(x, y); ctx.globalCompositeOperation = o.blend || 'source-over';
+      const sig = Math.sqrt((2300 + age * 380) / 2), dot = Math.max(1, Math.round(1.6 * U)), n = 900, cr = rng(seed * 31 + 5); // stippled cloud: gaussian falloff, grain-thresholded
+      for (let i = 0; i < n; i++) { const px = (cr() - .5) * 340, py = (cr() - .5) * 340, a = Math.exp(-(px * px + py * py) / (2 * sig * sig)) * .76; const gr = cr(); if (gr < .16) continue; const k = a * clamp((gr - .16) / .76) * fade; if (k < .03) continue;
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${k})`; ctx.fillRect(px * U, py * U, dot, dot); }
+      ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${fade})`;
+      for (let i = 0; i < 7; i++) { const ang = r() * 6.283, len = 28 + r() * 54, w0 = 2 + r() * 3, st = 32 + age * 7, cs = Math.cos(ang), sn = Math.sin(ang);
+        ctx.beginPath(); ctx.moveTo((cs * st - sn * w0) * U, (sn * st + cs * w0) * U); ctx.lineTo((cs * st + sn * w0) * U, (sn * st - cs * w0) * U); ctx.lineTo(cs * (st + len) * U, sn * (st + len) * U); ctx.closePath(); ctx.fill(); }
+      ctx.restore();
     };
     /** Block that dissolves by dropping whole cells (dither dropout, colours unchanged). p 0..1 = fraction gone. */
     g.blockDissolve = function (name, x, y, size, p, o = {}) {
@@ -198,7 +237,7 @@
       const wLay = o.full != null ? g.measure(o.full, size, weight) : wNow; // lay out on the FINAL width so the line never re-centres while typing
       const x0 = o.align === 'center' ? x - (wLay + cw * 1.4) / 2 : x;
       if (shown) g.text(shown, x0, y, { size, weight, color, soft: o.soft });
-      if (o.cursor !== false && (!o.blink || Math.floor((o.t || 0) * 3.5) % 2 === 0)) { g.ctx.save(); g.ctx.fillStyle = o.cursorColor || color; g.ctx.fillRect(x0 + wNow + cw * .25, y - size * .6 * g.U, cw, size * 1.2 * g.U); g.ctx.restore(); }
+      if (o.cursor !== false && (!o.blink || Math.floor((o.t || 0) * 3.5) % 2 === 0)) { g.ctx.save(); g.ctx.fillStyle = o.cursorColor || color; g.ctx.fillRect(x0 + wNow + cw * .25, y - size * .6 * g.U, o.cursorW != null ? o.cursorW * g.U : cw, size * 1.2 * g.U); g.ctx.restore(); }
       return { x0, w: wNow };
     };
     /** Red underline drawing itself under [x, x+w]. */

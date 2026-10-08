@@ -40,7 +40,7 @@
   }
   /** Sentence line on the centre: cut = word-by-word left-aligned; flow = typed + centred. Returns layout. */
   function line(g, ctx, b, t, o = {}) {
-    const size = o.size || (LY(g).portrait ? 62 : 52), color = o.color || C.ink, words = tokens(b.text), hi = {}; // phones: a touch bigger, wraps to two lines
+    const size = o.size || (LY(g).portrait ? 62 : 52), color = o.color || (DARK.has(b.world) ? C.white : C.ink), words = tokens(b.text), hi = {}; // phones: a touch bigger, wraps to two lines
     const ki = keyIndex(b); if (ki >= 0 && o.highlightKey) hi[ki] = o.highlightKey;
     if (ctx.flow) {
       const Lo = LY(g), X = o.x ?? Lo.cx, Y = o.y ?? Lo.cy, lead = Math.min(.15, b.reveal?.[0]?.t ?? 0), shownAll = typedAt(b, t + lead), blink = t > (b.reveal?.at(-1)?.t ?? 0) + .4;
@@ -61,6 +61,10 @@
     if (ki >= 0 && t > b.reveal[ki].t && o.underline !== false) { const p = r.positions[ki]; g.underline(p.x, (o.y ?? 540) + size * .62, p.w, (t - b.reveal[ki].t) / .3); }
     return r;
   }
+
+  const DARK = new Set(['void', 'red', 'wash']); // worlds that take white type
+  /** Mosaic schedule for "waking up" objects: coarse → fine over the first ~.6 s, with one relapse. 0 = full detail. */
+  const mosaicAt = (t, i = 0) => { const u = t - i * .04; return u < .12 ? 4 : u < .22 ? 6 : u < .3 ? 8 : u < .42 ? 0 : u < .48 ? 6 : u < .56 ? 10 : 0; };
 
   // ───────────── builders ─────────────
   const B = {
@@ -98,9 +102,9 @@
     flare(g, s, b, ctx) {
       const pool = E.inOut((s.t - s.d * .55) / (s.d * .4)), sweep = ctx.flow ? E.inOut(s.t / .6) : 1;
       g.ditherStar(-40 - (1 - sweep) * 500, 540, 700, 900, .05 + s.t * .03, s.F, { colors: ['#2E5BFF', '#32B9E1'], density: .8, base: .9, rim: '#45E0F0', rimBlur: 18, k: 1.25 });
-      (b.objects || ctx.objects.slice(0, 4)).forEach((n, i) => obj(g, ctx, n, [900, 1180, 1090, 1260][i % 4] + Math.sin(s.t * 2 + i) * 6, [310, 300, 640, 830][i % 4] + Math.cos(s.t * 1.7 + i) * 5, 90, { rot: Math.sin(s.t + i) * .35, shadow: false }));
+      (b.objects || ctx.objects.slice(0, 4)).forEach((n, i) => obj(g, ctx, n, [900, 1180, 1090, 1260][i % 4] + Math.sin(s.t * 2 + i) * 6, [310, 300, 640, 830][i % 4] + Math.cos(s.t * 1.7 + i) * 5, b.objectSize || 90, { rot: Math.sin(s.t + i) * .35, shadow: false, mosaic: b.mosaic ? mosaicAt(s.t, i) : 0 }));
       if (pool > 0) g.lightPool(1040 + pool * 80, 560, 620 - pool * 160, 520 - pool * 120, .2 + pool * .75);
-      if (b.text) line(g, ctx, b, s.t, { highlight: pool > .5 && keyIndex(b) >= 0 ? { [keyIndex(b)]: C.white } : null, underline: false });
+      if (b.text) line(g, ctx, b, s.t, { x: ctx.flow && !LY(g).portrait ? LY(g).cx + 130 : undefined, highlight: pool > .5 && keyIndex(b) >= 0 ? { [keyIndex(b)]: C.white } : null, underline: false }); // flow: centred right of the flare's reach
     },
     silhouette(g, s, b, ctx) {
       const shp = ctx.shapes[b.shape], isHand = shp.kind === 'hand', heat = E.out(s.t / .45), rise = isHand ? E.out(s.t / .45) : 1;
@@ -130,7 +134,21 @@
     ring(g, s, b, ctx) {
       const names = b.objects || ctx.objects, rot = s.T * .35, heroes = new Set(ctx.spec.beats.filter(x => x.type === 'card').map(x => x.object));
       const free = names.map((n, i) => i).filter(i => !heroes.has(names[i])), hits = b.hits || (ctx.flow ? [] : [[.45, free[2 % free.length]], [1.0, free[Math.min(free.length - 1, 7)]]]);
-      if (ctx.flow) { const Lo = LY(g), RR = Math.min(420, Lo.W * .34); g.ring(names, Lo.cx * g.U, (Lo.cy + 20) * g.U, RR, { size: 220 * RR / 420, spin: rot, t: s.T }); return; }
+      if (ctx.flow) { const Lo = LY(g), RR = Math.min(420, Lo.W * .34), U = g.U, fh = b.hits || [], bursts = [];
+        // ink hits: the struck object is pulled toward the nib for 3 frames, kicked away (ease out, 2 frames), springs back,
+        // flashes hot for 5 frames and carries a soot stain for ~half a second. The burst draws on top of everything.
+        const per = (i, p) => { let dx = 0, dy = 0, sz = 1, tint = 0, soot = 0, rot = 0;
+          fh.forEach(([t0, j], h) => { if (j !== i) return; const age = (s.t - t0) * 24; if (age < -3 || age > 26) return;
+            const dir = [Math.cos(p.a), Math.sin(p.a) * .8], n = Math.hypot(...dir) || 1, ux = dir[0] / n, uy = dir[1] / n;
+            if (age < 0) { const pull = E.inOut((age + 3) / 3); dx -= ux * 22 * pull; dy -= uy * 22 * pull; return; }
+            const kick = age < 2 ? E.out(age / 2) : E.spring((age - 2) / 24);
+            dx += ux * 98 * kick; dy += uy * 72 * kick; sz += .07 * kick; rot += ux * .43 * kick;
+            tint = Math.max(tint, Math.max(0, 1 - age / 5) * .83); soot = Math.max(soot, PPM.clamp((age - 3) / 4) * (1 - Math.max(0, age - 11) / 12) * .7);
+            if (age < 7) bursts.push([p.x, p.y, age, h + 1]); });
+          return { x: p.x + dx * U, y: p.y + dy * U, size: 220 * RR / 420 * sz, opts: { rot: Math.cos(p.a) * .1 + rot, tint: ['#FF7A1A', tint, 'screen'], ink: soot } }; };
+        g.ring(names, Lo.cx * U, (Lo.cy + 20) * U, RR, { size: 220 * RR / 420, spin: rot, t: s.T, per: fh.length ? per : undefined });
+        bursts.forEach(([x, y, age, h]) => g.impact(x, y, age, h + b.i * 7));
+        return; }
       g.carousel(names, 720, 540, 400, 260, rot, { size: 250, back: .8, front: 1.3, per: (i) => ({ opts: { silhouette: hits.some(([t, j]) => j === i && s.t > t + .12) ? 1 : 0 } }) });
       hits.forEach(([t, j], k) => {
         const a = rot + (j / names.length) * Math.PI * 2, x = 720 + Math.cos(a) * 400, y = 540 + Math.sin(a) * 260, lp = (s.t - t) / .18;
@@ -149,6 +167,7 @@
         g.flood(ox * U, oy * U, fl, C.void);
         g.inFlood(ox * U, oy * U, fl, () => { if (b.glow) g.glow(ox * U, oy * U, 330, '#C41E14', .65); accentFx(g, s, accent, ox * U, oy * U, OS, true);
           if (Lo.portrait) g.caption(typedAt(b, s.t), Lo.cx * U, (oy + 520) * U, { full: b.text, align: 'center', size: 96, weight: 600, color: C.white, cursorColor: C.white, t: s.t, soft: false });
+          else if (b.title === 'snap') titleSnap(g, s, b, 820, 520, 80);
           else g.caption(typedAt(b, s.t), 820, 520, { size: 80, weight: 600, color: C.white, cursorColor: C.white, t: s.t, soft: false }); });
         g.block(b.object, ox * U, oy * U, OS, { shadowAlpha: .28 * (1 - fl) });
         if (accent === 'sparkle') g.layer({ alpha: fl }, () => g.sparkle((ox + OS * .42) * U, (oy - OS * .42) * U, 110 * E.back(g.clamp((s.t - .15) / .2)), { rot: .3 + s.t * .3, ax: 1.2, ay: .8, k: 1.9, glow: 22 }));
@@ -170,11 +189,11 @@
       g.streaks(10, b.i, s.f, { alpha: 1 });
     },
     scatter(g, s, b, ctx) {
-      const names = b.objects || ctx.objects, k = E.inOut((s.t - .2) / .6), r = PPM.rng(5 + b.i), Lo = LY(g), U = g.U;
+      const names = b.objects || ctx.objects, k = ctx.flow ? E.expo((s.t - .2) / .42) : E.inOut((s.t - .2) / .6), r = PPM.rng(5 + b.i), Lo = LY(g), U = g.U, drift = ctx.flow ? Math.max(0, s.t - .62) : 0; // flow: a burst that keeps its momentum (drift + tumble), not a tween
       names.forEach((n, i) => {
         const a = .4 + (i / names.length) * Math.PI * 2, pile = b.from === 'pile', pr = PPM.rng(900 + i * 7 + b.i);
         const PR = Math.min(230, Lo.W * .2), x0 = pile ? Lo.cx + pr.range(-PR, PR) : Lo.cx + Math.cos(a) * 400, y0 = pile ? Lo.cy + 60 + pr.range(-150, 130) : Lo.cy + Math.sin(a) * 260, r0 = pile ? pr.range(-1.2, 1.2) : 0, x1 = Lo.portrait ? r.range(Lo.W * .1, Lo.W * .9) : r.range(120, Lo.W - 120), y1 = Lo.portrait ? r.range(Lo.H * .14, Lo.H * .84) : r.range(120, Lo.H - 120); // portrait: keep clear of phone UI at top/bottom
-        const x = g.lerp(x0, x1, k) * U, y = g.lerp(y0, y1, k) * U, rot = g.lerp(r0, r.range(-.6, .6), k), ink = i % 3 === 0 ? g.clamp((s.t - .9 - i * .02) / .15) : 0;
+        const da = Math.atan2(y1 - y0, x1 - x0), x = (g.lerp(x0, x1, k) + Math.cos(da) * drift * 45) * U, y = (g.lerp(y0, y1, k) + Math.sin(da) * drift * 32) * U, rot = g.lerp(r0, r.range(-.6, .6), k) + drift * (i - names.length / 2) * .17, ink = i % 3 === 0 ? g.clamp((s.t - .9 - i * .02) / .15) : 0;
         if (ctx.flow) g.block(n, x, y, g.lerp(pile ? 150 : 120, 130, k), { rot, ink });
         else { g.sprite(n, x, y, g.lerp(150, 130, k), { rot, silhouette: ink }); if (ink > 0 && ink < 1) g.sprayBlot(x, y, 60, ink * 1.2, i); }
       });
@@ -192,6 +211,7 @@
       else obj(g, ctx, slots[k % slots.length], sx, Y, OS, { shadow: b.world === 'paper' });
     },
     resolve(g, s, b, ctx) {
+      if (b.end === 'brand' && b.land === 'snap') return brandSnap(g, s, b, ctx);
       const brand = b.end === 'brand', word = brand ? String(b.text).replace(/\s/g, '').toLowerCase() : String(b.text).replace(/\s/g, '').toUpperCase(), r = PPM.rng(44 + b.i);
       const Lo = LY(g), U = g.U, Ls = [...word].map((ch, i) => ({ ch, x: r.range(250, Lo.W - 240), y: r.range(200, Lo.H - 180), a: r.range(-2.4, 2.4) }));
       if (s.t < .4) [[[60, 200], [250, 120], [200, 380], [420, 440]], [[700, 200], [950, 250], [1100, 420], [980, 520]], [[600, 900], [800, 720], [1100, 820], [1300, 700]]].forEach(pts => g.brushSmear(scalePts(pts, Lo).map(([x, y]) => [x * U, y * U]), s.t / .25 * 1.3, { p0: Math.max(0, s.t / .25 - .4), width: ctx.flow ? 14 : 60, core: ctx.flow ? 2.5 : 5 }));
@@ -216,8 +236,42 @@
         if (b.object) obj(g, ctx, b.object, Lo.cx * U, (BY - (b.objectLift ?? 380) - (1 - conv) * 60) * U, b.objectSize ?? 200, {});
       }
     },
-    flash(g, s, b) { const Lo = LY(g); if (b.text) g.text(tokens(b.text)[0], Lo.cx * g.U, Lo.cy * g.U, { size: 120, weight: 700, align: 'center', color: C.ink }); },
+    flash(g, s, b) { const Lo = LY(g); if (b.text) g.text(tokens(b.text)[0], Lo.cx * g.U, Lo.cy * g.U, { size: 120, weight: 700, align: 'center', color: DARK.has(b.world) ? C.white : C.ink }); },
   };
+  /** Brand landing at cut speed: the letters fly and loop, gather in 3 frames onto the word at 2.8× (so the camera
+   *  is inside the word), then the camera pulls back to 1× in 4 frames on a snap curve. A tagline (b.tagline) and a
+   *  small orange dot rise in after. b.gatherAt (s) sets the gather; default 45 % of the beat. */
+  function brandSnap(g, s, b, ctx) {
+    const word = String(b.text).replace(/\s/g, '').toLowerCase(), r = PPM.rng(44 + b.i), Lo = LY(g), U = g.U, BS = b.size || 300, Z = 2.8;
+    const BY = Lo.cy + (Lo.portrait ? 200 : 110), widths = [...word].map(ch => g.measure(ch, BS, 700, -.04)), totalW = widths.reduce((a, w) => a + w, 0);
+    const bx = (i) => Lo.cx - totalW / 2 + widths.slice(0, i).reduce((a, w) => a + w, 0) + widths[i] / 2;
+    const gs = b.gatherAt ?? s.d * .45, gk = E.in((s.t - gs) / .125), pk = E.snap((s.t - gs - .125) / .167), landed = s.t >= gs + .125;
+    if (s.t < .4) [[[60, 200], [250, 120], [200, 380], [420, 440]], [[700, 200], [950, 250], [1100, 420], [980, 520]], [[600, 900], [800, 720], [1100, 820], [1300, 700]]].forEach(pts => g.brushSmear(scalePts(pts, Lo).map(([x, y]) => [x * U, y * U]), s.t / .25 * 1.3, { p0: Math.max(0, s.t / .25 - .4), width: 14, core: 2.5 }));
+    if (!landed) [...word].forEach((ch, i) => {
+      const lx = r.range(250, Lo.W - 240), ly = r.range(200, Lo.H - 180), la = r.range(-2.4, 2.4), sp = s.t * (.8 + i * .03);
+      const fx = lx + Math.sin(sp * 1.7 + i * 2) * 90, fy = ly + Math.cos(sp * 1.3 + i) * 60, tx = Lo.cx + (bx(i) - Lo.cx) * Z, ty = Lo.cy + (BY - Lo.cy) * Z;
+      const x = g.lerp(fx, tx, gk) * U, y = g.lerp(fy, ty, gk) * U, sz = g.lerp(56 + Math.abs(Math.sin(sp * 2 + i)) * 24, BS * Z, gk);
+      g.layer({ x, y, rot: (la + s.t * (i % 2 ? -2.2 : 2.2)) * (1 - gk) }, () => g.text(ch, 0, 0, { size: sz, weight: gk > .5 ? 700 : 600, align: 'center' }));
+      if (s.t > .5 && gk < .3) g.redLoops(x, y, 50, s.f, i + 1, { loops: s.t > 1.2 ? 2 : 1 });
+    });
+    else {
+      const z = g.lerp(Z, 1, pk);
+      g.layer({}, () => { g.ctx.translate(Lo.cx * U, Lo.cy * U); g.ctx.scale(z, z); g.ctx.translate(-Lo.cx * U, -Lo.cy * U);
+        g.text(word, Lo.cx * U, BY * U, { size: BS, weight: 700, align: 'center', track: -.04, color: C.ink });
+        if (b.object) obj(g, ctx, b.object, Lo.cx * U, (BY - (b.objectLift ?? 380)) * U, b.objectSize ?? 200, {}); });
+      const gl = g.clamp((s.t - gs - .29) / .35); if (gl > 0) g.guides([(BY + BS * .36) * U], { alpha: .8 * gl, x1: g.W * E.inOut(gl) });
+      const tk = E.out((s.t - gs - .29) / .25);
+      if (b.tagline && tk > 0) { const ty = BY + BS * .36 + 70 + (1 - tk) * 12; g.text(b.tagline, Lo.cx * U, ty * U, { size: 34, weight: 500, align: 'center', color: '#4B4136', alpha: tk, track: .06 });
+        g.ctx.save(); g.ctx.globalAlpha *= tk; g.ctx.fillStyle = '#EB6C35'; g.ctx.beginPath(); g.ctx.arc(Lo.cx * U, (ty + 52) * U, 5 * U, 0, 7); g.ctx.fill(); g.ctx.restore(); }
+    }
+  }
+  /** Card title, fframes-style: the whole word snaps in from (+48, +18) in 4 frames, a red block cursor collapses
+   *  to a bar in 3, and an optional mono subtitle (b.sub) rises 24 px a frame later. */
+  function titleSnap(g, s, b, x, y, size) {
+    const U = g.U, k = E.snap(s.t / .167), dx = (1 - k) * 48, dy = (1 - k) * 18;
+    g.layer({ x: dx * U, y: dy * U }, () => g.caption(b.text, x, y, { size, weight: 600, color: C.white, cursorColor: '#ED3D27', cursorW: g.lerp(size * .68, size * .07, E.out(s.t / .125)), t: s.t, blink: s.t > .6, soft: false }));
+    if (b.sub) { const k2 = E.expo((s.t - .042) / .21), a = E.out((s.t - .042) / .125); if (a > 0) g.text(b.sub, x + 4 * U, y + (70 + (1 - k2) * 24) * U, { size: 31, weight: 500, color: b.subColor || '#D4CABB', alpha: a, track: .04 }); }
+  }
   /** A flow card whose flood-out would be under .25s: it stays flooded and the next shot drains it back into the object. */
   function shortFlood(b) { const full = (b.reveal?.at(-1)?.t ?? 0) + .22; return b.dur - Math.max(b.dur * .72, full + .35) < .25; }
   function accentFx(g, s, accent, x, y, size, flowCtx) {
