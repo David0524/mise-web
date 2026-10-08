@@ -29,6 +29,6 @@ window.SPEC = {
     { section: 2, type: 'flash', text: 'now' },
     { section: 2, type: 'ring' },
     { section: 3, type: 'spell', text: 'MISE', objects: ['knife', 'bowl', 'pan', 'toque'] },
-    { section: 3, type: 'resolve', text: 'mise', object: 'mise', objectSize: 330, objectY: 250, end: 'brand', dur: 3.2 },
+    { section: 3, type: 'resolve', text: 'mise', object: 'mise', objectSize: 330, objectLift: 400, end: 'brand', dur: 3.2 },
   ],
 };

@@ -116,7 +116,7 @@
 
   // ───────────────────────────── drawing kit ─────────────────────────────
   function kit(film, ctx) {
-    const W = film.w, H = film.h, U = H / 1080; // U = unit: 1 px at 1080p
+    const W = film.w, H = film.h, U = Math.min(W, H) / 1080; // U = unit: 1 px on a 1080-px short side (landscape 1440×1080 and portrait 1080×1920 both get U=1)
     const g = {
       film, C, W, H, U, ctx, ease, clamp, lerp, rng, noise1, stepped,
 
