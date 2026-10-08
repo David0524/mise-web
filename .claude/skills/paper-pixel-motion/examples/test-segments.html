@@ -201,7 +201,7 @@ film.shot(76 / 24, 'paper', (g, s) => {
 });
 
 window.film = film;
-document.fonts.load('600 40px Outfit').then(() => document.fonts.ready).then(() => {
+Promise.all([...document.fonts].map(f => f.load())).then(() => document.fonts.ready).then(() => {
   window.ready = true;
   if (!location.search.includes('render')) film.play();
 });

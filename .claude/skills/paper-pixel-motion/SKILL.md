@@ -144,6 +144,8 @@ Turn pieces off with `PPM.film(canvas, { treatment: { weave: false } })`.
 
 ## Gotchas
 
+- **Fonts:** wait for every declared face (`await Promise.all([...document.fonts].map(f => f.load()))`) before building the film. If a weight isn't loaded, the first frames draw in a fallback and the type visibly changes font a few frames in. Flow heroes use weight 700.
+- **Calm films:** don't leave a flash and a spell at their default speeds next to each other at the climax. Give the last flash's word room as a `hero` (≈.8 s), and give spell letters `letterDur` ≈ .45 s.
 - A mask PNG with no alpha fills the whole box with heat. Put the silhouette in alpha, or load it with `PPM.loadMask(url, {luma:true})`.
 - A limb cut by the photo's border shows a straight edge. Place the mask so it runs past the frame; the distance
   transform ignores out-of-frame neighbours, so the cut does not read as an edge.

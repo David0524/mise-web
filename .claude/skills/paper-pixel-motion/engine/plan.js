@@ -40,7 +40,7 @@
   function estimate(beat, mode) {
     const T = TYPES[beat.type], n = tokens(beat.text).length;
     if (mode === 'flow' && beat.type === 'card') return clamp(T.base + T.perWord * n, FLOW_CARD_MIN, Math.max(T.max, FLOW_CARD_MIN)); // flow: typing (~.22s) + hold + flood-out
-    if (T.perLetter) return T.base * Math.max(1, norm(beat.text).length);
+    if (T.perLetter) return (beat.letterDur ?? T.base) * Math.max(1, norm(beat.text).length);
     return clamp(T.base + T.perWord * n, T.min, T.max);
   }
 
@@ -141,7 +141,7 @@
       if (b.type === 'spell') {
         const afterInk = mode === 'flow' && out.length && out[out.length - 1].type === 'scatter'; // flow scatter ends on black: spell from void
         const letters = [...String(b.text).replace(/\s/g, '')], per = b.dur / letters.length, cyc = b.worlds || (afterInk ? ['void', 'red', 'void', 'paper'] : TYPES.spell.world);
-        letters.forEach((ch, j) => out.push({ ...b, letterIndex: j, letters, dur: b.timing === 'voice' ? per : TYPES.spell.base, world: cyc[j % cyc.length], text: b.text }));
+        letters.forEach((ch, j) => out.push({ ...b, letterIndex: j, letters, dur: b.timing === 'voice' ? per : (b.letterDur ?? TYPES.spell.base), world: cyc[j % cyc.length], text: b.text }));
       } else out.push(b);
     });
 
@@ -166,7 +166,8 @@
     out.forEach((b, k) => {
       const n = out[k + 1];
       if (!n) { b.transition = 'end'; return; }
-      if (mode === 'flow') b.transition = b.type === 'spell' || n.type === 'spell' || b.type === 'flash' || n.type === 'flash' ? 'cut' : 'handoff'; // spell letters and flashes always cut (no world crossfades) // flashes always cut, in and out
+      if (b.out) b.transition = b.out; // per-beat override: 'cut' | 'handoff'
+      else if (mode === 'flow') b.transition = b.type === 'spell' || n.type === 'spell' || b.type === 'flash' || n.type === 'flash' || n.type === 'hero' ? 'cut' : 'handoff'; // spell letters, flashes and hero cards always cut in // spell letters and flashes always cut (no world crossfades) // flashes always cut, in and out
       else b.transition = n.section !== b.section ? 'cut-on-beat' : 'cut';
     });
     // ── start times ──

@@ -24,7 +24,7 @@
 (async () => {
   const q = new URLSearchParams(location.search);
   if (q.get('mode')) SPEC.mode = q.get('mode');
-  await Promise.all(['500 40px Outfit', '600 40px Outfit', '700 40px Outfit', '500 40px Geist', '600 40px Geist'].map(f => document.fonts.load(f)));
+  await Promise.all([...document.fonts].map(f => f.load()) /* every declared face, so no weight falls back on early frames */);
   const film = await PPMCompose.build(document.querySelector('canvas'), SPEC, window.WORDS);
   document.getElementById('warn').textContent = film.plan.warnings.length ? '⚠ ' + film.plan.warnings.join('\n⚠ ') : '';
   window.film = film; window.ready = true;

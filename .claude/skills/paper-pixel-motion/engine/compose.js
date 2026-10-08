@@ -210,7 +210,7 @@
       for (let j = 0; j <= k; j++) g.text(L[j], xs[j], Y, { size: 64, weight: 600, color: ink, align: 'center' });
       const last = k === n - 1, sx = !last ? (xs[k] + xs[k + 1]) / 2 : Lo.cx * U, sy = last ? Y - 170 * U : Y; // the last object rises above the finished word instead of covering a letter
       if (b.world === 'void') g.glow(sx, sy, 160, '#C41E14', .9); // small enough to leave the neighbouring letters clean
-      if (ctx.flow && k > 0) g.morph(slots[(k - 1) % slots.length], slots[k % slots.length], E.inOut(s.t / (s.d * .9)), sx, sy, OS, { shadow: b.world === 'paper' });
+      if (ctx.flow && k > 0) g.morph(slots[(k - 1) % slots.length], slots[k % slots.length], E.inOut(s.t / Math.min(s.d * .9, .22)), sx, sy, OS, { shadow: b.world === 'paper' });
       else obj(g, ctx, slots[k % slots.length], sx, sy, OS, { shadow: b.world === 'paper' });
     },
     resolve(g, s, b, ctx) {

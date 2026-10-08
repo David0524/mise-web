@@ -29,8 +29,8 @@ window.SPEC = {
     { section: 2, type: 'ring', hits: [[.55, 3], [.88, 7]] },
     { section: 2, type: 'silhouette', shape: 'hand', text: 'just you and the steam', leftEnd: 380, hotspot: [700, 860, 170] },
     // the bowl
-    { section: 3, type: 'flash', text: 'slurp', world: 'red' },
-    { section: 3, type: 'spell', text: 'RAMEN', objects: ['pot', 'soy', 'noodles', 'ajitama', 'ramen'], worlds: ['paper', 'void', 'red', 'paper', 'void'] },
+    { section: 3, type: 'hero', text: 'slurp', world: 'red', dur: .9 },  // a held card, not a subliminal flash: the payoff needs a beat to land
+    { section: 3, type: 'spell', text: 'RAMEN', objects: ['pot', 'soy', 'noodles', 'ajitama', 'ramen'], worlds: ['paper', 'void', 'red', 'paper', 'void'], letterDur: .45 },
     { section: 3, type: 'resolve', text: 'ramen', object: 'ramen', objectSize: 300, objectLift: 390, end: 'brand', land: 'snap', tagline: '3:58 a.m.', dur: 3.4 },
   ],
 };

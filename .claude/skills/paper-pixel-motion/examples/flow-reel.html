@@ -83,7 +83,7 @@ film.shot(2.0, 'paper', (g, s) => {
 });
 
 window.film = film;
-Promise.all([document.fonts.load('600 40px Geist'), document.fonts.load('500 30px Geist')]).then(() => document.fonts.ready).then(() => {
+Promise.all([...document.fonts].map(f => f.load())).then(() => document.fonts.ready).then(() => {
   window.ready = true;
   if (!location.search.includes('render')) film.play();
 });
