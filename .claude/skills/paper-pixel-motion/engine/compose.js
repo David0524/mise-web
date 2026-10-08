@@ -152,7 +152,8 @@
       g.ditherStar(-40 - (1 - sweep) * 500, 540, 700, 900, .05 + s.t * .03, s.F, { colors: ['#2E5BFF', '#32B9E1'], density: .8, base: .9, rim: '#45E0F0', rimBlur: 18, k: 1.25 });
       (b.objects || ctx.objects.slice(0, 4)).forEach((n, i) => obj(g, ctx, n, [900, 1180, 1090, 1260][i % 4] + Math.sin(s.t * 2 + i) * 6, [310, 300, 640, 830][i % 4] + Math.cos(s.t * 1.7 + i) * 5, b.objectSize || 90, { rot: Math.sin(s.t + i) * .35, shadow: false, mosaic: b.mosaic ? mosaicAt(s.t, i) : 0 }));
       if (pool > 0) g.lightPool(1040 + pool * 80, 560, 620 - pool * 160, 520 - pool * 120, .2 + pool * .75);
-      if (b.text) line(g, ctx, b, s.t, { x: ctx.flow && !LY(g).portrait ? LY(g).cx + 130 : undefined, highlight: pool > .5 && keyIndex(b) >= 0 ? { [keyIndex(b)]: C.white } : null, underline: false }); // flow: centred right of the flare's reach
+      const FL = ctx.flow && !LY(g).portrait, fw = g.measure(b.text || '', 52) / g.U, fsz = Math.min(52, 52 * (LY(g).W - 600) / Math.max(1, fw + 40)); // flow: fit the line between the flare's reach (x≈560) and the frame edge
+      if (b.text) line(g, ctx, b, s.t, { x: FL ? Math.max(LY(g).cx + 130, 560 + fw * fsz / 52 / 2) : undefined, size: FL ? fsz : undefined, highlight: pool > .5 && keyIndex(b) >= 0 ? { [keyIndex(b)]: C.white } : null, underline: false }); // flow: centred right of the flare's reach
     },
     silhouette(g, s, b, ctx) {
       if (ctx.flow && !ctx.shapes[b.shape].img) return livingSilhouette(g, s, b, ctx);
