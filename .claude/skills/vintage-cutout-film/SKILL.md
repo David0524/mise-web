@@ -145,7 +145,8 @@ decision the brief can't answer (a different closing line, a photo they might ob
 - **Mirrored reflections:** `reflect` mirrors about the floor line, so draw it where the object is (`dy = +(1 -
   base/h)·bh` for a PNG whose subject ends above its bottom edge).
 - **Leftover shadows:** a cast shadow attached to a figure survives every mask model; cut it with `--erase` polygons
-  (output-PNG pixels before padding; the island filter runs again afterwards). An automatic dark-pixel trim was
+  (output-PNG pixels before padding; the island filter runs again afterwards). Trace the polygon's inner edge along
+  the figure: a rectangle that clears the shadow also slices the body beside it with a ruler-straight line. An automatic dark-pixel trim was
   tried and ate dark hats and faces.
 - **Encodes:** grain makes the crf 17 master ~2 MB/s; share the `--web` copy.
 - **Determinism:** never use `Math.random` or the clock in a scene; use `g.rng(seed)` and `s.t`.
