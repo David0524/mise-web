@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Whispered voice-over from a script, with exact line timings for the captions.
 
-  python3 vo.py script.json out/vo.wav out/lines.json --voice en_US-ryan-high.onnx
-               [--speed 1.12] [--voiced 0.08] [--sr 48000]
+  python3 vo.py script.json out/vo.wav out/lines.json --voice en_GB-alan-medium.onnx
+               [--speed 0.88] [--voiced 0.3] [--sr 48000] [--best-of 4]
 
 script.json: {"lines": [{"text": "Caption text.", "say": "optional spoken spelling", "pause": 0.4,
                          "at": 12.3 (optional absolute start), "speed": 1.2 (optional per line),
@@ -14,6 +14,10 @@ is how a real whisper is made. `voiced` mixes a little of the original back for 
 Then: proximity bass, air shelf, gentle compression, a small dark room. Lines are placed back to back with
 their pauses unless a line gives `at`. lines.json lists [start, end, text] per line in seconds; feed it to
 the film as captions so picture, caption and voice share one clock.
+
+Piper is not deterministic, so a line that came out clear can come out mumbled on the next run. --best-of N
+records every line N times, transcribes each take (faster-whisper, as in asr.py) and keeps the take whose words
+match the script best; ties go to the first take.
 """
 import argparse, json, os, shutil, subprocess, sys, tempfile, wave
 import numpy as np
@@ -57,6 +61,25 @@ def whisper(x, sr, voiced, seed=1):
     return out * (1 - voiced) + x * voiced
 
 
+_asr = None
+
+
+def score(y, sr, text):
+    """Word match (0..1) between a take and its script line, via faster-whisper."""
+    global _asr
+    import importlib.util, os
+    from difflib import SequenceMatcher
+    if _asr is None:
+        from faster_whisper import WhisperModel
+        spec = importlib.util.spec_from_file_location('asr', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'asr.py'))
+        mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+        _asr = (WhisperModel('small.en', device='cpu', compute_type='int8'), mod.words)
+    model, words = _asr
+    seg = resample_poly(y, 16000, sr).astype(np.float32)
+    heard = ' '.join(t.text.strip() for t in model.transcribe(seg, language='en', beam_size=5)[0])
+    return SequenceMatcher(None, words(text), words(heard)).ratio()
+
+
 def shelf(x, sr, f, gain_db, kind):
     sos = butter(2, f, 'highpass' if kind == 'high' else 'lowpass', fs=sr, output='sos')
     return x + (10 ** (gain_db / 20) - 1) * sosfilt(sos, x)
@@ -81,18 +104,26 @@ def room(x, sr, t60=.45, wet=.13, seed=2):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('script'); p.add_argument('out'); p.add_argument('lines')
-    p.add_argument('--voice', required=True); p.add_argument('--speed', type=float, default=1.12)
-    p.add_argument('--voiced', type=float, default=.08); p.add_argument('--sr', type=int, default=48000)
+    p.add_argument('--voice', required=True); p.add_argument('--speed', type=float, default=.88)
+    p.add_argument('--voiced', type=float, default=.3); p.add_argument('--sr', type=int, default=48000)
+    p.add_argument('--best-of', type=int, default=1)
     a = p.parse_args()
     S = json.load(open(a.script)); lines = S['lines']; t = float(S.get('lead', .6))
     clips, timing = [], []
     with tempfile.TemporaryDirectory() as tmp:
         for L in lines:
-            x, sr = piper(L.get('say', L['text']).replace('\n', ' '), a.voice, L.get('speed', a.speed), tmp)
-            nz = np.where(np.abs(x) > .01)[0]
-            if len(nz): x = x[max(0, nz[0] - int(.02 * sr)):nz[-1] + int(.06 * sr)]
-            y = whisper(x, sr, L.get('voiced', a.voiced))
-            y = resample_poly(y, a.sr, sr)
+            best, best_sc = None, -1
+            for take in range(max(1, a.best_of)):
+                x, sr = piper(L.get('say', L['text']).replace('\n', ' '), a.voice, L.get('speed', a.speed), tmp)
+                nz = np.where(np.abs(x) > .01)[0]
+                if len(nz): x = x[max(0, nz[0] - int(.02 * sr)):nz[-1] + int(.06 * sr)]
+                y = resample_poly(whisper(x, sr, L.get('voiced', a.voiced), seed=1 + take), a.sr, sr)
+                if a.best_of <= 1: best = y; break
+                sc = score(y, a.sr, L['text'])
+                if sc > best_sc: best, best_sc = y, sc
+                if sc >= .999: break
+            y = best
+            if a.best_of > 1: print(f'  {best_sc:.2f}  {L["text"]!r}')
             if 'at' in L: t = float(L['at'])
             clips.append((t, y)); dur = len(y) / a.sr
             timing.append([round(t, 3), round(t + dur, 3), L['text']])

@@ -119,9 +119,13 @@
         const { x0 = -0.35, x1 = 0.6, top = -0.5, bottom = 0.42, light = [244, 214, 190], amt = 1, seed = 3 } = o; const r = rng(seed);
         ctx.save();
         const L = g.sx(x0), R = g.sx(x1), Y0 = g.sy(top), Y1 = g.sy(bottom);
-        const folds = 11;
+        // one broad glow, then a few wide soft folds (narrow, even stripes read as a comb)
+        const glow = ctx.createRadialGradient((L + R) / 2, lerp(Y0, Y1, 0.4), 0, (L + R) / 2, lerp(Y0, Y1, 0.4), (R - L) * 0.6);
+        glow.addColorStop(0, `rgba(${light[0]},${light[1]},${light[2]},${0.32 * amt})`); glow.addColorStop(1, `rgba(${light[0]},${light[1]},${light[2]},0)`);
+        ctx.fillStyle = glow; ctx.fillRect(L - 100, Y0, R - L + 200, Y1 - Y0);
+        const folds = o.folds || 7;
         for (let i = 0; i < folds; i++) {
-          const u = (i + 0.5) / folds, w = (R - L) / folds * (1.3 + r() * 1.2), cx = lerp(L, R, u) + Math.sin(t * 0.4 + i) * 4;
+          const u = (i + 0.5) / folds, w = (R - L) / folds * (1.8 + r() * 1.4), cx = lerp(L, R, u) + Math.sin(t * 0.4 + i) * 4;
           const lum = (0.35 + 0.65 * Math.pow(Math.sin(u * Math.PI), 1.3)) * (0.55 + r() * 0.45) * amt;
           const gr = ctx.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
           const c = (a) => `rgba(${light[0]},${light[1]},${light[2]},${a})`;
@@ -240,7 +244,10 @@
         const e = ease[p.entryEase || 'out'](clamp((t - p.at) / p.enter));
         const d = Array.isArray(p.from) ? p.from : DIR[p.from] || DIR.right, dist = p.fromDist == null ? 0.95 : p.fromDist;
         ox += d[0] * dist * (1 - e); oy += d[1] * dist * (1 - e);
-        s *= lerp(p.fromScale, 1, e);
+        const f = lerp(p.fromScale, 1, e);
+        // a portal zooms about its hole, so the old scene stays centred in it from the first frame
+        if (p.hole) { ox += p.hole[0] * s * (1 - f); oy += p.hole[1] * s * (1 - f); }
+        s *= f;
       }
       const fl = seg.float == null ? 0.004 : seg.float;
       ox += Math.sin(t * 0.7 + 1.3) * fl; oy += Math.sin(t * 0.53) * fl * 0.8;

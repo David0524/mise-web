@@ -18,3 +18,13 @@ Must-fixes and what changed:
 5. Script credit appeared 2.7 s early (matched the wrong "Adolph Coors" line) -> exact match; the title now builds on "The Golden Brewery." (VO moved onto the hero shot), "since 1873" and "Adolph Coors" on theirs.
 6. Hidden receding plates -> new `bg` for steerage, Stenger, sewer and the last plate; tannery recut at contrast 1.0, gamma 1.2 (was bleached).
 Also: truck crowd dropped; hats now play "April 1933." and a 1933 beer advertising photo plays "Beer is back."; reveal curtain warmer and brighter, floor reflection visible; macro lighting per the review; litany middle lines tightened; film 50.8 s.
+
+## Round 3 (golden-r3): OVERALL FAIL (7 must-fix)
+1. Portal blotted out the old scene for 4 frames -> engine bug: the entry zoom (`fromScale`) scaled a portal plate about its centre and threw the hole off screen. Portals now zoom about their hole. Stoker `k: 5` (old scene fills the porthole), `fromScale 1.8`, `enter 1.3`, `nearBlur 14` (no bright wash).
+2. Near-beer cut-out broken (trailing arm, stray hand) -> tighter crop, h 0.72, centred.
+3. Final 1933 plate small and low (transparent margins) -> tight crop, h 0.82 centred.
+4. Hero bottle floated, no floor -> curtain bottom = floor line, floor sheen, contact glow, reflection alpha 0.6.
+5. Neck macro unreadable -> two hard 0.008-wide light lines on the glass, brighter glass, cap inside the frame.
+6. Pool bottle floated -> shadow anchored at the base, contact shadow, warmer pool.
+7. "Dug ditches" misheard -> vo.py --best-of 5 (records each line five times, keeps the take ASR understands best); all lines now 1.00 except the British "Kors"/"brood".
+Also: curtain redrawn as one broad glow plus wide folds (was a comb); gentler entries on steerage, Stenger, kegs and sewer; receding plates kept inside the frame; void exactly #191716.

@@ -54,7 +54,9 @@
    "act": 2,
    "text": "Shoveled coal.\nDug ditches.",
    "pause": 0.17,
-   "plate": "Hine powerhouse worker (portal: the round pump)"
+   "plate": "Hine powerhouse worker (portal: the round pump)",
+   "say": "Shoveled coal... Dug ditches.",
+   "voiced": 0.5
   },
   {
    "act": 2,
