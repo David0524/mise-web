@@ -81,9 +81,9 @@
       g.image('bottle', x, cy, h, { bright: 0.35, contrast: 1.6 });
       // a sliver of hard light: a narrow band clipped to the glass, low intensity
       // hard light running down both edges of the neck (the glass spans about p 0.44-0.56 of the sweep range)
-      g.sweep('bottle', x, cy, h, g.lerp(0.469, 0.473, s.p), { amt: 0.8, width: 0.0025, slant: 0 });
-      g.sweep('bottle', x, cy, h, g.lerp(0.529, 0.525, g.clamp(s.p * 1.2 - 0.1)), { amt: 0.8, width: 0.0025, slant: 0 });
-      g.sweep('bottle', x, cy, h, g.lerp(0.47, 0.472, s.p), { amt: 1, width: 0.0015, slant: 0 });
+      g.sweep('bottle', x, cy, h, g.lerp(0.469, 0.473, s.p), { amt: 0.8, width: 0.006, slant: 0 });
+      g.sweep('bottle', x, cy, h, g.lerp(0.529, 0.525, g.clamp(s.p * 1.2 - 0.1)), { amt: 0.8, width: 0.006, slant: 0 });
+      g.sweep('bottle', x, cy, h, g.lerp(0.47, 0.472, s.p), { amt: 0.85, width: 0.0015, slant: 0 });
       g.pool(x, cy - h * 0.1, 0.9, 1.0, 'rgba(18,15,14,1)', 0.0);
       g.pool(x + 0.12, -0.35, 0.09, 0.7, 'rgba(255,226,196,1)', 0.05, 0.08, 0.95);
       g.dust(s.f, 26, 'rgba(255,244,226,.5)', 4);
@@ -126,7 +126,10 @@
     // 5. the hero shot: bottle on a glossy floor, the curtain, the title builds
     revealHero(g, s) {
       g.background('#161312', 0);
-      g.curtain(s.t, { x0: -0.42, x1: 0.45, top: -0.62, bottom: 0.55, amt: 3.4, folds: 6, gaps: true, light: [242, 210, 176] });
+      g.curtain(s.t, { x0: -0.42, x1: 0.45, top: -0.62, bottom: 0.3, amt: 1.6, folds: 5, light: [242, 210, 176] });   // soft drape underneath
+      g.curtain(s.t, { x0: -0.42, x1: 0.45, top: -0.62, bottom: 0.3, amt: 1.1, folds: 6, gaps: true, light: [242, 210, 176] });   // fold highlights
+      // the floor plane: dark and glossy from the horizon down, full width; its pools and the reflection go on top
+      { const c = g.ctx, fg = c.createLinearGradient(0, g.sy(0.29), 0, g.sy(0.5)); fg.addColorStop(0, 'rgba(30,25,22,0.75)'); fg.addColorStop(0.15, 'rgba(24,21,19,0.95)'); fg.addColorStop(1, 'rgba(18,16,15,1)'); c.fillStyle = fg; c.fillRect(0, g.sy(0.29), g.W, g.H); }
       const floor = 0.3, bh = 0.74 * (B.h / (B.base - B.top)), bx = -0.34, push = g.lerp(1, 1.035, s.p);
       const c = g.ctx; c.save(); c.translate(g.W / 2, g.H / 2); c.scale(push, push); c.translate(-g.W / 2, -g.H / 2);
       const cy = floor - bh / 2 + (1 - B.base / B.h) * bh;   // base of the glass on the floor

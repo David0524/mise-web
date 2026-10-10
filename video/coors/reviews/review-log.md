@@ -55,3 +55,9 @@ Nice-to-haves applied: steerage bg y -0.22; stoker h 1.35, pos y -0.14; waiting 
 4. Stoker inner hole -> `--fill-holes .05`.
 Nice-to-haves applied: neck highlight amt 0.8 (no clipping), steerage fromDist 1.5 / fromScale 1.1 / inOut, enter +0.15 s on brewers, Stenger, kegs and sewer; rim 4 on sewer and old Adolph.
 (Tried and dropped: an automatic dark-shadow trim, which ate dark hats and faces.)
+
+## Round 8 (golden-r8): OVERALL FAIL (2 must-fix, both the reveal curtain); litany fully PASS
+Rounds 7 and 8 measured curtain folds with different methods and asked for opposite changes. Settled with one tool (foldm.py: relative fold contrast + detrended std, upper and middle bands) run on the reference's own reveal frames: ref upper 0.09-0.25 / mid 0.18-0.34. The label shot already matched (0.28 / 0.25); the hero was too hard (0.35 / 0.37).
+1. Hero curtain -> a soft overlapping drape (amt 1.6, 5 folds) under a light gapped layer (amt 1.1): now 0.156 / 0.237, inside the reference's range.
+2. Curtain ran through the floor -> curtain stops at the floor line (0.3), then a full-width dark glossy floor plane; pools, contact shadow and reflection on top.
+Nice-to-haves applied: brewers crop keeps the back two rows only (the front row is the bottled-beer plate); bricklayer rim 7, old Adolph rim 3; neck edge sweeps 0.006 wide so the light stays on the glass where the neck steps in; neck core line amt 0.85.
