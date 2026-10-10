@@ -47,3 +47,11 @@ Nice-to-haves applied: adolph_young rim 7; brewers crop drops a sliver of anothe
 1. Hero reflection drawn 0.18 H too low (wrong sign: mirroring about the floor line needs dy = +(1 - base/h)·bh), no contact shadow -> fixed sign, alpha 0.42, contact pool; curtain to 0.55 H, x1 0.45, amt 6.5; bottle 0.74; bevel 0.009.
 2. Young Adolph receded exactly behind a worker's head (double head) -> brewers bg [-0.44, -0.22].
 Nice-to-haves applied: steerage bg y -0.22; stoker h 1.35, pos y -0.14; waiting h 0.8, y -0.04; hats bg [0.44, -0.3]; beer-ad inner hole filled (prep.py --fill-holes .05); thinner neck edge lines; entries fromScale 1.25 by default.
+
+## Round 7 (golden-r7): OVERALL FAIL (4 must-fix)
+1. Hats entry flashed on its first frame (diff 51.6) -> fromDist 1.6, fromScale 1.1, entryEase inOut, enter 0.65.
+2. Curtain folds a third of the reference's contrast -> engine `curtain({gaps: true})`: folds barely overlap so dark troughs show; amt 3.2-3.4, 6 folds, label shot widened to ±0.55.
+3. Bricklayer kept his wall shadow -> BiRefNet plus two `--erase` polygons (new prep.py option; it re-runs the island filter afterwards, so no slivers are left).
+4. Stoker inner hole -> `--fill-holes .05`.
+Nice-to-haves applied: neck highlight amt 0.8 (no clipping), steerage fromDist 1.5 / fromScale 1.1 / inOut, enter +0.15 s on brewers, Stenger, kegs and sewer; rim 4 on sewer and old Adolph.
+(Tried and dropped: an automatic dark-shadow trim, which ate dark hats and faces.)

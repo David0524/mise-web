@@ -68,6 +68,7 @@ def main():
     p.add_argument('--keep-bg', action='store_true'); p.add_argument('--card', action='store_true'); p.add_argument('--hole')
     p.add_argument('--contrast', type=float, default=1.0); p.add_argument('--gamma', type=float, default=1.0)
     p.add_argument('--flip', action='store_true'); p.add_argument('--no-rim', action='store_true')
+    p.add_argument('--erase', action='append', default=[], help='x1,y1,x2,y2,...: a polygon in output-PNG pixels (before padding) to cut away from the mask, e.g. a cast shadow; repeatable')
     p.add_argument('--fill-holes', type=float, default=0, help='fill enclosed holes smaller than this fraction of the subject (e.g. .03): gaps between arms that would get a stray inner rim')
     p.add_argument('--sky', type=float, help='landscape: cut away bright sky above the skyline (luminance threshold 0..1, e.g. .78)')
     a = p.parse_args()
@@ -107,6 +108,20 @@ def main():
             sizes = ndimage.sum(np.ones_like(alpha), lab, range(1, n + 1))
             keep = np.isin(lab, 1 + np.where(sizes >= max(sizes.max() * .005, 50))[0])
             alpha = alpha * ndimage.binary_dilation(keep, iterations=2)
+    if a.erase:
+        from PIL import ImageDraw
+        m = Image.new('L', (alpha.shape[1], alpha.shape[0]), 255); d = ImageDraw.Draw(m)
+        for poly in a.erase:
+            v = [float(t) for t in poly.split(',')]; d.polygon(list(zip(v[0::2], v[1::2])), fill=0)
+        alpha = alpha * (np.asarray(m).astype(np.float32) / 255)
+        # what an erase leaves behind (slivers, thin strips) goes too: opening + keep components >= 0.5 %
+        from scipy import ndimage
+        solid = ndimage.binary_opening(alpha > .5, iterations=4)
+        lab, n = ndimage.label(solid)
+        if n:
+            sizes = ndimage.sum(np.ones_like(alpha), lab, range(1, n + 1))
+            keep = np.isin(lab, 1 + np.where(sizes >= sizes.max() * .005)[0])
+            alpha = alpha * ndimage.binary_dilation(keep, iterations=4)
     if a.fill_holes > 0:
         from scipy import ndimage
         solid = alpha > .5; holes = ndimage.binary_fill_holes(solid) & ~solid

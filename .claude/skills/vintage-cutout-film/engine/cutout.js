@@ -125,7 +125,7 @@
         ctx.fillStyle = glow; ctx.fillRect(L - 100, Y0, R - L + 200, Y1 - Y0);
         const folds = o.folds || 7;
         for (let i = 0; i < folds; i++) {
-          const u = (i + 0.5) / folds, w = (R - L) / folds * (1.8 + r() * 1.4), cx = lerp(L, R, u) + Math.sin(t * 0.4 + i) * 4;
+          const u = (i + 0.5) / folds, w = (R - L) / folds * (o.gaps ? 0.8 + r() * 0.35 : 1.8 + r() * 1.4), cx = lerp(L, R, u) + Math.sin(t * 0.4 + i) * 4;   // gaps: folds barely overlap, so dark troughs show between them
           const lum = (0.35 + 0.65 * Math.pow(Math.sin(u * Math.PI), 1.3)) * (0.55 + r() * 0.45) * amt;
           const gr = ctx.createLinearGradient(cx - w / 2, 0, cx + w / 2, 0);
           const c = (a) => `rgba(${light[0]},${light[1]},${light[2]},${a})`;
