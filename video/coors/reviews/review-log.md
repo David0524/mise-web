@@ -100,3 +100,8 @@ From now on each round gets two fresh reviewers in parallel and passes only if b
 Nice-to-haves applied: Stenger fromDist 0.7 -> 1.05 (no in-frame first frame); malted milk card `--rim 6`; steerage bottom and right crop edges given a ragged scissor line with `--erase`; beat sheet corrected (one man with a stein, Paris 1933).
 prep.py: the cleanup after `--erase` (an opening) now runs only near the erased polygons; run over the whole mask it had removed the steerage plate's thin rope. Re-cut every `--erase` plate: only steerage changed.
 Not applied: sewer arm stubs (dark on dark; erasing them would shorten the arms further); neck edge light 4-6 px (earlier rounds measured 8-17 px as matching the reference); litany retiming.
+
+## Round 17 (golden-r17, two reviewers): A FAIL (1 must-fix), B PASS
+1. Sewer (A): the standing onlooker's right arm ended in a rimmed stump (u2net_human_seg drops dark sleeves) -> BiRefNet keeps the whole arm; it lost the head of the half-hidden uniformed officer behind the pourer, who was also the second arm stump, so he is erased.
+Nice-to-haves applied: stoker `--rim 6` (was the 11 px default, about 7 px on screen; flagged by both) with the portal hole moved to the new padded pixels (994,512); bottling crew `--rim 3`.
+Not applied: hero curtain hotspot (foldm inside the reference's range), steerage right edge moved in, hats recession +0.08, neck edge light, beer-ad print borders.

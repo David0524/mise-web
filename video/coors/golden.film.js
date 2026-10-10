@@ -32,8 +32,8 @@
     ['brewers', 0.82, 0.04, -0.09, 'right', [-0.44, -0.22], { enter: 0.95 }],
     ['steerage', 0.82, -0.04, -0.09, 'left', [-0.42, -0.22], { k: 1.8, fromScale: 1.1, fromDist: 2.2, entryEase: 'inOut', enter: 0.85 }],
     ['bricklayer', 0.9, 0.1, -0.13, 'right', [-0.26, -0.16]],
-    // portal: the porthole (PNG px 1009,527 r116) sits at screen (0, -0.36); the bricklayer scene lives inside it
-    ['stoker', 1.35, 0, 0, 'camera', null, { hole: { piece: 0, px: [1009, 527, 116, 116] }, pos: [-0.132, -0.14], k: 4.2, fromScale: 2.2, enter: 1.6, nearBlur: 14 }],
+    // portal: the porthole (PNG px 994,512 r116) sits at screen (0, -0.36); the bricklayer scene lives inside it
+    ['stoker', 1.35, 0, 0, 'camera', null, { hole: { piece: 0, px: [994, 512, 116, 116] }, pos: [-0.132, -0.14], k: 4.2, fromScale: 2.2, enter: 1.6, nearBlur: 14 }],
     ['stenger', 0.62, -0.02, -0.04, 'bottom-left', [-0.34, -0.28], { fromScale: 1.15, fromDist: 1.05, enter: 1.0 }],
     ['kegs', 0.8, 0.12, -0.08, 'right', [-0.26, -0.18], { fromScale: 1.25, fromDist: 0.7, enter: 0.95 }],
     ['tannery', 0.7, -0.04, -0.03, 'left', [0.26, -0.2], { keep: 1.9 }],
