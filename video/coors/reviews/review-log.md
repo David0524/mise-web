@@ -113,3 +113,7 @@ Round 19 = two fresh reviewers on the same render.
 ## Round 19 (= the round-18 render, two fresh reviewers): A PASS, B FAIL (1 must-fix)
 1. Sewer (B): the onlooker's arm-crook gap was kept as a hole with its own cream rim, a 12x16 px blip on his dark sleeve (round 18 A had noted it as optional) -> `--fill-holes .01`.
 Nice-to-have applied: neck edge sweeps width 0.006 -> 0.0035, amt 0.8 -> 0.95 (suggested by four reviewers; now about 9 px, peak 244, against the reference's hard slivers).
+
+## Round 20 (golden-r20, two reviewers): A PASS, B PASS (no must-fix)
+Nice-to-haves noted, not applied (keeping the cut fixed for a second pair): brewers left crop edge through the leftmost man's arm, a small step at young Adolph's bottom-right shoulder, the portal ring's one-frame pop, more drift between entries, neck highlight slightly cool, beer-ad print borders, hats right fringe.
+Round 21 = two fresh reviewers on the same render.
