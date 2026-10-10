@@ -67,7 +67,8 @@ def main():
     p.add_argument('--rim', type=int, default=0); p.add_argument('--max', type=int, default=1800)
     p.add_argument('--keep-bg', action='store_true'); p.add_argument('--card', action='store_true'); p.add_argument('--hole')
     p.add_argument('--contrast', type=float, default=1.0); p.add_argument('--gamma', type=float, default=1.0)
-    p.add_argument('--flip', action='store_true')
+    p.add_argument('--flip', action='store_true'); p.add_argument('--no-rim', action='store_true')
+    p.add_argument('--sky', type=float, help='landscape: cut away bright sky above the skyline (luminance threshold 0..1, e.g. .78)')
     a = p.parse_args()
 
     im = ImageOps.exif_transpose(Image.open(a.src)).convert('RGB')
@@ -76,8 +77,17 @@ def main():
     if a.flip: im = ImageOps.mirror(im)
     k = min(1.0, a.max / max(im.size)); im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
 
-    if not a.rim: a.rim = max(3, round(max(im.size) * .0028))  # about 4 px once the figure fills the frame
-    if a.keep_bg or a.card:
+    if not a.rim: a.rim = max(4, round(max(im.size) * .005))  # about 4-5 px on screen once the figure fills 0.8 H
+    if a.sky is not None:
+        # cut along the skyline: per column, sky is the bright run from the top down to the first darker pixel
+        lum = np.asarray(im.convert('L').filter(ImageFilter.GaussianBlur(3))).astype(np.float32) / 255
+        lo, hi = np.percentile(lum, 2), np.percentile(lum, 99.5); lum = (lum - lo) / max(hi - lo, 1e-3)
+        dark = lum < a.sky
+        first = np.where(dark.any(0), dark.argmax(0), im.height)
+        k5 = max(3, im.width // 150) | 1
+        first = np.convolve(np.pad(first, k5 // 2, mode='edge'), np.ones(k5) / k5, 'valid')
+        alpha = (np.arange(im.height)[:, None] >= first[None, :] - 1).astype(np.float32)
+    elif a.keep_bg or a.card:
         alpha = np.ones((im.height, im.width), np.float32)
     elif a.mask:
         m = Image.open(a.mask).convert('L')
@@ -95,6 +105,8 @@ def main():
     graded = grade(rgb, alpha, a.contrast, a.gamma)
     if a.keep_bg:
         outer, inner = alpha, alpha
+    elif a.no_rim:
+        inner = np.asarray(Image.fromarray((alpha * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(.8))).astype(np.float32) / 255; outer = inner
     else:
         outer, inner = scissor(alpha, a.rim)
     col = graded * inner[..., None] + np.array(RIM, np.float32) * (1 - inner[..., None])

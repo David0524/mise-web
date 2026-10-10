@@ -22,16 +22,20 @@
   },
   {
    "act": 2,
-   "text": "Adolph. Orphaned at fifteen.",
+   "text": "Adolph Coors.\nOrphaned at fifteen.",
    "pause": 0.22,
    "plate": "young Adolph Coors portrait",
-   "say": "Adolph. Orphaned at fifteen."
+   "say": "Adolph Coors. Orphaned at fifteen.",
+   "voiced": 0.6,
+   "speed": 0.95
   },
   {
    "act": 2,
    "text": "Apprenticed to a brewer.",
    "pause": 0.19,
-   "plate": "brewery workers at vats (generic, c.1920)"
+   "plate": "brewery workers at vats (generic, c.1920)",
+   "say": "Apprenticed to a brewer.",
+   "voiced": 0.5
   },
   {
    "act": 2,
@@ -65,29 +69,33 @@
    "act": 2,
    "text": "Denver, 1872.\nBottling beer.",
    "say": "Denver, eighteen seventy-two. Bottling beer.",
-   "pause": 0.14,
-   "plate": "rows of kegs (generic)"
+   "pause": 0.12,
+   "plate": "rows of kegs (generic)",
+   "speed": 0.76
   },
   {
    "act": 2,
    "text": "1873. A tannery\non Clear Creek.",
    "say": "Eighteen seventy-three. A tannery on Clear Creek.",
    "pause": 0.12,
-   "plate": "1880s brewery under Table Mountain (the tannery site)"
+   "plate": "1880s brewery under Table Mountain (the tannery site)",
+   "speed": 0.76
   },
   {
    "act": 2,
    "text": "1880. He buys\nhis partner out.",
    "say": "Eighteen eighty. He buys his partner out.",
-   "pause": 0.11,
-   "plate": "Adolph Coors, older"
+   "pause": 0.12,
+   "plate": "Adolph Coors, older",
+   "speed": 0.76
   },
   {
    "act": 2,
    "text": "1916. Colorado goes dry.",
    "say": "Nineteen sixteen. Colorado goes dry.",
-   "pause": 0.1,
-   "plate": "officials pouring liquor into a sewer"
+   "pause": 0.12,
+   "plate": "officials pouring liquor into a sewer",
+   "speed": 0.76
   },
   {
    "act": 2,
@@ -102,7 +110,7 @@
    "pause": 0.08,
    "plate": "two men toasting steins, 1921",
    "say": "Neer, beer.",
-   "voiced": 0.8,
+   "voiced": 0.9,
    "speed": 1.15
   },
   {
@@ -119,10 +127,11 @@
   },
   {
    "act": 2,
-   "text": "April 7, 1933.",
-   "say": "April seventh, nineteen thirty-three.",
+   "text": "April 1933.",
+   "say": "April, nineteen thirty-three.",
    "pause": 0.1,
-   "plate": "night crowd at a beer truck"
+   "plate": "night crowd at a beer truck",
+   "speed": 0.8
   },
   {
    "act": 2,
@@ -148,18 +157,20 @@
   {
    "act": 3,
    "text": "Adolph Coors.",
-   "say": "Adolph. Coors.",
+   "say": "Adolph Coors.",
    "pause": 1.8,
    "plate": "script credit",
    "voiced": 0.6,
-   "speed": 1.1
+   "speed": 1.05
   },
   {
    "act": 4,
    "text": "Still brewed in Golden.",
    "pause": 0.8,
    "plate": "black",
-   "voiced": 0.55
+   "voiced": 0.6,
+   "say": "Still brewed in Golden.",
+   "speed": 1.05
   }
  ]
 }

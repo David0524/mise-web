@@ -148,7 +148,7 @@
         const c = g._tmp || (g._tmp = document.createElement('canvas')); c.width = W; c.height = H; const t = c.getContext('2d');
         t.clearRect(0, 0, W, H); t.save(); t.translate(g.sx(x), g.sy(y)); if (o.rot) t.rotate(o.rot * Math.PI / 180); t.drawImage(mip(img, hp), -wp / 2, -hp / 2, wp, hp); t.restore();
         t.globalCompositeOperation = 'source-in';
-        const bx = lerp(g.sx(x) - wp, g.sx(x) + wp, p), gr = t.createLinearGradient(bx - wp * 0.25, 0, bx + wp * 0.25, hp * 0.3);
+        const bw = wp * (o.width || 0.25), bx = lerp(g.sx(x) - wp, g.sx(x) + wp, p), gr = t.createLinearGradient(bx - bw, 0, bx + bw, hp * 0.3 * (o.width || 0.25) / 0.25);
         gr.addColorStop(0, 'rgba(255,240,222,0)'); gr.addColorStop(0.5, `rgba(255,240,222,${o.amt || 0.75})`); gr.addColorStop(1, 'rgba(255,240,222,0)');
         t.fillStyle = gr; t.fillRect(0, 0, W, H);
         ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.drawImage(c, 0, 0); ctx.restore();
@@ -298,9 +298,9 @@
     function caption(t) {
       const c = (SPEC.captions || []).find(([a, b]) => t >= a && t < b); if (!c) return;
       const lines = Array.isArray(c[2]) ? c[2] : String(c[2]).split('\n');
-      const size = Math.round(H * (SPEC.captionSize || 0.0335));
+      const size = Math.round(H * (SPEC.captionSize || 0.043));
       out.save(); out.font = `${size}px Caption`; out.textAlign = 'center'; out.textBaseline = 'alphabetic';
-      const base = H * 0.938, lh = size * 1.12;
+      const base = H * (SPEC.captionBase || 0.948), lh = size * 1.1;
       lines.forEach((L, i) => {
         const y = base - (lines.length - 1 - i) * lh;
         out.shadowColor = 'rgba(0,0,0,.65)'; out.shadowBlur = size * 0.12; out.shadowOffsetX = size * 0.04; out.shadowOffsetY = size * 0.06;
@@ -332,7 +332,9 @@
       out.globalCompositeOperation = 'overlay'; out.globalAlpha = 0.16 * T.grain;
       const tile = tiles[f % tiles.length], ox = -Math.floor(r() * 256), oy = -Math.floor(r() * 256), sc = H / 1080 * 1.6;
       out.save(); out.scale(sc, sc); for (let y = oy; y < H / sc; y += 256) for (let x = ox; x < W / sc; x += 256) out.drawImage(tile, x, y); out.restore();
-      out.globalAlpha = 1; out.globalCompositeOperation = 'source-over';
+      // lifted blacks: nothing goes below the print's black (per-channel max)
+      out.globalAlpha = 1; out.globalCompositeOperation = 'lighten'; out.fillStyle = SPEC.blackPoint || '#181512'; out.fillRect(0, 0, W, H);
+      out.globalCompositeOperation = 'source-over';
       // specks (one frame each, rare)
       if (T.specks && r() < 0.11 * T.specks) {
         const n = 1 + Math.floor(r() * 2);
