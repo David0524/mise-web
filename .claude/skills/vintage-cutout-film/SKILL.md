@@ -1,6 +1,6 @@
 ---
 name: vintage-cutout-film
-description: Make a ~48 s mock-luxury-ad film out of vintage photographs cut out like paper puppets. Sepia cut-outs with a cream scissor-cut rim hang in a dark void while the camera keeps pulling back through them, each new figure sliding in huge and out of focus from right in front of the lens; a whispered voice-over with olive-yellow subtitles; lit product macros at the start, a title reveal on a backlit curtain, and a deadpan last line on black. Rendered deterministically from an HTML canvas to MP4, with a synthesised whisper VO and an original lounge score. Use when the user asks for a video in this vintage cut-out / collage / mock-perfume-ad style, for any subject (a company's founding, a product, a person's story), or references this skill.
+description: Make a ~48 s film in the language of a luxury commercial, built from vintage photographs cut out like paper puppets. Sepia cut-outs with a cream scissor-cut rim hang in a dark void while the camera keeps pulling back through them, each new figure sliding in huge and out of focus from right in front of the lens; a whispered voice-over with olive-yellow subtitles; lit product macros at the start, a title reveal on a backlit curtain, and a quiet closing line on black. Rendered deterministically from an HTML canvas to MP4, with a synthesised whisper VO and an original lounge score. Use when the user asks for a video in this vintage cut-out / collage / luxury-commercial style, for any subject (a company's founding, a product, a person's story), or references this skill.
 ---
 
 # Vintage cutout film
@@ -26,7 +26,7 @@ the tools make the cut-outs, the voice, the music and the mix; a separate review
 | `tools/prep.py` | photo -> graded sepia cut-out PNG with the paper rim (rembg), optional portal hole |
 | `tools/vo.py` | script.json -> whispered VO (Piper TTS + LPC whisper) + `lines.json` caption timings |
 | `tools/asr.py` | transcribes the VO back, line by line, to catch unintelligible lines |
-| `tools/score.py` | cue.json -> original noir-lounge bed (FM piano, upright bass, brushes), cut dead at the button |
+| `tools/score.py` | cue.json -> original noir-lounge bed (FM piano, upright bass, brushes), cut dead at the coda |
 | `tools/mix.sh` | VO over music with ducking, loudness-normalised to -16 LUFS |
 | `tools/check.mjs` | lints a spec: timeline, captions, one plate per line, entry overlaps, portals, missing assets |
 | `tools/render.mjs` | frames, stills (`--times`), a grid (`--grid 24`) and the MP4 with audio, in parallel workers |
@@ -58,7 +58,7 @@ Use more reviewers in parallel when a round is big (one for the litany, one for 
 
 ## Procedure
 
-1. **Brief.** Get the subject, the reference video if any, and anything the user insists on (names, a button
+1. **Brief.** Get the subject, the reference video if any, and anything the user insists on (names, a closing
    line, the product). Start the **researcher** in the background immediately.
 2. **Reference stills.** If a reference video is given, extract stills and a contact sheet into the
    scratchpad (`tools/contact.sh ref.mp4 ref-sheet.jpg 2`), never into the project. They go to every reviewer.
@@ -73,7 +73,7 @@ Use more reviewers in parallel when a round is big (one for the litany, one for 
 6. **Spec.** Write `<name>.film.js`: segments, captions from `lines.json`, one plate per litany line placed on
    its line's start, the product scenes in `SCENES`. Run `node tools/check.mjs <name>.film.js` until clean.
 7. **Music and mix.** `tools/score.py cue.json out/music.wav` with sections on the act boundaries and `stop` on
-   the button cut, then `tools/mix.sh out/vo.wav out/music.wav out/mix.wav`.
+   the coda cut, then `tools/mix.sh out/vo.wav out/music.wav out/mix.wav`.
 8. **Render and review loop** (below).
 9. **Deliver** the MP4, the contact sheet, the beat sheet and `SOURCES.md`.
 
@@ -93,7 +93,7 @@ until two consecutive rounds return OVERALL: PASS
 ```
 
 Keep a `review-log.md`: round number, each FAIL, what you changed. Stop and ask the user only for a creative
-decision the brief can't answer (a different button line, a photo they might object to).
+decision the brief can't answer (a different closing line, a photo they might object to).
 
 ## Gotchas
 

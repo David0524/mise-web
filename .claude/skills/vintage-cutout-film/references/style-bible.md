@@ -1,6 +1,6 @@
 # Style bible: vintage cutout film
 
-Measured from a 48.4 s, 960×720 (4:3), 25 fps reference (a mock perfume ad). This page records the **look
+Measured from a 48.4 s, 960×720 (4:3), 25 fps reference (a fragrance commercial). This page records the **look
 and grammar** only. Write your own script, choose your own photos and build your own story.
 
 ## 1. The idea in one sentence
@@ -8,10 +8,11 @@ and grammar** only. Write your own script, choose your own photos and build your
 Old black-and-white photographs, cut out with scissors, hang in a dark void. A camera keeps **pulling back
 through them**: every new line of voice-over brings a new cut-out figure in from right in front of the lens,
 and the figure before it sinks into the dark behind. It opens and closes like a luxury commercial: a lit
-product, a whispered line, and a title. Then comes a deadpan last line on black.
+product, a whispered line, and a title. Then comes one quiet line on black.
 
-The comedy and the charm come from the contrast between the sincere, breathy ad voice and the cheap,
-charming, visibly scissor-cut collage.
+Its power comes from the contrast between the intimate, breathy voice and the handmade, visibly
+scissor-cut collage: real faces from another century, staged like precious objects. Play it straight. The
+film is sincere; warmth and wit come from the pictures and the pacing, never from mocking the subject.
 
 ## 2. Format
 
@@ -50,8 +51,8 @@ darker and lower in contrast than the subject (§5).
 - No drop shadows. The figure separates from the void by the rim and by its own brightness.
 - Figures are whole people or big fragments: a head and shoulders, a waist-up pose, a hand holding a thing.
   Props are cut out too (a phone, a hand mirror, a rabbit, a wind-up key) and **glued onto the people**,
-  often absurdly out of scale. That comic collage glue is the signature: a wind-up key on a baby's back, a dog
-  with someone else's glasses.
+  often out of scale. That collage glue is the signature: a wind-up key on a baby's back, a dog with someone
+  else's glasses. Use it with a light hand, to make a point visible, not to mock.
 - Puppet motion is minimal and rigid: a prop or an arm rotates on a hinge, a head tilts a few degrees, a hand
   waves. Most figures don't move at all; the camera does the work.
 
@@ -76,8 +77,8 @@ through a stack of plates.
   the eyepiece of binoculars, an open mouth. The camera starts inside the hole (the old scene fills the
   frame through it) and pulls back until the person holding the hole is revealed. Every earlier plate is then
   drawn only inside the hole.
-- **Scale jokes.** The receding figure ends up in a funny place: a crowd behind a single woman, a tiny
-  person in a magician's hat, a face in a lens.
+- **Placement.** The receding figure ends up somewhere meaningful: a crowd behind a single woman, a tiny
+  person in a magician's hat, a face in a lens. The old line becomes the new line's context.
 - Small handheld drift: ±3–6 px float on the camera, very slow.
 
 ## 6. Product (bookends)
@@ -126,14 +127,14 @@ The opening and closing are lit product photography, intercut with **hard cuts**
 | t (s) | Act | What happens |
 |---|---|---|
 | 0–8 | **Invocation** | Three product macros with hard cuts. The voice addresses the viewer as a hero, in two or three lines ("you are…"). Slow and sincere |
-| 8–33 | **The litany** | One continuous pull-back through about 18 cut-out plates. Lines start at about 2–3 s each and accelerate to about 0.8–1 s each, so the jokes pile up. One or two portal moves. The last line of the act gets a little extra hold |
+| 8–33 | **The litany** | One continuous pull-back through about 18 cut-out plates. Lines start at about 2–3 s each and accelerate to about 0.8–1 s each, so the story gathers speed. One or two portal moves. The last line of the act gets a little extra hold |
 | 33–45 | **Reveal** | Hard cut to the product in the light curtain. The name of the product is whispered, then the title builds line by line, then the maker's credit in script |
-| 45–48 | **Button** | Hard cut to pure black. One deadpan caption-and-voice line that undercuts everything |
+| 45–48 | **Coda** | Hard cut to pure black. One quiet caption-and-voice line that lands the film: a fact, a turn, a last word |
 
 Rules:
 - Each litany line gets its own plate. Never two lines on one plate.
-- Pick each figure for its **expression** (laughing, shocked, scheming, crying, pointing). Expression carries
-  the joke; the caption names it.
+- Pick each figure for its **expression** (laughing, shocked, determined, crying, pointing). The face carries
+  the feeling; the caption names the moment.
 - The litany plates alternate size and placement: a single close face, then a group, then a waist-up figure,
   then a face again.
 - Product and collage never mix: the product only appears in acts 1 and 3.
@@ -143,7 +144,7 @@ Rules:
 - VO: close-miked, soft, unhurried, with a little room. Lines separated by short gaps (0.2–0.6 s). Loudness
   of the whole mix about −16 LUFS integrated, LRA about 5.
 - Music: a sultry, slow bed under the whole film (lounge or noir), swelling slightly into the reveal and
-  **cutting dead** on the black button card, so the last line is read in silence (or near silence).
+  **cutting dead** on the black coda card, so the last line is read in silence (or near silence).
 
 ## 11. Don'ts
 

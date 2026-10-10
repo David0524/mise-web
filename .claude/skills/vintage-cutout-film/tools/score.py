@@ -10,7 +10,7 @@ cue.json: {"bpm": 98, "key": "D", "stop": 45.3, "length": 48,
 Moods: invocation (felt-piano chords, bass drone, no drums, breathy pad), litany (brushes, walking upright
 bass, electric piano comping), litany+ (the same, busier: ride swing and fills), reveal (drums out, a lush
 held chord, bells, a slow swell). `hits` add a soft low boom with a cymbal swell into that time. At `stop`
-everything is cut dead (a 15 ms fade), so the button line plays in silence.
+everything is cut dead (a 15 ms fade), so the coda line plays in silence.
 """
 import argparse, json, wave
 import numpy as np

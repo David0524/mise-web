@@ -29,6 +29,6 @@
     {"act": 3, "text": "Since 1873.", "say": "Since eighteen seventy-three.", "pause": 0.9},
     {"act": 3, "text": "By Adolph Coors.", "say": "By Adolph Coors.", "pause": 2.2},
 
-    {"act": 4, "text": "Please drink responsibly.", "pause": 0.8}
+    {"act": 4, "text": "Still brewed in Golden.", "pause": 0.8}
   ]
 }
