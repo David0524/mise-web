@@ -23,7 +23,7 @@ the tools make the cut-outs, the voice, the music and the mix; a separate review
 | `engine/cutout.js` | the engine: `CF.film(canvas, SPEC, SCENES)`, plate-stack camera, depth of field, portals, treatment, captions |
 | `engine/fonts/` | Arimo Bold (captions), Fraunces SOFT Black (title, a Cooper-style face), Yellowtail (script) |
 | `examples/film.html` | the page that hosts a spec: copy it next to your spec, fix `ENGINE`, open `?spec=name.film.js` |
-| `tools/prep.py` | photo -> graded sepia cut-out PNG with the paper rim (rembg), skyline cuts (`--sky`), island removal, portal hole, `--no-rim` for products |
+| `tools/prep.py` | photo -> graded sepia cut-out PNG with the paper rim (rembg), skyline cuts (`--sky`), island removal, `--fill-holes`, `--erase` polygons, portal hole, `--no-rim` for products |
 | `tools/vo.py` | script.json -> whispered VO (Piper TTS + LPC whisper) + `lines.json` caption timings |
 | `tools/asr.py` | transcribes the VO back, line by line, to catch unintelligible lines |
 | `tools/score.py` | cue.json -> original noir-lounge bed (FM piano, upright bass, brushes), cut dead at the coda |
@@ -31,6 +31,7 @@ the tools make the cut-outs, the voice, the music and the mix; a separate review
 | `tools/check.mjs` | lints a spec: timeline, captions, one plate per line, entry overlaps, portals, missing assets |
 | `tools/render.mjs` | frames, stills (`--times`), a grid (`--grid 24`) and the MP4 with audio, in parallel workers |
 | `tools/contact.sh`, `tools/compare.sh` | timestamped contact sheet; reference vs film side by side |
+| `tools/foldm.py` | curtain fold contrast, to compare the reveal with the reference by one shared measure |
 
 ## Setup (once per machine)
 
@@ -134,6 +135,13 @@ decision the brief can't answer (a different closing line, a photo they might ob
   homophones): judge the key words by ear, not the score.
 - **The title builds on its words:** put the product-name VO line on the hero shot (`at` in script.json), and match
   lines exactly (`l[2] === 'Name.'`), never with `startsWith`, which can hit an earlier line.
+- **Shared measures:** give every reviewer the same measuring tools (diff signal, `foldm.py`) and the reference's
+  numbers from them; two reviewers with private metrics asked for opposite curtain changes in consecutive rounds.
+- **Mirrored reflections:** `reflect` mirrors about the floor line, so draw it where the object is (`dy = +(1 -
+  base/h)·bh` for a PNG whose subject ends above its bottom edge).
+- **Leftover shadows:** a cast shadow attached to a figure survives every mask model; cut it with `--erase` polygons
+  (output-PNG pixels before padding; the island filter runs again afterwards). An automatic dark-pixel trim was
+  tried and ate dark hats and faces.
 - **Encodes:** grain makes the crf 17 master ~2 MB/s; share the `--web` copy.
 - **Determinism:** never use `Math.random` or the clock in a scene; use `g.rng(seed)` and `s.t`.
 - **Render time:** at 1440×1080 about 0.15–0.4 s a frame per worker; a 48 s film is about 1–3 min on 4 cores.

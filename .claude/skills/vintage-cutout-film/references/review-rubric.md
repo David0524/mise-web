@@ -48,6 +48,8 @@ breaks a caption rule or is factually wrong.
 - The opening macros look like lit product photography: hard light on edges, deep shadow, dust in the beam,
   slow creep, hard cuts between shots.
 - Reveal: the product on a glossy floor with a reflection, a warm backlit curtain, darker edges.
+- Curtain: measure fold contrast with `tools/foldm.py` on the film's reveal frames AND the reference's, and judge
+  against the reference's range (in the Coors round it was upper 0.09-0.25, middle 0.18-0.34 relative).
 - Title: soft heavy serif, cream with a dark bevel and glow, stacked, small words tucked in; the script line
   in mint-cyan neon, rotated about −6°; each builds on its VO line.
 - One red burn wash for 1–2 frames, then a hard cut to pure black for the coda line.
