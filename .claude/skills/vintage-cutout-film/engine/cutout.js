@@ -152,7 +152,7 @@
         const c = g._tmp || (g._tmp = document.createElement('canvas')); c.width = W; c.height = H; const t = c.getContext('2d');
         t.clearRect(0, 0, W, H); t.save(); t.translate(g.sx(x), g.sy(y)); if (o.rot) t.rotate(o.rot * Math.PI / 180); t.drawImage(mip(img, hp), -wp / 2, -hp / 2, wp, hp); t.restore();
         t.globalCompositeOperation = 'source-in';
-        const bw = wp * (o.width || 0.25), bx = lerp(g.sx(x) - wp, g.sx(x) + wp, p), gr = t.createLinearGradient(bx - bw, 0, bx + bw, hp * 0.3 * (o.width || 0.25) / 0.25);
+        const bw = wp * (o.width || 0.25), bx = lerp(g.sx(x) - wp, g.sx(x) + wp, p), sl = o.slant == null ? 0.3 : o.slant, gr = t.createLinearGradient(bx - bw, 0, bx + bw, hp * sl * (o.width || 0.25) / 0.25);   // slant 0 = a vertical band
         gr.addColorStop(0, 'rgba(255,240,222,0)'); gr.addColorStop(0.5, `rgba(255,240,222,${o.amt || 0.75})`); gr.addColorStop(1, 'rgba(255,240,222,0)');
         t.fillStyle = gr; t.fillRect(0, 0, W, H);
         ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.drawImage(c, 0, 0); ctx.restore();

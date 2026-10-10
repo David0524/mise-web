@@ -17,7 +17,8 @@ the film as captions so picture, caption and voice share one clock.
 
 Piper is not deterministic, so a line that came out clear can come out mumbled on the next run. --best-of N
 records every line N times, transcribes each take (faster-whisper, as in asr.py) and keeps the take whose words
-match the script best; ties go to the first take.
+match the script best; then it transcribes every line in the finished mix (as asr.py does) and re-records the
+lines that fail there, up to --verify-rounds times.
 """
 import argparse, json, os, shutil, subprocess, sys, tempfile, wave
 import numpy as np
@@ -65,7 +66,13 @@ _asr = None
 
 
 def score(y, sr, text):
-    """Word match (0..1) between a take and its script line, via faster-whisper."""
+    """Word match (0..1) between a lone take and its script line, judged through the mix chain."""
+    pad = np.zeros(int(.3 * sr)); y = room(compress(shelf(shelf(np.r_[pad, y, pad], sr, 160, 3.5, 'low'), sr, 5500, 5, 'high'), sr), sr)
+    return score_raw(y, sr, text)
+
+
+def score_raw(y, sr, text):
+    """Word match (0..1) between audio and a script line, via faster-whisper (the same normaliser as asr.py)."""
     global _asr
     import importlib.util, os
     from difflib import SequenceMatcher
@@ -107,38 +114,67 @@ def main():
     p.add_argument('--voice', required=True); p.add_argument('--speed', type=float, default=.88)
     p.add_argument('--voiced', type=float, default=.3); p.add_argument('--sr', type=int, default=48000)
     p.add_argument('--best-of', type=int, default=1)
+    p.add_argument('--verify-rounds', type=int, default=2, help='with --best-of: re-record lines that fail in the finished mix')
     a = p.parse_args()
-    S = json.load(open(a.script)); lines = S['lines']; t = float(S.get('lead', .6))
-    clips, timing = [], []
-    with tempfile.TemporaryDirectory() as tmp:
-        for L in lines:
-            best, best_sc = None, -1
-            for take in range(max(1, a.best_of)):
-                x, sr = piper(L.get('say', L['text']).replace('\n', ' '), a.voice, L.get('speed', a.speed), tmp)
-                nz = np.where(np.abs(x) > .01)[0]
-                if len(nz): x = x[max(0, nz[0] - int(.02 * sr)):nz[-1] + int(.06 * sr)]
-                y = resample_poly(whisper(x, sr, L.get('voiced', a.voiced), seed=1 + take), a.sr, sr)
-                if a.best_of <= 1: best = y; break
-                sc = score(y, a.sr, L['text'])
-                if sc > best_sc: best, best_sc = y, sc
-                if sc >= .999: break
-            y = best
-            if a.best_of > 1: print(f'  {best_sc:.2f}  {L["text"]!r}')
+    S = json.load(open(a.script)); lines = S['lines']
+    tmp = tempfile.mkdtemp()
+
+    def take(L, k):
+        x, sr = piper(L.get('say', L['text']).replace('\n', ' '), a.voice, L.get('speed', a.speed), tmp)
+        nz = np.where(np.abs(x) > .01)[0]
+        if len(nz): x = x[max(0, nz[0] - int(.02 * sr)):nz[-1] + int(.06 * sr)]
+        return resample_poly(whisper(x, sr, L.get('voiced', a.voiced), seed=1 + k), a.sr, sr)
+
+    def build(ys):
+        t = float(S.get('lead', .6)); clips, timing = [], []
+        for L, y in zip(lines, ys):
             if 'at' in L: t = float(L['at'])
-            clips.append((t, y)); dur = len(y) / a.sr
-            timing.append([round(t, 3), round(t + dur, 3), L['text']])
-            t += dur + float(L.get('pause', .35))
-    total = int((t + .5) * a.sr); mix = np.zeros(total)
-    for st, y in clips:
-        i = int(st * a.sr); mix[i:i + len(y)] += y[:max(0, total - i)]
-    mix = shelf(mix, a.sr, 160, 3.5, 'low'); mix = shelf(mix, a.sr, 5500, 5, 'high')
-    mix = compress(mix, a.sr); mix = room(mix, a.sr)
-    mix *= .5 / max(np.max(np.abs(mix)), 1e-9)
+            clips.append((t, y)); timing.append([round(t, 3), round(t + len(y) / a.sr, 3), L['text']])
+            t += len(y) / a.sr + float(L.get('pause', .35))
+        mix = np.zeros(int((t + .5) * a.sr))
+        for st, y in clips:
+            i = int(st * a.sr); mix[i:i + len(y)] += y[:max(0, len(mix) - i)]
+        mix = shelf(mix, a.sr, 160, 3.5, 'low'); mix = shelf(mix, a.sr, 5500, 5, 'high')
+        mix = compress(mix, a.sr); mix = room(mix, a.sr)
+        return mix * (.5 / max(np.max(np.abs(mix)), 1e-9)), timing, t
+
+    def heard_in_mix(mix, s, e, text):   # the same window asr.py uses
+        seg = mix[max(0, int((s - .1) * a.sr)):int((e + .15) * a.sr)]
+        return score_raw(seg, a.sr, text)
+
+    # first pass: best take of N, judged alone through the mix chain
+    ys = []
+    for L in lines:
+        best, best_sc = None, -1
+        for k in range(max(1, a.best_of)):
+            y = take(L, k)
+            if a.best_of <= 1: best = y; break
+            sc = score(y, a.sr, L['text'])
+            if sc > best_sc: best, best_sc = y, sc
+            if sc >= .999: break
+        ys.append(best)
+    mix, timing, t = build(ys)
+    # verify in the finished mix (neighbouring tails, compression, room) and re-record what fails there
+    for rnd in range(a.verify_rounds if a.best_of > 1 else 0):
+        scores = [heard_in_mix(mix, s, e, txt) for s, e, txt in timing]
+        bad = [i for i, sc in enumerate(scores) if sc < .75]
+        print(f'verify {rnd + 1}: ' + (', '.join(f'{lines[i]["text"]!r} {scores[i]:.2f}' for i in bad) or 'all lines pass'))
+        if not bad: break
+        for i in bad:
+            best_y, best_sc = ys[i], scores[i]
+            for k in range(a.best_of):
+                cand = ys[:i] + [take(lines[i], 100 * (rnd + 1) + k)] + ys[i + 1:]
+                m2, tm2, _ = build(cand)
+                sc = heard_in_mix(m2, tm2[i][0], tm2[i][1], lines[i]['text'])
+                if sc > best_sc: best_y, best_sc = cand[i], sc
+                if sc >= .999: break
+            ys[i] = best_y
+        mix, timing, t = build(ys)
     st = np.clip(np.stack([mix, mix], 1) * 32767, -32768, 32767).astype(np.int16)
     with wave.open(a.out, 'wb') as w:
         w.setnchannels(2); w.setsampwidth(2); w.setframerate(a.sr); w.writeframes(st.tobytes())
     json.dump(timing, open(a.lines, 'w'), indent=1)
-    for s, e, txt in timing: print(f'{s:6.2f}-{e:6.2f}  {txt}')
+    for s_, e, txt in timing: print(f'{s_:6.2f}-{e:6.2f}  {txt}')
     print(f'total {t:.2f} s -> {a.out}')
 
 

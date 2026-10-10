@@ -47,7 +47,7 @@
   {
    "act": 2,
    "text": "Laid bricks. Cut stone.",
-   "pause": 0.17,
+   "pause": 0.3,
    "plate": "bricklayer at work"
   },
   {
@@ -55,24 +55,25 @@
    "text": "Shoveled coal.\nDug ditches.",
    "pause": 0.17,
    "plate": "Hine powerhouse worker (portal: the round pump)",
-   "say": "Shoveled coal... Dug ditches.",
-   "voiced": 0.5
+   "say": "Shovelled coal... Dug ditches.",
+   "voiced": 0.75,
+   "speed": 0.92
   },
   {
    "act": 2,
    "text": "A brewery foreman.\nIllinois.",
    "pause": 0.14,
    "plate": "Stenger brewery, Naperville",
-   "say": "A brewery foreman. Illinois.",
-   "voiced": 0.6,
-   "speed": 0.95
+   "say": "A brewery foreman... Illinois.",
+   "voiced": 0.75,
+   "speed": 0.92
   },
   {
    "act": 2,
    "text": "Denver, 1872.\nBottling beer.",
    "say": "Denver, eighteen seventy-two. Bottling beer.",
    "pause": 0.1,
-   "plate": "rows of kegs (generic)",
+   "plate": "brewery crew beside crates stamped BOTTLED BEER (generic, c.1900s)",
    "speed": 0.7
   },
   {
@@ -104,7 +105,9 @@
    "text": "Malted milk.",
    "pause": 0.08,
    "plate": "Coors Pure Malted Milk ad",
-   "voiced": 0.55
+   "voiced": 0.45,
+   "say": "Malted. Milk.",
+   "speed": 0.9
   },
   {
    "act": 2,

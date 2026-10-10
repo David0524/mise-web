@@ -28,3 +28,11 @@ Also: truck crowd dropped; hats now play "April 1933." and a 1933 beer advertisi
 6. Pool bottle floated -> shadow anchored at the base, contact shadow, warmer pool.
 7. "Dug ditches" misheard -> vo.py --best-of 5 (records each line five times, keeps the take ASR understands best); all lines now 1.00 except the British "Kors"/"brood".
 Also: curtain redrawn as one broad glow plus wide folds (was a comb); gentler entries on steerage, Stenger, kegs and sewer; receding plates kept inside the frame; void exactly #191716.
+
+## Round 4 (golden-r4): OVERALL FAIL (6 must-fix); grade, treatment, rims, captions, mix and litany continuity all PASS
+1. Hero floor read as a matte shelf, curtain folds invisible -> floor glow alphas 0.06/0.10, curtain 5 wide folds at amt 3.2 with the sides falling to the void; title fade 0.08 s, bevel 0.006.
+2. Neck macro: light cut across the glass -> glass brighter (bright 0.55, contrast 1.6), two vertical hard lines down the neck's edges (`sweep` slant option, 0 = vertical).
+3. Three lines misheard in the finished track ("coal", "foreman", "Malted") -> say spellings, more voice on the marginal lines; vo.py now verifies every line in the finished mix and re-records the ones that fail there (`--verify-rounds`).
+4. 7 s without a face (building, kegs, landscape) -> "Bottling beer." now plays over the crew's front row beside crates stamped BOTTLED BEER.
+5. Portal: settled hole too small, caption on bright metal -> k 4.2, plate lifted (pos y -0.02), fromScale 2.2, enter 1.6.
+Also: softer entries (enter 0.65-0.7) on the six punchiest plates; receding steerage and Adolph kept inside the frame; warmer pool.
