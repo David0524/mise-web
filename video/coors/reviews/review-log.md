@@ -109,3 +109,7 @@ Not applied: hero curtain hotspot (foldm inside the reference's range), steerage
 ## Round 18 (golden-r18, two reviewers): A PASS, B PASS (no must-fix), first passing round
 Nice-to-haves noted, not applied (to keep the passing cut under a second independent pair): kegs right man's outer sleeve near the crop edge, stoker settled lower edge under the caption, hero curtain hotspot about 4 % hot, a small inner-rim blip in the sewer onlooker's arm crook, steerage capstan softness, thin rims on waiting and hats, brewers/Stenger entry peaks.
 Round 19 = two fresh reviewers on the same render.
+
+## Round 19 (= the round-18 render, two fresh reviewers): A PASS, B FAIL (1 must-fix)
+1. Sewer (B): the onlooker's arm-crook gap was kept as a hole with its own cream rim, a 12x16 px blip on his dark sleeve (round 18 A had noted it as optional) -> `--fill-holes .01`.
+Nice-to-have applied: neck edge sweeps width 0.006 -> 0.0035, amt 0.8 -> 0.95 (suggested by four reviewers; now about 9 px, peak 244, against the reference's hard slivers).

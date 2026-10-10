@@ -81,8 +81,8 @@
       g.image('bottle', x, cy, h, { bright: 0.35, contrast: 1.6 });
       // a sliver of hard light: a narrow band clipped to the glass, low intensity
       // hard light running down both edges of the neck (the glass spans about p 0.44-0.56 of the sweep range)
-      g.sweep('bottle', x, cy, h, g.lerp(0.469, 0.473, s.p), { amt: 0.8, width: 0.006, slant: 0 });
-      g.sweep('bottle', x, cy, h, g.lerp(0.529, 0.525, g.clamp(s.p * 1.2 - 0.1)), { amt: 0.8, width: 0.006, slant: 0 });
+      g.sweep('bottle', x, cy, h, g.lerp(0.469, 0.473, s.p), { amt: 0.95, width: 0.0035, slant: 0 });
+      g.sweep('bottle', x, cy, h, g.lerp(0.529, 0.525, g.clamp(s.p * 1.2 - 0.1)), { amt: 0.95, width: 0.0035, slant: 0 });
       g.sweep('bottle', x, cy, h, g.lerp(0.47, 0.472, s.p), { amt: 0.85, width: 0.0015, slant: 0 });
       g.pool(x, cy - h * 0.1, 0.9, 1.0, 'rgba(18,15,14,1)', 0.0);
       g.pool(x + 0.12, -0.35, 0.09, 0.7, 'rgba(255,226,196,1)', 0.05, 0.08, 0.95);
