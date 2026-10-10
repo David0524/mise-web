@@ -105,3 +105,7 @@ Not applied: sewer arm stubs (dark on dark; erasing them would shorten the arms 
 1. Sewer (A): the standing onlooker's right arm ended in a rimmed stump (u2net_human_seg drops dark sleeves) -> BiRefNet keeps the whole arm; it lost the head of the half-hidden uniformed officer behind the pourer, who was also the second arm stump, so he is erased.
 Nice-to-haves applied: stoker `--rim 6` (was the 11 px default, about 7 px on screen; flagged by both) with the portal hole moved to the new padded pixels (994,512); bottling crew `--rim 3`.
 Not applied: hero curtain hotspot (foldm inside the reference's range), steerage right edge moved in, hats recession +0.08, neck edge light, beer-ad print borders.
+
+## Round 18 (golden-r18, two reviewers): A PASS, B PASS (no must-fix), first passing round
+Nice-to-haves noted, not applied (to keep the passing cut under a second independent pair): kegs right man's outer sleeve near the crop edge, stoker settled lower edge under the caption, hero curtain hotspot about 4 % hot, a small inner-rim blip in the sewer onlooker's arm crook, steerage capstan softness, thin rims on waiting and hats, brewers/Stenger entry peaks.
+Round 19 = two fresh reviewers on the same render.
