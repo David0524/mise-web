@@ -2,11 +2,12 @@
 // Render a vintage-cutout-film page to JPEG frames and (optionally) an MP4 with audio.
 //
 //   node render.mjs <film.html> <outDir> [--from 0] [--to N] [--times 1.2,8.4] [--grid 24] [--workers 4]
-//                   [--mp4 out.mp4] [--audio mix.wav] [--query k=v&k2=v2]
+//                   [--mp4 out.mp4] [--audio mix.wav] [--web] [--query k=v&k2=v2]
 //
 // --times writes stills (t in seconds) and stops. --grid N writes <outDir>/grid.jpg, N evenly spaced frames
 // labelled with their time, and stops. Otherwise every frame from..to is written as f00000.jpg and, with
-// --mp4, packed at the film's fps (x264 crf 17, yuv420p, +faststart) with --audio muxed in as AAC.
+// --mp4, packed at the film's fps (x264 crf 17, yuv420p, +faststart) with --audio muxed in as AAC. Grain makes
+// that master large (~2 MB/s); --web also writes <name>-web.mp4 at 1080 px wide, lightly denoised, crf 27 (~0.1 MB/s).
 //
 // The page must set window.film (from CF.film) and window.ready = true once fonts and images are loaded.
 // Page errors are printed and fail the render. Chromium: CHROME env, else Playwright's bundled browser.
@@ -92,4 +93,9 @@ if (mp4) {
   a.push('-frames:v', String(to - from + 1), '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mp4);
   execFileSync('ffmpeg', a, { stdio: 'inherit' });
   console.log('wrote', mp4);
+  if (args.includes('--web')) {
+    const web = mp4.replace(/\.mp4$/, '') + '-web.mp4';
+    execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', mp4, '-vf', 'scale=1080:-2,hqdn3d=1.5:1.5:3:3', '-c:v', 'libx264', '-preset', 'slow', '-crf', '27', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-c:a', 'aac', '-b:a', '160k', web], { stdio: 'inherit' });
+    console.log('wrote', web);
+  }
 }

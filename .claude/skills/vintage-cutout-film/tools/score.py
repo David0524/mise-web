@@ -174,10 +174,13 @@ def main():
     if rv is not None:
         r = root
         held = stop - rv
-        fx.add(rv, pad([hz(r + 12 + iv) for iv in (0, 7, 10, 14, 15)], held, sr, .22, seed=11))
-        for i, iv in enumerate((0, 7, 10, 14, 17)): keys.add(rv + i * .06, felt(hz(r + 12 + iv), held, sr, .3), pan=-.4 + i * .2)
-        bs.add(rv, bass(hz(r - 12), held, sr, .6))
-        for j, iv in enumerate((14, 19, 22, 26)): fx.add(rv + 1.6 + j * 2.2, bell(hz(r + 24 + iv), sr, .12), pan=-.5 + j * .3)
+        fx.add(rv, pad([hz(r + 12 + iv) for iv in (0, 7, 10, 14, 15)], held, sr, .42, seed=11))
+        for i, iv in enumerate((0, 7, 10, 14, 17)): keys.add(rv + i * .06, felt(hz(r + 12 + iv), held, sr, .5), pan=-.4 + i * .2)
+        bs.add(rv, bass(hz(r - 12), held, sr, .8))
+        # a slow pulse under the held chord so the reveal breathes
+        for j in range(int(held / beat)):
+            if j % 2 == 0: drums.add(rv + j * beat, kick(sr, .22))
+        for j, iv in enumerate((14, 19, 22, 26)): fx.add(rv + 1.6 + j * 2.2, bell(hz(r + 24 + iv), sr, .2), pan=-.5 + j * .3)
     for h in C.get('hits', []):
         fx.add(h, boom(sr, rng, .55)); fx.add(h - 1.4, swell(sr, rng, 1.4, .12))
     # mix

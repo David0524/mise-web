@@ -9,8 +9,8 @@ alpha cleaned and rounded like a scissor cut -> a paper rim a few px outside the
 hole (a portal: binocular lens, open mouth) punched as transparent.
 
 --crop is in source pixels and applied first. --mask is a white-on-black PNG the size of the crop (or of the
-source if there is no crop), for subjects rembg gets wrong. --keep-bg keeps the whole rectangle (for a card
-or a backdrop), still graded. --rim is the paper rim width in output px (default: 0.28 % of the long side). Prints a JSON line with the output
+source if there is no crop), for subjects rembg gets wrong. --keep-bg keeps the whole rectangle with no rim (a backdrop),
+still graded; --card keeps the whole photo as a print with the scissor-cut paper rim (landscapes, interiors). --rim is the paper rim width in output px (default: 0.28 % of the long side). Prints a JSON line with the output
 size, the subject's bounding box and the hole in output px; the film uses it.
 
 Models (rembg): u2net (general), u2net_human_seg (people), isnet-general-use (objects, crisp edges).
@@ -65,7 +65,7 @@ def main():
     p.add_argument('src'); p.add_argument('out')
     p.add_argument('--crop'); p.add_argument('--model', default='u2net'); p.add_argument('--mask')
     p.add_argument('--rim', type=int, default=0); p.add_argument('--max', type=int, default=1800)
-    p.add_argument('--keep-bg', action='store_true'); p.add_argument('--hole')
+    p.add_argument('--keep-bg', action='store_true'); p.add_argument('--card', action='store_true'); p.add_argument('--hole')
     p.add_argument('--contrast', type=float, default=1.0); p.add_argument('--gamma', type=float, default=1.0)
     p.add_argument('--flip', action='store_true')
     a = p.parse_args()
@@ -77,7 +77,7 @@ def main():
     k = min(1.0, a.max / max(im.size)); im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
 
     if not a.rim: a.rim = max(3, round(max(im.size) * .0028))  # about 4 px once the figure fills the frame
-    if a.keep_bg:
+    if a.keep_bg or a.card:
         alpha = np.ones((im.height, im.width), np.float32)
     elif a.mask:
         m = Image.open(a.mask).convert('L')
@@ -88,7 +88,7 @@ def main():
         cut = remove(im, session=new_session(a.model), post_process_mask=True)
         alpha = np.asarray(cut)[..., 3].astype(np.float32) / 255
 
-    pad = 0 if a.keep_bg else a.rim * 3
+    pad = 0 if a.keep_bg else a.rim * 3  # a card keeps the whole photo and gets the rim around its edge
     rgb = np.asarray(im).astype(np.float32)
     if pad:
         rgb = np.pad(rgb, ((pad, pad), (pad, pad), (0, 0)), mode='edge'); alpha = np.pad(alpha, pad)

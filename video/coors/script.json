@@ -1,34 +1,165 @@
 {
-  "title": "golden",
-  "lead": 0.9,
-  "lines": [
-    {"act": 1, "text": "You are the snowmelt\nof the Rockies.", "pause": 0.75},
-    {"act": 1, "text": "You are the master\nof the mash.", "pause": 0.75},
-    {"act": 1, "text": "You put the gold\ninto Golden.", "pause": 0.9},
-
-    {"act": 2, "text": "Twenty-one. An orphan.", "pause": 0.45},
-    {"act": 2, "text": "No ticket to America.", "pause": 0.4},
-    {"act": 2, "text": "So he stowed away.", "pause": 0.4},
-    {"act": 2, "text": "Baltimore. Bricklayer.", "pause": 0.35},
-    {"act": 2, "text": "Stonecutter. Fireman.", "pause": 0.35},
-    {"act": 2, "text": "A brewery in Illinois.", "pause": 0.3},
-    {"act": 2, "text": "Denver. Bottling\nother men's beer.", "pause": 0.3},
-    {"act": 2, "text": "1873.", "say": "Eighteen seventy-three.", "pause": 0.25},
-    {"act": 2, "text": "An old tannery in Golden.", "pause": 0.25},
-    {"act": 2, "text": "A partner with money.", "pause": 0.22},
-    {"act": 2, "text": "Cold water\nfrom Clear Creek.", "pause": 0.22},
-    {"act": 2, "text": "He buys the partner out.", "pause": 0.2},
-    {"act": 2, "text": "Then Colorado goes dry.", "pause": 0.2},
-    {"act": 2, "text": "Malted milk.", "pause": 0.15},
-    {"act": 2, "text": "Near beer.", "pause": 0.15},
-    {"act": 2, "text": "Porcelain.", "pause": 0.15},
-    {"act": 2, "text": "Seventeen years.", "pause": 0.2},
-    {"act": 2, "text": "Repeal. Pour one.", "pause": 1.6},
-
-    {"act": 3, "text": "The Golden Brewery.", "pause": 1.0},
-    {"act": 3, "text": "Since 1873.", "say": "Since eighteen seventy-three.", "pause": 0.9},
-    {"act": 3, "text": "By Adolph Coors.", "say": "By Adolph Coors.", "pause": 2.2},
-
-    {"act": 4, "text": "Still brewed in Golden.", "pause": 0.8}
-  ]
+ "title": "golden",
+ "lead": 0.6,
+ "lines": [
+  {
+   "act": 1,
+   "text": "You are the snowmelt\nof the Rockies.",
+   "pause": 0.55,
+   "plate": "macro: bottle neck, edge light"
+  },
+  {
+   "act": 1,
+   "text": "You are the master\nof the mash.",
+   "pause": 0.55,
+   "plate": "macro: spotlight pool, bottle shadow"
+  },
+  {
+   "act": 1,
+   "text": "You put the gold\ninto Golden.",
+   "pause": 0.55,
+   "plate": "macro: light sweep across the label"
+  },
+  {
+   "act": 2,
+   "text": "Adolph. Orphaned at fifteen.",
+   "pause": 0.22,
+   "plate": "young Adolph Coors portrait",
+   "say": "Adolph. Orphaned at fifteen."
+  },
+  {
+   "act": 2,
+   "text": "Apprenticed to a brewer.",
+   "pause": 0.19,
+   "plate": "brewery workers at vats (generic, c.1920)"
+  },
+  {
+   "act": 2,
+   "text": "1868. He stowed away.",
+   "say": "Eighteen sixty-eight. He stowed away.",
+   "pause": 0.19,
+   "plate": "steerage passengers on a ship's bow, 1915 (no single face)"
+  },
+  {
+   "act": 2,
+   "text": "Laid bricks. Cut stone.",
+   "pause": 0.17,
+   "plate": "bricklayer at work"
+  },
+  {
+   "act": 2,
+   "text": "Shoveled coal.\nDug ditches.",
+   "pause": 0.17,
+   "plate": "Hine powerhouse worker (portal: the round pump)"
+  },
+  {
+   "act": 2,
+   "text": "A brewery foreman.\nIllinois.",
+   "pause": 0.14,
+   "plate": "Stenger brewery, Naperville",
+   "say": "A brewery foreman. Illinois.",
+   "voiced": 0.6,
+   "speed": 0.95
+  },
+  {
+   "act": 2,
+   "text": "Denver, 1872.\nBottling beer.",
+   "say": "Denver, eighteen seventy-two. Bottling beer.",
+   "pause": 0.14,
+   "plate": "rows of kegs (generic)"
+  },
+  {
+   "act": 2,
+   "text": "1873. A tannery\non Clear Creek.",
+   "say": "Eighteen seventy-three. A tannery on Clear Creek.",
+   "pause": 0.12,
+   "plate": "1880s brewery under Table Mountain (the tannery site)"
+  },
+  {
+   "act": 2,
+   "text": "1880. He buys\nhis partner out.",
+   "say": "Eighteen eighty. He buys his partner out.",
+   "pause": 0.11,
+   "plate": "Adolph Coors, older"
+  },
+  {
+   "act": 2,
+   "text": "1916. Colorado goes dry.",
+   "say": "Nineteen sixteen. Colorado goes dry.",
+   "pause": 0.1,
+   "plate": "officials pouring liquor into a sewer"
+  },
+  {
+   "act": 2,
+   "text": "Malted milk.",
+   "pause": 0.08,
+   "plate": "Coors Pure Malted Milk ad",
+   "voiced": 0.55
+  },
+  {
+   "act": 2,
+   "text": "Near beer.",
+   "pause": 0.08,
+   "plate": "two men toasting steins, 1921",
+   "say": "Neer, beer.",
+   "voiced": 0.8,
+   "speed": 1.15
+  },
+  {
+   "act": 2,
+   "text": "Porcelain.",
+   "pause": 0.08,
+   "plate": "Coors porcelain plant, rows of cups"
+  },
+  {
+   "act": 2,
+   "text": "Seventeen years.",
+   "pause": 0.1,
+   "plate": "woman waiting, head bowed"
+  },
+  {
+   "act": 2,
+   "text": "April 7, 1933.",
+   "say": "April seventh, nineteen thirty-three.",
+   "pause": 0.1,
+   "plate": "night crowd at a beer truck"
+  },
+  {
+   "act": 2,
+   "text": "Beer is back.",
+   "pause": 1.0,
+   "plate": "crowd waving hats",
+   "voiced": 0.6,
+   "speed": 1.0
+  },
+  {
+   "act": 3,
+   "text": "The Golden Brewery.",
+   "pause": 1.0,
+   "plate": "hero bottle, label close-up"
+  },
+  {
+   "act": 3,
+   "text": "Since 1873.",
+   "say": "Since eighteen seventy-three.",
+   "pause": 0.9,
+   "plate": "hero bottle, title builds"
+  },
+  {
+   "act": 3,
+   "text": "Adolph Coors.",
+   "say": "Adolph. Coors.",
+   "pause": 1.8,
+   "plate": "script credit",
+   "voiced": 0.6,
+   "speed": 1.1
+  },
+  {
+   "act": 4,
+   "text": "Still brewed in Golden.",
+   "pause": 0.8,
+   "plate": "black",
+   "voiced": 0.55
+  }
+ ]
 }
