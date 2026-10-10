@@ -67,6 +67,7 @@ def main():
     p.add_argument('--rim', type=int, default=0); p.add_argument('--max', type=int, default=1800)
     p.add_argument('--keep-bg', action='store_true'); p.add_argument('--card', action='store_true'); p.add_argument('--hole')
     p.add_argument('--contrast', type=float, default=1.0); p.add_argument('--gamma', type=float, default=1.0)
+    p.add_argument('--upscale', action='store_true', help='enlarge a small crop to --max before masking, so the mask edge and rim are drawn at the size they are shown');
     p.add_argument('--flip', action='store_true'); p.add_argument('--no-rim', action='store_true')
     p.add_argument('--erase', action='append', default=[], help='x1,y1,x2,y2,...: a polygon in output-PNG pixels (before padding) to cut away from the mask, e.g. a cast shadow; repeatable')
     p.add_argument('--add', action='append', default=[], help='x1,y1,...: a polygon in output-PNG pixels (before padding) forced into the mask, e.g. a glass the model drops; repeatable')
@@ -78,7 +79,7 @@ def main():
     if a.crop:
         x, y, w, h = map(int, a.crop.split(',')); im = im.crop((x, y, x + w, y + h))
     if a.flip: im = ImageOps.mirror(im)
-    k = min(1.0, a.max / max(im.size)); im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
+    k = a.max / max(im.size) if a.upscale else min(1.0, a.max / max(im.size)); im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
 
     if not a.rim: a.rim = max(4, round(max(im.size) * .005))  # about 4-5 px on screen once the figure fills 0.8 H
     if a.sky is not None:

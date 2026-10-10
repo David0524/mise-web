@@ -70,3 +70,8 @@ Left as is: the waiting woman's "chair-back" is her bundle tied in a shawl (part
 ## Round 10 (golden-r10): OVERALL FAIL (1 must-fix); everything else PASS (curtain inside the reference's foldm range)
 1. "Beer is back.": the glass is back but her head was sliced above the eyes (the crop started below her hair) -> crop 330,200,694,650 (u2net keeps the hair once it is inside the crop), glass `--add` moved down 40 px, the wicker chair arm at the bottom left cut with `--erase`.
 Nice-to-haves applied: entries 0.15 s longer on brewers, steerage, Stenger, kegs, malted milk and the beer ad (entry diff peaks 37-41 vs the reference's 23-35); brewers x 0.12 -> 0.04 (clears the right edge); young Adolph rim 7 -> 5; waiting `--gamma 1.25`.
+
+## Round 11 (golden-r11): OVERALL FAIL (1 must-fix); 1933 couple, entries, grade, audio, reveal PASS
+1. Brewers rim a soft 9-16 px halo: the 560 px crop was masked and rimmed small, then shown 2.7x larger -> new prep.py `--upscale` enlarges the crop to `--max` before masking, so the edge and rim are drawn at screen size; `--rim 5`.
+Nice-to-haves applied: grey chair back between the couple cut with a second `--erase` (and `--fill-holes .012` so the gap stays open); hats crop widened to 120,100,2780,2050; waiting `--gamma 1.4`.
+Not applied: shortening entries back to 0.6 s (round 10 asked for longer ones; round 11 measured the entry peaks inside the reference's range); the "slab" above the waiting woman's bundle is the bundle's dark cloth; the hats plate's straight left edge is the 1923 print's own border.
