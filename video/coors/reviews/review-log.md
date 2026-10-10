@@ -75,3 +75,7 @@ Nice-to-haves applied: entries 0.15 s longer on brewers, steerage, Stenger, kegs
 1. Brewers rim a soft 9-16 px halo: the 560 px crop was masked and rimmed small, then shown 2.7x larger -> new prep.py `--upscale` enlarges the crop to `--max` before masking, so the edge and rim are drawn at screen size; `--rim 5`.
 Nice-to-haves applied: grey chair back between the couple cut with a second `--erase` (and `--fill-holes .012` so the gap stays open); hats crop widened to 120,100,2780,2050; waiting `--gamma 1.4`.
 Not applied: shortening entries back to 0.6 s (round 10 asked for longer ones; round 11 measured the entry peaks inside the reference's range); the "slab" above the waiting woman's bundle is the bundle's dark cloth; the hats plate's straight left edge is the 1923 print's own border.
+
+## Round 12 (golden-r12): OVERALL PASS (no must-fix), first passing round
+Nice-to-haves applied for round 13: bottling crew `--erase` on a dark sliver at the left and on the photo border slicing the right man's arm; 1933 couple `--rim 3`.
+Not applied: stoker `--rim 4` (the portal hole is given in padded PNG pixels, which a rim change would move); grain/vignette and the bottle tint (global looks a passing round already matched); litany retiming (needs the VO re-recorded).
