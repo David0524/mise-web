@@ -113,7 +113,8 @@ decision the brief can't answer (a different closing line, a photo they might ob
   every model, so force it back with an `--add` polygon (output-PNG pixels, like `--erase`);
   `isnet-general-use` for products. Check every cut on the void before using it.
 - **Source size:** a source under ~1000 px upscaled to 0.8 H looks soft and its rim balloons. Look for ≥1500 px;
-  if you must use a small one, `--rim 2`. Library of Congress items often have a larger `v.jpg` beside the
+  if you must use a small one, `--upscale` (enlarges the crop to `--max` before masking, so the mask edge and rim are
+  drawn at screen size; without it a small crop's rim is shown blown up as a soft halo). Library of Congress items often have a larger `v.jpg` beside the
   `r.jpg`; Wikimedia rate-limits originals (HTTP 429): fetch a standard thumbnail width (1920) from
   upload.wikimedia.org instead.
 - **Rim width** scales with the cut-out's size (default 0.5 % of the long side, about 4–5 px on screen at 0.8 H).
@@ -138,6 +139,9 @@ decision the brief can't answer (a different closing line, a photo they might ob
   lines exactly (`l[2] === 'Name.'`), never with `startsWith`, which can hit an earlier line.
 - **Shared measures:** give every reviewer the same measuring tools (diff signal, `foldm.py`) and the reference's
   numbers from them; two reviewers with private metrics asked for opposite curtain changes in consecutive rounds.
+- **Deliberate choices in the brief:** list what you kept on purpose (a print's own border, a bundle that looks like a
+  slab) in each new reviewer's brief, so a fresh reviewer doesn't re-flag it every round; and when two rounds ask
+  for opposite changes, settle it with the shared measure instead of following the latest.
 - **Mirrored reflections:** `reflect` mirrors about the floor line, so draw it where the object is (`dy = +(1 -
   base/h)·bh` for a PNG whose subject ends above its bottom edge).
 - **Leftover shadows:** a cast shadow attached to a figure survives every mask model; cut it with `--erase` polygons
