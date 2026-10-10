@@ -64,7 +64,8 @@ Use more reviewers in parallel when a round is big (one for the litany, one for 
    scratchpad (`tools/contact.sh ref.mp4 ref-sheet.jpg 2`), never into the project. They go to every reviewer.
 3. **Script.** Write the four acts per `references/writing.md` into `script.json`, plus a beat sheet with the
    plate for every line. Send it to the **fact-checker**. Fix every WRONG and UNSOURCED line.
-4. **Voice.** `python3 tools/vo.py script.json out/vo.wav out/lines.json --voice en_GB-alan-medium.onnx --voiced 0.3 --speed 0.88`, then
+4. **Voice.** `python3 tools/vo.py script.json out/vo.wav out/lines.json --voice en_GB-alan-medium.onnx --voiced 0.3 --speed 0.88 --best-of 5`
+   (Piper varies run to run; `--best-of` keeps each line's clearest take), then
    `python3 tools/asr.py out/vo.wav out/lines.json`. Fix flagged lines (`say`, `speed`, `voiced`) and redo.
    The line timings now fix the picture's clock.
 5. **Cut-outs.** Keep the recipes in a `cut.sh` (one line per plate: source, crop, model, options) so every cut can be
