@@ -13,7 +13,7 @@ declare -A J
 # name                    source                                                         options
 J[adolph_young]="src/hist/hc-youngadolph.jpg --crop 900,0,7300,7369 $HUMAN --max 1800 --rim 5"
 J[brewers]="src/people/p4_alpen_brau_brewery_workers.jpg --crop 580,400,560,360 $BIREF --max 1500 --upscale --rim 5"   # top rows only: the front row returns as the bottled-beer plate
-J[steerage]="src/people/p1_steerage_passengers_ship_bow_1915.jpg --crop 150,620,1500,1120 $BIREF --max 1800 --rim 4"
+J[steerage]="src/people/p1_steerage_passengers_ship_bow_1915.jpg --crop 150,620,1500,1120 $BIREF --max 1800 --rim 4 --erase 0,1125,0,1090,60,1084,120,1092,180,1100,240,1081,300,1082,360,1106,420,1097,480,1083,540,1091,600,1098,660,1081,720,1096,780,1086,840,1081,900,1082,960,1093,1020,1093,1080,1082,1140,1087,1200,1082,1260,1097,1320,1093,1380,1081,1440,1106,1500,1098,1500,1125 --erase 1505,330,1476,340,1479,395,1476,450,1476,505,1478,560,1480,615,1468,670,1467,725,1478,780,1477,835,1482,890,1481,945,1467,1000,1465,1055,1476,1110,1505,1125"
 J[bricklayer]="src/people/p2_bricklayer_at_work_1923.jpg --crop 80,80,2180,2840 $BIREF --max 1800 --rim 7 --erase 752,976,718,1012,716,1200,736,1260,742,1400,732,1520,726,1650,722,1712,752,1712,756,1520,792,1432,794,1200,798,972"   # erase: his cast shadow on the wall
 J[stoker]="src/people/p3_powerhouse_mechanic_steam_pump_hine_1920.jpg --crop 200,0,1955,2850 $OBJ --max 2200 --hole 1265,640,150,150 --fill-holes .05"
 J[stenger]="src/web/mcb_Stenger.jpg --crop 0,135,1560,860 --sky .82 --max 1600"

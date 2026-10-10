@@ -118,7 +118,9 @@ def main():
         alpha = alpha * (np.asarray(m).astype(np.float32) / 255)
         # what an erase leaves behind (slivers, thin strips) goes too: opening + keep components >= 0.5 %
         from scipy import ndimage
-        solid = ndimage.binary_opening(alpha > .5, iterations=4)
+        # only near the erased polygons, so thin parts elsewhere (ropes, rigging) survive
+        near = ndimage.binary_dilation(np.asarray(m) < 128, iterations=40)
+        solid = np.where(near, ndimage.binary_opening(alpha > .5, iterations=4), alpha > .5)
         lab, n = ndimage.label(solid)
         if n:
             sizes = ndimage.sum(np.ones_like(alpha), lab, range(1, n + 1))

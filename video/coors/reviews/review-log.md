@@ -93,3 +93,10 @@ A second reviewer on the same cut found two flaws the first missed:
 1. Near beer: head flat-topped and forearm sliced by the crop borders -> crop 1260,140,600,660 with `--upscale`.
 2. Older Adolph: u2net_human_seg dropped his dark left shoulder -> BiRefNet. His sides now run to the edges of the 500 px source portrait (the only one found), which is kept as the print's edge.
 Nice-to-haves not applied: more drift/rotation in the stack's quiet stretches, title lettering 4-10 levels brighter than the ceiling.
+
+## Round 16 (golden-r16, two independent reviewers): A FAIL (1 must-fix), B PASS
+From now on each round gets two fresh reviewers in parallel and passes only if both do (round 15 showed one reviewer misses real flaws).
+1. Near beer (A): the sleeve was still cut flat by the crop's left edge; it vanishes behind the seated man's hat, so a wider crop doesn't help -> `--erase` the dark sleeve stub so the arm ends at the white cuff.
+Nice-to-haves applied: Stenger fromDist 0.7 -> 1.05 (no in-frame first frame); malted milk card `--rim 6`; steerage bottom and right crop edges given a ragged scissor line with `--erase`; beat sheet corrected (one man with a stein, Paris 1933).
+prep.py: the cleanup after `--erase` (an opening) now runs only near the erased polygons; run over the whole mask it had removed the steerage plate's thin rope. Re-cut every `--erase` plate: only steerage changed.
+Not applied: sewer arm stubs (dark on dark; erasing them would shorten the arms further); neck edge light 4-6 px (earlier rounds measured 8-17 px as matching the reference); litany retiming.
