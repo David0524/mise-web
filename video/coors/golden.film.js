@@ -29,22 +29,22 @@
   // h and y keep every settled plate's bottom edge above the captions (pos.y + y + h/2 <= 0.36)
   const P = [
     ['adolph_young', 0.86, 0.02, -0.11, 'bottom', null],
-    ['brewers', 0.82, 0.12, -0.09, 'right', [-0.44, -0.22], { enter: 0.8 }],
-    ['steerage', 0.82, -0.04, -0.09, 'left', [-0.42, -0.22], { k: 1.8, fromScale: 1.1, fromDist: 2.2, entryEase: 'inOut', enter: 0.7 }],
+    ['brewers', 0.82, 0.04, -0.09, 'right', [-0.44, -0.22], { enter: 0.95 }],
+    ['steerage', 0.82, -0.04, -0.09, 'left', [-0.42, -0.22], { k: 1.8, fromScale: 1.1, fromDist: 2.2, entryEase: 'inOut', enter: 0.85 }],
     ['bricklayer', 0.9, 0.1, -0.13, 'right', [-0.26, -0.16]],
     // portal: the porthole (PNG px 1009,527 r116) sits at screen (0, -0.36); the bricklayer scene lives inside it
     ['stoker', 1.35, 0, 0, 'camera', null, { hole: { piece: 0, px: [1009, 527, 116, 116] }, pos: [-0.132, -0.14], k: 4.2, fromScale: 2.2, enter: 1.6, nearBlur: 14 }],
-    ['stenger', 0.62, -0.02, -0.04, 'bottom-left', [-0.34, -0.28], { fromScale: 1.15, fromDist: 0.7, enter: 0.85 }],
-    ['kegs', 0.8, 0.12, -0.08, 'right', [-0.26, -0.18], { fromScale: 1.25, fromDist: 0.7, enter: 0.8 }],
+    ['stenger', 0.62, -0.02, -0.04, 'bottom-left', [-0.34, -0.28], { fromScale: 1.15, fromDist: 0.7, enter: 1.0 }],
+    ['kegs', 0.8, 0.12, -0.08, 'right', [-0.26, -0.18], { fromScale: 1.25, fromDist: 0.7, enter: 0.95 }],
     ['tannery', 0.7, -0.04, -0.03, 'left', [0.26, -0.2], { keep: 1.9 }],
     ['adolph_old', 0.82, 0.12, -0.09, 'bottom-right', [-0.26, -0.17]],
     ['sewer', 0.8, -0.06, -0.08, 'left', [0.4, -0.22], { fromScale: 1.25, fromDist: 0.75, enter: 0.8 }],
-    ['maltedmilk', 0.62, 0.1, -0.03, 'right', [-0.26, -0.15], { enter: 0.45 }],
+    ['maltedmilk', 0.62, 0.1, -0.03, 'right', [-0.26, -0.15], { enter: 0.6 }],
     ['nearbeer', 0.72, -0.06, -0.1, 'left', [0.3, -0.2], { enter: 0.45 }],
     ['porcelain', 0.75, 0.08, -0.05, 'right', [-0.3, -0.2], { enter: 0.45 }],
     ['waiting', 0.8, -0.02, -0.04, 'bottom', [0.3, -0.22], { enter: 0.45 }],
     ['hats', 0.8, 0.02, -0.1, 'right', [0.44, -0.3], { fromDist: 2.2, fromScale: 1.1, entryEase: 'inOut', enter: 0.65 }],
-    ['beerad', 0.82, 0, -0.07, 'left', [0.4, -0.26], { enter: 0.65, fromDist: 0.75 }],
+    ['beerad', 0.82, 0, -0.07, 'left', [0.4, -0.26], { enter: 0.8, fromDist: 0.75 }],
   ];
   const plates = P.map(([img, h, x, y, from, bg, extra], j) => Object.assign({
     at: j === 0 ? T_STACK : fr(start(3 + j) - 0.12),

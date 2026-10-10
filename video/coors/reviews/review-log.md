@@ -66,3 +66,7 @@ Nice-to-haves applied: brewers crop keeps the back two rows only (the front row 
 1. "Beer is back.": the cut-out dropped the glass of beer (transparent glass, every mask model loses it) and cut her hand at the crop edge -> crop widened (330,240,694,610), u2net, and a new prep.py `--add` polygon forces the glass into the mask.
 Nice-to-haves applied: hats and steerage fromDist 2.2 (softer first frames); hero curtains end at 0.24 with the floor gradient from 0.23 (no seam); second curtain layer amt 1.5.
 Left as is: the waiting woman's "chair-back" is her bundle tied in a shawl (part of the photo's story); the rhythm of lines 10-13 would need the VO retimed.
+
+## Round 10 (golden-r10): OVERALL FAIL (1 must-fix); everything else PASS (curtain inside the reference's foldm range)
+1. "Beer is back.": the glass is back but her head was sliced above the eyes (the crop started below her hair) -> crop 330,200,694,650 (u2net keeps the hair once it is inside the crop), glass `--add` moved down 40 px, the wicker chair arm at the bottom left cut with `--erase`.
+Nice-to-haves applied: entries 0.15 s longer on brewers, steerage, Stenger, kegs, malted milk and the beer ad (entry diff peaks 37-41 vs the reference's 23-35); brewers x 0.12 -> 0.04 (clears the right edge); young Adolph rim 7 -> 5; waiting `--gamma 1.25`.

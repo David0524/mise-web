@@ -11,7 +11,7 @@ OBJ="--model isnet-general-use"
 BIREF="--model birefnet-general"   # slower, much better on busy period photos (crowds, workers in machinery)
 declare -A J
 # name                    source                                                         options
-J[adolph_young]="src/hist/hc-youngadolph.jpg --crop 900,0,7300,7369 $HUMAN --max 1800 --rim 7"
+J[adolph_young]="src/hist/hc-youngadolph.jpg --crop 900,0,7300,7369 $HUMAN --max 1800 --rim 5"
 J[brewers]="src/people/p4_alpen_brau_brewery_workers.jpg --crop 580,400,560,360 $BIREF --max 1500 --rim 4"   # top rows only: the front row returns as the bottled-beer plate
 J[steerage]="src/people/p1_steerage_passengers_ship_bow_1915.jpg --crop 150,620,1500,1120 $BIREF --max 1800 --rim 4"
 J[bricklayer]="src/people/p2_bricklayer_at_work_1923.jpg --crop 80,80,2180,2840 $BIREF --max 1800 --rim 7 --erase 670,1430,724,1430,720,1770,670,1770 --erase 674,1000,792,975,782,1432,674,1432"   # erase: his cast shadow on the wall
@@ -24,10 +24,10 @@ J[sewer]="src/people/p5_stern_officials_liquor_into_sewer_1921.jpg --crop 250,42
 J[maltedmilk]="src/web/mcb_Coors-also-made-malted-milk-during-Prohibition.jpg --card --max 1600"
 J[nearbeer]="src/people/p6_men_celebrating_repeal_drinking_paris_1933.jpg --crop 1340,230,520,560 $BIREF --max 1500"
 J[porcelain]="src/web/mcb_Porcelain-Plant-Image-1920s.jpg --sky .8 --max 1800"
-J[waiting]="src/people/p5_stern_immigrant_face_hine_1907.jpg --crop 60,300,900,1049 $BIREF --max 1500 --rim 4"
+J[waiting]="src/people/p5_stern_immigrant_face_hine_1907.jpg --crop 60,300,900,1049 $BIREF --max 1500 --rim 4 --gamma 1.25"
 J[truck1933]="src/people/p7_crowd_at_beer_truck_unloading_cases_night_1933.jpg --crop 60,520,1700,1600 $BIREF --max 1800"
 J[hats]="src/people/p6_crowd_cheering_waving_hats_1923.jpg --crop 250,100,2650,2050 $BIREF --max 1800 --rim 4"
-J[beerad]="src/people/p6_beer_ad_pouring_1933.jpg --crop 330,240,694,610 --model u2net --max 1500 --rim 4 --add 82,221,151,221,149,300,143,353,85,353,83,300 --fill-holes .05"
+J[beerad]="src/people/p6_beer_ad_pouring_1933.jpg --crop 330,200,694,650 --model u2net --max 1500 --rim 4 --add 82,261,151,261,149,340,143,393,85,393,83,340 --erase 70,598,160,604,198,590,216,598,216,660,70,660 --fill-holes .05"
 J[bottle]="src/web/mcb_Bot12-300dpi.jpg $OBJ --max 2400 --no-rim"
 J[bottle_green]="src/web/ww_feature_bottle_1.jpg $OBJ --max 2000 --rim 2"
 names=("$@"); [ ${#names[@]} -eq 0 ] && names=("${!J[@]}")
