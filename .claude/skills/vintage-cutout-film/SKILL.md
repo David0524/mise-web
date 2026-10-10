@@ -23,7 +23,7 @@ the tools make the cut-outs, the voice, the music and the mix; a separate review
 | `engine/cutout.js` | the engine: `CF.film(canvas, SPEC, SCENES)`, plate-stack camera, depth of field, portals, treatment, captions |
 | `engine/fonts/` | Arimo Bold (captions), Fraunces SOFT Black (title, a Cooper-style face), Yellowtail (script) |
 | `examples/film.html` | the page that hosts a spec: copy it next to your spec, fix `ENGINE`, open `?spec=name.film.js` |
-| `tools/prep.py` | photo -> graded sepia cut-out PNG with the paper rim (rembg), skyline cuts (`--sky`), island removal, `--fill-holes`, `--erase` polygons, portal hole, `--no-rim` for products |
+| `tools/prep.py` | photo -> graded sepia cut-out PNG with the paper rim (rembg), skyline cuts (`--sky`), island removal, `--fill-holes`, `--erase` / `--add` polygons, portal hole, `--no-rim` for products |
 | `tools/vo.py` | script.json -> whispered VO (Piper TTS + LPC whisper) + `lines.json` caption timings |
 | `tools/asr.py` | transcribes the VO back, line by line, to catch unintelligible lines |
 | `tools/score.py` | cue.json -> original noir-lounge bed (FM piano, upright bass, brushes), cut dead at the coda |
@@ -109,7 +109,8 @@ decision the brief can't answer (a different closing line, a photo they might ob
   skyline. Only printed matter (an ad, a label) may keep its printed border.
 - **Which mask model:** `u2net_human_seg` for one or two clear figures; `birefnet-general` for crowds, groups,
   workers in machinery and busy period photos (slow, about 1.5 min and ~4 GB each: run them one at a time, three
-  in parallel ran out of memory); `u2net` when BiRefNet drops a held object (a glass, a bottle);
+  in parallel ran out of memory); `u2net` when BiRefNet drops a held object (a bottle); a clear glass is lost by
+  every model, so force it back with an `--add` polygon (output-PNG pixels, like `--erase`);
   `isnet-general-use` for products. Check every cut on the void before using it.
 - **Source size:** a source under ~1000 px upscaled to 0.8 H looks soft and its rim balloons. Look for ≥1500 px;
   if you must use a small one, `--rim 2`. Library of Congress items often have a larger `v.jpg` beside the
