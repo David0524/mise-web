@@ -23,7 +23,7 @@ the tools make the cut-outs, the voice, the music and the mix; a separate review
 | `engine/cutout.js` | the engine: `CF.film(canvas, SPEC, SCENES)`, plate-stack camera, depth of field, portals, treatment, captions |
 | `engine/fonts/` | Arimo Bold (captions), Fraunces SOFT Black (title, a Cooper-style face), Yellowtail (script) |
 | `examples/film.html` | the page that hosts a spec: copy it next to your spec, fix `ENGINE`, open `?spec=name.film.js` |
-| `tools/prep.py` | photo -> graded sepia cut-out PNG with the paper rim (rembg), optional portal hole |
+| `tools/prep.py` | photo -> graded sepia cut-out PNG with the paper rim (rembg), skyline cuts (`--sky`), island removal, portal hole, `--no-rim` for products |
 | `tools/vo.py` | script.json -> whispered VO (Piper TTS + LPC whisper) + `lines.json` caption timings |
 | `tools/asr.py` | transcribes the VO back, line by line, to catch unintelligible lines |
 | `tools/score.py` | cue.json -> original noir-lounge bed (FM piano, upright bass, brushes), cut dead at the coda |
@@ -36,9 +36,9 @@ the tools make the cut-outs, the voice, the music and the mix; a separate review
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install "rembg[cpu]" piper-tts faster-whisper scipy pillow numpy
-# a Piper voice (deep male works best whispered):
-curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx
-curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx.json
+# a Piper voice (a male voice whispers best; test with asr.py before choosing):
+curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx
+curl -LO https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx.json
 ```
 
 Rendering needs Chromium (Playwright's, or `CHROME=/path`) and ffmpeg. `rembg` downloads its model on first use.
@@ -64,18 +64,22 @@ Use more reviewers in parallel when a round is big (one for the litany, one for 
    scratchpad (`tools/contact.sh ref.mp4 ref-sheet.jpg 2`), never into the project. They go to every reviewer.
 3. **Script.** Write the four acts per `references/writing.md` into `script.json`, plus a beat sheet with the
    plate for every line. Send it to the **fact-checker**. Fix every WRONG and UNSOURCED line.
-4. **Voice.** `python3 tools/vo.py script.json out/vo.wav out/lines.json --voice en_US-ryan-high.onnx`, then
+4. **Voice.** `python3 tools/vo.py script.json out/vo.wav out/lines.json --voice en_GB-alan-medium.onnx --voiced 0.3 --speed 0.88`, then
    `python3 tools/asr.py out/vo.wav out/lines.json`. Fix flagged lines (`say`, `speed`, `voiced`) and redo.
    The line timings now fix the picture's clock.
-5. **Cut-outs.** For each plate, run `tools/prep.py` on the chosen photo (crop first; `--model
-   u2net_human_seg` for people, `isnet-general-use` for objects; `--hole` for portals; `--keep-bg` for
-   backdrops). Look at each cut-out on the void before using it; redo bad masks with a manual `--mask`.
+5. **Cut-outs.** Keep the recipes in a `cut.sh` (one line per plate: source, crop, model, options) so every cut can be
+   redone. Crop first; pick the model per the gotchas below; `--sky` for landscapes; `--hole` for portals;
+   `--no-rim` for the product. Composite every cut-out on the void and look at it before using it; redo bad masks
+   with another model, a tighter crop or a painted `--mask`.
 6. **Spec.** Write `<name>.film.js`: segments, captions from `lines.json`, one plate per litany line placed on
    its line's start, the product scenes in `SCENES`. Run `node tools/check.mjs <name>.film.js` until clean.
 7. **Music and mix.** `tools/score.py cue.json out/music.wav` with sections on the act boundaries and `stop` on
    the coda cut, then `tools/mix.sh out/vo.wav out/music.wav out/mix.wav`.
 8. **Render and review loop** (below).
-9. **Deliver** the MP4, the contact sheet, the beat sheet and `SOURCES.md`.
+9. **Deliver** the MP4 (and its `--web` copy), the contact sheet, the beat sheet, `SOURCES.md` and the review log.
+
+A complete worked example lives in the repo that introduced this skill: `video/coors/` (script, facts, cut.sh, spec,
+cue, review log).
 
 ## Render and review loop
 
@@ -98,15 +102,38 @@ decision the brief can't answer (a different closing line, a photo they might ob
 ## Gotchas
 
 - **Fonts:** the page waits for all three faces before frame 0; if you add a face, add it to that wait.
-- **Rim width** scales with the cut-out's size; a figure shown small gets a relatively thick rim. Prep at a
-  size close to how big it will appear (`--max`), or pass `--rim`.
-- **rembg** misses thin props (canes, glasses) and keeps background chunks between arms. Check every cut-out
-  on the void; fix with a crop or a painted `--mask`.
-- **Faces under captions:** keep faces above y = 0.25 H in settled plates.
-- **Portals** need `k × hole radius ≥ 0.85` so the hole starts beyond the frame edge, and `bg = pos + hole
-  centre`. `check.mjs` warns about both.
+- **Cut-outs, not prints.** Every litany plate is a scissor-cut figure. `--card` (a whole rectangular photo)
+  turns the litany into a slideshow; reviewers fail it. Landscapes and buildings: `--sky .8` cuts along the
+  skyline. Only printed matter (an ad, a label) may keep its printed border.
+- **Which mask model:** `u2net_human_seg` for one or two clear figures; `birefnet-general` for crowds, groups,
+  workers in machinery and busy period photos (slow, about 1.5 min and ~4 GB each: run them one at a time, three
+  in parallel ran out of memory); `u2net` when BiRefNet drops a held object (a glass, a bottle);
+  `isnet-general-use` for products. Check every cut on the void before using it.
+- **Source size:** a source under ~1000 px upscaled to 0.8 H looks soft and its rim balloons. Look for ≥1500 px;
+  if you must use a small one, `--rim 2`. Library of Congress items often have a larger `v.jpg` beside the
+  `r.jpg`; Wikimedia rate-limits originals (HTTP 429): fetch a standard thumbnail width (1920) from
+  upload.wikimedia.org instead.
+- **Rim width** scales with the cut-out's size (default 0.5 % of the long side, about 4–5 px on screen at 0.8 H).
+- **Fill the frame and overlap.** Settled plates at h 0.8–1.0; `bg` about [±0.22…0.3, -0.16…-0.2] so the old plate
+  sits behind a shoulder. Watch for an old plate hidden completely behind a wide new one: park it in the empty
+  void instead (e.g. [-0.45, -0.38]).
+- **Faces and captions:** keep every settled plate's bottom edge at or above +0.36 H (`pos.y + y + h/2`).
+- **Entries:** `fromScale` about 1.4 and `fromDist` 0.95 with `ease: 'inOut'`. Bigger starts (2.0) fill the frame
+  with a blur on the first entry frame, which reads as a hard cut; `lurch` shrinks the old plate before the new
+  one is on screen.
+- **Portals:** the hole must be big enough to read the old scene through it once settled (radius ≥ 0.08 H): scale
+  the piece up rather than accept a tiny hole and a huge auto `k`. Give `hole` in the PNG's pixels
+  (`{piece, px}` from prep.py's output) and let the engine derive `k` and `bg`. Check the first entry frames: the
+  old scene must fill the frame through the hole.
 - **Entries overlapping:** a plate's `enter` must end before the next plate's `at`; at the fastest point of the
-  litany use `enter: 0.4`.
+  litany use `enter: 0.4–0.45`.
+- **The whisper:** voices differ a lot once whispered; test 2–3 Piper voices with `asr.py` before recording
+  (en_GB-alan-medium was clearest here). Rephrase rather than fight a word the model can't say ("Stoker. Laborer."
+  -> "Shoveled coal. Dug ditches."). ASR spells some correct pronunciations differently ("Kors", "brood",
+  homophones): judge the key words by ear, not the score.
+- **The title builds on its words:** put the product-name VO line on the hero shot (`at` in script.json), and match
+  lines exactly (`l[2] === 'Name.'`), never with `startsWith`, which can hit an earlier line.
+- **Encodes:** grain makes the crf 17 master ~2 MB/s; share the `--web` copy.
 - **Determinism:** never use `Math.random` or the clock in a scene; use `g.rng(seed)` and `s.t`.
 - **Render time:** at 1440×1080 about 0.15–0.4 s a frame per worker; a 48 s film is about 1–3 min on 4 cores.
 - **Historical subjects:** use real photographs of real people where they exist; never generate a real

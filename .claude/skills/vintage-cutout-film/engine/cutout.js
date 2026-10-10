@@ -191,7 +191,7 @@
     // ----- the plate stack (the litany) -----
     function buildStack(seg) {
       const P = seg.plates.map((p, j) => {
-        const q = Object.assign({ enter: 0.5, pos: [0, 0.04], from: 'right', fromScale: 1.25, drift: seg.drift == null ? 0.028 : seg.drift }, p);
+        const q = Object.assign({ enter: 0.5, pos: [0, 0.04], from: 'right', fromScale: 1.4, ease: 'inOut', drift: seg.drift == null ? 0.028 : seg.drift }, p);
         // hole given in a piece's PNG pixels ({piece, px: [cx, cy, rx, ry]}, as printed by prep.py) -> plate units
         if (q.hole && !Array.isArray(q.hole)) {
           const pc = q.pieces[q.hole.piece || 0], img = imgs[pc.img], s = kf(pc.h || 0.8, 0) / img.height, [cx, cy, rx, ry] = q.hole.px;

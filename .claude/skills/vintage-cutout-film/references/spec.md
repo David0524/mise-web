@@ -57,10 +57,10 @@ Plate fields:
 | `pos` | [0, 0.04] | where this plate's centre sits on screen once settled |
 | `from` | 'right' | entry side: right, left, bottom, top, bottom-right, bottom-left, camera, or a vector [dx, dy] |
 | `fromDist` | 0.95 | how far off its settled place it starts, in H |
-| `fromScale` | 1.25 | extra scale at the start of the entry (on top of `k`) |
+| `fromScale` | 1.4 | extra scale at the start of the entry (on top of `k`); above ~1.6 the first entry frame fills the frame with blur and reads as a cut |
 | `enter` | 0.5 | entry length in seconds (0.4–0.6: 10–15 frames at 25 fps) |
-| `ease` / `entryEase` | lurch / out | camera ease and the plate's own slide ease |
-| `hole` | — | `[x, y, rx, ry, rotDeg]` in plate coordinates: a portal. Every older plate is drawn only inside it. Set `bg` to the hole's centre so the old scene sits in it |
+| `ease` / `entryEase` | inOut / out | camera ease and the plate's own slide ease (`lurch` shrinks the old plate before the new one is on screen) |
+| `hole` | — | a portal: `{piece: 0, px: [cx, cy, rx, ry]}` in that piece's PNG pixels (prep.py prints them), or `[x, y, rx, ry, rotDeg]` in plate units. Every older plate is drawn only inside it. `bg`, `k`, `from: 'camera'` and `fromScale: 1` are derived unless given. Keep the settled radius ≥ 0.08 H |
 | `keep` | 2.9 | how many steps back the plate stays visible before it fades out |
 | `nearBlur` | stack's | blur in px (at 1080) at one step in front of focus |
 | `draw` | — | name of a SCENES function called after the pieces (for a hand-drawn extra) |
