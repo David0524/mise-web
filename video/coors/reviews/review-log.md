@@ -87,3 +87,9 @@ Lesson for the skill: trace `--erase` polygons along the figure; a rectangle tha
 ## Round 14 (golden-r14): OVERALL PASS (no must-fix)
 Optional fixes noted, not applied (to keep the passing cut under a second independent review): ground-shadow lumps on the sewer plate, straight bottom edges on the steerage and couple plates, Stenger fromDist 0.95, warmer neck edge light.
 Round 15 = a fresh reviewer on the same render, as the second consecutive check.
+
+## Round 15 (golden-r15 = the round-14 render, fresh reviewer): OVERALL FAIL (2 must-fix)
+A second reviewer on the same cut found two flaws the first missed:
+1. Near beer: head flat-topped and forearm sliced by the crop borders -> crop 1260,140,600,660 with `--upscale`.
+2. Older Adolph: u2net_human_seg dropped his dark left shoulder -> BiRefNet. His sides now run to the edges of the 500 px source portrait (the only one found), which is kept as the print's edge.
+Nice-to-haves not applied: more drift/rotation in the stack's quiet stretches, title lettering 4-10 levels brighter than the ceiling.
