@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Cutout Film</title>
+<!-- Copy next to your spec and fix ENGINE to point at the skill's engine/ folder. Open with ?spec=name.film.js -->
+<script>window.ENGINE = '../engine/';</script>
+<script>document.write(`<style>
+  @font-face { font-family: Caption; src: url(${ENGINE}fonts/Arimo-Bold.ttf); }
+  @font-face { font-family: TitleSoft; src: url(${ENGINE}fonts/FrauncesSoft-Black.ttf); }
+  @font-face { font-family: Script; src: url(${ENGINE}fonts/Yellowtail-Regular.ttf); }
+</style><script src="${ENGINE}cutout.js"><\/script>`);</script>
+<style>
+  html, body { margin: 0; background: #0b0b0b; color: #ccc; font: 13px system-ui; }
+  canvas { display: block; max-width: 100vw; max-height: 94vh; margin: auto; }
+  #msg { padding: 6px 12px; white-space: pre-wrap; }
+</style></head>
+<body><canvas></canvas><div id="msg"></div>
+<script>document.write(`<script src="${new URLSearchParams(location.search).get('spec') || 'film.film.js'}"><\/script>`);</script>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search);
+  // every face must be loaded before frame 0, or the first frames draw in a fallback
+  await Promise.all(['Caption', 'TitleSoft', 'Script'].map((f) => document.fonts.load(`40px ${f}`)));
+  const film = await CF.film(document.querySelector('canvas'), window.SPEC, window.SCENES || {});
+  window.film = film; window.ready = true;
+  if (!q.has('render')) {
+    const a = window.SPEC.audio && new Audio(window.SPEC.audio);
+    document.querySelector('canvas').onclick = () => { film.stop(); film.play(); if (a) { a.currentTime = 0; a.play(); } };
+    film.renderFrame(q.has('t') ? Math.round(+q.get('t') * film.fps) : 0);
+    document.getElementById('msg').textContent = 'click the frame to play';
+  }
+})().catch((e) => { window.failed = e.message; document.getElementById('msg').textContent = e.message; console.error(e.message); });
+</script>
+</body></html>

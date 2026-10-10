@@ -1,0 +1,34 @@
+{
+  "title": "golden",
+  "lead": 0.9,
+  "lines": [
+    {"act": 1, "text": "You are the snowmelt\nof the Rockies.", "pause": 0.75},
+    {"act": 1, "text": "You are the master\nof the mash.", "pause": 0.75},
+    {"act": 1, "text": "You put the gold\ninto Golden.", "pause": 0.9},
+
+    {"act": 2, "text": "Twenty-one. An orphan.", "pause": 0.45},
+    {"act": 2, "text": "No ticket to America.", "pause": 0.4},
+    {"act": 2, "text": "So he stowed away.", "pause": 0.4},
+    {"act": 2, "text": "Baltimore. Bricklayer.", "pause": 0.35},
+    {"act": 2, "text": "Stonecutter. Fireman.", "pause": 0.35},
+    {"act": 2, "text": "A brewery in Illinois.", "pause": 0.3},
+    {"act": 2, "text": "Denver. Bottling\nother men's beer.", "pause": 0.3},
+    {"act": 2, "text": "1873.", "say": "Eighteen seventy-three.", "pause": 0.25},
+    {"act": 2, "text": "An old tannery in Golden.", "pause": 0.25},
+    {"act": 2, "text": "A partner with money.", "pause": 0.22},
+    {"act": 2, "text": "Cold water\nfrom Clear Creek.", "pause": 0.22},
+    {"act": 2, "text": "He buys the partner out.", "pause": 0.2},
+    {"act": 2, "text": "Then Colorado goes dry.", "pause": 0.2},
+    {"act": 2, "text": "Malted milk.", "pause": 0.15},
+    {"act": 2, "text": "Near beer.", "pause": 0.15},
+    {"act": 2, "text": "Porcelain.", "pause": 0.15},
+    {"act": 2, "text": "Seventeen years.", "pause": 0.2},
+    {"act": 2, "text": "Repeal. Pour one.", "pause": 1.6},
+
+    {"act": 3, "text": "The Golden Brewery.", "pause": 1.0},
+    {"act": 3, "text": "Since 1873.", "say": "Since eighteen seventy-three.", "pause": 0.9},
+    {"act": 3, "text": "By Adolph Coors.", "say": "By Adolph Coors.", "pause": 2.2},
+
+    {"act": 4, "text": "Please drink responsibly.", "pause": 0.8}
+  ]
+}
