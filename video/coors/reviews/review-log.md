@@ -83,3 +83,7 @@ Not applied: stoker `--rim 4` (the portal hole is given in padded PNG pixels, wh
 ## Round 13 (golden-r13): OVERALL FAIL (1 must-fix); everything else PASS
 1. Bricklayer sliced lengthwise: the two rectangular shadow `--erase` polygons from round 7 had a straight left edge about 30-60 px inside his jacket and trouser front (missed by rounds 8-12) -> one polygon whose left edge traces the cloth, removing only the wall shadow.
 Lesson for the skill: trace `--erase` polygons along the figure; a rectangle that clears a shadow also slices the body beside it.
+
+## Round 14 (golden-r14): OVERALL PASS (no must-fix)
+Optional fixes noted, not applied (to keep the passing cut under a second independent review): ground-shadow lumps on the sewer plate, straight bottom edges on the steerage and couple plates, Stenger fromDist 0.95, warmer neck edge light.
+Round 15 = a fresh reviewer on the same render, as the second consecutive check.
