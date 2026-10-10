@@ -42,3 +42,8 @@ Also: softer entries (enter 0.65-0.7) on the six punchiest plates; receding stee
 2. Hero floor and reflection invisible, curtain hard-stopped at the floor line -> curtain runs to 0.45 H and fades into the floor; floor glows alpha 0.25/0.35, ry 0.12; reflection alpha 0.9; curtain amt 5.
 3. Neck macro: no edge light. Cause: the sweeps were placed on the body's edges, off the narrower neck. Neck edges measured from the PNG alpha (0.435-0.56 of its width -> sweep p 0.468-0.53); two thin bands plus a core line.
 Nice-to-haves applied: adolph_young rim 7; brewers crop drops a sliver of another person; waiting crop runs off the frame bottom; calmer entries (fromDist 0.7-0.75 on Stenger, kegs, sewer, beer ad; steerage k 1.8, fromDist 1.2; hats fromDist 1.2); stoker lifted (pos y -0.08).
+
+## Round 6 (golden-r6): OVERALL FAIL (2 must-fix)
+1. Hero reflection drawn 0.18 H too low (wrong sign: mirroring about the floor line needs dy = +(1 - base/h)·bh), no contact shadow -> fixed sign, alpha 0.42, contact pool; curtain to 0.55 H, x1 0.45, amt 6.5; bottle 0.74; bevel 0.009.
+2. Young Adolph receded exactly behind a worker's head (double head) -> brewers bg [-0.44, -0.22].
+Nice-to-haves applied: steerage bg y -0.22; stoker h 1.35, pos y -0.14; waiting h 0.8, y -0.04; hats bg [0.44, -0.3]; beer-ad inner hole filled (prep.py --fill-holes .05); thinner neck edge lines; entries fromScale 1.25 by default.

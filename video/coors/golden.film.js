@@ -29,11 +29,11 @@
   // h and y keep every settled plate's bottom edge above the captions (pos.y + y + h/2 <= 0.36)
   const P = [
     ['adolph_young', 0.86, 0.02, -0.11, 'bottom', null],
-    ['brewers', 0.82, 0.12, -0.09, 'right', [-0.24, -0.17], { enter: 0.65 }],
-    ['steerage', 0.82, -0.04, -0.09, 'left', [-0.42, -0.3], { k: 1.8, fromScale: 1.2, fromDist: 1.2, enter: 0.7 }],
+    ['brewers', 0.82, 0.12, -0.09, 'right', [-0.44, -0.22], { enter: 0.65 }],
+    ['steerage', 0.82, -0.04, -0.09, 'left', [-0.42, -0.22], { k: 1.8, fromScale: 1.2, fromDist: 1.2, enter: 0.7 }],
     ['bricklayer', 0.9, 0.1, -0.13, 'right', [-0.26, -0.16]],
     // portal: the porthole (PNG px 1009,527 r116) sits at screen (0, -0.36); the bricklayer scene lives inside it
-    ['stoker', 1.6, 0, 0, 'camera', null, { hole: { piece: 0, px: [1009, 527, 116, 116] }, pos: [-0.157, -0.08], k: 4.2, fromScale: 2.2, enter: 1.6, nearBlur: 14 }],
+    ['stoker', 1.35, 0, 0, 'camera', null, { hole: { piece: 0, px: [1009, 527, 116, 116] }, pos: [-0.132, -0.14], k: 4.2, fromScale: 2.2, enter: 1.6, nearBlur: 14 }],
     ['stenger', 0.62, -0.02, -0.04, 'bottom-left', [-0.34, -0.28], { fromScale: 1.15, fromDist: 0.7, enter: 0.7 }],
     ['kegs', 0.8, 0.12, -0.08, 'right', [-0.26, -0.18], { fromScale: 1.25, fromDist: 0.7, enter: 0.65 }],
     ['tannery', 0.7, -0.04, -0.03, 'left', [0.26, -0.2], { keep: 1.9 }],
@@ -42,13 +42,13 @@
     ['maltedmilk', 0.62, 0.1, -0.03, 'right', [-0.26, -0.15], { enter: 0.45 }],
     ['nearbeer', 0.72, -0.06, -0.1, 'left', [0.3, -0.2], { enter: 0.45 }],
     ['porcelain', 0.75, 0.08, -0.05, 'right', [-0.3, -0.2], { enter: 0.45 }],
-    ['waiting', 0.95, -0.02, 0.02, 'bottom', [0.3, -0.22], { enter: 0.45 }],
-    ['hats', 0.8, 0.02, -0.1, 'right', [-0.3, -0.2], { fromDist: 1.2 }],
+    ['waiting', 0.8, -0.02, -0.04, 'bottom', [0.3, -0.22], { enter: 0.45 }],
+    ['hats', 0.8, 0.02, -0.1, 'right', [0.44, -0.3], { fromDist: 1.2 }],
     ['beerad', 0.82, 0, -0.07, 'left', [0.4, -0.26], { enter: 0.65, fromDist: 0.75 }],
   ];
   const plates = P.map(([img, h, x, y, from, bg, extra], j) => Object.assign({
     at: j === 0 ? T_STACK : fr(start(3 + j) - 0.12),
-    from, fromScale: 1.4, fromDist: 0.95, ease: 'inOut', pieces: [{ img, x, y, h, rot: [[0, (j % 2 ? 1 : -1) * 0.8], [3, (j % 2 ? -1 : 1) * 0.6]] }],
+    from, fromScale: 1.25, fromDist: 0.95, ease: 'inOut', pieces: [{ img, x, y, h, rot: [[0, (j % 2 ? 1 : -1) * 0.8], [3, (j % 2 ? -1 : 1) * 0.6]] }],
   }, bg ? { bg } : {}, extra || {}));
 
   const assets = {};
@@ -81,8 +81,8 @@
       g.image('bottle', x, cy, h, { bright: 0.35, contrast: 1.6 });
       // a sliver of hard light: a narrow band clipped to the glass, low intensity
       // hard light running down both edges of the neck (the glass spans about p 0.44-0.56 of the sweep range)
-      g.sweep('bottle', x, cy, h, g.lerp(0.469, 0.473, s.p), { amt: 1, width: 0.004, slant: 0 });
-      g.sweep('bottle', x, cy, h, g.lerp(0.529, 0.525, g.clamp(s.p * 1.2 - 0.1)), { amt: 1, width: 0.004, slant: 0 });
+      g.sweep('bottle', x, cy, h, g.lerp(0.469, 0.473, s.p), { amt: 1, width: 0.0025, slant: 0 });
+      g.sweep('bottle', x, cy, h, g.lerp(0.529, 0.525, g.clamp(s.p * 1.2 - 0.1)), { amt: 1, width: 0.0025, slant: 0 });
       g.sweep('bottle', x, cy, h, g.lerp(0.47, 0.472, s.p), { amt: 1, width: 0.0015, slant: 0 });
       g.pool(x, cy - h * 0.1, 0.9, 1.0, 'rgba(18,15,14,1)', 0.0);
       g.pool(x + 0.12, -0.35, 0.09, 0.7, 'rgba(255,226,196,1)', 0.05, 0.08, 0.95);
@@ -117,7 +117,7 @@
     // 4. reveal: label close-up in the curtain light
     revealLabel(g, s) {
       g.background('#161312', 0);
-      g.curtain(s.t, { x0: -0.3, x1: 0.3, top: -0.6, bottom: 0.6, amt: 3.2, folds: 5, light: [242, 210, 176] });
+      g.curtain(s.t, { x0: -0.3, x1: 0.3, top: -0.6, bottom: 0.6, amt: 6.5, folds: 5, light: [242, 210, 176] });
       g.pool(0, -0.15, 0.6, 0.7, 'rgba(242,200,170,1)', 0.3);
       const h = g.lerp(2.0, 2.12, s.p), cy = 0.02 + h * (0.5 - 1450 / B.h);
       g.image('bottle', 0.0, cy, h, { bright: g.lerp(0.75, 0.95, s.p) });
@@ -126,13 +126,15 @@
     // 5. the hero shot: bottle on a glossy floor, the curtain, the title builds
     revealHero(g, s) {
       g.background('#161312', 0);
-      g.curtain(s.t, { x0: -0.42, x1: 0.55, top: -0.62, bottom: 0.45, amt: 5, folds: 5, light: [242, 210, 176] });
-      const floor = 0.3, bh = 0.66 * (B.h / (B.base - B.top)), bx = -0.34, push = g.lerp(1, 1.035, s.p);
+      g.curtain(s.t, { x0: -0.42, x1: 0.45, top: -0.62, bottom: 0.55, amt: 6.5, folds: 5, light: [242, 210, 176] });
+      const floor = 0.3, bh = 0.74 * (B.h / (B.base - B.top)), bx = -0.34, push = g.lerp(1, 1.035, s.p);
       const c = g.ctx; c.save(); c.translate(g.W / 2, g.H / 2); c.scale(push, push); c.translate(-g.W / 2, -g.H / 2);
       const cy = floor - bh / 2 + (1 - B.base / B.h) * bh;   // base of the glass on the floor
       g.pool(bx, floor + 0.06, 0.6, 0.12, 'rgba(242,210,176,1)', 0.25, 0, 0.8);
       g.pool(bx, floor + 0.04, 0.3, 0.12, 'rgba(255,226,196,1)', 0.35, 0, 0.8);
-      g.reflect('bottle', bx, floor, bh, { alpha: 0.9, blur: 1.5, dy: (B.base / B.h - 1) * bh });
+      // mirrored about the floor line: draw it where the bottle is (centre cy), so its base meets the glass base
+      g.reflect('bottle', bx, floor, bh, { alpha: 0.42, blur: 2, dy: (1 - B.base / B.h) * bh });
+      g.pool(bx, floor, 0.07, 0.012, 'rgba(10,8,7,1)', 0.8);
       g.image('bottle', bx, cy, bh, { bright: 0.92 });
       g.sweep('bottle', bx, cy, bh, 0.62 + 0.04 * Math.sin(s.t * 0.8), { amt: 0.25 });
       c.restore();
@@ -141,7 +143,7 @@
       const w = (k) => g.clamp((s.t - tTitle - k) / 0.08);   // The / Golden / Brewery build on the spoken line
       const reveal = w(0) + w(0.3) + w(0.65) + g.clamp((s.t - tSince) / 0.3);
       g.title([{ text: 'The', size: 0.07, gap: 0.07 }, { text: 'Golden', size: 0.16, gap: 0.15 }, { text: 'Brewery', size: 0.15, gap: 0.14 },
-        { text: 'since 1873', size: 0.055, gap: 0.08 }], 0.27, -0.33, { reveal, bevel: 0.006 });
+        { text: 'since 1873', size: 0.055, gap: 0.08 }], 0.27, -0.33, { reveal, bevel: 0.009 });
       const sp = g.clamp((s.t - tName) / 0.9);
       if (sp > 0) g.script('Adolph Coors', 0.29, 0.25, 0.085, { chars: 12 * sp + 0.5, alpha: g.clamp(sp * 3) });
     },

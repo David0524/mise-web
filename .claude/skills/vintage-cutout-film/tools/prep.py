@@ -68,6 +68,7 @@ def main():
     p.add_argument('--keep-bg', action='store_true'); p.add_argument('--card', action='store_true'); p.add_argument('--hole')
     p.add_argument('--contrast', type=float, default=1.0); p.add_argument('--gamma', type=float, default=1.0)
     p.add_argument('--flip', action='store_true'); p.add_argument('--no-rim', action='store_true')
+    p.add_argument('--fill-holes', type=float, default=0, help='fill enclosed holes smaller than this fraction of the subject (e.g. .03): gaps between arms that would get a stray inner rim')
     p.add_argument('--sky', type=float, help='landscape: cut away bright sky above the skyline (luminance threshold 0..1, e.g. .78)')
     a = p.parse_args()
 
@@ -106,6 +107,14 @@ def main():
             sizes = ndimage.sum(np.ones_like(alpha), lab, range(1, n + 1))
             keep = np.isin(lab, 1 + np.where(sizes >= max(sizes.max() * .005, 50))[0])
             alpha = alpha * ndimage.binary_dilation(keep, iterations=2)
+    if a.fill_holes > 0:
+        from scipy import ndimage
+        solid = alpha > .5; holes = ndimage.binary_fill_holes(solid) & ~solid
+        lab, n = ndimage.label(holes)
+        if n:
+            sizes = ndimage.sum(np.ones_like(alpha), lab, range(1, n + 1))
+            small = np.isin(lab, 1 + np.where(sizes < a.fill_holes * solid.sum())[0])
+            alpha = np.maximum(alpha, small.astype(np.float32))
     pad = 0 if a.keep_bg else a.rim * 3  # a card keeps the whole photo and gets the rim around its edge
     rgb = np.asarray(im).astype(np.float32)
     if pad:
