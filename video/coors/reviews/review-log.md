@@ -61,3 +61,8 @@ Rounds 7 and 8 measured curtain folds with different methods and asked for oppos
 1. Hero curtain -> a soft overlapping drape (amt 1.6, 5 folds) under a light gapped layer (amt 1.1): now 0.156 / 0.237, inside the reference's range.
 2. Curtain ran through the floor -> curtain stops at the floor line (0.3), then a full-width dark glossy floor plane; pools, contact shadow and reflection on top.
 Nice-to-haves applied: brewers crop keeps the back two rows only (the front row is the bottled-beer plate); bricklayer rim 7, old Adolph rim 3; neck edge sweeps 0.006 wide so the light stays on the glass where the neck steps in; neck core line amt 0.85.
+
+## Round 9 (golden-r9): OVERALL FAIL (1 must-fix); everything else PASS
+1. "Beer is back.": the cut-out dropped the glass of beer (transparent glass, every mask model loses it) and cut her hand at the crop edge -> crop widened (330,240,694,610), u2net, and a new prep.py `--add` polygon forces the glass into the mask.
+Nice-to-haves applied: hats and steerage fromDist 2.2 (softer first frames); hero curtains end at 0.24 with the floor gradient from 0.23 (no seam); second curtain layer amt 1.5.
+Left as is: the waiting woman's "chair-back" is her bundle tied in a shawl (part of the photo's story); the rhythm of lines 10-13 would need the VO retimed.

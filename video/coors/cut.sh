@@ -26,8 +26,8 @@ J[nearbeer]="src/people/p6_men_celebrating_repeal_drinking_paris_1933.jpg --crop
 J[porcelain]="src/web/mcb_Porcelain-Plant-Image-1920s.jpg --sky .8 --max 1800"
 J[waiting]="src/people/p5_stern_immigrant_face_hine_1907.jpg --crop 60,300,900,1049 $BIREF --max 1500 --rim 4"
 J[truck1933]="src/people/p7_crowd_at_beer_truck_unloading_cases_night_1933.jpg --crop 60,520,1700,1600 $BIREF --max 1800"
-J[hats]="src/people/p6_crowd_cheering_waving_hats_1923.jpg --crop 100,100,2800,2050 $BIREF --max 1800 --rim 4"
-J[beerad]="src/people/p6_beer_ad_pouring_1933.jpg --crop 400,250,620,600 --model u2net --max 1500 --rim 4 --fill-holes .05"
+J[hats]="src/people/p6_crowd_cheering_waving_hats_1923.jpg --crop 250,100,2650,2050 $BIREF --max 1800 --rim 4"
+J[beerad]="src/people/p6_beer_ad_pouring_1933.jpg --crop 330,240,694,610 --model u2net --max 1500 --rim 4 --add 82,221,151,221,149,300,143,353,85,353,83,300 --fill-holes .05"
 J[bottle]="src/web/mcb_Bot12-300dpi.jpg $OBJ --max 2400 --no-rim"
 J[bottle_green]="src/web/ww_feature_bottle_1.jpg $OBJ --max 2000 --rim 2"
 names=("$@"); [ ${#names[@]} -eq 0 ] && names=("${!J[@]}")

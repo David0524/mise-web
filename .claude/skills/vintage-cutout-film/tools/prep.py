@@ -69,6 +69,7 @@ def main():
     p.add_argument('--contrast', type=float, default=1.0); p.add_argument('--gamma', type=float, default=1.0)
     p.add_argument('--flip', action='store_true'); p.add_argument('--no-rim', action='store_true')
     p.add_argument('--erase', action='append', default=[], help='x1,y1,x2,y2,...: a polygon in output-PNG pixels (before padding) to cut away from the mask, e.g. a cast shadow; repeatable')
+    p.add_argument('--add', action='append', default=[], help='x1,y1,...: a polygon in output-PNG pixels (before padding) forced into the mask, e.g. a glass the model drops; repeatable')
     p.add_argument('--fill-holes', type=float, default=0, help='fill enclosed holes smaller than this fraction of the subject (e.g. .03): gaps between arms that would get a stray inner rim')
     p.add_argument('--sky', type=float, help='landscape: cut away bright sky above the skyline (luminance threshold 0..1, e.g. .78)')
     a = p.parse_args()
@@ -122,6 +123,12 @@ def main():
             sizes = ndimage.sum(np.ones_like(alpha), lab, range(1, n + 1))
             keep = np.isin(lab, 1 + np.where(sizes >= sizes.max() * .005)[0])
             alpha = alpha * ndimage.binary_dilation(keep, iterations=4)
+    if a.add:
+        from PIL import ImageDraw
+        m = Image.new('L', (alpha.shape[1], alpha.shape[0]), 0); d = ImageDraw.Draw(m)
+        for poly in a.add:
+            v = [float(t) for t in poly.split(',')]; d.polygon(list(zip(v[0::2], v[1::2])), fill=255)
+        alpha = np.maximum(alpha, np.asarray(m.filter(ImageFilter.GaussianBlur(1))).astype(np.float32) / 255)
     if a.fill_holes > 0:
         from scipy import ndimage
         solid = alpha > .5; holes = ndimage.binary_fill_holes(solid) & ~solid
