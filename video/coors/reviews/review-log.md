@@ -36,3 +36,9 @@ Also: curtain redrawn as one broad glow plus wide folds (was a comb); gentler en
 4. 7 s without a face (building, kegs, landscape) -> "Bottling beer." now plays over the crew's front row beside crates stamped BOTTLED BEER.
 5. Portal: settled hole too small, caption on bright metal -> k 4.2, plate lifted (pos y -0.02), fromScale 2.2, enter 1.6.
 Also: softer entries (enter 0.65-0.7) on the six punchiest plates; receding steerage and Adolph kept inside the frame; warmer pool.
+
+## Round 5 (golden-r5): OVERALL FAIL (3 must-fix); grade, treatment, captions, audio (ASR matches; "Kors" only), stack continuity PASS
+1. Headless man at the right of the bottled-beer crew -> crop narrowed (560,760,760,700).
+2. Hero floor and reflection invisible, curtain hard-stopped at the floor line -> curtain runs to 0.45 H and fades into the floor; floor glows alpha 0.25/0.35, ry 0.12; reflection alpha 0.9; curtain amt 5.
+3. Neck macro: no edge light. Cause: the sweeps were placed on the body's edges, off the narrower neck. Neck edges measured from the PNG alpha (0.435-0.56 of its width -> sweep p 0.468-0.53); two thin bands plus a core line.
+Nice-to-haves applied: adolph_young rim 7; brewers crop drops a sliver of another person; waiting crop runs off the frame bottom; calmer entries (fromDist 0.7-0.75 on Stenger, kegs, sewer, beer ad; steerage k 1.8, fromDist 1.2; hats fromDist 1.2); stoker lifted (pos y -0.08).
