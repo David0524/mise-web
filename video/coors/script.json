@@ -33,7 +33,7 @@
    "act": 2,
    "text": "Apprenticed to a brewer.",
    "pause": 0.19,
-   "plate": "brewery workers at vats (generic, c.1920)",
+   "plate": "young brewery workers (Alpen Brau crew, generic, c.1900s)",
    "say": "Apprenticed to a brewer.",
    "voiced": 0.5
   },
@@ -69,33 +69,33 @@
    "act": 2,
    "text": "Denver, 1872.\nBottling beer.",
    "say": "Denver, eighteen seventy-two. Bottling beer.",
-   "pause": 0.12,
+   "pause": 0.1,
    "plate": "rows of kegs (generic)",
-   "speed": 0.76
+   "speed": 0.7
   },
   {
    "act": 2,
    "text": "1873. A tannery\non Clear Creek.",
    "say": "Eighteen seventy-three. A tannery on Clear Creek.",
-   "pause": 0.12,
+   "pause": 0.1,
    "plate": "1880s brewery under Table Mountain (the tannery site)",
-   "speed": 0.76
+   "speed": 0.7
   },
   {
    "act": 2,
    "text": "1880. He buys\nhis partner out.",
    "say": "Eighteen eighty. He buys his partner out.",
-   "pause": 0.12,
+   "pause": 0.1,
    "plate": "Adolph Coors, older",
-   "speed": 0.76
+   "speed": 0.7
   },
   {
    "act": 2,
    "text": "1916. Colorado goes dry.",
    "say": "Nineteen sixteen. Colorado goes dry.",
-   "pause": 0.12,
+   "pause": 0.1,
    "plate": "officials pouring liquor into a sewer",
-   "speed": 0.76
+   "speed": 0.7
   },
   {
    "act": 2,
@@ -130,14 +130,14 @@
    "text": "April 1933.",
    "say": "April, nineteen thirty-three.",
    "pause": 0.1,
-   "plate": "night crowd at a beer truck",
+   "plate": "crowd waving hats",
    "speed": 0.8
   },
   {
    "act": 2,
    "text": "Beer is back.",
    "pause": 1.0,
-   "plate": "crowd waving hats",
+   "plate": "1933 beer advertising photo: couple laughing, a glass of beer",
    "voiced": 0.6,
    "speed": 1.0
   },
@@ -145,14 +145,16 @@
    "act": 3,
    "text": "The Golden Brewery.",
    "pause": 1.0,
-   "plate": "hero bottle, label close-up"
+   "plate": "hero bottle, label close-up",
+   "at": 42.45
   },
   {
    "act": 3,
    "text": "Since 1873.",
    "say": "Since eighteen seventy-three.",
    "pause": 0.9,
-   "plate": "hero bottle, title builds"
+   "plate": "hero bottle, title builds",
+   "at": 44.0
   },
   {
    "act": 3,
@@ -161,7 +163,8 @@
    "pause": 1.8,
    "plate": "script credit",
    "voiced": 0.6,
-   "speed": 1.05
+   "speed": 1.05,
+   "at": 46.0
   },
   {
    "act": 4,
@@ -169,8 +172,9 @@
    "pause": 0.8,
    "plate": "black",
    "voiced": 0.6,
-   "say": "Still brewed in Golden.",
-   "speed": 1.05
+   "say": "Still... brewed in Golden.",
+   "speed": 1.05,
+   "at": 48.3
   }
  ]
 }

@@ -1,3 +1,3 @@
-{"bpm": 96, "key": "D", "stop": 48.4, "length": 51.3, "seed": 5,
- "sections": [{"at": 0, "mood": "invocation"}, {"at": 7.6, "mood": "litany"}, {"at": 29.6, "mood": "litany+"}, {"at": 40.48, "mood": "reveal"}],
- "hits": [40.48]}
+{"bpm": 96, "key": "D", "stop": 48.2, "length": 50.9, "seed": 5,
+ "sections": [{"at": 0, "mood": "invocation"}, {"at": 7.6, "mood": "litany"}, {"at": 29.0, "mood": "litany+"}, {"at": 39.68, "mood": "reveal"}],
+ "hits": [39.68]}

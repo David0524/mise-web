@@ -98,6 +98,14 @@ def main():
         cut = remove(im, session=new_session(a.model), post_process_mask=True)
         alpha = np.asarray(cut)[..., 3].astype(np.float32) / 255
 
+    if not (a.keep_bg or a.card) and a.sky is None:
+        # drop mask islands (stray fragments that would each get their own rim): keep components >= 0.5 % of the subject
+        from scipy import ndimage
+        lab, n = ndimage.label(alpha > .5)
+        if n > 1:
+            sizes = ndimage.sum(np.ones_like(alpha), lab, range(1, n + 1))
+            keep = np.isin(lab, 1 + np.where(sizes >= max(sizes.max() * .005, 50))[0])
+            alpha = alpha * ndimage.binary_dilation(keep, iterations=2)
     pad = 0 if a.keep_bg else a.rim * 3  # a card keeps the whole photo and gets the rim around its edge
     rgb = np.asarray(im).astype(np.float32)
     if pad:
