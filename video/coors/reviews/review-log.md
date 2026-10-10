@@ -79,3 +79,7 @@ Not applied: shortening entries back to 0.6 s (round 10 asked for longer ones; r
 ## Round 12 (golden-r12): OVERALL PASS (no must-fix), first passing round
 Nice-to-haves applied for round 13: bottling crew `--erase` on a dark sliver at the left and on the photo border slicing the right man's arm; 1933 couple `--rim 3`.
 Not applied: stoker `--rim 4` (the portal hole is given in padded PNG pixels, which a rim change would move); grain/vignette and the bottle tint (global looks a passing round already matched); litany retiming (needs the VO re-recorded).
+
+## Round 13 (golden-r13): OVERALL FAIL (1 must-fix); everything else PASS
+1. Bricklayer sliced lengthwise: the two rectangular shadow `--erase` polygons from round 7 had a straight left edge about 30-60 px inside his jacket and trouser front (missed by rounds 8-12) -> one polygon whose left edge traces the cloth, removing only the wall shadow.
+Lesson for the skill: trace `--erase` polygons along the figure; a rectangle that clears a shadow also slices the body beside it.
