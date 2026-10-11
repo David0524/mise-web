@@ -117,3 +117,9 @@ Nice-to-have applied: neck edge sweeps width 0.006 -> 0.0035, amt 0.8 -> 0.95 (s
 ## Round 20 (golden-r20, two reviewers): A PASS, B PASS (no must-fix)
 Nice-to-haves noted, not applied (keeping the cut fixed for a second pair): brewers left crop edge through the leftmost man's arm, a small step at young Adolph's bottom-right shoulder, the portal ring's one-frame pop, more drift between entries, neck highlight slightly cool, beer-ad print borders, hats right fringe.
 Round 21 = two fresh reviewers on the same render.
+
+## Round 21 (= the round-20 render, two fresh reviewers): B PASS, A FAIL (1 must-fix)
+1. Hats: a lace of five or six small rimmed holes between the raised arms (matting) -> `--fill-holes .002` for the enclosed ones, `--add` polygon for the two open gaps. New tools/holes.py lists and marks every cut-out's enclosed holes; the rest are real gaps (arms, legs, rigging).
+
+## Stopped here
+At the user's call ("stop worrying about the perfect crop"), the loop ended after round 21 with that last fix applied. Final cut: golden.mp4 (the web encode of out/golden-final.mp4, round 20 + the hats fix). Rounds 18 and 20 passed both reviewers; each was followed by a fresh pair that found one small cut-out flaw, now fixed. Optional items left: mid-litany pacing (needs the VO retimed), the portal ring's one-frame pop, a little more drift between entries, hero curtain fold amplitude.

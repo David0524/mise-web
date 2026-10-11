@@ -31,6 +31,7 @@ the tools make the cut-outs, the voice, the music and the mix; a separate review
 | `tools/check.mjs` | lints a spec: timeline, captions, one plate per line, entry overlaps, portals, missing assets |
 | `tools/render.mjs` | frames, stills (`--times`), a grid (`--grid 24`) and the MP4 with audio, in parallel workers |
 | `tools/contact.sh`, `tools/compare.sh` | timestamped contact sheet; reference vs film side by side |
+| `tools/holes.py` | lists and marks every cut-out's enclosed holes, to catch matting lace before a reviewer does |
 | `tools/foldm.py` | curtain fold contrast, to compare the reveal with the reference by one shared measure |
 
 ## Setup (once per machine)
@@ -139,6 +140,11 @@ decision the brief can't answer (a different closing line, a photo they might ob
   lines exactly (`l[2] === 'Name.'`), never with `startsWith`, which can hit an earlier line.
 - **Shared measures:** give every reviewer the same measuring tools (diff signal, `foldm.py`) and the reference's
   numbers from them; two reviewers with private metrics asked for opposite curtain changes in consecutive rounds.
+- **Matting lace:** BiRefNet leaves clusters of small holes between raised hands, hats and hair, each with its own
+  cream rim. Run `tools/holes.py assets/cut/*.png --sheet out/holes.jpg` after cutting; fill lace with `--fill-holes`
+  (a fraction of the subject) or close open gaps with `--add`, and keep the real gaps (arms, legs, rigging).
+- **One reviewer is not enough:** a fresh reviewer on an unchanged, passing cut found a real flaw four times in this
+  run. Use two reviewers per round and count a round as passing only when both pass.
 - **Deliberate choices in the brief:** list what you kept on purpose (a print's own border, a bundle that looks like a
   slab) in each new reviewer's brief, so a fresh reviewer doesn't re-flag it every round; and when two rounds ask
   for opposite changes, settle it with the shared measure instead of following the latest.

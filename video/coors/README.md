@@ -10,6 +10,7 @@ closing line. Private, not for public use: several images are archive scans used
 | `research/facts.md` | every claim with sources and confidence (fact-checked independently before recording) |
 | `assets/src/` | the source photos used, with `SOURCES.md` (where each came from) |
 | `cut.sh` | makes every cut-out in `assets/cut/` from `assets/src/` (needs the skill's `tools/prep.py` and rembg) |
+| `golden.mp4` | the finished film (web encode, 1440x1080, 25 fps, 50.9 s) |
 | `golden.film.js` | the film spec: beat sheet, plate stack, product scenes |
 | `film.html` | the page that renders it (`film.html?spec=golden.film.js`) |
 | `lines.js` | VO line timings (generated from `out/lines.json`), the film's clock |
