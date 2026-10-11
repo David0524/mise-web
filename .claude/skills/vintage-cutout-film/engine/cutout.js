@@ -228,7 +228,10 @@
       const lead = seg.lead == null ? 0.6 : seg.lead, end = seg.at + seg.dur;
       let j = 0; while (j + 1 < P.length && t >= P[j + 1].at) j++;
       const next = j + 1 < P.length ? P[j + 1].at : end + (seg.tail || 0);
-      return { u: j - lead + (t - P[j].at) / Math.max(0.2, next - P[j].at), j };
+      const fr = (t - P[j].at) / Math.max(0.2, next - P[j].at);
+      // the first plate can start nearer its nominal size (lead0), then joins the common pace
+      if (j === 0 && seg.lead0 != null) return { u: -seg.lead0 + fr * (1 - lead + seg.lead0), j };
+      return { u: j - lead + fr, j };
     }
     function flowState(seg, P, t) {
       const { u, j } = flowU(seg, P, t), N = P.length;

@@ -88,7 +88,7 @@ def main():
     p.add_argument('--contrast', type=float, default=1.0); p.add_argument('--gamma', type=float, default=1.0)
     p.add_argument('--upscale', action='store_true', help='enlarge a small crop to --max before masking, so the mask edge and rim are drawn at the size they are shown');
     p.add_argument('--rim-scale', type=float, default=1.0, help='multiply the rim width (explicit or default); cut.sh sets one value for the whole film');
-    p.add_argument('--seam', action='append', default=[], help='x1,y1,x2,y2,...: an open line in output-PNG pixels (before padding) where one cardboard piece overlaps another (an arm over the body); drawn as a cream cut edge with a soft shadow on its far side; repeatable');
+    p.add_argument('--seam', action='append', default=[], help='x1,y1,x2,y2,...: an open line in the final PNG pixels (as you see it, padding included) where one cardboard piece overlaps another (an arm over the body); drawn as a cream cut edge with a soft shadow on its far side; repeatable');
     p.add_argument('--flat', action='store_true', help='no cardboard finish (paper mottle, softened print)');
     p.add_argument('--flip', action='store_true'); p.add_argument('--no-rim', action='store_true')
     p.add_argument('--erase', action='append', default=[], help='x1,y1,x2,y2,...: a polygon in output-PNG pixels (before padding) to cut away from the mask, e.g. a cast shadow; repeatable')
@@ -104,7 +104,7 @@ def main():
     k = a.max / max(im.size) if a.upscale else min(1.0, a.max / max(im.size)); im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
 
     if not a.rim: a.rim = max(4, round(max(im.size) * .005))  # about 4-5 px on screen once the figure fills 0.8 H
-    a.rim = max(2, round(a.rim * a.rim_scale))
+    if not a.no_rim: a.rim = max(2, round(a.rim * a.rim_scale))   # a product keeps its framing
     if a.sky is not None:
         # cut along the skyline: per column, sky is the bright run from the top down to the first darker pixel
         lum = np.asarray(im.convert('L').filter(ImageFilter.GaussianBlur(3))).astype(np.float32) / 255
@@ -182,16 +182,16 @@ def main():
         inner = np.asarray(Image.fromarray((alpha * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(.8))).astype(np.float32) / 255; outer = inner
     else:
         outer, inner = scissor(alpha, a.rim)
-    if not a.flat:
+    if not (a.flat or a.no_rim):   # products stay crisp
         graded = cardboard(graded, max(graded.shape[:2]))
-    rimcol = np.array(RIM, np.float32)[None, None, :] * (paper(graded.shape[:2], max(graded.shape[:2]), 11)[..., None] if not a.flat else 1)
+    rimcol = np.array(RIM, np.float32)[None, None, :] * (paper(graded.shape[:2], max(graded.shape[:2]), 11)[..., None] if not (a.flat or a.no_rim) else 1)
     if a.seam:
         # a separately cut piece lying on top: a cream cut edge along the line, shadowed on its far side
         from PIL import ImageDraw
         lw = max(2, round(a.rim * .55)); sh = Image.new('L', inner.shape[::-1], 0); ln = Image.new('L', inner.shape[::-1], 0)
         ds, dl = ImageDraw.Draw(sh), ImageDraw.Draw(ln)
         for poly in a.seam:
-            v = [float(t) + pad for t in poly.split(',')]; pts = list(zip(v[0::2], v[1::2]))
+            v = [float(t) for t in poly.split(',')]; pts = list(zip(v[0::2], v[1::2]))
             ds.line([(x + lw * .7, y + lw * .9) for x, y in pts], fill=255, width=lw * 2, joint='curve')
             dl.line(pts, fill=255, width=lw, joint='curve')
         shm = np.asarray(sh.filter(ImageFilter.GaussianBlur(lw * .8))).astype(np.float32) / 255 * inner

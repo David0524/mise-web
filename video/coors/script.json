@@ -56,26 +56,27 @@
    "text": "Shoveled coal.\nDug ditches.",
    "plate": "Hine powerhouse worker (portal: the round pump)",
    "say": "Shovelled coal... Dug ditches.",
-   "voiced": 0.75,
-   "speed": 0.92,
+   "voiced": 0.8,
+   "speed": 0.95,
    "at": 16.52
   },
   {
    "act": 2,
-   "text": "A brewery foreman.\nIllinois.",
+   "text": "A brewery foreman.\nIn Illinois.",
    "plate": "Stenger brewery, Naperville",
-   "say": "A brewery foreman... Illinois.",
+   "say": "A brewery foreman... In Illinois.",
    "voiced": 0.75,
    "speed": 0.92,
    "at": 18.52
   },
   {
    "act": 2,
-   "text": "Denver.\nBottling beer.",
-   "say": "Denver... Bottling beer.",
+   "text": "In Denver.\nBottling beer.",
+   "say": "In Denver... Bottling beer.",
    "plate": "brewery crew beside crates stamped BOTTLED BEER (generic, c.1900s)",
    "speed": 0.9,
-   "at": 20.52
+   "at": 20.52,
+   "voiced": 0.6
   },
   {
    "act": 2,
@@ -134,9 +135,9 @@
   {
    "act": 2,
    "text": "April 1933.",
-   "say": "April, nineteen thirty-three.",
+   "say": "April... nineteen thirty-three.",
    "plate": "crowd waving hats",
-   "speed": 0.88,
+   "speed": 0.82,
    "at": 36.52
   },
   {
@@ -145,7 +146,7 @@
    "plate": "1933 beer advertising photo: couple laughing, a glass of beer",
    "voiced": 0.6,
    "speed": 1.0,
-   "at": 38.52
+   "at": 38.82
   },
   {
    "act": 3,

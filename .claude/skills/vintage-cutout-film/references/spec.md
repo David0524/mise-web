@@ -68,7 +68,7 @@ Plate fields:
 
 Stack fields: `flow` (true: the camera pulls back continuously, one plate per line, as in the reference; use it),
 `lead` (flow: how far before its nominal size a plate arrives, default 0.6, so it goes from k^0.6 to k^-0.4 of its size
-during its line), `drift` (non-flow only: slow zoom-out per second while a line plays), `nearBlur`, `farBlur`, `dim` (brightness
+during its line), `lead0` (flow: the first plate's start, e.g. 0.15 so it opens near its nominal size), `drift` (non-flow only: slow zoom-out per second while a line plays), `nearBlur`, `farBlur`, `dim` (brightness
 lost per step back), `float` (handheld drift in H), `pool` (background light pool), `void`.
 
 Piece fields: `img`, `x`, `y`, `h`, `rot` (deg), `flip`. Any of `x`, `y`, `h`, `rot` can be keyframes
