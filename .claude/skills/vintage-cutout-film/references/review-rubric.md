@@ -23,7 +23,7 @@ breaks a caption rule or is factually wrong.
    neutral grey or cool. No colour except the title script and the burn accents.
 2. **Treatment**: grain visible on the void, vignette, slight softness. Nothing razor-sharp except the
    captions.
-3. **Cut-outs**: every figure has the cream paper rim (3–5 px at 1080), loosely following the silhouette, no
+3. **Cut-outs**: every figure is a piece of cardboard: the cream paper rim (8–12 px at 1080, soft), seams where pieces overlap, a soft flat print with paper mottle, loosely following the silhouette, no
    leftover background chunks, no halos of the old background, no chopped-off hands or heads unless clearly
    deliberate. Glued-on props make a point, not a gag.
 4. **Captions**: Arimo/Arial bold type, olive-yellow `#B5B45B`, soft dark shadow, centred, baseline at about
@@ -35,13 +35,14 @@ breaks a caption rule or is factually wrong.
 | check | must be |
 |---|---|
 | Continuity | no hard cut anywhere in the stack; every change is a plate entering from near the lens |
-| Entry | the new plate starts big (1.5–3× settled) and blurred (≥ 12 px at 1080), slides in over 10–15 frames, settles sharp |
+| Camera | the pull-back never stops: each plate goes from about 1.3 H to about 0.7 H during its own line and keeps shrinking (about 30 %/s, even speed); no plate sits still. Measure a plate's height at its line start and at the next line start |
+| Entry | the new plate starts big and blurred (≥ 12 px at 1080) and slides in over about 0.7 s; entries vary (edges, corners, rise, iris, fade, light sweep, portal) |
 | Recession | the previous plate shrinks to about 45–60 %, ends up behind and readable for one more line, dimmed to about 60–75 %, then fades out two or three steps back |
 | Drift | the camera keeps creeping back while a line plays; never a dead freeze |
 | Composition | the subject's face sits in the upper two-thirds, never under a caption. Sizes alternate (close face, group, waist-up). The receding plate sits somewhere meaningful (over a shoulder, in a hand, in a hat) |
 | Expression | each figure's expression or action fits its line, so the feeling reads without the caption; nothing mocks the subject |
 | Portal | if used: the old scene is visible through the hole at the start, the pull-back reveals the hole's owner, and no older plate leaks outside the hole |
-| Rhythm | lines accelerate through the act; the last line of the act holds a beat longer |
+| Rhythm | an even beat (about 1.7–2 s a line) to the end of the act; the last line holds a beat longer |
 
 ## Product and title
 

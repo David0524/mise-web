@@ -6,15 +6,15 @@
  *  act 1  0.00  macro: bottle neck, a sliver of hard light      "You are the snowmelt of the Rockies."
  *         2.88  macro: spotlight pool, long bottle shadow        "You are the master of the mash."
  *         5.20  macro: light sweeps the label                    "You put the gold into Golden."
- *  act 2  7.60  stack, one plate per line, the camera only pulls back:
+ *  act 2  7.60  stack, one plate per 2 s line; the camera pulls back continuously (flow mode, about 30 %/s):
  *         young Adolph · young brewery workers · steerage · bricklayer · stoker (portal: the bricklayer seen
  *         through the porthole) · Stenger brewery · kegs · 1880s brewery under Table Mountain · Adolph older ·
  *         liquor poured into a sewer · malted milk ad · man drinking from a stein · porcelain plant · woman
  *         waiting · crowd waving hats · 1933 couple laughing over a beer
- *  act 3 39.68  label close-up in the light curtain (music)
- *        42.32  hero bottle, title builds on its line            "The Golden Brewery." "Since 1873." "Adolph Coors."
- *        48.12  red burn
- *  act 4 48.20  black                                            "Still brewed in Golden."
+ *  act 3 40.60  label close-up in the light curtain (music)
+ *        43.24  hero bottle, title builds on its line            "The Golden Brewery." "Since 1873." "Adolph Coors."
+ *        49.04  red burn
+ *  act 4 49.12  black                                            "Still brewed in Golden."
  */
 (function () {
   const L = window.LINES;
@@ -23,32 +23,32 @@
   // captions: hold each line until the next when the gap is short
   const captions = L.map(([a, b, t], i) => [a, L[i + 1] && L[i + 1][0] - b < 0.6 ? L[i + 1][0] : b + 0.25, t]);
 
-  const T_A2 = 2.88, T_A3 = 5.2, T_STACK = 7.6, T_REVEAL = 39.68, T_HERO = 42.32, T_BLACK = 48.2, END = fr(L[L.length - 1][1] + 0.9);
+  const T_A2 = 2.88, T_A3 = 5.2, T_STACK = 7.6, T_REVEAL = 40.6, T_HERO = 43.24, T_BLACK = 49.12, END = fr(L[L.length - 1][1] + 0.9);
 
   // litany plates: [image, h, x, y, from, bg (where the old plate goes), extra]
   // h and y keep every settled plate's bottom edge above the captions (pos.y + y + h/2 <= 0.36)
   const P = [
-    ['adolph_young', 0.86, 0.02, -0.11, 'bottom', null],
-    ['brewers', 0.82, 0.04, -0.09, 'right', [-0.44, -0.22], { enter: 0.95 }],
-    ['steerage', 0.82, -0.04, -0.09, 'left', [-0.42, -0.22], { k: 1.8, fromScale: 1.1, fromDist: 2.2, entryEase: 'inOut', enter: 0.85 }],
-    ['bricklayer', 0.9, 0.1, -0.13, 'right', [-0.26, -0.16]],
-    // portal: the porthole (PNG px 994,512 r116) sits at screen (0, -0.36); the bricklayer scene lives inside it
-    ['stoker', 1.35, 0, 0, 'camera', null, { hole: { piece: 0, px: [994, 512, 116, 116] }, pos: [-0.132, -0.14], k: 4.2, fromScale: 2.2, enter: 1.6, nearBlur: 14 }],
-    ['stenger', 0.62, -0.02, -0.04, 'bottom-left', [-0.34, -0.28], { fromScale: 1.15, fromDist: 1.05, enter: 1.0 }],
-    ['kegs', 0.8, 0.12, -0.08, 'right', [-0.26, -0.18], { fromScale: 1.25, fromDist: 0.7, enter: 0.95 }],
-    ['tannery', 0.7, -0.04, -0.03, 'left', [0.26, -0.2], { keep: 1.9 }],
-    ['adolph_old', 0.82, 0.12, -0.09, 'bottom-right', [-0.26, -0.17]],
-    ['sewer', 0.8, -0.06, -0.08, 'left', [0.4, -0.22], { fromScale: 1.25, fromDist: 0.75, enter: 0.8 }],
-    ['maltedmilk', 0.62, 0.1, -0.03, 'right', [-0.26, -0.15], { enter: 0.6 }],
-    ['nearbeer', 0.72, -0.06, -0.1, 'left', [0.3, -0.2], { enter: 0.45 }],
-    ['porcelain', 0.75, 0.08, -0.05, 'right', [-0.3, -0.2], { enter: 0.45 }],
-    ['waiting', 0.8, -0.02, -0.04, 'bottom', [0.3, -0.22], { enter: 0.45 }],
-    ['hats', 0.8, 0.02, -0.1, 'right', [0.44, -0.3], { fromDist: 2.2, fromScale: 1.1, entryEase: 'inOut', enter: 0.65 }],
-    ['beerad', 0.82, 0, -0.07, 'left', [0.4, -0.26], { enter: 0.8, fromDist: 0.75 }],
+    ['adolph_young', 0.92, 0.02, -0.08, 'bottom', null],
+    ['brewers', 0.9, 0.04, -0.06, 'right', [-0.44, -0.2]],
+    ['steerage', 0.9, -0.04, -0.06, 'left', [-0.42, -0.2]],
+    ['bricklayer', 0.98, 0.1, -0.1, 'bottom-right', [-0.3, -0.14]],
+    // portal: the camera starts inside the pump's porthole; the bricklayer scene lives inside it
+    ['stoker', 1.4, 0, 0, 'camera', null, { hole: { piece: 0, px: [994, 512, 116, 116] }, pos: [-0.13, -0.12], k: 4.2, fromScale: 1.6, enter: 1.2, nearBlur: 12 }],
+    ['stenger', 0.7, -0.02, -0.02, 'bottom-left', [-0.34, -0.26]],
+    ['kegs', 0.88, 0.12, -0.05, 'right', [-0.28, -0.18]],
+    ['tannery', 0.78, -0.04, -0.01, 'left', [0.28, -0.18], { reveal: 'fade', keep: 1.9 }],
+    ['adolph_old', 0.92, 0.12, -0.06, 'bottom-right', [-0.28, -0.15]],
+    ['sewer', 0.9, -0.06, -0.05, 'left', [0.4, -0.2]],
+    ['maltedmilk', 0.7, 0.1, -0.01, 'right', [-0.28, -0.14], { reveal: 'sweep' }],
+    ['nearbeer', 0.82, -0.06, -0.07, 'bottom-left', [0.3, -0.18]],
+    ['porcelain', 0.82, 0.08, -0.03, 'right', [-0.3, -0.18]],
+    ['waiting', 0.9, -0.02, -0.02, 'camera', [0.3, -0.2], { reveal: 'iris', enter: 1.0, fromDist: 0 }],
+    ['hats', 0.88, 0.02, -0.07, 'bottom', [0.44, -0.26]],
+    ['beerad', 0.9, 0, -0.04, 'left', [0.4, -0.24]],
   ];
   const plates = P.map(([img, h, x, y, from, bg, extra], j) => Object.assign({
-    at: j === 0 ? T_STACK : fr(start(3 + j) - 0.12),
-    from, fromScale: 1.25, fromDist: 0.95, ease: 'inOut', pieces: [{ img, x, y, h, rot: [[0, (j % 2 ? 1 : -1) * 0.8], [3, (j % 2 ? -1 : 1) * 0.6]] }],
+    at: j === 0 ? T_STACK : fr(start(3 + j) - 0.1), k: 1.8, enter: 0.7,
+    from, fromScale: 1.08, fromDist: 0.9, ease: 'inOut', entryEase: 'out', pieces: [{ img, x, y, h, rot: [[0, (j % 2 ? 1 : -1) * 0.8], [3, (j % 2 ? -1 : 1) * 0.6]] }],
   }, bg ? { bg } : {}, extra || {}));
 
   const assets = {};
@@ -57,12 +57,12 @@
   window.SPEC = {
     title: 'golden', size: [1440, 1080], fps: 25, duration: END, blackPoint: '#191716',
     assets, audio: 'out/mix.wav', captions,
-    burns: [{ at: 48.12, dur: 0.08, color: 'rgba(190,40,30,.85)', x: -0.3, y: -0.1 }],
+    burns: [{ at: 49.04, dur: 0.08, color: 'rgba(190,40,30,.85)', x: -0.3, y: -0.1 }],
     segments: [
       { at: 0, dur: T_A2, scene: 'macroNeck' },
       { at: T_A2, dur: T_A3 - T_A2, scene: 'macroPool' },
       { at: T_A3, dur: T_STACK - T_A3, scene: 'macroLabel' },
-      { at: T_STACK, dur: T_REVEAL - T_STACK, kind: 'stack', drift: 0.03, plates },
+      { at: T_STACK, dur: T_REVEAL - T_STACK, kind: 'stack', flow: true, lead: 0.6, nearBlur: 22, plates },
       { at: T_REVEAL, dur: T_HERO - T_REVEAL, scene: 'revealLabel' },
       { at: T_HERO, dur: T_BLACK - T_HERO, scene: 'revealHero' },
       { at: T_BLACK, dur: END - T_BLACK, kind: 'black' },

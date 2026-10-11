@@ -23,135 +23,136 @@
   {
    "act": 2,
    "text": "Adolph Coors.\nOrphaned at fifteen.",
-   "pause": 0.22,
    "plate": "young Adolph Coors portrait",
    "say": "Adolph Coors. Orphaned at fifteen.",
    "voiced": 0.6,
-   "speed": 0.95
+   "speed": 0.95,
+   "at": 7.72
   },
   {
    "act": 2,
    "text": "Apprenticed to a brewer.",
-   "pause": 0.19,
    "plate": "young brewery workers (Alpen Brau crew, generic, c.1900s)",
    "say": "Apprenticed to a brewer.",
-   "voiced": 0.5
+   "voiced": 0.5,
+   "at": 10.52
   },
   {
    "act": 2,
-   "text": "1868. He stowed away.",
-   "say": "Eighteen sixty-eight. He stowed away.",
-   "pause": 0.19,
-   "plate": "steerage passengers on a ship's bow, 1915 (no single face)"
+   "text": "He stowed away.",
+   "say": "He stowed away.",
+   "plate": "steerage passengers on a ship's bow, 1915 (no single face)",
+   "speed": 0.92,
+   "at": 12.52
   },
   {
    "act": 2,
    "text": "Laid bricks. Cut stone.",
-   "pause": 0.3,
-   "plate": "bricklayer at work"
+   "plate": "bricklayer at work",
+   "at": 14.52
   },
   {
    "act": 2,
    "text": "Shoveled coal.\nDug ditches.",
-   "pause": 0.17,
    "plate": "Hine powerhouse worker (portal: the round pump)",
    "say": "Shovelled coal... Dug ditches.",
    "voiced": 0.75,
-   "speed": 0.92
+   "speed": 0.92,
+   "at": 16.52
   },
   {
    "act": 2,
    "text": "A brewery foreman.\nIllinois.",
-   "pause": 0.14,
    "plate": "Stenger brewery, Naperville",
    "say": "A brewery foreman... Illinois.",
    "voiced": 0.75,
-   "speed": 0.92
+   "speed": 0.92,
+   "at": 18.52
   },
   {
    "act": 2,
-   "text": "Denver, 1872.\nBottling beer.",
-   "say": "Denver, eighteen seventy-two. Bottling beer.",
-   "pause": 0.1,
+   "text": "Denver.\nBottling beer.",
+   "say": "Denver... Bottling beer.",
    "plate": "brewery crew beside crates stamped BOTTLED BEER (generic, c.1900s)",
-   "speed": 0.7
+   "speed": 0.9,
+   "at": 20.52
   },
   {
    "act": 2,
-   "text": "1873. A tannery\non Clear Creek.",
-   "say": "Eighteen seventy-three. A tannery on Clear Creek.",
-   "pause": 0.1,
+   "text": "A tannery in Golden.",
+   "say": "A tannery, in Golden.",
    "plate": "1880s brewery under Table Mountain (the tannery site)",
-   "speed": 0.7
+   "speed": 0.9,
+   "at": 22.52
   },
   {
    "act": 2,
-   "text": "1880. He buys\nhis partner out.",
-   "say": "Eighteen eighty. He buys his partner out.",
-   "pause": 0.1,
+   "text": "He buys out\nhis partner.",
+   "say": "He buys out his partner.",
    "plate": "Adolph Coors, older",
-   "speed": 0.7
+   "speed": 0.9,
+   "at": 24.52
   },
   {
    "act": 2,
-   "text": "1916. Colorado goes dry.",
-   "say": "Nineteen sixteen. Colorado goes dry.",
-   "pause": 0.1,
+   "text": "Colorado goes dry.",
+   "say": "Colorado goes dry.",
    "plate": "officials pouring liquor into a sewer",
-   "speed": 0.7
+   "speed": 0.9,
+   "at": 26.52
   },
   {
    "act": 2,
    "text": "Malted milk.",
-   "pause": 0.08,
    "plate": "Coors Pure Malted Milk ad",
    "voiced": 0.45,
    "say": "Malted. Milk.",
-   "speed": 0.9
+   "speed": 0.9,
+   "at": 28.52
   },
   {
    "act": 2,
    "text": "Near beer.",
-   "pause": 0.08,
    "plate": "man draining a stein, Paris, 1933 repeal",
    "say": "Neer, beer.",
    "voiced": 0.9,
-   "speed": 1.15
+   "speed": 1.15,
+   "at": 30.52
   },
   {
    "act": 2,
    "text": "Porcelain.",
-   "pause": 0.08,
-   "plate": "Coors porcelain plant, rows of cups"
+   "plate": "Coors porcelain plant, rows of cups",
+   "at": 32.52
   },
   {
    "act": 2,
    "text": "Seventeen years.",
-   "pause": 0.1,
-   "plate": "woman waiting, head bowed"
+   "plate": "woman waiting, head bowed",
+   "at": 34.52
   },
   {
    "act": 2,
    "text": "April 1933.",
    "say": "April, nineteen thirty-three.",
-   "pause": 0.1,
    "plate": "crowd waving hats",
-   "speed": 0.8
+   "speed": 0.88,
+   "at": 36.52
   },
   {
    "act": 2,
    "text": "Beer is back.",
-   "pause": 1.0,
    "plate": "1933 beer advertising photo: couple laughing, a glass of beer",
    "voiced": 0.6,
-   "speed": 1.0
+   "speed": 1.0,
+   "at": 38.52
   },
   {
    "act": 3,
    "text": "The Golden Brewery.",
    "pause": 1.0,
    "plate": "hero bottle, label close-up",
-   "at": 42.45
+   "at": 43.37
   },
   {
    "act": 3,
@@ -159,7 +160,7 @@
    "say": "Since eighteen seventy-three.",
    "pause": 0.9,
    "plate": "hero bottle, title builds",
-   "at": 44.0
+   "at": 44.92
   },
   {
    "act": 3,
@@ -169,7 +170,7 @@
    "plate": "script credit",
    "voiced": 0.6,
    "speed": 1.05,
-   "at": 46.0
+   "at": 46.92
   },
   {
    "act": 4,
@@ -179,7 +180,7 @@
    "voiced": 0.6,
    "say": "Still... brewed in Golden.",
    "speed": 1.05,
-   "at": 48.3
+   "at": 49.22
   }
  ]
 }

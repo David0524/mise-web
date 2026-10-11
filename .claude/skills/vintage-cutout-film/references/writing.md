@@ -7,7 +7,7 @@ Words come first. The picture is built line by line from the script, and every l
 | act | length | lines | job |
 |---|---|---|---|
 | 1 Invocation | 7–9 s | 3 | Address the hero in second person, sincerely, like a luxury ad. Three parallel lines ("You are the…", "You are the…", "You put the…"). Over product macros |
-| 2 Litany | 22–26 s | 14–18 | The story (or the list) as short, concrete beats, one per plate. Start at about 2–2.5 s per line, accelerate to 0.8–1.1 s. The momentum is in the pile-up and the pictures |
+| 2 Litany | 22–26 s | 14–18 | The story (or the list) as short, concrete beats, one per plate, on an even beat of about 2 s per line (give each line an `at` in script.json). Keep lines to 2–5 words: a spoken year costs a second, so use years only where they carry the story. The momentum is in the pile-up and the camera's pull-back, not in speeding up the voice |
 | 3 Reveal | 10–12 s | 3 | The product's name; the title on screen; the maker's credit. Slow again |
 | 4 Coda | 3 s | 1 | One quiet line on black that lands the film: a fact, a turn, a last word. Silence underneath |
 

@@ -221,7 +221,29 @@
       P.forEach((p) => { p.settle = p.at + p.enter; });
       return P;
     }
+    // flow mode (seg.flow): the camera never stops pulling back. u runs through the plates at one plate per line:
+    // plate j arrives (slides in, defocused) when u = j - lead, is at its nominal size at u = j and keeps shrinking
+    // as the next ones arrive, so each plate goes from about k^lead to k^(lead-1) of its size during its own line.
+    function flowU(seg, P, t) {
+      const lead = seg.lead == null ? 0.6 : seg.lead, end = seg.at + seg.dur;
+      let j = 0; while (j + 1 < P.length && t >= P[j + 1].at) j++;
+      const next = j + 1 < P.length ? P[j + 1].at : end + (seg.tail || 0);
+      return { u: j - lead + (t - P[j].at) / Math.max(0.2, next - P[j].at), j };
+    }
+    function flowState(seg, P, t) {
+      const { u, j } = flowU(seg, P, t), N = P.length;
+      if (u >= N - 1 || u < 0) {
+        const i = u < 0 ? 0 : N - 1, K = P[i].k > 1 ? P[i].k : 1.8, f = Math.pow(K, -(u - i));
+        const Z = f / P[i].W;
+        return { Z, cam: [P[i].C[0] - P[i].pos[0] * f / Z, P[i].C[1] - P[i].pos[1] * f / Z], u, j, e: 1 };
+      }
+      const i = Math.floor(u), e = u - i, a = P[i], b = P[i + 1];
+      const Z = Math.exp(lerp(Math.log(1 / a.W), Math.log(1 / b.W), e));
+      const p = [lerp(a.pos[0], b.bg[0], e), lerp(a.pos[1], b.bg[1], e)];
+      return { Z, cam: [a.C[0] - p[0] / Z, a.C[1] - p[1] / Z], u, j, e };
+    }
     function stackState(seg, P, t) {
+      if (seg.flow) return flowState(seg, P, t);
       // which transition are we in?
       let j = 0; while (j + 1 < P.length && t >= P[j + 1].at) j++;
       const cur = P[j];
@@ -287,17 +309,29 @@
       for (const j of visible) {
         const p = P[j], depth = st.u - j, tl = t - p.at;
         // depth of field: near plates (depth < 0) blur hard, far plates a little; far plates dim
-        const near = Math.max(0, -depth), far = Math.max(0, depth);
+        // flow: a plate is defocused only while it slides in from in front of the lens
+        const eIn = j > 0 ? clamp(tl / p.enter) : 1;
+        const near = seg.flow ? Math.pow(1 - eIn, 1.5) : Math.max(0, -depth), far = Math.max(0, depth);
         const look = {
           blur: (near * (p.nearBlur || seg.nearBlur || 26) + far * (seg.farBlur == null ? 1.6 : seg.farBlur)) * (H / 1080),
           bright: 1 - Math.min(0.75, far * (seg.dim == null ? 0.34 : seg.dim)),
-          alpha: clamp(((p.keep || 2.9) - depth) / 0.5),
+          alpha: clamp(((p.keep || 2.9) - depth) / 0.5) * (p.reveal === 'fade' ? ease.inOut(eIn) : 1),
         };
         ctx.save();
         visible.forEach((k) => { if (k > j && P[k].hole) { holePath(k); ctx.clip(); } });
+        // iris: the plate opens in a widening circle with a soft dark edge
+        const iris = p.reveal === 'iris' && eIn < 1, ir = iris ? lerp(0.02, 1.15, ease.inOut(eIn)) * H : 0, icx = g.sx(X[j].ox), icy = g.sy(X[j].oy);
+        if (iris) { ctx.beginPath(); ctx.arc(icx, icy, ir, 0, Math.PI * 2); ctx.clip(); }
         p.pieces.forEach((pc) => drawPiece(pc, X[j], tl, look));
         if (p.draw && SCENES[p.draw]) SCENES[p.draw](g, { t: tl, f, X: X[j], look, plate: p });
+        if (iris) { const gr = ctx.createRadialGradient(icx, icy, ir * 0.55, icx, icy, ir); gr.addColorStop(0, 'rgba(25,23,22,0)'); gr.addColorStop(1, 'rgba(25,23,22,1)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); }
         ctx.restore();
+        // light sweep: a warm band crossing the frame as the plate arrives
+        if (p.reveal === 'sweep' && eIn < 1) {
+          ctx.save(); ctx.globalCompositeOperation = 'screen'; const bx = lerp(-0.3 * W, 1.3 * W, eIn), bw = W * 0.22;
+          const gr = ctx.createLinearGradient(bx - bw, 0, bx + bw, H * 0.35); gr.addColorStop(0, 'rgba(255,238,215,0)'); gr.addColorStop(0.5, `rgba(255,238,215,${0.55 * Math.sin(eIn * Math.PI)})`); gr.addColorStop(1, 'rgba(255,238,215,0)');
+          ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); ctx.restore();
+        }
       }
     }
 

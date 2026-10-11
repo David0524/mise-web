@@ -43,6 +43,25 @@ def grade(rgb, alpha, contrast, gamma):
     return sepia(np.clip(lum, 0, 1))
 
 
+def paper(shape, long, seed=5):
+    """Multiplicative paper mottle around 1.0: broad blotches plus fine fibre, scaled to the image size."""
+    h, w = shape; rng = np.random.default_rng(seed); out = np.ones((h, w), np.float32)
+    for cells, amt in ((6, .045), (22, .03), (90, .022)):
+        n = rng.random((max(2, round(h * cells / long)), max(2, round(w * cells / long)))).astype(np.float32)
+        out += (np.asarray(Image.fromarray((n * 255).astype(np.uint8)).resize((w, h), Image.BICUBIC)).astype(np.float32) / 255 - .5) * 2 * amt
+    out += (rng.random((h, w)).astype(np.float32) - .5) * .035
+    return out
+
+
+def cardboard(rgb, long):
+    """A printed photo mounted on card: a little softer, lower contrast, warm, with paper mottle."""
+    r = max(.6, long / 1500)
+    soft = np.stack([np.asarray(Image.fromarray(np.clip(rgb[..., c], 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(r))).astype(np.float32) for c in range(3)], -1)
+    mid = np.array([132, 118, 106], np.float32)
+    soft = mid + (soft - mid) * .86 + 6          # flatter print, blacks lifted
+    return soft * paper(rgb.shape[:2], long)[..., None]
+
+
 def scissor(alpha, rim, seed=7):
     """Round the silhouette like a scissor cut and grow it by `rim` px with a slightly irregular edge."""
     a = Image.fromarray((alpha * 255).astype(np.uint8))
@@ -68,6 +87,9 @@ def main():
     p.add_argument('--keep-bg', action='store_true'); p.add_argument('--card', action='store_true'); p.add_argument('--hole')
     p.add_argument('--contrast', type=float, default=1.0); p.add_argument('--gamma', type=float, default=1.0)
     p.add_argument('--upscale', action='store_true', help='enlarge a small crop to --max before masking, so the mask edge and rim are drawn at the size they are shown');
+    p.add_argument('--rim-scale', type=float, default=1.0, help='multiply the rim width (explicit or default); cut.sh sets one value for the whole film');
+    p.add_argument('--seam', action='append', default=[], help='x1,y1,x2,y2,...: an open line in output-PNG pixels (before padding) where one cardboard piece overlaps another (an arm over the body); drawn as a cream cut edge with a soft shadow on its far side; repeatable');
+    p.add_argument('--flat', action='store_true', help='no cardboard finish (paper mottle, softened print)');
     p.add_argument('--flip', action='store_true'); p.add_argument('--no-rim', action='store_true')
     p.add_argument('--erase', action='append', default=[], help='x1,y1,x2,y2,...: a polygon in output-PNG pixels (before padding) to cut away from the mask, e.g. a cast shadow; repeatable')
     p.add_argument('--add', action='append', default=[], help='x1,y1,...: a polygon in output-PNG pixels (before padding) forced into the mask, e.g. a glass the model drops; repeatable')
@@ -82,6 +104,7 @@ def main():
     k = a.max / max(im.size) if a.upscale else min(1.0, a.max / max(im.size)); im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
 
     if not a.rim: a.rim = max(4, round(max(im.size) * .005))  # about 4-5 px on screen once the figure fills 0.8 H
+    a.rim = max(2, round(a.rim * a.rim_scale))
     if a.sky is not None:
         # cut along the skyline: per column, sky is the bright run from the top down to the first darker pixel
         lum = np.asarray(im.convert('L').filter(ImageFilter.GaussianBlur(3))).astype(np.float32) / 255
@@ -98,9 +121,17 @@ def main():
         if a.flip: m = ImageOps.mirror(m)
         alpha = np.asarray(m.resize(im.size, Image.LANCZOS)).astype(np.float32) / 255
     else:
-        from rembg import remove, new_session
-        cut = remove(im, session=new_session(a.model), post_process_mask=True)
-        alpha = np.asarray(cut)[..., 3].astype(np.float32) / 255
+        # rembg is slow (BiRefNet ~1.5 min): cache the raw mask by source, crop, size and model
+        import hashlib, os
+        key = hashlib.sha1(f'{os.path.abspath(a.src)}|{os.path.getmtime(a.src)}|{a.crop}|{a.flip}|{im.size}|{a.model}'.encode()).hexdigest()[:16]
+        cache = os.path.join(os.path.dirname(os.path.abspath(a.out)), '.masks', key + '.png')
+        if os.path.exists(cache):
+            alpha = np.asarray(Image.open(cache)).astype(np.float32) / 255
+        else:
+            from rembg import remove, new_session
+            cut = remove(im, session=new_session(a.model), post_process_mask=True)
+            alpha = np.asarray(cut)[..., 3].astype(np.float32) / 255
+            os.makedirs(os.path.dirname(cache), exist_ok=True); Image.fromarray((alpha * 255).astype(np.uint8)).save(cache)
 
     if not (a.keep_bg or a.card) and a.sky is None:
         # drop mask islands (stray fragments that would each get their own rim): keep components >= 0.5 % of the subject
@@ -151,7 +182,23 @@ def main():
         inner = np.asarray(Image.fromarray((alpha * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(.8))).astype(np.float32) / 255; outer = inner
     else:
         outer, inner = scissor(alpha, a.rim)
-    col = graded * inner[..., None] + np.array(RIM, np.float32) * (1 - inner[..., None])
+    if not a.flat:
+        graded = cardboard(graded, max(graded.shape[:2]))
+    rimcol = np.array(RIM, np.float32)[None, None, :] * (paper(graded.shape[:2], max(graded.shape[:2]), 11)[..., None] if not a.flat else 1)
+    if a.seam:
+        # a separately cut piece lying on top: a cream cut edge along the line, shadowed on its far side
+        from PIL import ImageDraw
+        lw = max(2, round(a.rim * .55)); sh = Image.new('L', inner.shape[::-1], 0); ln = Image.new('L', inner.shape[::-1], 0)
+        ds, dl = ImageDraw.Draw(sh), ImageDraw.Draw(ln)
+        for poly in a.seam:
+            v = [float(t) + pad for t in poly.split(',')]; pts = list(zip(v[0::2], v[1::2]))
+            ds.line([(x + lw * .7, y + lw * .9) for x, y in pts], fill=255, width=lw * 2, joint='curve')
+            dl.line(pts, fill=255, width=lw, joint='curve')
+        shm = np.asarray(sh.filter(ImageFilter.GaussianBlur(lw * .8))).astype(np.float32) / 255 * inner
+        lnm = np.asarray(ln.filter(ImageFilter.GaussianBlur(.9))).astype(np.float32) / 255 * inner
+        graded = graded * (1 - .35 * shm[..., None])
+        graded = graded * (1 - lnm[..., None]) + rimcol * lnm[..., None] if np.ndim(rimcol) else graded * (1 - lnm[..., None]) + np.array(RIM, np.float32) * lnm[..., None]
+    col = graded * inner[..., None] + rimcol * (1 - inner[..., None])
     out_a = outer.copy()
     hole = None
     if a.hole:

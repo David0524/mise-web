@@ -45,10 +45,19 @@ darker and lower in contrast than the subject (§5).
 
 ## 4. The cut-out
 
-- The subject is cut out of its photo with a **paper rim**: a 3–5 px (at 1080) band of `rim` colour that
-  follows the silhouette loosely, as if cut with scissors a little outside the line. The rim is slightly soft
-  (0.6–1 px blur) and slightly irregular. Hair gets a smoother, rounder cut than the true hairline.
-- No drop shadows. The figure separates from the void by the rim and by its own brightness.
+- Every figure is a **piece of cardboard**: a printed photo mounted on card and cut out with scissors. That
+  is the look, more than any single setting:
+  - **A thick, soft paper rim**: a 8–12 px (at 1080, figure at about 0.8 H) band of `rim` colour that follows
+    the silhouette loosely, as if cut a little outside the line. Soft-edged (1–2 px) and slightly irregular.
+    Hair gets a smoother, rounder cut than the true hairline.
+  - **Rims inside the figure too.** Limbs, props and collars are separate pieces of card laid on top of the
+    body: an arm with a notepad, a collar, a wind-up key. Where one piece lies on another there is a cream cut
+    edge with a faint shadow on the far side (`prep.py --seam`). Two or three seams on the main plates are
+    what make them read as puppets rather than masked photos.
+  - **The print is soft and flat**: lower contrast than a modern scan, blacks lifted, highlights rolled off, a
+    touch of softness (about 1 px), and a **mottled paper texture** (broad blotches plus fine fibre, a few
+    percent) over both the photo and the rim. `prep.py` does this by default (`--flat` turns it off).
+- No drop shadows on the void. The figure separates from the void by the rim and by its own brightness.
 - Figures are whole people or big fragments: a head and shoulders, a waist-up pose, a hand holding a thing.
   Props are cut out too (a phone, a hand mirror, a rabbit, a wind-up key) and **glued onto the people**,
   often out of scale. That collage glue is the signature: a wind-up key on a baby's back, a dog with someone
@@ -61,13 +70,16 @@ darker and lower in contrast than the subject (§5).
 The collage section (8–33 s in the reference) has **no hard cuts**. It is one continuous camera move
 through a stack of plates.
 
-- **The camera only retreats.** The frame keeps slowly zooming out during every line (about 2–4 % per
-  second) and lurches back faster on each change (the old subject shrinks to about 45–60 % of its size within
-  about 12 frames).
-- **New plates come from the camera side.** The next figure enters from a frame edge, huge (about 1.5–3×
-  its settled size) and **heavily defocused** (blur about 12–25 px at 1080), and slides in over 8–12 frames
-  while it sharpens and settles. During the entry it overlaps the old subject like a foreground object passing
-  close to the lens. The diff signal shows these as 4–10-frame runs of fast change, with no cut frame.
+- **The camera never stops retreating.** This is the feel of the whole act. Measured on the reference, a
+  plate arrives at about 1.3× frame height and is down to about 0.7× when the next line starts, and it keeps
+  shrinking behind the next plates: a continuous zoom-out of roughly 30 % per second, at an even speed, with
+  no settle and no pause. A plate that snaps in and then sits still reads as a slideshow. (`flow: true`: the
+  camera runs one plate per line, `k` about 1.8.)
+- **New plates come from the camera side, in different ways.** Most enter from a frame edge (right, left,
+  bottom, a bottom corner), huge and **heavily defocused** (blur about 12–25 px at 1080), sliding in over
+  about 0.7 s while they sharpen, overlapping the old subject like a foreground object passing close to the
+  lens. Vary it: a rise from the bottom, a slide from the right, a big corner entry, an iris that opens on a
+  face, a soft fade, a warm light sweep across the frame, one or two portals. No cut frames.
 - **Old plates recede.** The previous subject ends up smaller, behind the new one (often over a shoulder,
   between two figures, or low in the frame), **dimmed** to about 60–75 % brightness and slightly soft (blur
   1–3 px). Two steps back a figure is a dark ghost. Three steps back it's gone.
@@ -127,7 +139,7 @@ The opening and closing are lit product photography, intercut with **hard cuts**
 | t (s) | Act | What happens |
 |---|---|---|
 | 0–8 | **Invocation** | Three product macros with hard cuts. The voice addresses the viewer as a hero, in two or three lines ("you are…"). Slow and sincere |
-| 8–33 | **The litany** | One continuous pull-back through about 18 cut-out plates. Lines start at about 2–3 s each and accelerate to about 0.8–1 s each, so the story gathers speed. One or two portal moves. The last line of the act gets a little extra hold |
+| 8–33 | **The litany** | One continuous pull-back through about 16 cut-out plates. An even beat: about 1.7–2 s per line, short lines (2–5 words), the same pace to the end (no acceleration into sub-second lines; that reads as rushed). One or two portal moves. The last line of the act gets a little extra hold |
 | 33–45 | **Reveal** | Hard cut to the product in the light curtain. The name of the product is whispered, then the title builds line by line, then the maker's credit in script |
 | 45–48 | **Coda** | Hard cut to pure black. One quiet caption-and-voice line that lands the film: a fact, a turn, a last word |
 
@@ -151,7 +163,7 @@ Rules:
 - No hard cuts inside the litany. No cross-dissolves anywhere.
 - No colour photographs, no modern photos, no AI-smooth faces. Real period photographs only, or images that
   are indistinguishable from them.
-- No drop shadows under cut-outs, no outlines in any colour but `rim`.
+- No drop shadows under cut-outs on the void, no outlines in any colour but `rim`.
 - No captions in any other colour, face or position, and no animated captions.
 - No stepped or choppy animation in the collage: the camera glides.
 - Don't let a receding plate stay bright: dim it.

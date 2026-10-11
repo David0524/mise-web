@@ -60,12 +60,15 @@ Plate fields:
 | `fromScale` | 1.4 | extra scale at the start of the entry (on top of `k`); above ~1.6 the first entry frame fills the frame with blur and reads as a cut |
 | `enter` | 0.5 | entry length in seconds (0.4–0.6: 10–15 frames at 25 fps) |
 | `ease` / `entryEase` | inOut / out | camera ease and the plate's own slide ease (`lurch` shrinks the old plate before the new one is on screen) |
+| `reveal` | — | `'iris'` (opens in a widening circle with a soft dark edge), `'fade'`, `'sweep'` (a warm light band crosses the frame as it arrives); default: slide in from `from` |
 | `hole` | — | a portal: `{piece: 0, px: [cx, cy, rx, ry]}` in that piece's PNG pixels (prep.py prints them), or `[x, y, rx, ry, rotDeg]` in plate units. Every older plate is drawn only inside it. `bg`, `k`, `from: 'camera'` and `fromScale: 1` are derived unless given. Keep the settled radius ≥ 0.08 H |
 | `keep` | 2.9 | how many steps back the plate stays visible before it fades out |
 | `nearBlur` | stack's | blur in px (at 1080) at one step in front of focus |
 | `draw` | — | name of a SCENES function called after the pieces (for a hand-drawn extra) |
 
-Stack fields: `drift` (slow zoom-out per second while a line plays), `nearBlur`, `farBlur`, `dim` (brightness
+Stack fields: `flow` (true: the camera pulls back continuously, one plate per line, as in the reference; use it),
+`lead` (flow: how far before its nominal size a plate arrives, default 0.6, so it goes from k^0.6 to k^-0.4 of its size
+during its line), `drift` (non-flow only: slow zoom-out per second while a line plays), `nearBlur`, `farBlur`, `dim` (brightness
 lost per step back), `float` (handheld drift in H), `pool` (background light pool), `void`.
 
 Piece fields: `img`, `x`, `y`, `h`, `rot` (deg), `flip`. Any of `x`, `y`, `h`, `rot` can be keyframes

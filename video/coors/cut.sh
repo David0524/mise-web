@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/assets"
 PY=${PY:-python3}
-PREP="$PY -I ../../../.claude/skills/vintage-cutout-film/tools/prep.py"
+PREP="$PY -I ../../../.claude/skills/vintage-cutout-film/tools/prep.py --rim-scale 2.2"
 mkdir -p cut
 HUMAN="--model u2net_human_seg"
 OBJ="--model isnet-general-use"
