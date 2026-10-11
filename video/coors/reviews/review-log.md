@@ -123,3 +123,11 @@ Round 21 = two fresh reviewers on the same render.
 
 ## Stopped here
 At the user's call ("stop worrying about the perfect crop"), the loop ended after round 21 with that last fix applied. Final cut: golden.mp4 (the web encode of out/golden-final.mp4, round 20 + the hats fix). Rounds 18 and 20 passed both reviewers; each was followed by a fresh pair that found one small cut-out flaw, now fixed. Optional items left: mid-litany pacing (needs the VO retimed), the portal ring's one-frame pop, a little more drift between entries, hero curtain fold amplitude.
+
+## Feel rebuild (after the user's notes: "pacing is fast and doesn't work", "every picture should feel like a piece of cardboard, with that texture")
+Measured against the reference instead of the old style bible, which had the motion wrong:
+- Camera: the reference never stops pulling back. A plate arrives at about 1.3 H and is about 0.7 H when the next line starts (roughly 30 %/s); ours snapped in and then drifted 3 %/s. New engine `flow` mode: u runs one plate per line at an even speed; plates arrive (defocused, sliding) at u = j - 0.6.
+- Cadence: lines on an even 2 s beat instead of accelerating to 0.7 s; long lines shortened in the reference's register (years only where they carry the story; "Since 1873" stays in the title). VO re-recorded.
+- Cardboard: rims about 2x thicker and soft (`--rim-scale 2.2`), the print softened and flattened with a paper mottle over photo and rim (prep.py default), plates sized by their visible figure.
+- Transitions varied: slides from the sides, rises, corner entries, a fade (tannery), a warm light sweep (malted milk), a soft iris on older Adolph's face, the porthole.
+- Tried and dropped: hand-drawn internal seams (prep.py --seam); approximate lines read as scratches. Kept the option; a seam must trace a real edge.

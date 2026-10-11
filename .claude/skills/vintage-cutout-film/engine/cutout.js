@@ -323,11 +323,21 @@
         ctx.save();
         visible.forEach((k) => { if (k > j && P[k].hole) { holePath(k); ctx.clip(); } });
         // iris: the plate opens in a widening circle with a soft dark edge
-        const iris = p.reveal === 'iris' && eIn < 1, ir = iris ? lerp(0.02, 1.15, ease.inOut(eIn)) * H : 0, icx = g.sx(X[j].ox), icy = g.sy(X[j].oy);
-        if (iris) { ctx.beginPath(); ctx.arc(icx, icy, ir, 0, Math.PI * 2); ctx.clip(); }
-        p.pieces.forEach((pc) => drawPiece(pc, X[j], tl, look));
+        const iris = p.reveal === 'iris' && eIn < 1, ir = iris ? lerp(0.14, 1.2, ease.inOut(eIn)) * H : 0, icx = g.sx(X[j].ox + (p.irisAt ? p.irisAt[0] : 0) * X[j].s), icy = g.sy(X[j].oy + (p.irisAt ? p.irisAt[1] : -0.18) * X[j].s);   // centred on the face (irisAt, plate units)
+        if (iris) {
+          // a soft-edged opening: the full plate inside r, then feathered rings out to 1.3 r
+          const R = 5;
+          for (let k = 0; k < R; k++) {
+            ctx.save(); ctx.beginPath(); ctx.arc(icx, icy, ir * (1 + 0.3 * (k + 1) / R), 0, Math.PI * 2);
+            if (k) ctx.arc(icx, icy, ir * (1 + 0.3 * k / R), 0, Math.PI * 2, true); else ctx.arc(icx, icy, 0.001, 0, Math.PI * 2, true);
+            ctx.clip('evenodd');
+            const lk = Object.assign({}, look, { alpha: look.alpha * (k ? 1 - k / R : 1) });
+            p.pieces.forEach((pc) => drawPiece(pc, X[j], tl, lk)); ctx.restore();
+          }
+          ctx.save(); ctx.beginPath(); ctx.arc(icx, icy, ir, 0, Math.PI * 2); ctx.clip();
+          p.pieces.forEach((pc) => drawPiece(pc, X[j], tl, look)); ctx.restore();
+        } else p.pieces.forEach((pc) => drawPiece(pc, X[j], tl, look));
         if (p.draw && SCENES[p.draw]) SCENES[p.draw](g, { t: tl, f, X: X[j], look, plate: p });
-        if (iris) { const gr = ctx.createRadialGradient(icx, icy, ir * 0.55, icx, icy, ir); gr.addColorStop(0, 'rgba(25,23,22,0)'); gr.addColorStop(1, 'rgba(25,23,22,1)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H); }
         ctx.restore();
         // light sweep: a warm band crossing the frame as the plate arrives
         if (p.reveal === 'sweep' && eIn < 1) {

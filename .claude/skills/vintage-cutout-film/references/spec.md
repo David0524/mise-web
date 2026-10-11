@@ -60,7 +60,7 @@ Plate fields:
 | `fromScale` | 1.4 | extra scale at the start of the entry (on top of `k`); above ~1.6 the first entry frame fills the frame with blur and reads as a cut |
 | `enter` | 0.5 | entry length in seconds (0.4–0.6: 10–15 frames at 25 fps) |
 | `ease` / `entryEase` | inOut / out | camera ease and the plate's own slide ease (`lurch` shrinks the old plate before the new one is on screen) |
-| `reveal` | — | `'iris'` (opens in a widening circle with a soft dark edge), `'fade'`, `'sweep'` (a warm light band crosses the frame as it arrives); default: slide in from `from` |
+| `reveal` | — | `'iris'` (opens in a widening circle with a soft dark edge, centred on `irisAt`, default [0, -0.18] in plate units: the face), `'fade'`, `'sweep'` (a warm light band crosses the frame as it arrives); default: slide in from `from` |
 | `hole` | — | a portal: `{piece: 0, px: [cx, cy, rx, ry]}` in that piece's PNG pixels (prep.py prints them), or `[x, y, rx, ry, rotDeg]` in plate units. Every older plate is drawn only inside it. `bg`, `k`, `from: 'camera'` and `fromScale: 1` are derived unless given. Keep the settled radius ≥ 0.08 H |
 | `keep` | 2.9 | how many steps back the plate stays visible before it fades out |
 | `nearBlur` | stack's | blur in px (at 1080) at one step in front of focus |
